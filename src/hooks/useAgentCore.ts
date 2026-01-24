@@ -286,7 +286,6 @@ paginate: true
 
 # まとめ
 
-ご清聴ありがとうございました
 `;
 
   callbacks.onMarkdown(sampleMarkdown);
