@@ -288,6 +288,22 @@ const userPoolClient = backend.auth.resources.userPoolClient;
 - Mac ARM64 でビルドできるなら `deploy-time-build` は不要
 - Amplify の toolkit-lib 更新後は hotswap も使える
 
+#### sandbox環境でDockerイメージがキャッシュされる問題
+
+**症状**: Dockerfileに新しいファイル（例: `border.css`）を追加しても、sandbox環境で反映されない
+
+**原因**: HotswapはPythonコードの変更は検知するが、Dockerイメージの再ビルドは自動では行わない
+
+**解決策**: sandboxを完全に削除して再起動
+
+```bash
+# sandbox削除（Dockerイメージも削除される）
+npx ampx sandbox delete --yes
+
+# 再起動（Dockerイメージが再ビルドされる）
+npx ampx sandbox
+```
+
 #### Amplify で Hotswap を先行利用する方法（Workaround）
 
 Amplify の公式アップデートを待たずに試す場合、`package.json` の `overrides` を使用：
@@ -449,6 +465,19 @@ const svgs = doc.querySelectorAll('svg[data-marpit-svg]');
 - SVG要素をそのまま使い、`div.marpit`でラップする
 - SVGにはwidth/height属性がないため、CSSで`w-full h-full`を指定
 
+### スマホ対応（レスポンシブ）
+
+MarpのSVGは固定サイズ（1280x720px）を持っているため、スマホの狭い画面では見切れてしまう。CSSで強制的に縮小する：
+
+```css
+/* src/index.css */
+.marpit svg[data-marpit-svg] {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 100% !important;
+}
+```
+
 ### Tailwind CSS との競合
 
 #### invertクラスの競合
@@ -520,6 +549,54 @@ setMessages(prev =>
 ```
 
 **注意**: シャローコピー（`[...prev]`）してオブジェクトを直接変更すると、React StrictModeで2回実行され文字がダブる。必ず `map` + スプレッド構文でイミュータブルに更新する。
+
+### シマーエフェクト（ローディングアニメーション）
+
+「考え中...」などのステータステキストに光が左から右に流れるエフェクトを適用：
+
+```css
+/* src/index.css */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #6b7280 0%,
+    #6b7280 40%,
+    #9ca3af 50%,
+    #6b7280 60%,
+    #6b7280 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+```
+
+使用例：
+```tsx
+<span className="shimmer-text font-medium">{status}</span>
+```
+
+### ReactMarkdownでのカーソル表示
+
+ストリーミング中のカーソル（▌）をReactMarkdownの外側に配置すると、`<p>`タグの後に配置されて改行されてしまう。
+
+```tsx
+// NG: カーソルが次の行に折り返される
+<ReactMarkdown>{message.content}</ReactMarkdown>
+{message.isStreaming && <span>▌</span>}
+
+// OK: カーソルをマークダウン文字列に含める
+<ReactMarkdown>
+  {message.content + (message.isStreaming ? ' ▌' : '')}
+</ReactMarkdown>
+```
 
 ### タブ切り替え時の状態保持
 ```tsx

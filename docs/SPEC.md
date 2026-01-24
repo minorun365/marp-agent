@@ -387,9 +387,44 @@ FROM python:3.13-slim-bookworm
 FROM public.ecr.aws/docker/library/python:3.13-slim-bookworm
 ```
 
+### 7.7 sandbox環境でPDFテーマが適用されない（解決済み）
+
+| 項目 | 内容 |
+|------|------|
+| 問題 | ローカルsandbox環境でダウンロードしたPDFにカスタムテーマ（border）が適用されない |
+| 原因 | Dockerイメージがキャッシュされており、`border.css`追加前の古いイメージが使われている |
+| 解決策 | sandboxを削除して再起動（Dockerイメージを再ビルド） |
+
+```bash
+# sandbox削除
+npx ampx sandbox delete --yes
+
+# 再起動（Dockerイメージが再ビルドされる）
+npx ampx sandbox
+```
+
+### 7.8 ストリーミングカーソルが折り返される（解決済み）
+
+| 項目 | 内容 |
+|------|------|
+| 問題 | テキスト入力中のカーソル（▌）がツール使用前に次の行に折り返される |
+| 原因 | ReactMarkdownが`<p>`タグを生成し、カーソルの`<span>`が外側に配置される |
+| 解決策 | カーソルをReactMarkdownに渡す文字列の末尾に含める |
+
+```tsx
+// NG: カーソルがReactMarkdownの外側
+<ReactMarkdown>{message.content}</ReactMarkdown>
+{message.isStreaming && <span>▌</span>}
+
+// OK: カーソルをマークダウン文字列に含める
+<ReactMarkdown>
+  {message.content + (message.isStreaming ? ' ▌' : '')}
+</ReactMarkdown>
+```
+
 ---
 
-## 7.7 本番デプロイ手順
+## 7.9 本番デプロイ手順
 
 ### 1. package.json overrides追加
 
