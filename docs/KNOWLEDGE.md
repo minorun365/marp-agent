@@ -665,6 +665,51 @@ const authComponents = {
 - ヘッダー: アプリ名、利用ガイド
 - フッター: プライバシーポリシー、免責事項
 
+### Amplify UI 配色のカスタマイズ（CSS方式）
+
+`createTheme`/`ThemeProvider`ではグラデーションが使えないため、CSSで直接スタイリングするのが確実。
+
+```css
+/* src/index.css */
+
+/* プライマリボタン（グラデーション対応） */
+[data-amplify-authenticator] .amplify-button--primary {
+  background: linear-gradient(to right, #1a3a6e, #5ba4d9);
+  border: none;
+}
+
+[data-amplify-authenticator] .amplify-button--primary:hover {
+  background: linear-gradient(to right, #142d54, #4a93c8);
+}
+
+/* リンク（パスワードを忘れた等） */
+[data-amplify-authenticator] .amplify-button--link {
+  color: #1a3a6e;
+}
+
+[data-amplify-authenticator] .amplify-button--link:hover {
+  color: #5ba4d9;
+  background: transparent;
+}
+
+/* タブ（サインイン/サインアップ切り替え） */
+[data-amplify-authenticator] .amplify-tabs__item--active {
+  color: #1a3a6e;
+  border-color: #5ba4d9;
+}
+
+/* 入力フォーカス */
+[data-amplify-authenticator] input:focus {
+  border-color: #5ba4d9;
+  box-shadow: 0 0 0 2px rgba(91, 164, 217, 0.2);
+}
+```
+
+**方針**:
+- `createTheme`ではなくCSS直接指定（グラデーション対応のため）
+- `[data-amplify-authenticator]`セレクタで認証画面のみに適用
+- アプリ本体と同じ配色（`#1a3a6e` → `#5ba4d9`）を使用
+
 ---
 
 ## API接続実装 ✅ 完了

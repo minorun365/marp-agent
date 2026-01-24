@@ -95,7 +95,7 @@
 /* MarpのSVGをレスポンシブ対応（スマホで見切れないように） */
 .marpit svg[data-marpit-svg] {
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   max-height: 100% !important;
 }
 
