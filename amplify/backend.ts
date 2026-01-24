@@ -9,6 +9,9 @@ import { createMarpAgent } from './agent/resource';
 const isSandbox = !process.env.AWS_BRANCH;
 const branchName = process.env.AWS_BRANCH || 'dev';
 
+// ブランチ別テーマ設定
+const themeName = branchName === 'kag' ? 'kag' : 'border';
+
 const backend = defineBackend({
   auth,
 });
@@ -22,6 +25,7 @@ const { runtime } = createMarpAgent({
   userPool: backend.auth.resources.userPool,
   userPoolClient: backend.auth.resources.userPoolClient,
   nameSuffix: branchName,
+  themeName,
 });
 
 // フロントエンドにランタイム情報を渡す（DEFAULTエンドポイントを使用）
@@ -29,5 +33,6 @@ backend.addOutput({
   custom: {
     agentRuntimeArn: runtime.agentRuntimeArn,
     environment: isSandbox ? 'sandbox' : branchName,
+    themeName,
   },
 });

@@ -12,6 +12,9 @@ from tavily import TavilyClient
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY) if TAVILY_API_KEY else None
 
+# テーマ名（環境変数から取得、デフォルトはborder）
+THEME_NAME = os.environ.get("MARP_THEME", "border")
+
 
 @tool
 def web_search(query: str) -> str:
@@ -62,7 +65,7 @@ def output_slide(markdown: str) -> str:
     _generated_markdown = markdown
     return "スライドを出力しました。"
 
-SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッショナルなスライド作成AIアシスタントです。
+SYSTEM_PROMPT = f"""あなたは「パワポ作るマン」、プロフェッショナルなスライド作成AIアシスタントです。
 
 ## 役割
 ユーザーの指示に基づいて、Marp形式のマークダウンでスライドを作成・編集します。
@@ -72,7 +75,7 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 - フロントマターには以下を含める：
   ---
   marp: true
-  theme: border
+  theme: {THEME_NAME}
   size: 16:9
   paginate: true
   ---
@@ -136,8 +139,8 @@ def extract_markdown(text: str) -> str | None:
 
 def generate_pdf(markdown: str) -> bytes:
     """Marp CLIでPDFを生成"""
-    # カスタムテーマのパス
-    theme_path = Path(__file__).parent / "border.css"
+    # カスタムテーマのパス（環境変数で切り替え）
+    theme_path = Path(__file__).parent / f"{THEME_NAME}.css"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
