@@ -29,4 +29,5 @@ COPY border.css ./
 
 EXPOSE 8080
 
-CMD ["python", "agent.py"]
+# OTELの自動計装を有効にして起動
+CMD ["opentelemetry-instrument", "python", "agent.py"]
