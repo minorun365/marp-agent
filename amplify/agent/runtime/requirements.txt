@@ -1,3 +1,4 @@
 bedrock-agentcore
-strands-agents
+strands-agents[otel]
+aws-opentelemetry-distro
 tavily-python

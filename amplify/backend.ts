@@ -17,18 +17,17 @@ const backend = defineBackend({
 const agentCoreStack = backend.createStack('AgentCoreStack');
 
 // Marp Agentを作成（Cognito認証統合）
-const { endpoint } = createMarpAgent({
+const { runtime } = createMarpAgent({
   stack: agentCoreStack,
   userPool: backend.auth.resources.userPool,
   userPoolClient: backend.auth.resources.userPoolClient,
   nameSuffix: branchName,
 });
 
-// フロントエンドにエンドポイント情報を渡す
+// フロントエンドにランタイム情報を渡す（DEFAULTエンドポイントを使用）
 backend.addOutput({
   custom: {
-    agentEndpointArn: endpoint.agentRuntimeEndpointArn,
-    agentRuntimeArn: endpoint.agentRuntimeArn,
+    agentRuntimeArn: runtime.agentRuntimeArn,
     environment: isSandbox ? 'sandbox' : branchName,
   },
 });

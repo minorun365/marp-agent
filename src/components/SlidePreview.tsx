@@ -81,7 +81,7 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
       </div>
 
       {/* スライド一覧 */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
         <style>{css}</style>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {slides.map((slide) => (
@@ -92,9 +92,9 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
               <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-b">
                 スライド {slide.index + 1}
               </div>
-              <div className="aspect-video bg-gray-50 p-1">
+              <div className="aspect-video bg-gray-50 p-1 overflow-hidden">
                 <div
-                  className="marpit w-full h-full"
+                  className="marpit w-full h-full overflow-hidden"
                   dangerouslySetInnerHTML={{ __html: slide.html }}
                 />
               </div>

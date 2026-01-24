@@ -85,8 +85,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
     ],
   }));
 
-  // エンドポイント作成
-  const endpoint = runtime.addEndpoint('marp_agent_endpoint');
+  // エンドポイントはDEFAULTを使用（runtime.addEndpoint不要）
 
   // 出力
   new cdk.CfnOutput(stack, 'MarpAgentRuntimeArn', {
@@ -94,10 +93,5 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
     description: 'Marp Agent Runtime ARN',
   });
 
-  new cdk.CfnOutput(stack, 'MarpAgentEndpointArn', {
-    value: endpoint.agentRuntimeEndpointArn,
-    description: 'Marp Agent Endpoint ARN',
-  });
-
-  return { runtime, endpoint };
+  return { runtime };
 }

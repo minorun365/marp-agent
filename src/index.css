@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* iOS Safari対応: 100vwがスクロールバー幅を超える問題を防止 */
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 /* Amplify Authenticatorを上下中央揃え */
 [data-amplify-authenticator] {
   min-height: 100vh;
@@ -92,11 +98,24 @@
   filter: none !important;
 }
 
+/* Marpitコンテナ: overflow制御とブロック表示 */
+.marpit {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 /* MarpのSVGをレスポンシブ対応（スマホで見切れないように） */
 .marpit svg[data-marpit-svg] {
+  display: block;
   width: 100% !important;
   height: 100% !important;
+  max-width: 100%;
   max-height: 100% !important;
+  /* iOS Safari対応 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 /* シマーエフェクト（考え中...のローディング表示） */

@@ -16,28 +16,22 @@ export async function invokeAgent(
   callbacks: AgentCoreCallbacks,
   sessionId?: string
 ): Promise<void> {
-  const endpointArn = outputs.custom?.agentEndpointArn;
-  if (!endpointArn) {
-    callbacks.onError(new Error('AgentCore endpoint ARN not configured'));
+  const runtimeArn = outputs.custom?.agentRuntimeArn;
+  if (!runtimeArn) {
+    callbacks.onError(new Error('AgentCore runtime ARN not configured'));
     return;
   }
 
-  // ARNからリージョンとランタイムARN、エンドポイント名を抽出
-  // 形式: arn:aws:bedrock-agentcore:{region}:{accountId}:runtime/{runtimeId}/runtime-endpoint/{endpointName}
-  const arnParts = endpointArn.split(':');
+  // ARNからリージョンを抽出
+  // 形式: arn:aws:bedrock-agentcore:{region}:{accountId}:runtime/{runtimeId}
+  const arnParts = runtimeArn.split(':');
   const region = arnParts[3];
-  const resourceParts = arnParts[5].split('/');
-  const runtimeId = resourceParts[1];
-  const endpointName = resourceParts[3]; // marp_agent_endpoint
-
-  // RuntimeのARNを構築（エンドポイント部分を除く）
-  const runtimeArn = `arn:aws:bedrock-agentcore:${region}:${arnParts[4]}:runtime/${runtimeId}`;
 
   // ARNをURLエンコード
   const encodedArn = encodeURIComponent(runtimeArn);
 
-  // AgentCore APIエンドポイント
-  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=${endpointName}`;
+  // AgentCore APIエンドポイント（DEFAULTエンドポイントを使用）
+  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
 
   try {
     // Cognito認証トークンを取得（AgentCoreはclient_idクレームを検証するためアクセストークンが必要）
@@ -154,21 +148,17 @@ function handleEvent(
 
 // PDF生成（本番API）
 export async function exportPdf(markdown: string): Promise<Blob> {
-  const endpointArn = outputs.custom?.agentEndpointArn;
-  if (!endpointArn) {
-    throw new Error('AgentCore endpoint ARN not configured');
+  const runtimeArn = outputs.custom?.agentRuntimeArn;
+  if (!runtimeArn) {
+    throw new Error('AgentCore runtime ARN not configured');
   }
 
-  // ARNからリージョンとランタイムARN、エンドポイント名を抽出
-  const arnParts = endpointArn.split(':');
+  // ARNからリージョンを抽出
+  const arnParts = runtimeArn.split(':');
   const region = arnParts[3];
-  const resourceParts = arnParts[5].split('/');
-  const runtimeId = resourceParts[1];
-  const endpointName = resourceParts[3];
 
-  const runtimeArn = `arn:aws:bedrock-agentcore:${region}:${arnParts[4]}:runtime/${runtimeId}`;
   const encodedArn = encodeURIComponent(runtimeArn);
-  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=${endpointName}`;
+  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
 
   const session = await fetchAuthSession();
   const accessToken = session.tokens?.accessToken?.toString();

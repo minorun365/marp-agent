@@ -307,7 +307,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="スライドの指示を入力..."
+            placeholder="例： 製造業のAIエージェント構築事例をまとめて"
             className="flex-1 border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#5ba4d9] focus:border-transparent bg-gray-50"
             disabled={isLoading}
           />
