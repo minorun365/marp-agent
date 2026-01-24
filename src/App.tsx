@@ -18,7 +18,7 @@ const authComponents = {
           パワポ作るマン　by みのるん
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          誰でもアカウントを作って利用できます！
+          誰でもアカウントを作って利用できます！（1日50名超えるとエラー）
         </p>
       </div>
     );
