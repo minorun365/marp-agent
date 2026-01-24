@@ -11,7 +11,7 @@ section {
   /* 上 右 下 左 の順 */
   font-family: 'Meiryo', sans-serif;
   /* 全体のフォントファミリーをメイリオに設定 */
-  font-size: 18pt;
+  font-size: 22pt;
   align-content: start;
   /* コンテンツを上揃えにする */
 }
@@ -71,7 +71,7 @@ blockquote {
   /* 斜体 */
   margin: 1em 0;
   /* 上下の余白 */
-  font-size: 36pt !important;
+  font-size: 42pt !important;
   /* フォントサイズを大きく設定 */
 }
 
@@ -109,7 +109,7 @@ negative {
 /* 見出しと本文のフォントサイズを設定 */
 h1 {
   color: #0e0d6a;
-  font-size: 32pt;
+  font-size: 38pt;
 }
 
 section.crosshead h1 {
@@ -119,7 +119,7 @@ section.crosshead h1 {
 
 h2 {
   color: #0e0d6a;
-  font-size: 20pt;
+  font-size: 24pt;
 }
 
 section.crosshead h2 {
@@ -129,12 +129,12 @@ section.crosshead h2 {
 
 h3 {
   color: #0e0d6a;
-  font-size: 20pt;
+  font-size: 24pt;
 }
 
 p {
   color: #0e0d6a;
-  font-size: 20pt;
+  font-size: 24pt;
 }
 
 strong {
