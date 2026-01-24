@@ -5,6 +5,6 @@
 [pawapo.minoruonda.com](https://pawapo.minoruonda.com/)
 
 <p>
-  <img src="https://github.com/user-attachments/assets/1b11455e-b9c5-4330-a740-89760f7ede4d" alt="イメージ1" width="49%" style="display:inline-block;" />
-  <img src="https://github.com/user-attachments/assets/45d7bfb9-a035-43b0-8b16-6f2e53644f33" alt="イメージ2" width="49%" style="display:inline-block;" />
+  <img src="https://github.com/user-attachments/assets/c0f87329-0fb7-492a-9054-32811b1f6d7d" alt="イメージ1" width="49%" style="display:inline-block;" />
+  <img src="https://github.com/user-attachments/assets/70be1846-37ed-4d65-8b9a-be14ccdb5b76" alt="イメージ2" width="49%" style="display:inline-block;" />
 </p>
