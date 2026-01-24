@@ -117,7 +117,7 @@ SYSTEM_PROMPT = f"""あなたは「パワポ作るマン」、プロフェッシ
 <!-- _class: end -->
 <!-- _paginate: false -->
 ```
-※ 最後のスライドは内容を空にすること。
+※ 最後のスライドは何も文字を入れず、内容を空にすること！
 
 ## スライド構成のテンプレート（この構成に従ってください）
 1. タイトル（**必ず top クラス**）
@@ -162,7 +162,8 @@ def get_or_create_agent(session_id: str | None) -> Agent:
 
     # 新規セッションの場合はAgentを作成して保存
     agent = Agent(
-        model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        # model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        model="us.anthropic.claude-opus-4-5-20251101-v1:0",
         system_prompt=SYSTEM_PROMPT,
         tools=[web_search, output_slide],
     )
