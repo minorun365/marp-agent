@@ -57,6 +57,32 @@
   max-height: 100% !important;
 }
 
+/* シマーエフェクト（考え中...のローディング表示） */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #6b7280 0%,
+    #6b7280 40%,
+    #9ca3af 50%,
+    #6b7280 60%,
+    #6b7280 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 /* Tailwind CSSリセットを上書きしてMarpの箇条書きを復元 */
 .marpit ul {
   list-style: disc !important;

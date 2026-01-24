@@ -279,11 +279,12 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 }`}
               >
                 {showStatus ? (
-                  <span className="text-sm text-gray-500">{status}</span>
+                  <span className="text-sm shimmer-text font-medium">{status}</span>
                 ) : message.role === 'assistant' ? (
                   <div className="text-sm prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
-                    {message.isStreaming && <span className="animate-pulse">▌</span>}
+                    <ReactMarkdown>
+                      {message.content + (message.isStreaming ? ' ▌' : '')}
+                    </ReactMarkdown>
                   </div>
                 ) : (
                   <pre className="whitespace-pre-wrap font-sans text-sm">
