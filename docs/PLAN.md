@@ -101,6 +101,9 @@ marp-agent/
 │   ├── PLAN.md                  # 実装計画
 │   ├── SPEC.md                  # 仕様書
 │   └── KNOWLEDGE.md             # ナレッジベース
+├── public/
+│   ├── agentcore.png            # ファビコン
+│   └── minorun.jpg              # OGP画像
 ├── amplify/
 │   ├── auth/resource.ts         # Cognito認証設定
 │   ├── agent/

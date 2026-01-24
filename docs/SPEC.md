@@ -216,6 +216,18 @@ theme: border
 | 状態管理 | useState / useReducer |
 | API通信 | fetch (SSE) |
 
+### メタ情報（index.html）
+
+| 項目 | 設定値 |
+|------|--------|
+| ファビコン | `/agentcore.png` |
+| Apple Touch Icon | `/agentcore.png` |
+| テーマカラー | `#1e1b4b`（深紫色） |
+| OGP タイトル | "パワポ作るマン by みのるん" |
+| OGP 説明 | "AIがMarp形式でスライドを自動生成。指示を出すだけでプレゼン資料が完成！" |
+| OGP 画像 | `/minorun.jpg` |
+| Twitter Card | summary（@minorun365）|
+
 ### PDF変換
 
 AgentCoreコンテナ内でMarp CLIを実行：

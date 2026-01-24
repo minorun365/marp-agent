@@ -50,6 +50,13 @@
   filter: none !important;
 }
 
+/* MarpのSVGをレスポンシブ対応（スマホで見切れないように） */
+.marpit svg[data-marpit-svg] {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 100% !important;
+}
+
 /* Tailwind CSSリセットを上書きしてMarpの箇条書きを復元 */
 .marpit ul {
   list-style: disc !important;

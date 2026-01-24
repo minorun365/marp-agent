@@ -86,9 +86,9 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
               <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-b">
                 スライド {slide.index + 1}
               </div>
-              <div className="aspect-video overflow-hidden">
+              <div className="aspect-video overflow-hidden flex items-center justify-center bg-gray-50">
                 <div
-                  className="marpit w-full h-full [&>svg]:w-full [&>svg]:h-full"
+                  className="marpit w-full h-full [&>svg]:!w-full [&>svg]:!h-auto [&>svg]:!max-h-full [&>svg]:block [&>svg]:mx-auto"
                   dangerouslySetInnerHTML={{ __html: slide.html }}
                 />
               </div>
