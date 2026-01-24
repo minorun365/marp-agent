@@ -18,7 +18,7 @@ const authComponents = {
           パワポ作るマン　by みのるん
         </h1>
         <p className="text-sm text-white/80 mt-1">
-          KAGメンバーなら誰でもアカウントを作れます！
+          KAGメルアドで新規アカウントを作れます！
         </p>
       </div>
     );
