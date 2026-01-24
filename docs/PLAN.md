@@ -91,7 +91,7 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 
 | 問題 | 対応 |
 |------|------|
-| Tavily `get_search_context()` が非推奨 | 新しいAPIへの移行が必要（`agent.py:30`） |
+| Tavily `get_search_context()` はRAG用途向け | 汎用の `search()` に変更を検討（`agent.py:30`） |
 
 ## ディレクトリ構成
 

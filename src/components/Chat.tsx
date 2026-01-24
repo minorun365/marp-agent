@@ -216,13 +216,20 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
     } finally {
       setIsLoading(false);
       setStatus('');
+      // 確実に全てのストリーミング状態を解除
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.isStreaming ? { ...msg, isStreaming: false } : msg
+        )
+      );
     }
   };
 
   return (
     <div className="flex flex-col h-full">
       {/* メッセージ一覧 */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="max-w-3xl mx-auto space-y-4">
         {messages.length === 0 && (
           <div className="text-center text-gray-400 mt-8">
             <p className="text-lg">スライドを作成しましょう</p>
@@ -275,12 +282,13 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             </div>
           );
         })}
-        <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* 入力フォーム */}
       <form onSubmit={handleSubmit} className="border-t px-6 py-4">
-        <div className="flex gap-2">
+        <div className="max-w-3xl mx-auto flex gap-2">
           <input
             ref={inputRef}
             type="text"
