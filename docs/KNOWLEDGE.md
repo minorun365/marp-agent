@@ -117,6 +117,38 @@ async for event in agent.stream_async(prompt):
 - `current_tool_use`: ツール使用情報
 - `result`: 最終結果
 
+### 会話履歴の保持（セッション管理）
+
+Strands Agentは同じインスタンスを使い続けると会話履歴を自動的に保持する。複数ユーザー/セッション対応のため、セッションIDごとにAgentインスタンスを管理する方式が有効。
+
+```python
+# セッションごとのAgentインスタンスを管理
+_agent_sessions: dict[str, Agent] = {}
+
+def get_or_create_agent(session_id: str | None) -> Agent:
+    """セッションIDに対応するAgentを取得または作成"""
+    if not session_id:
+        return Agent(model=MODEL_ID, system_prompt=PROMPT, tools=TOOLS)
+
+    if session_id in _agent_sessions:
+        return _agent_sessions[session_id]
+
+    agent = Agent(model=MODEL_ID, system_prompt=PROMPT, tools=TOOLS)
+    _agent_sessions[session_id] = agent
+    return agent
+```
+
+フロントエンド側でセッションIDを生成し、リクエストに含める：
+```typescript
+// App.tsx - 画面読み込み時にセッションIDを生成
+const [sessionId] = useState(() => crypto.randomUUID());
+
+// リクエストボディにsession_idを含める
+body: JSON.stringify({ prompt, markdown, session_id: sessionId })
+```
+
+**注意**: この方式はメモリ内でセッションを管理するため、コンテナ再起動で履歴が消える。永続化が必要な場合はStrands Agentの`FileSessionManager`や`S3SessionManager`を使用する。
+
 ### SSEレスポンス形式（AgentCore経由）
 
 AgentCore Runtime経由でストリーミングする場合、以下の形式でイベントが返される：

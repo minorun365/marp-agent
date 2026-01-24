@@ -24,6 +24,8 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [editPromptTrigger, setEditPromptTrigger] = useState(0);
   const chatInputRef = useRef<HTMLInputElement>(null);
+  // セッションID（画面更新まで同じIDを使用して会話履歴を保持）
+  const [sessionId] = useState(() => crypto.randomUUID());
 
   const handleMarkdownGenerated = (newMarkdown: string) => {
     setMarkdown(newMarkdown);
@@ -119,6 +121,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
             currentMarkdown={markdown}
             inputRef={chatInputRef}
             editPromptTrigger={editPromptTrigger}
+            sessionId={sessionId}
           />
         </div>
         <div className={`h-full ${activeTab === 'preview' ? '' : 'hidden'}`}>

@@ -82,15 +82,39 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 ## 重要：スライドの出力方法
 スライドを作成・編集したら、必ず output_slide ツールを使ってマークダウンを出力してください。
 テキストでマークダウンを直接書き出さないでください。output_slide ツールに渡すマークダウンには、フロントマターを含む完全なMarp形式のマークダウンを指定してください。
+
+## その他
+- 現在は2026年です。
 """
 
 app = BedrockAgentCoreApp()
 
-agent = Agent(
-    model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    system_prompt=SYSTEM_PROMPT,
-    tools=[web_search, output_slide],
-)
+# セッションごとのAgentインスタンスを管理（会話履歴保持用）
+_agent_sessions: dict[str, Agent] = {}
+
+
+def get_or_create_agent(session_id: str | None) -> Agent:
+    """セッションIDに対応するAgentを取得または作成"""
+    # セッションIDがない場合は新規Agentを作成（履歴なし）
+    if not session_id:
+        return Agent(
+            model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            system_prompt=SYSTEM_PROMPT,
+            tools=[web_search, output_slide],
+        )
+
+    # 既存のセッションがあればそのAgentを返す
+    if session_id in _agent_sessions:
+        return _agent_sessions[session_id]
+
+    # 新規セッションの場合はAgentを作成して保存
+    agent = Agent(
+        model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        system_prompt=SYSTEM_PROMPT,
+        tools=[web_search, output_slide],
+    )
+    _agent_sessions[session_id] = agent
+    return agent
 
 
 def extract_markdown(text: str) -> str | None:
@@ -146,6 +170,7 @@ async def invoke(payload):
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")  # chat or export_pdf
     current_markdown = payload.get("markdown", "")
+    session_id = payload.get("session_id")  # セッションID（会話履歴保持用）
 
     if action == "export_pdf" and current_markdown:
         # PDF出力
@@ -161,6 +186,8 @@ async def invoke(payload):
     if current_markdown:
         user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
 
+    # セッションIDに対応するAgentを取得（会話履歴が保持される）
+    agent = get_or_create_agent(session_id)
     stream = agent.stream_async(user_message)
 
     async for event in stream:

@@ -14,6 +14,7 @@ interface ChatProps {
   currentMarkdown: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   editPromptTrigger?: number;  // 値が変わるたびに修正用メッセージを表示
+  sessionId?: string;  // 会話履歴を保持するためのセッションID
 }
 
 const INITIAL_MESSAGE = 'どんな資料を作りたいですか？';
@@ -23,7 +24,7 @@ const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
 const EDIT_PROMPT_MESSAGE = 'どのように修正しますか？';
 
-export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger }: ChatProps) {
+export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sessionId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -193,7 +194,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             )
           );
         },
-      });
+      }, sessionId);
 
       // ストリーミング完了
       setMessages(prev =>

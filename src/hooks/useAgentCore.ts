@@ -13,7 +13,8 @@ export interface AgentCoreCallbacks {
 export async function invokeAgent(
   prompt: string,
   currentMarkdown: string,
-  callbacks: AgentCoreCallbacks
+  callbacks: AgentCoreCallbacks,
+  sessionId?: string
 ): Promise<void> {
   const endpointArn = outputs.custom?.agentEndpointArn;
   if (!endpointArn) {
@@ -58,6 +59,7 @@ export async function invokeAgent(
       body: JSON.stringify({
         prompt,
         markdown: currentMarkdown,
+        session_id: sessionId,
       }),
     });
 
@@ -254,7 +256,8 @@ export async function exportPdfMock(markdown: string): Promise<Blob> {
 export async function invokeAgentMock(
   prompt: string,
   _currentMarkdown: string,
-  callbacks: AgentCoreCallbacks
+  callbacks: AgentCoreCallbacks,
+  _sessionId?: string
 ): Promise<void> {
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
