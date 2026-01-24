@@ -12,7 +12,7 @@
 | スライド | アスペクト比 | 16:9（ワイド） |
 | スライド | 出力形式 | PDFのみ（MVP） |
 | エージェント | 性格 | プロフェッショナル |
-| エージェント | ツール | なし（Phase 2でWeb検索追加予定） |
+| エージェント | ツール | web_search（Tavily）, output_slide |
 | インフラ | リージョン | us-east-1（バージニア） |
 | インフラ | モデル | Claude Sonnet 4.5 |
 | 認証 | スコープ | 誰でもサインアップ可能（本番時） |
@@ -94,7 +94,7 @@ paginate: true
 
 - 1枚目：タイトル + サブタイトル
 - 箇条書きは1スライドあたり3〜5項目
-- 適度に絵文字を活用
+- 絵文字は使用しない（ビジネスライク）
 - スライド区切りは `---`
 
 ---
@@ -103,7 +103,10 @@ paginate: true
 
 ### ツール
 
-現在のMVPではツールなし。Phase 2でWeb検索（Tavily API）を追加予定。
+| ツール名 | 説明 |
+|---------|------|
+| `web_search` | Tavily APIを使用したWeb検索。最新情報の取得に使用 |
+| `output_slide` | 生成したMarpマークダウンを出力するツール。テキストで直接出力せずこのツール経由で出力 |
 
 ### システムプロンプト
 
@@ -128,11 +131,16 @@ paginate: true
 - スライド区切りは `---` を使用
 - 1枚目はタイトルスライド（タイトル + サブタイトル）
 - 箇条書きは1スライドあたり3〜5項目に抑える
-- 適度に絵文字を使って視覚的に分かりやすく
+- 絵文字は使用しない（シンプルでビジネスライクに）
 - 情報は簡潔に、キーワード中心で
 
-## 出力形式
-スライドを生成・編集したら、マークダウン全文を ```markdown コードブロックで出力してください。
+## Web検索
+最新の情報が必要な場合は、web_searchツールを使って調べてからスライドを作成してください。
+ユーザーが「〇〇について調べて」「最新の〇〇」などと言った場合は積極的に検索を活用します。
+
+## 重要：スライドの出力方法
+スライドを作成・編集したら、必ず output_slide ツールを使ってマークダウンを出力してください。
+テキストでマークダウンを直接書き出さないでください。
 ```
 
 ### レスポンス例
@@ -149,7 +157,7 @@ AWS入門のスライドですね。以下の構成で5枚作成します：
 ```markdown
 ---
 marp: true
-theme: gaia
+theme: default
 ...
 ```
 
@@ -215,7 +223,7 @@ const invoke = useMock ? invokeAgentMock : invokeAgent;
 
 1. Amplify Authenticatorコンポーネントでログイン画面を表示
 2. Cognitoでユーザー認証
-3. IDトークンを取得してAgentCore APIにBearer認証で送信
+3. アクセストークンを取得してAgentCore APIにBearer認証で送信
 
 ### Cognito設定
 
@@ -244,7 +252,7 @@ const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encode
 
 **リクエストヘッダー**
 ```
-Authorization: Bearer {cognitoIdToken}
+Authorization: Bearer {cognitoAccessToken}
 Content-Type: application/json
 Accept: text/event-stream
 ```
@@ -259,11 +267,11 @@ Accept: text/event-stream
 
 **レスポンス（SSE）**
 ```
-data: {"type": "text", "content": "AWS入門の..."}
+data: {"type": "text", "data": "AWS入門の..."}
 
-data: {"type": "status", "content": "スライドを生成しています..."}
+data: {"type": "tool_use", "data": "output_slide"}
 
-data: {"type": "markdown", "content": "---\nmarp: true\n..."}
+data: {"type": "markdown", "data": "---\nmarp: true\n..."}
 
 data: [DONE]
 ```
@@ -319,7 +327,7 @@ data: [DONE]
 
 ## 8. 今後の拡張（Phase 2）
 
-- [ ] Web検索機能（Tavily API統合）
+- [x] Web検索機能（Tavily API統合）← 実装済み
 - [ ] マークダウン編集機能（シンタックスハイライト付き）
 - [ ] テーマ選択（default / gaia / uncover）
 - [ ] 画像アップロード・挿入

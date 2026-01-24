@@ -5,6 +5,8 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   isStreaming?: boolean;
+  isStatus?: boolean;  // ステータス表示用メッセージ
+  statusText?: string; // ステータステキスト
 }
 
 interface ChatProps {
@@ -80,34 +82,63 @@ export function Chat({ onMarkdownGenerated, currentMarkdown }: ChatProps) {
       await invoke(userMessage, currentMarkdown, {
         onText: (text) => {
           setStatus(''); // テキストが来たらステータスを消す
+          // テキストをストリーミング表示
           setMessages(prev =>
             prev.map((msg, idx) =>
-              idx === prev.length - 1 && msg.role === 'assistant'
+              idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
                 ? { ...msg, content: msg.content + text }
                 : msg
             )
           );
         },
-        onStatus: (status) => {
-          setStatus(status);
+        onStatus: (newStatus) => {
+          setStatus(newStatus);
+        },
+        onToolUse: (toolName) => {
+          // ツール使用中のステータスを表示
+          if (toolName === 'output_slide') {
+            setMessages(prev => [
+              ...prev,
+              { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを生成中...' }
+            ]);
+          } else if (toolName === 'web_search') {
+            setMessages(prev => [
+              ...prev,
+              { role: 'assistant', content: '', isStatus: true, statusText: 'Web検索中...' }
+            ]);
+          }
         },
         onMarkdown: (markdown) => {
           onMarkdownGenerated(markdown);
-          setStatus('');
+          // output_slideのステータスを完了状態に更新
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.isStatus && msg.statusText === 'スライドを生成中...'
+                ? { ...msg, statusText: 'スライドを生成しました' }
+                : msg
+            )
+          );
         },
         onError: (error) => {
           console.error('Agent error:', error);
           throw error;
         },
         onComplete: () => {
-          // 完了時の処理（必要に応じて）
+          // Web検索のステータスも完了に更新
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.isStatus && msg.statusText === 'Web検索中...'
+                ? { ...msg, statusText: 'Web検索完了' }
+                : msg
+            )
+          );
         },
       });
 
       // ストリーミング完了
       setMessages(prev =>
-        prev.map((msg, idx) =>
-          idx === prev.length - 1 && msg.role === 'assistant'
+        prev.map(msg =>
+          msg.role === 'assistant' && msg.isStreaming
             ? { ...msg, isStreaming: false }
             : msg
         )
@@ -116,7 +147,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown }: ChatProps) {
       console.error('Error:', error);
       setMessages(prev =>
         prev.map((msg, idx) =>
-          idx === prev.length - 1 && msg.role === 'assistant'
+          idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
             ? { ...msg, content: 'エラーが発生しました。もう一度お試しください。', isStreaming: false }
             : msg
         )
@@ -139,7 +170,25 @@ export function Chat({ onMarkdownGenerated, currentMarkdown }: ChatProps) {
         )}
         {messages.map((message, index) => {
           const isLastAssistant = message.role === 'assistant' && index === messages.length - 1;
-          const showStatus = isLastAssistant && !message.content && status;
+          const showStatus = isLastAssistant && !message.content && !message.isStatus && status;
+
+          // ステータスメッセージの場合
+          if (message.isStatus) {
+            return (
+              <div key={index} className="flex justify-start">
+                <div className="bg-blue-50 text-blue-700 rounded-lg px-4 py-2 border border-blue-200">
+                  <span className="text-sm flex items-center gap-2">
+                    {message.statusText === 'スライドを生成しました' ? (
+                      <span className="text-green-600">&#10003;</span>
+                    ) : (
+                      <span className="animate-spin">&#9696;</span>
+                    )}
+                    {message.statusText}
+                  </span>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div

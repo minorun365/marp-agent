@@ -77,6 +77,7 @@ if __name__ == "__main__":
 ```
 bedrock-agentcore
 strands-agents
+tavily-python
 ```
 ※ fastapi/uvicorn は不要（SDKに内包）
 
@@ -121,8 +122,24 @@ AgentCore Runtime経由でストリーミングする場合、以下の形式で
 
 ```
 data: {"type": "text", "data": "テキストチャンク"}
+data: {"type": "tool_use", "data": "ツール名"}
+data: {"type": "markdown", "data": "生成されたマークダウン"}
 data: {"type": "error", "error": "エラーメッセージ"}
 data: [DONE]
+```
+
+### ツール駆動型のマークダウン出力
+
+マークダウンをテキストでストリーミング出力すると、フロントエンドで除去処理が複雑になる。
+代わりに `output_slide` ツールを使ってマークダウンを出力し、フロントエンドでは `tool_use` イベントを検知してステータス表示する方式が有効。
+
+```python
+@tool
+def output_slide(markdown: str) -> str:
+    """生成したスライドのマークダウンを出力します。"""
+    global _generated_markdown
+    _generated_markdown = markdown
+    return "スライドを出力しました。"
 ```
 
 **注意**: イベントのペイロードは `content` または `data` フィールドに格納される。両方に対応するコードが必要：

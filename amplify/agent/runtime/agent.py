@@ -36,6 +36,25 @@ def web_search(query: str) -> str:
     except Exception as e:
         return f"検索エラー: {str(e)}"
 
+
+# スライド出力用のグローバル変数（invokeで参照）
+_generated_markdown: str | None = None
+
+
+@tool
+def output_slide(markdown: str) -> str:
+    """生成したスライドのマークダウンを出力します。スライドを作成・編集したら必ずこのツールを使って出力してください。
+
+    Args:
+        markdown: Marp形式のマークダウン全文（フロントマターを含む）
+
+    Returns:
+        出力完了メッセージ
+    """
+    global _generated_markdown
+    _generated_markdown = markdown
+    return "スライドを出力しました。"
+
 SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッショナルなスライド作成AIアシスタントです。
 
 ## 役割
@@ -44,7 +63,6 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 
 ## スライド作成ルール
 - フロントマターには以下を含める：
-  ```yaml
   ---
   marp: true
   theme: default
@@ -52,7 +70,6 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
   size: 16:9
   paginate: true
   ---
-  ```
 - スライド区切りは `---` を使用
 - 1枚目はタイトルスライド（タイトル + サブタイトル）
 - 箇条書きは1スライドあたり3〜5項目に抑える
@@ -63,8 +80,9 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 最新の情報が必要な場合は、web_searchツールを使って調べてからスライドを作成してください。
 ユーザーが「〇〇について調べて」「最新の〇〇」などと言った場合は積極的に検索を活用します。
 
-## 出力形式
-スライドを生成・編集したら、マークダウン全文を ```markdown コードブロックで出力してください。
+## 重要：スライドの出力方法
+スライドを作成・編集したら、必ず output_slide ツールを使ってマークダウンを出力してください。
+テキストでマークダウンを直接書き出さないでください。output_slide ツールに渡すマークダウンには、フロントマターを含む完全なMarp形式のマークダウンを指定してください。
 """
 
 app = BedrockAgentCoreApp()
@@ -72,7 +90,7 @@ app = BedrockAgentCoreApp()
 agent = Agent(
     model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
     system_prompt=SYSTEM_PROMPT,
-    tools=[web_search],
+    tools=[web_search, output_slide],
 )
 
 
@@ -115,6 +133,9 @@ def generate_pdf(markdown: str) -> bytes:
 @app.entrypoint
 async def invoke(payload):
     """エージェント実行（ストリーミング対応）"""
+    global _generated_markdown
+    _generated_markdown = None  # リセット
+
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")  # chat or export_pdf
     current_markdown = payload.get("markdown", "")
@@ -135,17 +156,19 @@ async def invoke(payload):
 
     stream = agent.stream_async(user_message)
 
-    full_response = ""
     async for event in stream:
         if "data" in event:
             chunk = event["data"]
-            full_response += chunk
             yield {"type": "text", "data": chunk}
+        elif "current_tool_use" in event:
+            # ツール使用中イベントを送信
+            tool_info = event["current_tool_use"]
+            tool_name = tool_info.get("name", "unknown")
+            yield {"type": "tool_use", "data": tool_name}
 
-    # マークダウンを抽出して送信
-    markdown = extract_markdown(full_response)
-    if markdown:
-        yield {"type": "markdown", "data": markdown}
+    # output_slideツールで生成されたマークダウンを送信
+    if _generated_markdown:
+        yield {"type": "markdown", "data": _generated_markdown}
 
     yield {"type": "done"}
 

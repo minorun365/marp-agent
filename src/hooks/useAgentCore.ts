@@ -5,6 +5,7 @@ export interface AgentCoreCallbacks {
   onText: (text: string) => void;
   onStatus: (status: string) => void;
   onMarkdown: (markdown: string) => void;
+  onToolUse: (toolName: string) => void;
   onError: (error: Error) => void;
   onComplete: () => void;
 }
@@ -127,6 +128,11 @@ function handleEvent(
         callbacks.onMarkdown(textValue);
       }
       break;
+    case 'tool_use':
+      if (textValue) {
+        callbacks.onToolUse(textValue);
+      }
+      break;
     case 'error':
       if (event.error || event.message || textValue) {
         callbacks.onError(new Error(event.error || event.message || textValue));
@@ -159,7 +165,8 @@ export async function invokeAgentMock(
     await sleep(20);
   }
 
-  callbacks.onStatus('スライドを生成しています...');
+  // ツール使用開始
+  callbacks.onToolUse('output_slide');
   await sleep(1000);
 
   // サンプルマークダウンを生成
