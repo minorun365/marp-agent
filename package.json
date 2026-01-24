@@ -17,11 +17,13 @@
     "@aws-amplify/ui-react": "^6.13.2",
     "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.236.0-alpha.0",
     "@marp-team/marp-core": "^4.2.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
     "aws-amplify": "^6.16.0",
     "deploy-time-build": "^0.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {

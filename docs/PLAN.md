@@ -36,9 +36,10 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 | レイヤー | 技術 |
 |---------|------|
 | フロントエンド | React + TypeScript (Vite) + Tailwind CSS v4 |
+| 認証UI | Amplify UI React |
 | AIエージェント | Strands Agents (Python) |
 | LLM | Bedrock Claude Sonnet 4.5 |
-| スライド変換 | Marp CLI / Marp Core |
+| スライド変換 | Marp Core（プレビュー）/ Marp CLI（PDF生成） |
 | 認証 | Amplify Auth (Cognito) |
 | インフラ | AWS CDK + Amplify Gen2 |
 | ランタイム | Bedrock AgentCore |
@@ -73,19 +74,17 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 
 ### 追加機能（Phase 2）
 
-| タスク | 工数 |
-|--------|------|
-| チャット応答のマークダウンレンダリング | 中 |
-| テーマ選択 | 中 |
-| スライド編集（マークダウンエディタ） | 大 |
-| 画像アップロード・挿入 | 大 |
-| スライド履歴管理 | 大 |
+| タスク | 状態 | 工数 |
+|--------|------|------|
+| チャット応答のマークダウンレンダリング | ✅ | 中 |
+| テーマ選択 | - | 中 |
+| スライド編集（マークダウンエディタ） | - | 大 |
+| 画像アップロード・挿入 | - | 大 |
+| スライド履歴管理 | - | 大 |
 
 ### 既知の問題・技術的負債
 
-| 問題 | 対応 |
-|------|------|
-| Tavily `get_search_context()` はRAG用途向け | 汎用の `search()` に変更を検討（`agent.py:30`） |
+なし
 
 ### 解決済みの問題
 
@@ -114,7 +113,9 @@ marp-agent/
 ├── tests/
 │   └── e2e-test.md              # E2Eテストチェックリスト
 ├── src/
+│   ├── main.tsx                 # Viteエントリーポイント
 │   ├── App.tsx                  # メインアプリ
+│   ├── index.css                # グローバルスタイル
 │   ├── components/
 │   │   ├── Chat.tsx             # チャットUI
 │   │   └── SlidePreview.tsx     # スライドプレビュー

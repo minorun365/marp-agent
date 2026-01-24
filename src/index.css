@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* Amplify Authenticatorを上下中央揃え */
 [data-amplify-authenticator] {
