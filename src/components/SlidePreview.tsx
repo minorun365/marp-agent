@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import Marp from '@marp-team/marp-core';
+import { observe } from '@marp-team/marpit-svg-polyfill';
 import borderTheme from '../themes/border.css?raw';
 
 interface SlidePreviewProps {
@@ -10,6 +11,16 @@ interface SlidePreviewProps {
 }
 
 export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequestEdit }: SlidePreviewProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Safari/iOS WebKit向けのpolyfillを適用
+  useEffect(() => {
+    if (containerRef.current) {
+      const cleanup = observe(containerRef.current);
+      return cleanup;
+    }
+  }, [markdown]);
+
   const { slides, css } = useMemo(() => {
     if (!markdown) return { slides: [], css: '' };
 
@@ -27,9 +38,8 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
       return {
         slides: Array.from(svgs).map((svg, index) => {
           // SVGのwidth/height属性を変更してレスポンシブ対応
-          // height: autoでviewBoxのアスペクト比に任せる
           svg.setAttribute('width', '100%');
-          svg.removeAttribute('height');  // heightを削除してautoに
+          svg.removeAttribute('height');
           svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
           return {
             index,
@@ -82,7 +92,7 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
       </div>
 
       {/* スライド一覧 */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+      <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
         <style>{css}</style>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {slides.map((slide) => (
