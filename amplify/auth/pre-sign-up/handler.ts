@@ -13,7 +13,7 @@ export const handler: PreSignUpTriggerHandler = async (event) => {
   const domain = email.split('@')[1]?.toLowerCase();
 
   if (domain !== ALLOWED_DOMAIN) {
-    throw new Error(`このサービスは @${ALLOWED_DOMAIN} のメールアドレスでのみ登録できます`);
+    throw new Error(`このサービスはKAGのメールアドレスでのみ登録できます`);
   }
 
   // 自動確認（オプション）
