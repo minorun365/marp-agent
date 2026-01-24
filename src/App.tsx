@@ -14,11 +14,12 @@ const authComponents = {
   Header() {
     return (
       <div className="text-center py-4">
-        <h1 className="text-2xl font-bold text-gray-800">
+        <h1 className="text-2xl font-bold text-white">
           パワポ作るマン　by みのるん
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          誰でもアカウントを作って利用できます！（1日50名超えるとエラー）
+        <p className="text-sm text-white/80 mt-1">
+          誰でもアカウントを作って利用できます！<br/>
+          （1日50名超えるとエラー）
         </p>
       </div>
     );
@@ -26,7 +27,7 @@ const authComponents = {
   Footer() {
     return (
       <div className="text-center py-3 px-4">
-        <p className="text-xs text-gray-400 leading-relaxed">
+        <p className="text-xs text-white/70 leading-relaxed">
           登録されたメールアドレスは認証目的でのみ使用します。
         </p>
       </div>

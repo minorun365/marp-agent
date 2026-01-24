@@ -7,12 +7,13 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Amplify Authenticatorを上下中央揃え */
+/* Amplify Authenticatorを上下中央揃え + 背景グラデーション */
 [data-amplify-authenticator] {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(to right, #1a3a6e, #5ba4d9);
 }
 
 /* Amplify UI カスタム配色（アプリ本体と統一） */
@@ -42,6 +43,10 @@ html, body {
 }
 
 /* タブ（サインイン/サインアップ切り替え） */
+[data-amplify-authenticator] .amplify-tabs__item {
+  color: #9ca3af;
+}
+
 [data-amplify-authenticator] .amplify-tabs__item--active {
   color: #1a3a6e;
   border-color: #5ba4d9;
