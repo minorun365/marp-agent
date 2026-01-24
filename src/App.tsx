@@ -10,9 +10,33 @@ const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
 type Tab = 'chat' | 'preview';
 
+const authComponents = {
+  Header() {
+    return (
+      <div className="text-center py-4">
+        <h1 className="text-2xl font-bold text-gray-800">
+          パワポ作るマン
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">
+          「Create Account」で誰でも利用できます！
+        </p>
+      </div>
+    );
+  },
+  Footer() {
+    return (
+      <div className="text-center py-3 px-4">
+        <p className="text-xs text-gray-400 leading-relaxed">
+          登録されたメールアドレスは認証目的でのみ使用します。
+        </p>
+      </div>
+    );
+  },
+};
+
 function App() {
   return (
-    <Authenticator>
+    <Authenticator components={authComponents}>
       {({ signOut }) => <MainApp signOut={signOut} />}
     </Authenticator>
   );
