@@ -15,7 +15,7 @@ const authComponents = {
     return (
       <div className="text-center py-4">
         <h1 className="text-2xl font-bold text-white">
-          パワポ作るマン　by みのるん
+          パワポ作るマン　for KAG
         </h1>
         <p className="text-sm text-white/80 mt-1">
           KAGメルアドで新規アカウントを作れます！
