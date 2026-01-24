@@ -23,6 +23,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
   const isSandbox = !process.env.AWS_BRANCH;
 
   let agentRuntimeArtifact: agentcore.AgentRuntimeArtifact;
+  let containerImageBuild: ContainerImageBuild | undefined;
 
   if (isSandbox) {
     // sandbox: ローカルでARM64ビルド
@@ -31,7 +32,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
     );
   } else {
     // 本番: CodeBuildでARM64ビルド（deploy-time-build）
-    const containerImageBuild = new ContainerImageBuild(stack, 'MarpAgentImageBuild', {
+    containerImageBuild = new ContainerImageBuild(stack, 'MarpAgentImageBuild', {
       directory: path.join(__dirname, 'runtime'),
       platform: Platform.LINUX_ARM64,
       tag: 'latest',
@@ -66,6 +67,11 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
       TAVILY_API_KEY: process.env.TAVILY_API_KEY || '',
     },
   });
+
+  // 本番環境: ContainerImageBuild完了後にRuntimeを作成するよう依存関係を設定
+  if (containerImageBuild) {
+    runtime.node.addDependency(containerImageBuild);
+  }
 
   // Bedrockモデル呼び出し権限を付与
   runtime.addToRolePolicy(new iam.PolicyStatement({

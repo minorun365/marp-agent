@@ -14,8 +14,9 @@ Marpテーマを `default + invert` から `border`（コミュニティテー�
 | `src/components/SlidePreview.tsx` | Marp Coreにテーマ登録 | ✅ |
 | `amplify/agent/runtime/agent.py` | システムプロンプト `theme: border` に変更 | ✅ |
 | `src/hooks/useAgentCore.ts` | モック実装のテーマ更新 | ✅ |
+| `docs/SPEC.md` | テーマをborderに更新 | ✅ |
+| `docs/PLAN.md` | ディレクトリ構成・テーマ更新 | ✅ |
 | `docs/KNOWLEDGE.md` | borderテーマの説明追加 | ✅ |
-| `docs/PLAN.md` | ディレクトリ構成更新 | ✅ |
 | `tests/e2e-test.md` | テスト項目追加 | ✅ |
 
 ### 2. ビルド確認（完了）
@@ -23,47 +24,48 @@ Marpテーマを `default + invert` から `border`（コミュニティテー�
 npm run build → 成功
 ```
 
-## 現在の問題
+### 3. 環境クリーンアップ（完了）
 
-### 問題1: sandboxデプロイが反映されない
+| 項目 | 状態 |
+|------|------|
+| sandbox delete実行 | ✅ 完了（CloudFormationスタック削除済み） |
+| ampxプロセス停止 | ✅ 完了 |
+| .amplify/artifacts/ クリア | ✅ 完了 |
 
-**症状**:
-- agent.pyの変更（`theme: border`）がランタイムに反映されていない
-- 生成されるスライドは依然として `theme: default` + `class: invert`
+## 現在の状況
 
-**原因候補**:
-1. sandboxのHotswapが正しく動作していない
-2. 複数のsandboxプロセスが競合している
-3. ランタイムのコンテナイメージが更新されていない
+**環境はクリーンな状態**。次回セッションでsandboxを新規起動してテストを実行する。
 
-### 問題2: 複数のsandboxプロセス競合
+## 次のステップ（新しいセッションで実行）
 
-**症状**:
+### Step 1: sandbox起動
+```bash
+# Docker起動を確認してから実行
+TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) npx ampx sandbox
 ```
-[ERROR] [MultipleSandboxInstancesError] Multiple sandbox instances detected.
-```
 
-**現状**:
-- 4つのampxプロセスが同時に動作中
-- sandbox deleteを実行したが、別のプロセスが残っている
-
-## 必要なアクション
-
-### Step 1: 環境クリーンアップ
-1. すべてのampxプロセスを停止
-2. `.amplify/artifacts/` をクリア
-3. sandbox deleteで完全削除
-
-### Step 2: sandbox再起動
-1. Docker起動確認
-2. `npx ampx sandbox` を1つだけ起動
-3. デプロイ完了まで待機（約5-10分）
+### Step 2: デプロイ完了待機
+- 初回デプロイは5-10分程度かかる
+- CloudFormationスタックが `CREATE_COMPLETE` になるまで待機
 
 ### Step 3: テスト実行
-1. devサーバー起動
-2. ブラウザでスライド生成
-3. borderテーマ（グレー枠線＋グラデーション背景）の適用確認
-4. スクリーンショットを `tests/screenshots/` に保存
+```bash
+# devサーバー起動
+npm run dev
+```
+
+1. http://localhost:5173 にアクセス
+2. ログイン（新規ユーザー登録が必要）
+3. 「テスト用のスライドを作って」と入力
+4. 生成されたスライドがborderテーマか確認:
+   - ✓ グレーグラデーション背景
+   - ✓ 濃いグレー枠線
+   - ✗ ダークブルー背景（旧テーマ）
+
+### Step 4: スクリーンショット保存
+```bash
+# tests/screenshots/ に保存（.gitignore済み）
+```
 
 ## 技術的な補足
 
@@ -71,31 +73,18 @@ npm run build → 成功
 - 背景: グレーのグラデーション（`#f7f7f7` → `#d3d3d3`）
 - 枠線: 濃いグレー（`#303030`）の太枠線
 - アウトライン: 白
+- フォント: Inter（Google Fonts）
 
 ### 旧テーマ（default + invert）の特徴
 - 背景: ダークブルー/ネイビー
 - テキスト: 白
 
-### 確認コマンド
-```bash
-# ampxプロセス確認
-ps aux | grep "ampx" | grep -v grep | grep -v "Code Helper"
+## 学んだこと
 
-# sandbox削除
-npx ampx sandbox delete --yes
+### sandbox管理の正しい方法
 
-# sandbox起動
-TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) npx ampx sandbox
+1. **停止**: `npx ampx sandbox delete --yes` を使う（pkillはNG）
+2. **複数インスタンス競合時**: `.amplify/artifacts/` もクリアする
+3. **Docker必須**: AgentCoreのコンテナビルドにDockerが必要
 
-# CloudFormation状態確認
-aws cloudformation describe-stacks \
-  --stack-name amplify-marpagent-minorun365-sandbox-c233fd7ea3 \
-  --query "Stacks[0].{Status:StackStatus,LastUpdated:LastUpdatedTime}"
-```
-
-## 次のステップ
-
-みのるんに確認:
-1. すべてのampxプロセスを停止してよいか
-2. sandbox deleteで環境を完全にクリアしてよいか
-3. 上記完了後、新しくsandboxを起動してテストを実行
+詳細は `~/.claude/rules/amplify-cdk.md` と `~/.claude/rules/troubleshooting.md` に追記済み。
