@@ -27,12 +27,19 @@ def web_search(query: str) -> str:
         return "Web検索機能は現在利用できません（APIキー未設定）"
 
     try:
-        context = tavily_client.get_search_context(
+        results = tavily_client.search(
             query=query,
             max_results=5,
             search_depth="advanced",
         )
-        return context
+        # 検索結果をテキストに整形
+        formatted_results = []
+        for result in results.get("results", []):
+            title = result.get("title", "")
+            content = result.get("content", "")
+            url = result.get("url", "")
+            formatted_results.append(f"**{title}**\n{content}\nURL: {url}")
+        return "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
     except Exception as e:
         return f"検索エラー: {str(e)}"
 
