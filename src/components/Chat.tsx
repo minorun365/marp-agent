@@ -149,7 +149,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             setMessages(prev => {
               // Web検索があれば完了に更新し、output_slideのステータスを追加
               const hasExisting = prev.some(
-                msg => msg.isStatus && msg.statusText === 'スライドを生成中...'
+                msg => msg.isStatus && msg.statusText === 'スライドを作成中...（30秒ほどかかります）'
               );
               if (hasExisting) return prev;
 
@@ -161,7 +161,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               );
               return [
                 ...updated,
-                { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを生成中...' }
+                { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを作成中...（30秒ほどかかります）' }
               ];
             });
           } else if (toolName === 'web_search') {
@@ -182,7 +182,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           // output_slideのステータスを完了状態に更新
           setMessages(prev =>
             prev.map(msg =>
-              msg.isStatus && msg.statusText === 'スライドを生成中...'
+              msg.isStatus && msg.statusText === 'スライドを作成中...（30秒ほどかかります）'
                 ? { ...msg, statusText: 'スライドを生成しました' }
                 : msg
             )
