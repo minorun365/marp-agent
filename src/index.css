@@ -48,3 +48,23 @@
 .marpit section.invert {
   filter: none !important;
 }
+
+/* Tailwind CSSリセットを上書きしてMarpの箇条書きを復元 */
+.marpit ul {
+  list-style: disc !important;
+}
+
+.marpit ol {
+  list-style: decimal !important;
+}
+
+/* ネストされたリストのスタイル */
+.marpit ul ul,
+.marpit ol ul {
+  list-style: circle !important;
+}
+
+.marpit ul ul ul,
+.marpit ol ul ul {
+  list-style: square !important;
+}

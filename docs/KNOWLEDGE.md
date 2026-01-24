@@ -80,6 +80,7 @@ strands-agents
 tavily-python
 ```
 ※ fastapi/uvicorn は不要（SDKに内包）
+※ `aws login` 認証を使う場合は `botocore[crt]` も必要（pyproject.tomlに追加済み）
 
 ### エンドポイント
 - `POST /invocations` - エージェント実行
@@ -417,6 +418,8 @@ const svgs = doc.querySelectorAll('svg[data-marpit-svg]');
 - SVGにはwidth/height属性がないため、CSSで`w-full h-full`を指定
 
 ### Tailwind CSS との競合
+
+#### invertクラスの競合
 Marpの`class: invert`とTailwindの`.invert`ユーティリティが競合する。
 
 ```css
@@ -427,6 +430,31 @@ Marpの`class: invert`とTailwindの`.invert`ユーティリティが競合す�
 ```
 
 これでTailwindの`filter: invert(100%)`を無効化し、Marpのダークテーマが正しく表示される。
+
+#### 箇条書き（リストスタイル）の競合
+Tailwind CSS v4のPreflight（CSSリセット）が`list-style: none`を適用するため、Marpスライド内の箇条書きビュレット（●○■）が消える。
+
+```css
+/* src/index.css に追加 */
+.marpit ul {
+  list-style: disc !important;
+}
+
+.marpit ol {
+  list-style: decimal !important;
+}
+
+/* ネストされたリストのスタイル */
+.marpit ul ul,
+.marpit ol ul {
+  list-style: circle !important;
+}
+
+.marpit ul ul ul,
+.marpit ol ul ul {
+  list-style: square !important;
+}
+```
 
 ---
 
