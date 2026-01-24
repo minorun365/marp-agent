@@ -9,8 +9,8 @@ import { createMarpAgent } from './agent/resource';
 const isSandbox = !process.env.AWS_BRANCH;
 const branchName = process.env.AWS_BRANCH || 'dev';
 
-// ブランチ別テーマ設定
-const themeName = branchName === 'kag' ? 'kag' : 'border';
+// テーマ設定（MARP_THEME環境変数 > ブランチ名で判定）
+const themeName = process.env.MARP_THEME || (branchName === 'kag' ? 'kag' : 'border');
 
 const backend = defineBackend({
   auth,
