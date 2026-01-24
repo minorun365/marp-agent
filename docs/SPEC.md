@@ -342,7 +342,7 @@ data: {"type": "done"}
 |------|------|
 | 問題 | 会話履歴と現在のスライド状態の保持場所 |
 | 選択肢 | フロントエンドのみ / バックエンドでセッション管理 |
-| MVP方針 | フロントエンドで state 管理（リロードで消える） |
+| 実装方針 | バックエンド（agent.py）でセッションID別にメモリ管理（コンテナ再起動で消える） |
 
 ### 7.5 本番デプロイ（解決済み）
 
@@ -353,9 +353,25 @@ data: {"type": "done"}
 | ビルドイメージ | `public.ecr.aws/codebuild/amazonlinux-x86_64-standard:5.0` |
 | 方式 | `fromAsset()` をそのまま使用可能 |
 
+### 7.6 Docker Hubレート制限（解決済み）
+
+| 項目 | 内容 |
+|------|------|
+| 問題 | Amplify ConsoleのCodeBuildで `429 Too Many Requests` が発生 |
+| 原因 | Docker Hubの未認証pullにレート制限あり。共有IP環境で制限に引っかかりやすい |
+| 解決策 | Amazon ECR Public Galleryのイメージを使用 |
+
+```dockerfile
+# NG: Docker Hub（レート制限あり）
+FROM python:3.13-slim-bookworm
+
+# OK: ECR Public Gallery（AWS環境からは制限なし）
+FROM public.ecr.aws/docker/library/python:3.13-slim-bookworm
+```
+
 ---
 
-## 7.6 本番デプロイ手順
+## 7.7 本番デプロイ手順
 
 ### 1. package.json overrides追加
 
@@ -394,12 +410,6 @@ Amplify Console → **Environment variables** で設定:
 
 ## 8. 今後の拡張（Phase 2）
 
-- [x] Web検索機能（Tavily API統合）← 実装済み
-- [x] PDFダウンロード（日本語対応）← 実装済み
-- [x] プレビュー画面から修正指示ボタン（チャットタブに戻って入力欄にフォーカス）← 実装済み
-- [x] 箇条書き行頭記号問題（Tailwind CSSリセット対策）← 実装済み
-- [ ] チャット画面の横幅制限
-- [ ] チャット応答末尾のカーソル記号を除去
 - [ ] チャット応答のマークダウンレンダリング（react-markdown）
 - [ ] マークダウン編集機能（シンタックスハイライト付き）
 - [ ] テーマ選択（default / gaia / uncover）
