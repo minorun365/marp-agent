@@ -414,7 +414,7 @@ url('data:image/png;base64,{Base64データ}')
 
 ### ブランチ別テーマ切り替え
 
-`MARP_THEME`環境変数または`AWS_BRANCH`でテーマを切り替える：
+環境変数でテーマを切り替える実装パターン：
 
 ```typescript
 // amplify/backend.ts

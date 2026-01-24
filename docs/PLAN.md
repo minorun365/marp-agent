@@ -51,6 +51,52 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 | sandbox（ローカル） | `fromAsset()` + ローカルARM64ビルド |
 | 本番（Amplify Console） | `deploy-time-build` + CodeBuild ARM64 |
 
+## ブランチ運用
+
+### ブランチ構成
+
+```
+main (共通機能のベース)
+  │
+  └── kag (mainを継承 + kag固有の設定)
+```
+
+| ブランチ | 用途 | テーマ | 認証 |
+|---------|------|--------|------|
+| main | 一般公開版 | border | 誰でも登録可 |
+| kag | KAG専用版 | kag | @kddi-agdc.com のみ |
+
+### ブランチごとの責務
+
+| 変更内容 | 作業ブランチ | 反映方法 |
+|---------|------------|---------|
+| 共通のバグ修正・機能追加 | main | kagでmainをマージ |
+| ドキュメント更新（共通） | main | kagでmainをマージ |
+| kag固有（テーマ、ドメイン制限） | kag | kagのみに保持 |
+
+### 運用コマンド
+
+**mainの変更をkagに反映:**
+```bash
+git checkout kag
+git merge main
+git push
+```
+
+**特定のコミットだけ反映（cherry-pick）:**
+```bash
+# kagで行ったバグ修正をmainにも適用したい場合
+git checkout main
+git cherry-pick <commit-hash>
+git push
+```
+
+### 注意事項
+
+- kagをmainにマージしない（kag固有の設定がmainに混入するため）
+- 共通機能は必ずmainで開発し、kagにマージで反映
+- mainで変更したら、kagへのマージを忘れずに
+
 ## 進捗状況
 
 | ステップ | 状態 |
