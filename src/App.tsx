@@ -28,7 +28,7 @@ const authComponents = {
     return (
       <div className="text-center py-3 px-4">
         <p className="text-xs text-white/70 leading-relaxed">
-          登録されたメールアドレスは認証目的でのみ使用します。
+          このアプリはトライアル運用中です。
         </p>
       </div>
     );
