@@ -134,7 +134,11 @@ marp-agent/
 │   ├── agentcore.png            # ファビコン
 │   └── minorun.jpg              # OGP画像
 ├── amplify/
-│   ├── auth/resource.ts         # Cognito認証設定
+│   ├── auth/
+│   │   ├── resource.ts          # Cognito認証設定
+│   │   └── pre-sign-up/         # ドメイン制限Lambda
+│   │       ├── resource.ts
+│   │       └── handler.ts
 │   ├── agent/
 │   │   ├── resource.ts          # AgentCore CDK定義
 │   │   └── runtime/
