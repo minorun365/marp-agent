@@ -383,6 +383,103 @@ paginate: true
 
 **参考**: https://rnd195.github.io/marp-community-themes/theme/border.html
 
+### カスタムテーマのBase64埋め込み
+
+背景画像を含むテーマをポータブルにするには、Base64データURIに変換して埋め込む：
+
+```bash
+# 画像をBase64変換
+base64 -i background.png | tr -d '\n' > bg_b64.txt
+
+# CSSのURL置換
+url('../img/background.png')
+↓
+url('data:image/png;base64,{Base64データ}')
+```
+
+**注意**: 画像が複数あるとCSSファイルが数MB級になる。Git管理には注意。
+
+### ブランチ別テーマ切り替え
+
+環境変数でテーマを切り替える実装パターン：
+
+```typescript
+// amplify/backend.ts
+const themeName = process.env.MARP_THEME || (branchName === 'kag' ? 'kag' : 'border');
+```
+
+| 環境 | コマンド | テーマ |
+|------|---------|--------|
+| sandbox | `npx ampx sandbox` | border |
+| sandbox | `MARP_THEME=kag npx ampx sandbox` | kag |
+| 本番 | Amplify Console | ブランチ名で自動判定 |
+
+**フロントエンド側**:
+```typescript
+// SlidePreview.tsx
+import borderTheme from '../themes/border.css?raw';
+import kagTheme from '../themes/kag.css?raw';
+import outputs from '../../amplify_outputs.json';
+
+const themeName = outputs.custom?.themeName || 'border';
+const themeMap = { border: borderTheme, kag: kagTheme };
+const currentTheme = themeMap[themeName] || borderTheme;
+
+marp.themeSet.add(currentTheme);
+```
+
+---
+
+## Cognito Pre Sign-up Trigger
+
+### メールドメイン制限
+
+特定のメールドメインのみアカウント登録を許可する：
+
+```typescript
+// amplify/auth/pre-sign-up/handler.ts
+import type { PreSignUpTriggerHandler } from 'aws-lambda';
+
+const ALLOWED_DOMAIN = 'example.com';
+
+export const handler: PreSignUpTriggerHandler = async (event) => {
+  const email = event.request.userAttributes.email;
+  const domain = email?.split('@')[1]?.toLowerCase();
+
+  if (domain !== ALLOWED_DOMAIN) {
+    throw new Error(`このサービスは @${ALLOWED_DOMAIN} のメールアドレスでのみ登録できます`);
+  }
+
+  return event;
+};
+```
+
+```typescript
+// amplify/auth/pre-sign-up/resource.ts
+import { defineFunction } from '@aws-amplify/backend';
+
+export const preSignUp = defineFunction({
+  name: 'pre-sign-up',
+  entry: './handler.ts',
+});
+```
+
+```typescript
+// amplify/auth/resource.ts
+import { defineAuth } from '@aws-amplify/backend';
+import { preSignUp } from './pre-sign-up/resource';
+
+export const auth = defineAuth({
+  loginWith: { email: true },
+  triggers: { preSignUp },
+});
+```
+
+**必要な依存**:
+```bash
+npm install --save-dev @types/aws-lambda
+```
+
 ---
 
 ## Tailwind CSS v4
