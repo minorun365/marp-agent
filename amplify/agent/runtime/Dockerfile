@@ -1,4 +1,5 @@
-FROM --platform=linux/arm64 python:3.13-slim-bookworm
+# ECR Public Galleryを使用（Docker Hubのレート制限を回避）
+FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.13-slim-bookworm
 
 WORKDIR /app
 
