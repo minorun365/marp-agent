@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import Marp from '@marp-team/marp-core';
+import borderTheme from '../themes/border.css?raw';
 
 interface SlidePreviewProps {
   markdown: string;
@@ -13,6 +14,8 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading }: SlidePr
 
     try {
       const marp = new Marp();
+      // カスタムテーマ「border」を追加
+      marp.themeSet.add(borderTheme);
       const { html, css } = marp.render(markdown);
 
       // Marpが生成したsvg要素をそのまま抽出（DOM構造を維持）

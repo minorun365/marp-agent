@@ -65,8 +65,7 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 - フロントマターには以下を含める：
   ---
   marp: true
-  theme: default
-  class: invert
+  theme: border
   size: 16:9
   paginate: true
   ---
@@ -106,20 +105,28 @@ def extract_markdown(text: str) -> str | None:
 
 def generate_pdf(markdown: str) -> bytes:
     """Marp CLIでPDFを生成"""
+    # カスタムテーマのパス
+    theme_path = Path(__file__).parent / "border.css"
+
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
         pdf_path = Path(tmpdir) / "slide.pdf"
 
         md_path.write_text(markdown, encoding="utf-8")
 
+        cmd = [
+            "marp",
+            str(md_path),
+            "--pdf",
+            "--allow-local-files",
+            "-o", str(pdf_path),
+        ]
+        # カスタムテーマが存在する場合は適用
+        if theme_path.exists():
+            cmd.extend(["--theme", str(theme_path)])
+
         result = subprocess.run(
-            [
-                "marp",
-                str(md_path),
-                "--pdf",
-                "--allow-local-files",
-                "-o", str(pdf_path),
-            ],
+            cmd,
             capture_output=True,
             text=True,
         )

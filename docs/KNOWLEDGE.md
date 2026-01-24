@@ -304,8 +304,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ```yaml
 ---
 marp: true
-theme: default
-class: invert
+theme: border
 size: 16:9
 paginate: true
 ---
@@ -318,8 +317,22 @@ paginate: true
 | gaia | クラシックなデザイン |
 | uncover | ミニマル・モダン |
 
-### ダークモード（invertクラス）
-`class: invert` を追加すると黒背景のダークモードになる。
+### borderテーマ（コミュニティテーマ）
+
+本プロジェクトで採用しているカスタムテーマ。
+
+**特徴**:
+- グレーのグラデーション背景（`#f7f7f7` → `#d3d3d3`）
+- 濃いグレーの太枠線（`#303030`）
+- 白いアウトライン
+- Interフォント（Google Fonts）
+- `<!-- _class: tinytext -->` で参考文献用の小さいテキスト対応
+
+**ファイル配置**:
+- `src/themes/border.css` - フロントエンド（Marp Core）用
+- `amplify/agent/runtime/border.css` - PDF生成（Marp CLI）用
+
+**参考**: https://rnd195.github.io/marp-community-themes/theme/border.html
 
 ---
 

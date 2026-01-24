@@ -8,7 +8,7 @@
 | UI | ライブラリ | Tailwind CSS |
 | UI | プレビュー | 全スライド一覧（サムネイル） |
 | UI | 編集機能 | なし（MVP。チャットで修正指示のみ） |
-| スライド | テーマ | default + invert（ダーク） |
+| スライド | テーマ | border（コミュニティテーマ） |
 | スライド | アスペクト比 | 16:9（ワイド） |
 | スライド | 出力形式 | PDFのみ（MVP） |
 | エージェント | 性格 | プロフェッショナル |
@@ -98,12 +98,18 @@
 ```yaml
 ---
 marp: true
-theme: default
-class: invert
+theme: border
 size: 16:9
 paginate: true
 ---
 ```
+
+**borderテーマの特徴**:
+- グレーのグラデーション背景（`#f7f7f7` → `#d3d3d3`）
+- 濃いグレーの太枠線（`#303030`）
+- 白いアウトライン
+- Interフォント
+- `<!-- _class: tinytext -->` で参考文献用の小さいテキスト対応
 
 ### スライド構成ガイドライン
 
@@ -137,8 +143,7 @@ paginate: true
   ```yaml
   ---
   marp: true
-  theme: default
-  class: invert
+  theme: border
   size: 16:9
   paginate: true
   ---
@@ -172,7 +177,7 @@ AWS入門のスライドですね。以下の構成で5枚作成します：
 ```markdown
 ---
 marp: true
-theme: default
+theme: border
 ...
 ```
 

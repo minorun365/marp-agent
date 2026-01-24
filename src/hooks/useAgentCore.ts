@@ -272,8 +272,7 @@ export async function invokeAgentMock(
   // サンプルマークダウンを生成
   const sampleMarkdown = `---
 marp: true
-theme: default
-class: invert
+theme: border
 size: 16:9
 paginate: true
 ---

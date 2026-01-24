@@ -131,7 +131,7 @@ k.gotoさんにより、CDK hotswapがAgentCore Runtimeに対応した。
 
 | 項目 | 状態 | 備考 |
 |------|------|------|
-| package.json overrides追加 | ⬜未着手 | toolkit-lib 1.14.0 |
+| package.json overrides追加 | ✅完了 | toolkit-lib 1.14.0 |
 | Amplify Console設定 | ⬜未着手 | カスタムビルドイメージ設定 |
 | GitHubリポジトリ連携 | ⬜未着手 | mainブランチ連携 |
 | 環境変数設定 | ⬜未着手 | TAVILY_API_KEY等 |
@@ -226,6 +226,7 @@ marp-agent/
 │   │       ├── Dockerfile       # エージェントコンテナ ✅
 │   │       ├── requirements.txt # Python依存関係 ✅
 │   │       ├── pyproject.toml   # uv管理用 ✅
+│   │       ├── border.css       # カスタムテーマ（PDF生成用） ✅
 │   │       └── agent.py         # Strands Agent実装 ✅
 │   └── backend.ts               # バックエンド統合 ✅
 ├── tests/
@@ -310,7 +311,7 @@ marp-agent/
 |------|------|
 | 認証 | ローカル開発時はなし、本番のみCognito認証 |
 | 保存 | MVPではセッション限り（フロントエンドstate） |
-| テーマ | defaultテーマ + invert（ダーク） |
+| テーマ | borderテーマ（コミュニティテーマ） |
 | 共同編集 | 不要 |
 | UIレイアウト | タブ切り替え（チャット / プレビュー） |
 | モデル | Claude Sonnet 4.5 |
