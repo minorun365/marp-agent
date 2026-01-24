@@ -9,6 +9,48 @@
   justify-content: center;
 }
 
+/* Amplify UI カスタム配色（アプリ本体と統一） */
+[data-amplify-authenticator] [data-amplify-router] {
+  border: none;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* プライマリボタン（サインイン、サインアップなど） */
+[data-amplify-authenticator] .amplify-button--primary {
+  background: linear-gradient(to right, #1a3a6e, #5ba4d9);
+  border: none;
+}
+
+[data-amplify-authenticator] .amplify-button--primary:hover {
+  background: linear-gradient(to right, #142d54, #4a93c8);
+}
+
+/* リンク（パスワードを忘れた、アカウント作成など） */
+[data-amplify-authenticator] .amplify-button--link {
+  color: #1a3a6e;
+}
+
+[data-amplify-authenticator] .amplify-button--link:hover {
+  color: #5ba4d9;
+  background: transparent;
+}
+
+/* タブ（サインイン/サインアップ切り替え） */
+[data-amplify-authenticator] .amplify-tabs__item--active {
+  color: #1a3a6e;
+  border-color: #5ba4d9;
+}
+
+[data-amplify-authenticator] .amplify-tabs__item:hover {
+  color: #1a3a6e;
+}
+
+/* フォーカス時のアウトライン */
+[data-amplify-authenticator] input:focus {
+  border-color: #5ba4d9;
+  box-shadow: 0 0 0 2px rgba(91, 164, 217, 0.2);
+}
+
 @theme {
   --color-kag-blue: #0e0d6a;
   --color-kag-blue-light: #1a1994;

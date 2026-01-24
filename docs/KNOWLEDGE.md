@@ -467,16 +467,33 @@ const svgs = doc.querySelectorAll('svg[data-marpit-svg]');
 
 ### スマホ対応（レスポンシブ）
 
-MarpのSVGは固定サイズ（1280x720px）を持っているため、スマホの狭い画面では見切れてしまう。CSSで強制的に縮小する：
+MarpのSVGは固定サイズ（1280x720px）の`width`/`height`属性を持っているため、スマホの狭い画面では見切れてしまう。
 
-```css
-/* src/index.css */
-.marpit svg[data-marpit-svg] {
-  width: 100% !important;
-  height: auto !important;
-  max-height: 100% !important;
-}
+**解決策**: SVGの属性を動的に変更してレスポンシブ対応
+
+```typescript
+// SlidePreview.tsx
+const svgs = doc.querySelectorAll('svg[data-marpit-svg]');
+
+return {
+  slides: Array.from(svgs).map((svg, index) => {
+    // SVGのwidth/height属性を100%に変更してレスポンシブ対応
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    return {
+      index,
+      html: svg.outerHTML,
+    };
+  }),
+  css,
+};
 ```
+
+**ポイント**:
+- `width`と`height`を`100%`に設定 → 親要素にフィット
+- `preserveAspectRatio="xMidYMid meet"` → アスペクト比を維持しつつ収まるように
+- CSSの`!important`よりもSVG属性の直接変更が確実
 
 ### Tailwind CSS との競合
 
@@ -611,6 +628,42 @@ setMessages(prev =>
   <Preview />
 </div>
 ```
+
+### Amplify UI Authenticatorのカスタマイズ
+
+Cognito認証画面のヘッダー/フッターをカスタマイズして、アプリ名やメールアドレスの利用目的を表示できる。
+
+```tsx
+const authComponents = {
+  Header() {
+    return (
+      <div className="text-center py-4">
+        <h1 className="text-2xl font-bold text-gray-800">アプリ名</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          誰でもアカウントを作って利用できます！（1日50人まで）
+        </p>
+      </div>
+    );
+  },
+  Footer() {
+    return (
+      <div className="text-center py-3 px-4">
+        <p className="text-xs text-gray-400 leading-relaxed">
+          登録されたメールアドレスは認証目的でのみ使用します。
+        </p>
+      </div>
+    );
+  },
+};
+
+<Authenticator components={authComponents}>
+  {({ signOut }) => <MainApp signOut={signOut} />}
+</Authenticator>
+```
+
+**用途**:
+- ヘッダー: アプリ名、利用ガイド
+- フッター: プライバシーポリシー、免責事項
 
 ---
 

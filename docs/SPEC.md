@@ -280,6 +280,15 @@ const invoke = useMock ? invokeAgentMock : invokeAgent;
 - メール確認必須
 - AgentCore RuntimeのauthorizerConfigurationでCognito統合
 
+### 認証画面のカスタマイズ
+
+| 項目 | 内容 |
+|------|------|
+| ヘッダー | アプリ名「パワポ作るマン」+ 利用ガイド |
+| フッター | メールアドレスの利用目的（認証目的のみ） |
+
+**実装**: Amplify UI ReactのAuthenticatorコンポーネントの`components`プロパティでカスタマイズ
+
 ---
 
 ## 6. API仕様

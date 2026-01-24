@@ -15,10 +15,10 @@ const authComponents = {
     return (
       <div className="text-center py-4">
         <h1 className="text-2xl font-bold text-gray-800">
-          パワポ作るマン
+          パワポ作るマン　by みのるん
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          「Create Account」で誰でも利用できます！
+          誰でもアカウントを作って利用できます！
         </p>
       </div>
     );
