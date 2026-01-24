@@ -16,9 +16,10 @@ interface MarpAgentProps {
   userPool?: IUserPool;
   userPoolClient?: IUserPoolClient;
   nameSuffix?: string;
+  themeName?: string;
 }
 
-export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }: MarpAgentProps) {
+export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, themeName = 'border' }: MarpAgentProps) {
   // 環境判定: sandbox（ローカル）vs 本番（Amplify Console）
   const isSandbox = !process.env.AWS_BRANCH;
 
@@ -65,6 +66,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
     authorizerConfiguration: authConfig,
     environmentVariables: {
       TAVILY_API_KEY: process.env.TAVILY_API_KEY || '',
+      MARP_THEME: themeName,
       // Observability（OTEL）設定
       AGENT_OBSERVABILITY_ENABLED: 'true',
       OTEL_PYTHON_DISTRO: 'aws_distro',

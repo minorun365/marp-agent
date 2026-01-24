@@ -2,6 +2,13 @@ import { useMemo, useEffect, useRef } from 'react';
 import Marp from '@marp-team/marp-core';
 import { observe } from '@marp-team/marpit-svg-polyfill';
 import borderTheme from '../themes/border.css?raw';
+import kagTheme from '../themes/kag.css?raw';
+import outputs from '../../amplify_outputs.json';
+
+// ブランチに応じたテーマを選択
+const themeName = (outputs.custom?.themeName as string) || 'border';
+const themeMap: Record<string, string> = { border: borderTheme, kag: kagTheme };
+const currentTheme = themeMap[themeName] || borderTheme;
 
 interface SlidePreviewProps {
   markdown: string;
@@ -26,8 +33,8 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
 
     try {
       const marp = new Marp();
-      // カスタムテーマ「border」を追加
-      marp.themeSet.add(borderTheme);
+      // カスタムテーマを追加（ブランチに応じて切り替え）
+      marp.themeSet.add(currentTheme);
       const { html, css } = marp.render(markdown);
 
       // Marpが生成したsvg要素をそのまま抽出（DOM構造を維持）

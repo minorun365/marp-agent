@@ -26,6 +26,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # エージェントコードとテーマをコピー
 COPY agent.py ./
 COPY border.css ./
+COPY kag.css ./
 
 EXPOSE 8080
 
