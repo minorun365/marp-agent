@@ -8,14 +8,14 @@
 | UI | ライブラリ | Tailwind CSS |
 | UI | プレビュー | 全スライド一覧（サムネイル） |
 | UI | 編集機能 | なし（MVP。チャットで修正指示のみ） |
-| スライド | テーマ | border（コミュニティテーマ） |
+| スライド | テーマ | border（デフォルト）/ kag（KAG専用） |
 | スライド | アスペクト比 | 16:9（ワイド） |
 | スライド | 出力形式 | PDFのみ（MVP） |
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search（Tavily）, output_slide |
 | インフラ | リージョン | us-east-1（バージニア） |
 | インフラ | モデル | Claude Sonnet 4.5 |
-| 認証 | スコープ | 誰でもサインアップ可能（本番時） |
+| 認証 | スコープ | kagブランチ: @kddi-agdc.com のみ登録可 |
 
 ---
 
@@ -119,6 +119,42 @@ paginate: true
 - 箇条書きは1スライドあたり3〜5項目
 - 絵文字は使用しない（ビジネスライク）
 - スライド区切りは `---`
+
+### kagテーマのスライドクラス
+
+kagテーマでは以下のクラスを使ってメリハリをつける：
+
+| クラス | 用途 | 使い方 |
+|--------|------|--------|
+| `top` | タイトルスライド（1枚目） | `<!-- _class: top -->` |
+| `crosshead` | 仕切りスライド | `<!-- _class: crosshead -->` |
+| `end` | 最後のスライド | `<!-- _class: end -->` |
+| - | ページ番号非表示 | `<!-- _paginate: false -->` |
+
+**使用例:**
+```markdown
+<!-- _class: top -->
+<!-- _paginate: false -->
+
+# プレゼンタイトル
+
+サブタイトルや発表者名
+
+---
+
+<!-- _class: crosshead -->
+
+# セクション1
+
+---
+
+通常のスライド内容
+
+---
+
+<!-- _class: end -->
+<!-- _paginate: false -->
+```
 
 ---
 
@@ -276,9 +312,26 @@ const invoke = useMock ? invokeAgentMock : invokeAgent;
 ### Cognito設定
 
 - Cognito User Pool で認証
-- 誰でもサインアップ可能
 - メール確認必須
 - AgentCore RuntimeのauthorizerConfigurationでCognito統合
+
+### ドメイン制限（kagブランチ）
+
+Pre Sign-up Lambda Triggerでメールドメインを検証：
+
+| 項目 | 内容 |
+|------|------|
+| 許可ドメイン | `@kddi-agdc.com` |
+| 実装方法 | Pre Sign-up Lambda Trigger |
+| エラーメッセージ | 「このサービスは @kddi-agdc.com のメールアドレスでのみ登録できます」 |
+
+```
+amplify/auth/
+├── resource.ts           # defineAuth + triggers設定
+└── pre-sign-up/
+    ├── resource.ts       # defineFunction
+    └── handler.ts        # ドメインチェックロジック
+```
 
 ### 認証画面のカスタマイズ
 
