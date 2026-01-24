@@ -73,7 +73,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
     <div className="h-screen flex flex-col bg-gray-50">
       {/* ヘッダー */}
       <header className="bg-kag-gradient text-white px-6 py-4 shadow-md">
-        <div className="flex justify-between items-center">
+        <div className="max-w-3xl mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">パワポ作るマン　by みのるん</h1>
           <button
               onClick={signOut}
@@ -85,8 +85,8 @@ function MainApp({ signOut }: { signOut?: () => void }) {
       </header>
 
       {/* タブ */}
-      <div className="bg-white border-b">
-        <div className="flex px-6">
+      <div className="bg-white border-b px-6">
+        <div className="max-w-3xl mx-auto flex">
           <button
             onClick={() => setActiveTab('chat')}
             className={`px-6 py-3 font-medium transition-colors ${
