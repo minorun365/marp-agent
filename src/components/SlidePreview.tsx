@@ -26,9 +26,10 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
 
       return {
         slides: Array.from(svgs).map((svg, index) => {
-          // SVGのwidth/height属性を100%に変更してレスポンシブ対応
+          // SVGのwidth/height属性を変更してレスポンシブ対応
+          // height: autoでviewBoxのアスペクト比に任せる
           svg.setAttribute('width', '100%');
-          svg.setAttribute('height', '100%');
+          svg.removeAttribute('height');  // heightを削除してautoに
           svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
           return {
             index,
@@ -92,9 +93,9 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
               <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-b">
                 スライド {slide.index + 1}
               </div>
-              <div className="aspect-video bg-gray-50 p-1 overflow-hidden">
+              <div className="bg-gray-50 p-1 overflow-hidden">
                 <div
-                  className="marpit w-full h-full overflow-hidden"
+                  className="marpit w-full overflow-hidden"
                   dangerouslySetInnerHTML={{ __html: slide.html }}
                 />
               </div>
