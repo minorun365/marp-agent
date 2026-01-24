@@ -137,6 +137,13 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           setStatus(newStatus);
         },
         onToolUse: (toolName) => {
+          // ツール使用開始時にストリーミングカーソルを消す
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.isStreaming ? { ...msg, isStreaming: false } : msg
+            )
+          );
+
           // ツール使用中のステータスを表示（既存のステータスがなければ追加）
           if (toolName === 'output_slide') {
             setMessages(prev => {
