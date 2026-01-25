@@ -157,7 +157,7 @@ AgentCore Runtime経由でストリーミングする場合、以下の形式で
 data: {"type": "text", "data": "テキストチャンク"}
 data: {"type": "tool_use", "data": "ツール名"}
 data: {"type": "markdown", "data": "生成されたマークダウン"}
-data: {"type": "tweet_url", "data": "https://x.com/compose/post?text=..."}
+data: {"type": "tweet_url", "data": "https://twitter.com/intent/tweet?text=..."}
 data: {"type": "error", "error": "エラーメッセージ"}
 data: {"type": "done"}
 ```
@@ -1026,6 +1026,35 @@ const artifact = isSandbox
 ### 参考
 
 - [deploy-time-build](https://github.com/tmokmss/deploy-time-build)
+
+---
+
+## Twitter/X シェア機能
+
+### Web Intent URL形式（重要）
+
+ツイートURLを生成する際は、Twitter Web Intent形式を使用する。
+
+```python
+# OK: Web Intent形式（textパラメータが確実に反映される）
+url = f"https://twitter.com/intent/tweet?text={encoded_text}"
+
+# NG: compose/post形式（textパラメータが無視されることがある）
+url = f"https://x.com/compose/post?text={encoded_text}"
+```
+
+**原因**: `compose/post` はXのWeb UI直接アクセス用URLで、`text`パラメータが無視されることがある。`intent/tweet` はシェアボタン用に設計された公式の方法で、パラメータが確実に処理される。
+
+### URLエンコード
+
+日本語やハッシュタグを含むツイート本文は `urllib.parse.quote()` でエンコード：
+
+```python
+import urllib.parse
+encoded_text = urllib.parse.quote(tweet_text, safe='')
+```
+
+**ポイント**: `safe=''` で `#` もエンコードする（URLパラメータ内では必要）
 
 ---
 

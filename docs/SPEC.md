@@ -210,7 +210,7 @@ paginate: true
 ## Xでシェア機能
 ユーザーが「シェアしたい」「ツイートしたい」「Xで共有」などと言った場合は、generate_tweet_url ツールを使ってツイートURLを生成してください。
 ツイート本文は以下のフォーマットで100文字以内で作成：
-- #パワポ作るマン で○○のスライドを作ってみた！ https://marp.minoruonda.com
+- #パワポ作るマン で○○のスライドを作ってみた！ pawapo.minoruonda.com
 - ○○の部分は作成したスライドの内容を簡潔に表現
 
 ## その他
@@ -392,7 +392,7 @@ data: {"type": "markdown", "data": "---\nmarp: true\n..."}
 
 data: {"type": "tool_use", "data": "generate_tweet_url"}
 
-data: {"type": "tweet_url", "data": "https://x.com/compose/post?text=..."}
+data: {"type": "tweet_url", "data": "https://twitter.com/intent/tweet?text=..."}
 
 data: {"type": "done"}
 ```
