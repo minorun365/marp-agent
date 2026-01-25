@@ -19,12 +19,12 @@ interface ChatProps {
   sessionId?: string;  // 会話履歴を保持するためのセッションID
 }
 
-const INITIAL_MESSAGE = 'どんな資料を作りたいですか？';
+const INITIAL_MESSAGE = 'どんな資料を作りたいですか？ URLの要約もできます！';
 
 // モック使用フラグ（VITE_USE_MOCK=true で強制的にモック使用）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
-const EDIT_PROMPT_MESSAGE = 'どのように修正しますか？';
+const EDIT_PROMPT_MESSAGE = 'どのように修正しますか？ 内容の調整や、はみ出しの抑制もできます。';
 
 export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sharePromptTrigger, sessionId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -239,7 +239,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             setMessages(prev => {
               // Web検索があれば完了に更新し、output_slideのステータスを追加
               const hasExisting = prev.some(
-                msg => msg.isStatus && msg.statusText === 'スライドを作成中...（30秒ほどかかります）'
+                msg => msg.isStatus && msg.statusText === 'スライドを作成中...（20秒ほどかかります）'
               );
               if (hasExisting) return prev;
 
@@ -251,7 +251,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               );
               return [
                 ...updated,
-                { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを作成中...（30秒ほどかかります）' }
+                { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを作成中...（20秒ほどかかります）' }
               ];
             });
           } else if (toolName === 'web_search') {
@@ -272,7 +272,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           // output_slideのステータスを完了状態に更新
           setMessages(prev =>
             prev.map(msg =>
-              msg.isStatus && msg.statusText === 'スライドを作成中...（30秒ほどかかります）'
+              msg.isStatus && msg.statusText === 'スライドを作成中...（20秒ほどかかります）'
                 ? { ...msg, statusText: 'スライドを作成しました' }
                 : msg
             )
