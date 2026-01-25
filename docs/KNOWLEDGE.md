@@ -962,6 +962,73 @@ const endpointArn = outputs.custom?.agentEndpointArn;
 
 ---
 
+---
+
+## Observability（OTELトレース）
+
+AgentCore Observability でトレースを出力するには、以下の3つすべてが必要。
+
+### 1. requirements.txt
+
+```
+strands-agents[otel]          # otel extra が必要（strands-agents だけではNG）
+aws-opentelemetry-distro      # ADOT
+```
+
+### 2. Dockerfile
+
+```dockerfile
+# OTELの自動計装を有効にして起動
+CMD ["opentelemetry-instrument", "python", "agent.py"]
+```
+
+**注意**: `python agent.py` だけではOTELトレースが出力されない。
+
+### 3. CDK環境変数
+
+```typescript
+environmentVariables: {
+  AGENT_OBSERVABILITY_ENABLED: 'true',
+  OTEL_PYTHON_DISTRO: 'aws_distro',
+  OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
+  OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
+}
+```
+
+### 確認方法
+
+CloudWatch Console → **Bedrock AgentCore GenAI Observability** → Agents View / Sessions View / Traces View
+
+---
+
+## deploy-time-build（本番環境ビルド）
+
+### 概要
+
+sandbox環境ではローカルでDockerビルドできるが、本番環境（Amplify Console）ではCodeBuildでビルドする必要がある。`deploy-time-build` パッケージを使用してビルドをCDK deploy時に実行する。
+
+### 環境分岐
+
+```typescript
+// amplify/agent/resource.ts
+const isSandbox = !branch || branch === 'sandbox';
+
+const artifact = isSandbox
+  ? agentcore.AgentRuntimeArtifact.fromAsset(runtimePath)  // ローカルビルド
+  : agentcore.AgentRuntimeArtifact.fromAsset(runtimePath, {
+      platform: ecr_assets.Platform.LINUX_ARM64,
+      bundling: {
+        // deploy-time-build でCodeBuildビルド
+      },
+    });
+```
+
+### 参考
+
+- [deploy-time-build](https://github.com/tmokmss/deploy-time-build)
+
+---
+
 ## 参考リンク
 
 - [Marp公式](https://marp.app/)

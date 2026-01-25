@@ -43,6 +43,7 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 | 認証 | Amplify Auth (Cognito) |
 | インフラ | AWS CDK + Amplify Gen2 |
 | ランタイム | Bedrock AgentCore |
+| Observability | OpenTelemetry (ADOT) → CloudWatch |
 
 ## 環境分岐
 
@@ -118,6 +119,7 @@ git push
 - [x] PDFダウンロード（日本語対応）
 - [x] Web検索（Tavily）
 - [x] Xシェア機能（PDFダウンロード後に自動でツイートURL生成）
+- [x] Observability（OTELトレース → CloudWatch）
 
 ### 追加機能（Phase 2）
 

@@ -118,7 +118,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       try {
         const invoke = useMock ? invokeAgentMock : invokeAgent;
 
-        await invoke('今回の体験をXでシェアするURLを控えめに提案してください（無言でツール使用開始すること）', currentMarkdown, {
+        await invoke('今回のスライド作成体験をXでシェアするURLを提案してください（無言でツール使用開始すること）', currentMarkdown, {
           onText: (text) => {
             setMessages(prev =>
               prev.map((msg, idx) =>
