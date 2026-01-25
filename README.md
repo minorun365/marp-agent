@@ -12,6 +12,6 @@
 
 ## アーキテクチャ
 
-AWSの最新サービスを活用して、フルサーバーレスで構築。維持費はほぼClaudeのAPI料金のみです！
+AWSの最新サービスを活用して、フルサーバーレスで構築。維持費はほぼClaudeのAPI料金のみです。
 
 <img width="1362" height="759" alt="アーキテクチャ図" src="https://github.com/user-attachments/assets/21c580e9-6c09-4ef8-ba82-90014522871b" />
