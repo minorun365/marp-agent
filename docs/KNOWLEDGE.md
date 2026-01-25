@@ -157,6 +157,7 @@ AgentCore Runtime経由でストリーミングする場合、以下の形式で
 data: {"type": "text", "data": "テキストチャンク"}
 data: {"type": "tool_use", "data": "ツール名"}
 data: {"type": "markdown", "data": "生成されたマークダウン"}
+data: {"type": "tweet_url", "data": "https://x.com/compose/post?text=..."}
 data: {"type": "error", "error": "エラーメッセージ"}
 data: {"type": "done"}
 ```
@@ -711,6 +712,26 @@ setMessages(prev =>
   {message.content + (message.isStreaming ? ' ▌' : '')}
 </ReactMarkdown>
 ```
+
+### ReactMarkdownでリンクを新しいタブで開く
+
+マークダウン内のリンクをクリックした時に新しいタブで開くには、`components`プロパティでカスタムリンクレンダラーを設定する。
+
+```tsx
+<ReactMarkdown
+  components={{
+    a: ({ href, children }) => (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+  }}
+>
+  {message.content}
+</ReactMarkdown>
+```
+
+**用途**: Xシェア機能のツイートリンクなど、外部サイトへのリンクを新しいタブで開く場合に使用。
 
 ### タブ切り替え時の状態保持
 ```tsx
