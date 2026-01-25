@@ -47,6 +47,28 @@ def web_search(query: str) -> str:
 # スライド出力用のグローバル変数（invokeで参照）
 _generated_markdown: str | None = None
 
+# ツイートURL用のグローバル変数
+_generated_tweet_url: str | None = None
+
+
+@tool
+def generate_tweet_url(tweet_text: str) -> str:
+    """ツイート投稿用のURLを生成します。ユーザーがXでシェアしたい場合に使用してください。
+
+    Args:
+        tweet_text: ツイート本文（100文字以内、ハッシュタグ含む）
+
+    Returns:
+        生成完了メッセージ
+    """
+    import urllib.parse
+
+    global _generated_tweet_url
+    # 日本語をURLエンコード
+    encoded_text = urllib.parse.quote(tweet_text, safe='')
+    _generated_tweet_url = f"https://x.com/compose/post?text={encoded_text}"
+    return "ツイートURLを生成しました。"
+
 
 @tool
 def output_slide(markdown: str) -> str:
@@ -90,6 +112,12 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 スライドを作成・編集したら、必ず output_slide ツールを使ってマークダウンを出力してください。
 テキストでマークダウンを直接書き出さないでください。output_slide ツールに渡すマークダウンには、フロントマターを含む完全なMarp形式のマークダウンを指定してください。
 
+## Xでシェア機能
+ユーザーが「シェアしたい」「ツイートしたい」「Xで共有」などと言った場合は、generate_tweet_url ツールを使ってツイートURLを生成してください。
+ツイート本文は以下のフォーマットで100文字以内で作成：
+- #パワポ作るマン で○○のスライドを作ってみた！ https://marp.minoruonda.com
+- ○○の部分は作成したスライドの内容を簡潔に表現
+
 ## その他
 - 現在は2026年です。
 """
@@ -107,7 +135,7 @@ def get_or_create_agent(session_id: str | None) -> Agent:
         return Agent(
             model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
             system_prompt=SYSTEM_PROMPT,
-            tools=[web_search, output_slide],
+            tools=[web_search, output_slide, generate_tweet_url],
         )
 
     # 既存のセッションがあればそのAgentを返す
@@ -118,7 +146,7 @@ def get_or_create_agent(session_id: str | None) -> Agent:
     agent = Agent(
         model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         system_prompt=SYSTEM_PROMPT,
-        tools=[web_search, output_slide],
+        tools=[web_search, output_slide, generate_tweet_url],
     )
     _agent_sessions[session_id] = agent
     return agent
@@ -171,8 +199,9 @@ def generate_pdf(markdown: str) -> bytes:
 @app.entrypoint
 async def invoke(payload):
     """エージェント実行（ストリーミング対応）"""
-    global _generated_markdown
+    global _generated_markdown, _generated_tweet_url
     _generated_markdown = None  # リセット
+    _generated_tweet_url = None  # リセット
 
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")  # chat or export_pdf
@@ -210,6 +239,10 @@ async def invoke(payload):
     # output_slideツールで生成されたマークダウンを送信
     if _generated_markdown:
         yield {"type": "markdown", "data": _generated_markdown}
+
+    # generate_tweet_urlツールで生成されたツイートURLを送信
+    if _generated_tweet_url:
+        yield {"type": "tweet_url", "data": _generated_tweet_url}
 
     yield {"type": "done"}
 

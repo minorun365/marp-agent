@@ -5,6 +5,7 @@ export interface AgentCoreCallbacks {
   onText: (text: string) => void;
   onStatus: (status: string) => void;
   onMarkdown: (markdown: string) => void;
+  onTweetUrl?: (url: string) => void;
   onToolUse: (toolName: string) => void;
   onError: (error: Error) => void;
   onComplete: () => void;
@@ -122,6 +123,11 @@ function handleEvent(
     case 'markdown':
       if (textValue) {
         callbacks.onMarkdown(textValue);
+      }
+      break;
+    case 'tweet_url':
+      if (textValue && callbacks.onTweetUrl) {
+        callbacks.onTweetUrl(textValue);
       }
       break;
     case 'tool_use':
@@ -291,5 +297,14 @@ paginate: true
 
   callbacks.onMarkdown(sampleMarkdown);
   callbacks.onText('\n\nスライドを生成しました！プレビュータブで確認できます。');
+
+  // シェアリクエストの場合はツイートURLを生成
+  if (prompt.includes('シェア') || prompt.includes('ツイート')) {
+    callbacks.onToolUse('generate_tweet_url');
+    await sleep(500);
+    const tweetText = encodeURIComponent(`#パワポ作るマン でスライドを作ってみました。これは便利！ pawapo.minoruonda.com`);
+    callbacks.onTweetUrl?.(`https://x.com/compose/post?text=${tweetText}`);
+  }
+
   callbacks.onComplete();
 }
