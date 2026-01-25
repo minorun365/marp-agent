@@ -1,4 +1,4 @@
-# パワポ作るマン 仕様書
+# パワポ作るマン for KAG 仕様書
 
 ## 決定事項サマリー
 
@@ -8,14 +8,14 @@
 | UI | ライブラリ | Tailwind CSS |
 | UI | プレビュー | 全スライド一覧（サムネイル） |
 | UI | 編集機能 | なし（MVP。チャットで修正指示のみ） |
-| スライド | テーマ | border（コミュニティテーマ） |
+| スライド | テーマ | kag（KAG専用テーマ） |
 | スライド | アスペクト比 | 16:9（ワイド） |
 | スライド | 出力形式 | PDFのみ（MVP） |
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search, output_slide, generate_tweet_url |
 | インフラ | リージョン | us-east-1（バージニア） |
 | インフラ | モデル | Claude Sonnet 4.5 |
-| 認証 | スコープ | 誰でもサインアップ可能（本番時） |
+| 認証 | スコープ | KAG限定 |
 
 ---
 
@@ -132,25 +132,37 @@ const [sessionId] = useState(() => crypto.randomUUID());
 ```yaml
 ---
 marp: true
-theme: border
+theme: kag
 size: 16:9
 paginate: true
 ---
 ```
 
-**borderテーマの特徴**:
-- グレーのグラデーション背景（`#f7f7f7` → `#d3d3d3`）
-- 濃いグレーの太枠線（`#303030`）
-- 白いアウトライン
-- Interフォント
-- `<!-- _class: tinytext -->` で参考文献用の小さいテキスト対応
+**kagテーマの特徴**:
+- KAG専用のカスタムテーマ
+- 環境変数 `MARP_THEME` で切り替え可能（デフォルト: kag）
 
 ### スライド構成ガイドライン
 
-- 1枚目：タイトル + サブタイトル
+#### スライドの種類（_classディレクティブ）
+
+以下のクラスを使い分けて、メリハリのあるスライドを作成：
+
+| クラス | 用途 | 使用例 |
+|--------|------|--------|
+| `top` | タイトルスライド（1枚目）【必須】 | `<!-- _class: top -->` |
+| `crosshead` | セクション区切り【推奨】 | `<!-- _class: crosshead -->` |
+| `end` | 最後のスライド【必須】 | `<!-- _class: end -->` |
+| なし | 通常スライド | クラス指定なし |
+
+#### 基本ルール
+
+- 1枚目：タイトル + サブタイトル（`top`クラス必須）
 - 箇条書きは1スライドあたり3〜5項目
 - 絵文字は使用しない（ビジネスライク）
 - スライド区切りは `---`
+- セクション区切りには `crosshead` クラスを使用
+- 最後のスライドには `end` クラスを使用
 
 ---
 
@@ -274,11 +286,18 @@ theme: border
 |------|--------|
 | ファビコン | `/agentcore.png` |
 | Apple Touch Icon | `/agentcore.png` |
-| テーマカラー | `#1e1b4b`（深紫色） |
-| OGP タイトル | "パワポ作るマン by みのるん" |
+| テーマカラー | `#0e0d6a`（KAGブルー） |
+| OGP タイトル | "パワポ作るマン for KAG" |
 | OGP 説明 | "AIがMarp形式でスライドを自動生成。指示を出すだけでプレゼン資料が完成！" |
 | OGP 画像 | `/minorun.jpg` |
 | Twitter Card | summary（@minorun365）|
+
+### KAG専用配色
+
+| 要素 | 配色 |
+|------|------|
+| KAGブルー | `#0e0d6a` |
+| グラデーション | `#1a3a6e` → `#5ba4d9` |
 
 ### PDF変換
 
@@ -325,15 +344,16 @@ const invoke = useMock ? invokeAgentMock : invokeAgent;
 ### Cognito設定
 
 - Cognito User Pool で認証
-- 誰でもサインアップ可能
+- **KAGドメイン限定**（`kddi-agdc.com`）
 - メール確認必須
 - AgentCore RuntimeのauthorizerConfigurationでCognito統合
+- Pre Sign-up Lambda トリガーでドメイン検証
 
 ### 認証画面のカスタマイズ
 
 | 項目 | 内容 |
 |------|------|
-| ヘッダー | アプリ名「パワポ作るマン by みのるん」+ 利用ガイド |
+| ヘッダー | アプリ名「パワポ作るマン for KAG」+ KAGメルアド案内 |
 | フッター | メールアドレスの利用目的（認証目的のみ） |
 
 **実装**: Amplify UI ReactのAuthenticatorコンポーネントの`components`プロパティでカスタマイズ
