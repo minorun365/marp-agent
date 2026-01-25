@@ -47,6 +47,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const [markdown, setMarkdown] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [editPromptTrigger, setEditPromptTrigger] = useState(0);
+  const [sharePromptTrigger, setSharePromptTrigger] = useState(0);
   const chatInputRef = useRef<HTMLInputElement>(null);
   // セッションID（画面更新まで同じIDを使用して会話履歴を保持）
   const [sessionId] = useState(() => crypto.randomUUID());
@@ -75,16 +76,17 @@ function MainApp({ signOut }: { signOut?: () => void }) {
       const exportFn = useMock ? exportPdfMock : exportPdf;
       const blob = await exportFn(markdown);
 
+      // 新しいタブでPDFを開く
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = useMock ? 'slide.md' : 'slide.pdf';
-      a.click();
-      URL.revokeObjectURL(url);
+      window.open(url, '_blank');
 
       if (useMock) {
         alert('モックモード: マークダウンファイルをダウンロードしました。');
       }
+
+      // チャット画面に遷移してシェアトリガーを発火
+      setActiveTab('chat');
+      setSharePromptTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Download error:', error);
       alert(`ダウンロードに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
@@ -148,6 +150,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
             currentMarkdown={markdown}
             inputRef={chatInputRef}
             editPromptTrigger={editPromptTrigger}
+            sharePromptTrigger={sharePromptTrigger}
             sessionId={sessionId}
           />
         </div>

@@ -15,6 +15,7 @@ interface ChatProps {
   currentMarkdown: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   editPromptTrigger?: number;  // 値が変わるたびに修正用メッセージを表示
+  sharePromptTrigger?: number;  // 値が変わるたびにシェア用メッセージを自動送信
   sessionId?: string;  // 会話履歴を保持するためのセッションID
 }
 
@@ -25,7 +26,7 @@ const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
 const EDIT_PROMPT_MESSAGE = 'どのように修正しますか？';
 
-export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sessionId }: ChatProps) {
+export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sharePromptTrigger, sessionId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -103,6 +104,95 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
 
     streamEditPrompt();
   }, [editPromptTrigger]);
+
+  // シェアボタンが押されたときにエージェントにシェアリクエストを自動送信
+  useEffect(() => {
+    if (!sharePromptTrigger || sharePromptTrigger === 0 || isLoading) return;
+
+    const sendShareRequest = async () => {
+      setIsLoading(true);
+
+      // アシスタントメッセージを追加（ストリーミング用）
+      setMessages(prev => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
+
+      try {
+        const invoke = useMock ? invokeAgentMock : invokeAgent;
+
+        await invoke('今回のスライド作成体験をXでシェアするURLを提案してください（無言でツール使用開始すること）', currentMarkdown, {
+          onText: (text) => {
+            setMessages(prev =>
+              prev.map((msg, idx) =>
+                idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
+                  ? { ...msg, content: msg.content + text }
+                  : msg
+              )
+            );
+          },
+          onStatus: () => {},
+          onToolUse: (toolName) => {
+            // ストリーミングカーソルを消す
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.isStreaming ? { ...msg, isStreaming: false } : msg
+              )
+            );
+
+            if (toolName === 'generate_tweet_url') {
+              setMessages(prev => {
+                const hasExisting = prev.some(
+                  msg => msg.isStatus && msg.statusText === 'ツイート案を作成中...'
+                );
+                if (hasExisting) return prev;
+                return [
+                  ...prev,
+                  { role: 'assistant', content: '', isStatus: true, statusText: 'ツイート案を作成中...' }
+                ];
+              });
+            }
+            // シェアリクエスト時はスライド生成ステータスは無視
+          },
+          onMarkdown: () => {},
+          onTweetUrl: (url) => {
+            // ツイートURLステータスを完了に更新し、リンクメッセージを追加
+            setMessages(prev => {
+              const updated = prev.map(msg =>
+                msg.isStatus && msg.statusText === 'ツイート案を作成中...'
+                  ? { ...msg, statusText: 'ツイート案を作成しました' }
+                  : msg
+              );
+              return [
+                ...updated,
+                { role: 'assistant', content: `この体験をXでシェアしませんか？ 👉 [ツイート](${url})` }
+              ];
+            });
+          },
+          onError: (error) => {
+            console.error('Share error:', error);
+          },
+          onComplete: () => {
+            setMessages(prev =>
+              prev.map(msg => {
+                if (msg.isStreaming) {
+                  return { ...msg, isStreaming: false };
+                }
+                // ツイートステータスを確実に完了に更新
+                if (msg.isStatus && msg.statusText === 'ツイート案を作成中...') {
+                  return { ...msg, statusText: 'ツイート案を作成しました' };
+                }
+                return msg;
+              })
+            );
+          },
+        }, sessionId);
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    sendShareRequest();
+  }, [sharePromptTrigger]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,7 +344,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               <div key={index} className="flex justify-start">
                 <div className="bg-blue-50 text-blue-700 rounded-lg px-4 py-2 border border-blue-200">
                   <span className="text-sm flex items-center gap-2">
-                    {message.statusText === 'スライドを生成しました' || message.statusText === 'Web検索完了' ? (
+                    {message.statusText === 'スライドを生成しました' || message.statusText === 'Web検索完了' || message.statusText === 'ツイート案を作成しました' ? (
                       <span className="text-green-600">&#10003;</span>
                     ) : (
                       <span className="animate-spin">&#9696;</span>
@@ -282,7 +372,15 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                   <span className="text-sm shimmer-text font-medium">{status}</span>
                 ) : message.role === 'assistant' ? (
                   <div className="text-sm prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
-                    <ReactMarkdown>
+                    <ReactMarkdown
+                      components={{
+                        a: ({ href, children }) => (
+                          <a href={href} target="_blank" rel="noopener noreferrer">
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
                       {message.content + (message.isStreaming ? ' ▌' : '')}
                     </ReactMarkdown>
                   </div>
