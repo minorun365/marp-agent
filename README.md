@@ -3,8 +3,8 @@
 KAGメンバーなら誰でも利用できます。
 
 <p>
-  <img src="https://github.com/user-attachments/assets/c0f87329-0fb7-492a-9054-32811b1f6d7d" alt="イメージ1" width="49%" style="display:inline-block;" />
-  <img src="https://github.com/user-attachments/assets/70be1846-37ed-4d65-8b9a-be14ccdb5b76" alt="イメージ2" width="49%" style="display:inline-block;" />
+  <img src="https://github.com/user-attachments/assets/c0f87329-0fb7-492a-9054-32811b1f6d7d" alt="イメージ1" width="35%" style="display:inline-block;" />
+  <img src="https://github.com/user-attachments/assets/f63f4568-02c0-456c-a4e8-d25b8a072ceb" alt="イメージ2" width="60%" style="display:inline-block;" />
 </p>
 
 
