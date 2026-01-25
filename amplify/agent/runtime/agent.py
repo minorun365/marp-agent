@@ -66,7 +66,8 @@ def generate_tweet_url(tweet_text: str) -> str:
     global _generated_tweet_url
     # 日本語をURLエンコード
     encoded_text = urllib.parse.quote(tweet_text, safe='')
-    _generated_tweet_url = f"https://x.com/compose/post?text={encoded_text}"
+    # Twitter Web Intent（compose/postではtextパラメータが無視される）
+    _generated_tweet_url = f"https://twitter.com/intent/tweet?text={encoded_text}"
     return "ツイートURLを生成しました。"
 
 

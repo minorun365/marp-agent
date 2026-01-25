@@ -303,7 +303,7 @@ paginate: true
     callbacks.onToolUse('generate_tweet_url');
     await sleep(500);
     const tweetText = encodeURIComponent(`#パワポ作るマン でスライドを作ってみました。これは便利！ pawapo.minoruonda.com`);
-    callbacks.onTweetUrl?.(`https://x.com/compose/post?text=${tweetText}`);
+    callbacks.onTweetUrl?.(`https://twitter.com/intent/tweet?text=${tweetText}`);
   }
 
   callbacks.onComplete();
