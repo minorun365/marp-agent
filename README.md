@@ -2,6 +2,8 @@
 
 新規アカウント作成すれば、誰でも使えます！
 
+※1日50名を超えるとエラーになります。その際は翌日までお待ちください🙏
+
 [pawapo.minoruonda.com](https://pawapo.minoruonda.com/)
 
 <p>
