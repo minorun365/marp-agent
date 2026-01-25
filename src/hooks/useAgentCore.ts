@@ -6,6 +6,7 @@ export interface AgentCoreCallbacks {
   onStatus: (status: string) => void;
   onMarkdown: (markdown: string) => void;
   onToolUse: (toolName: string) => void;
+  onTweetUrl?: (url: string) => void;
   onError: (error: Error) => void;
   onComplete: () => void;
 }
@@ -127,6 +128,11 @@ function handleEvent(
     case 'tool_use':
       if (textValue) {
         callbacks.onToolUse(textValue);
+      }
+      break;
+    case 'tweet_url':
+      if (textValue) {
+        callbacks.onTweetUrl?.(textValue);
       }
       break;
     case 'error':
