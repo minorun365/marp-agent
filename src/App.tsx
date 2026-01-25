@@ -99,7 +99,10 @@ function MainApp({ signOut }: { signOut?: () => void }) {
       {/* ヘッダー */}
       <header className="bg-kag-gradient text-white px-6 py-4 shadow-md">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold">パワポ作るマン　by みのるん</h1>
+          <div>
+            <h1 className="text-xl font-bold">パワポ作るマン　by みのるん</h1>
+            <p className="text-xs text-white/50">Strands & AgentCore でフルサーバーレス構築！</p>
+          </div>
           <button
               onClick={signOut}
               className="bg-white/20 text-white px-4 py-1 rounded hover:bg-white/30 transition-colors text-sm"
