@@ -30,6 +30,25 @@ const authComponents = {
         <p className="text-xs text-white/70 leading-relaxed">
           登録されたメールアドレスは認証目的でのみ使用します。
         </p>
+        <p className="text-xs text-white/70 mt-2">
+          <a
+            href="https://github.com/minorun365/marp-agent"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-white transition-colors"
+          >
+            GitHub
+          </a>
+          {' / '}
+          <a
+            href="https://x.com/minorun365"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-white transition-colors"
+          >
+            X
+          </a>
+        </p>
       </div>
     );
   },
