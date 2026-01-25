@@ -273,7 +273,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           setMessages(prev =>
             prev.map(msg =>
               msg.isStatus && msg.statusText === 'スライドを作成中...（30秒ほどかかります）'
-                ? { ...msg, statusText: 'スライドを生成しました' }
+                ? { ...msg, statusText: 'スライドを作成しました' }
                 : msg
             )
           );
@@ -338,13 +338,18 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           const isLastAssistant = message.role === 'assistant' && index === messages.length - 1;
           const showStatus = isLastAssistant && !message.content && !message.isStatus && status;
 
+          // 空のアシスタントメッセージはスキップ（ステータス表示中を除く）
+          if (message.role === 'assistant' && !message.isStatus && !message.content.trim() && !showStatus) {
+            return null;
+          }
+
           // ステータスメッセージの場合
           if (message.isStatus) {
             return (
               <div key={index} className="flex justify-start">
                 <div className="bg-blue-50 text-blue-700 rounded-lg px-4 py-2 border border-blue-200">
                   <span className="text-sm flex items-center gap-2">
-                    {message.statusText === 'スライドを生成しました' || message.statusText === 'Web検索完了' || message.statusText === 'ツイート案を作成しました' ? (
+                    {message.statusText === 'スライドを作成しました' || message.statusText === 'Web検索完了' || message.statusText === 'ツイート案を作成しました' ? (
                       <span className="text-green-600">&#10003;</span>
                     ) : (
                       <span className="animate-spin">&#9696;</span>
