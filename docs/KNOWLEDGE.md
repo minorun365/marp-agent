@@ -157,6 +157,7 @@ AgentCore Runtime経由でストリーミングする場合、以下の形式で
 data: {"type": "text", "data": "テキストチャンク"}
 data: {"type": "tool_use", "data": "ツール名"}
 data: {"type": "markdown", "data": "生成されたマークダウン"}
+data: {"type": "tweet_url", "data": "https://twitter.com/intent/tweet?text=..."}
 data: {"type": "error", "error": "エラーメッセージ"}
 data: {"type": "done"}
 ```
@@ -383,19 +384,6 @@ paginate: true
 
 **参考**: https://rnd195.github.io/marp-community-themes/theme/border.html
 
-### kagテーマ（KAG専用）
-
-KDDI向けカスタムテーマ。背景画像をBase64埋め込みで含む。
-
-**特徴**:
-- 背景画像（top, slide, crosshead, end）がBase64埋め込み
-- フォントサイズがborderより大きめ（ベース22pt、h1: 38pt）
-- スライドクラス（`top`, `crosshead`, `end`）でメリハリをつける
-
-**ファイル配置**:
-- `src/themes/kag.css` - フロントエンド用（約1.6MB）
-- `amplify/agent/runtime/kag.css` - バックエンド用（約1.6MB）
-
 ### カスタムテーマのBase64埋め込み
 
 背景画像を含むテーマをポータブルにするには、Base64データURIに変換して埋め込む：
@@ -425,8 +413,7 @@ const themeName = process.env.MARP_THEME || (branchName === 'kag' ? 'kag' : 'bor
 |------|---------|--------|
 | sandbox | `npx ampx sandbox` | border |
 | sandbox | `MARP_THEME=kag npx ampx sandbox` | kag |
-| 本番 main | Amplify Console | border |
-| 本番 kag | Amplify Console | kag |
+| 本番 | Amplify Console | ブランチ名で自動判定 |
 
 **フロントエンド側**:
 ```typescript
@@ -454,7 +441,7 @@ marp.themeSet.add(currentTheme);
 // amplify/auth/pre-sign-up/handler.ts
 import type { PreSignUpTriggerHandler } from 'aws-lambda';
 
-const ALLOWED_DOMAIN = 'kddi-agdc.com';
+const ALLOWED_DOMAIN = 'example.com';
 
 export const handler: PreSignUpTriggerHandler = async (event) => {
   const email = event.request.userAttributes.email;
@@ -726,6 +713,26 @@ setMessages(prev =>
 </ReactMarkdown>
 ```
 
+### ReactMarkdownでリンクを新しいタブで開く
+
+マークダウン内のリンクをクリックした時に新しいタブで開くには、`components`プロパティでカスタムリンクレンダラーを設定する。
+
+```tsx
+<ReactMarkdown
+  components={{
+    a: ({ href, children }) => (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+  }}
+>
+  {message.content}
+</ReactMarkdown>
+```
+
+**用途**: Xシェア機能のツイートリンクなど、外部サイトへのリンクを新しいタブで開く場合に使用。
+
 ### タブ切り替え時の状態保持
 ```tsx
 // NG: 条件レンダリングだとアンマウント時に状態が消える
@@ -952,6 +959,102 @@ backend.addOutput({
 import outputs from '../amplify_outputs.json';
 const endpointArn = outputs.custom?.agentEndpointArn;
 ```
+
+---
+
+---
+
+## Observability（OTELトレース）
+
+AgentCore Observability でトレースを出力するには、以下の3つすべてが必要。
+
+### 1. requirements.txt
+
+```
+strands-agents[otel]          # otel extra が必要（strands-agents だけではNG）
+aws-opentelemetry-distro      # ADOT
+```
+
+### 2. Dockerfile
+
+```dockerfile
+# OTELの自動計装を有効にして起動
+CMD ["opentelemetry-instrument", "python", "agent.py"]
+```
+
+**注意**: `python agent.py` だけではOTELトレースが出力されない。
+
+### 3. CDK環境変数
+
+```typescript
+environmentVariables: {
+  AGENT_OBSERVABILITY_ENABLED: 'true',
+  OTEL_PYTHON_DISTRO: 'aws_distro',
+  OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
+  OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
+}
+```
+
+### 確認方法
+
+CloudWatch Console → **Bedrock AgentCore GenAI Observability** → Agents View / Sessions View / Traces View
+
+---
+
+## deploy-time-build（本番環境ビルド）
+
+### 概要
+
+sandbox環境ではローカルでDockerビルドできるが、本番環境（Amplify Console）ではCodeBuildでビルドする必要がある。`deploy-time-build` パッケージを使用してビルドをCDK deploy時に実行する。
+
+### 環境分岐
+
+```typescript
+// amplify/agent/resource.ts
+const isSandbox = !branch || branch === 'sandbox';
+
+const artifact = isSandbox
+  ? agentcore.AgentRuntimeArtifact.fromAsset(runtimePath)  // ローカルビルド
+  : agentcore.AgentRuntimeArtifact.fromAsset(runtimePath, {
+      platform: ecr_assets.Platform.LINUX_ARM64,
+      bundling: {
+        // deploy-time-build でCodeBuildビルド
+      },
+    });
+```
+
+### 参考
+
+- [deploy-time-build](https://github.com/tmokmss/deploy-time-build)
+
+---
+
+## Twitter/X シェア機能
+
+### Web Intent URL形式（重要）
+
+ツイートURLを生成する際は、Twitter Web Intent形式を使用する。
+
+```python
+# OK: Web Intent形式（textパラメータが確実に反映される）
+url = f"https://twitter.com/intent/tweet?text={encoded_text}"
+
+# NG: compose/post形式（textパラメータが無視されることがある）
+url = f"https://x.com/compose/post?text={encoded_text}"
+```
+
+**原因**: `compose/post` はXのWeb UI直接アクセス用URLで、`text`パラメータが無視されることがある。`intent/tweet` はシェアボタン用に設計された公式の方法で、パラメータが確実に処理される。
+
+### URLエンコード
+
+日本語やハッシュタグを含むツイート本文は `urllib.parse.quote()` でエンコード：
+
+```python
+import urllib.parse
+encoded_text = urllib.parse.quote(tweet_text, safe='')
+```
+
+**ポイント**: `safe=''` で `#` もエンコードする（URLパラメータ内では必要）
 
 ---
 

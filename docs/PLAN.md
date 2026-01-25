@@ -43,6 +43,7 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 | 認証 | Amplify Auth (Cognito) |
 | インフラ | AWS CDK + Amplify Gen2 |
 | ランタイム | Bedrock AgentCore |
+| Observability | OpenTelemetry (ADOT) → CloudWatch |
 
 ## 環境分岐
 
@@ -117,6 +118,8 @@ git push
 - [x] リアルタイムプレビュー（borderテーマ）
 - [x] PDFダウンロード（日本語対応）
 - [x] Web検索（Tavily）
+- [x] Xシェア機能（PDFダウンロード後に自動でツイートURL生成）
+- [x] Observability（OTELトレース → CloudWatch）
 
 ### 追加機能（Phase 2）
 
@@ -130,30 +133,7 @@ git push
 
 | タスク | 説明 | 影響範囲 |
 |--------|------|----------|
-| ~~KAGテーマ特殊スライドクラスの活用~~ | ~~タイトル・仕切り・終わりスライドにテーマ固有のクラスを適用~~ ✅ | 完了 |
 | 環境識別子のリネーム | main→prod、dev→sandbox に変更 | リソース名変更（AgentCore Runtime再作成の可能性あり） |
-
-#### KAGテーマ特殊スライドクラスの詳細 ✅ 完了
-
-**問題:**
-- エージェントがすべて通常の本文スライドとして生成していた
-- タイトルスライド、セクション仕切り、最終スライドにKAGテーマ固有のスタイルが適用されなかった
-
-**解決策:**
-
-1. **KAGテーマCSS** → 既に定義済み
-   - `top` - タイトルスライド
-   - `crosshead` - セクション仕切り
-   - `end` - 最終スライド
-
-2. **システムプロンプト改善** → `agent.py` を更新
-   - 「必須」「推奨」の強い表現を追加
-   - タイトル（top）と最後（end）は**必須**として強調
-   - 仕切り（crosshead）は**推奨**として案内
-   - テンプレート構成を明確化
-
-**変更ファイル:**
-- `amplify/agent/runtime/agent.py` - システムプロンプト強化
 
 #### 環境識別子リネームの詳細
 
@@ -161,14 +141,12 @@ git push
 | 識別子 | 用途 |
 |--------|------|
 | main | 本番環境（mainブランチ） |
-| kag | KAG専用環境（kagブランチ） |
 | dev | sandbox環境（ローカル開発） |
 
 **変更後:**
 | 識別子 | 用途 |
 |--------|------|
 | prod | 本番環境（mainブランチ） |
-| kag | KAG専用環境（kagブランチ） |
 | sandbox | sandbox環境（ローカル開発） |
 
 **変更が必要なファイル:**
@@ -203,18 +181,13 @@ marp-agent/
 │   ├── agentcore.png            # ファビコン
 │   └── minorun.jpg              # OGP画像
 ├── amplify/
-│   ├── auth/
-│   │   ├── resource.ts          # Cognito認証設定
-│   │   └── pre-sign-up/         # ドメイン制限Lambda
-│   │       ├── resource.ts
-│   │       └── handler.ts
+│   ├── auth/resource.ts         # Cognito認証設定
 │   ├── agent/
 │   │   ├── resource.ts          # AgentCore CDK定義
 │   │   └── runtime/
 │   │       ├── Dockerfile       # エージェントコンテナ
 │   │       ├── agent.py         # Strands Agent実装
-│   │       ├── border.css       # カスタムテーマ（PDF用）
-│   │       └── kag.css          # KAGテーマ（PDF用）
+│   │       └── border.css       # カスタムテーマ（PDF用）
 │   └── backend.ts               # バックエンド統合
 ├── tests/
 │   └── e2e-test.md              # E2Eテストチェックリスト
@@ -226,9 +199,7 @@ marp-agent/
 │   │   ├── Chat.tsx             # チャットUI
 │   │   └── SlidePreview.tsx     # スライドプレビュー
 │   ├── hooks/useAgentCore.ts    # AgentCore API呼び出し
-│   └── themes/
-│       ├── border.css           # カスタムテーマ（プレビュー用）
-│       └── kag.css              # KAGテーマ（プレビュー用）
+│   └── themes/border.css        # カスタムテーマ（プレビュー用）
 └── package.json
 ```
 
