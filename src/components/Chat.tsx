@@ -24,7 +24,7 @@ const INITIAL_MESSAGE = 'どんな資料を作りたいですか？ URLの要約
 // モック使用フラグ（VITE_USE_MOCK=true で強制的にモック使用）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
-const EDIT_PROMPT_MESSAGE = 'どのように修正しますか？ 内容の調整や、はみ出しの抑制もできます。';
+const EDIT_PROMPT_MESSAGE = 'どのように修正しますか？ 内容や枚数の調整、はみ出しの抑制もできます！';
 
 export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sharePromptTrigger, sessionId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
