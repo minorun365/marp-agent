@@ -215,13 +215,31 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         onText: (text) => {
           setStatus(''); // テキストが来たらステータスを消す
           // テキストをストリーミング表示
-          setMessages(prev =>
-            prev.map((msg, idx) =>
-              idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
-                ? { ...msg, content: msg.content + text }
-                : msg
-            )
-          );
+          setMessages(prev => {
+            // 最後のステータスメッセージと最後の非ステータスアシスタントメッセージのインデックスを探す
+            let lastStatusIdx = -1;
+            let lastTextAssistantIdx = -1;
+            for (let i = prev.length - 1; i >= 0; i--) {
+              if (prev[i].isStatus && lastStatusIdx === -1) {
+                lastStatusIdx = i;
+              }
+              if (prev[i].role === 'assistant' && !prev[i].isStatus && lastTextAssistantIdx === -1) {
+                lastTextAssistantIdx = i;
+              }
+            }
+            // ステータスがあり、その後にテキストメッセージがない場合は新しいメッセージを追加
+            if (lastStatusIdx !== -1 && (lastTextAssistantIdx === -1 || lastTextAssistantIdx < lastStatusIdx)) {
+              return [...prev, { role: 'assistant', content: text, isStreaming: true }];
+            }
+            // そうでなければ、最後の非ステータスアシスタントメッセージにテキストを追加
+            if (lastTextAssistantIdx !== -1) {
+              return prev.map((msg, idx) =>
+                idx === lastTextAssistantIdx ? { ...msg, content: msg.content + text } : msg
+              );
+            }
+            // どちらもなければ新しいメッセージを追加
+            return [...prev, { role: 'assistant', content: text, isStreaming: true }];
+          });
         },
         onStatus: (newStatus) => {
           setStatus(newStatus);
