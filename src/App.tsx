@@ -122,7 +122,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-xl font-bold">パワポ作るマン　by みのるん</h1>
-            <p className="text-xs text-white/50">Strands & AgentCore でフルサーバーレス構築！</p>
+            <p className="text-xs text-white/50">AgentCore ＆ Amplifyでフルサーバーレス構築！</p>
           </div>
           <button
               onClick={signOut}
