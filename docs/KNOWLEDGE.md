@@ -1058,6 +1058,42 @@ encoded_text = urllib.parse.quote(tweet_text, safe='')
 
 ---
 
+## お知らせバナーの追加
+
+チャット画面にシステムからのお知らせを表示する方法。
+
+### 実装場所
+
+`src/components/Chat.tsx` のメッセージ一覧の先頭に追加。
+
+```tsx
+{/* メッセージ一覧 */}
+<div className="flex-1 overflow-y-auto px-6 py-4">
+  <div className="max-w-3xl mx-auto space-y-4">
+  {/* 一時的なお知らせバナー（不要になったら削除） */}
+  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-700 text-sm">
+    お知らせ内容をここに記載
+  </div>
+  {/* 以下、既存のメッセージ表示 */}
+```
+
+### バナーの種類
+
+| 種類 | 背景色 | ボーダー | テキスト | アイコン | 用途 |
+|------|--------|---------|----------|---------|------|
+| 情報（青） | `bg-blue-50` | `border-blue-200` | `text-blue-700` | - | 復旧報告、お知らせ |
+| 警告（黄） | `bg-yellow-50` | `border-yellow-200` | `text-yellow-800` | ⚠️ | 障害発生中、メンテナンス予告 |
+| エラー（赤） | `bg-red-50` | `border-red-200` | `text-red-700` | ❌ | 重大な障害 |
+| 成功（緑） | `bg-green-50` | `border-green-200` | `text-green-700` | ✅ | 新機能リリース |
+
+### 運用手順
+
+1. `src/components/Chat.tsx` にバナーを追加
+2. コミット & 両ブランチにpush（mainとkag）
+3. 不要になったらバナーを削除してpush
+
+---
+
 ## 参考リンク
 
 - [Marp公式](https://marp.app/)
