@@ -162,6 +162,47 @@ data: {"type": "error", "error": "エラーメッセージ"}
 data: {"type": "done"}
 ```
 
+### resultイベントからのテキスト抽出
+
+ツール使用後にLLMが追加のテキストを返す場合、`data` イベントではなく `result` イベントに含まれることがある。
+`result.message.content` からテキストを抽出する処理が必要：
+
+```python
+elif "result" in event:
+    result = event["result"]
+    if hasattr(result, 'message') and result.message:
+        for content in getattr(result.message, 'content', []):
+            if hasattr(content, 'text') and content.text:
+                yield {"type": "text", "data": content.text}
+```
+
+### web_searchのエラーハンドリング（レートリミット対応）
+
+Tavily APIのレートリミット（無料枠超過）を検出してユーザーフレンドリーなメッセージを返す：
+
+```python
+@tool
+def web_search(query: str) -> str:
+    try:
+        # 検索処理...
+    except Exception as e:
+        error_str = str(e).lower()
+        # レートリミット（無料枠超過）を検出
+        if "rate limit" in error_str or "429" in error_str or "quota" in error_str:
+            return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
+        return f"検索エラー: {str(e)}"
+```
+
+システムプロンプトにもエラー時の対応ルールを追加：
+
+```
+## 検索エラー時の対応
+web_searchツールがエラーを返した場合：
+1. エラー原因をユーザーに伝える
+2. 一般的な知識や推測でスライド作成せず、修正待ちを案内
+3. スライド作成は行わず、エラー報告のみで終了
+```
+
 ### ツール駆動型のマークダウン出力
 
 マークダウンをテキストでストリーミング出力すると、フロントエンドで除去処理が複雑になる。
@@ -665,6 +706,32 @@ setMessages(prev =>
 
 **注意**: シャローコピー（`[...prev]`）してオブジェクトを直接変更すると、React StrictModeで2回実行され文字がダブる。必ず `map` + スプレッド構文でイミュータブルに更新する。
 
+### ステータスメッセージ後のテキスト表示
+
+ツール使用後にLLMが追加のテキスト（エラー報告など）を返す場合、ステータスメッセージの後に新しいメッセージとして追加する処理が必要：
+
+```typescript
+onText: (text) => {
+  setMessages(prev => {
+    // ステータスメッセージと非ステータスメッセージの位置を探す
+    let lastStatusIdx = -1;
+    let lastTextAssistantIdx = -1;
+    for (let i = prev.length - 1; i >= 0; i--) {
+      if (prev[i].isStatus && lastStatusIdx === -1) lastStatusIdx = i;
+      if (prev[i].role === 'assistant' && !prev[i].isStatus && lastTextAssistantIdx === -1) {
+        lastTextAssistantIdx = i;
+      }
+    }
+    // ステータスの後にテキストがなければ新規メッセージを追加
+    if (lastStatusIdx !== -1 && lastTextAssistantIdx < lastStatusIdx) {
+      return [...prev, { role: 'assistant', content: text, isStreaming: true }];
+    }
+    // それ以外は既存メッセージに追加
+    // ...
+  });
+};
+```
+
 ### シマーエフェクト（ローディングアニメーション）
 
 「考え中...」などのステータステキストに光が左から右に流れるエフェクトを適用：
@@ -1091,6 +1158,42 @@ encoded_text = urllib.parse.quote(tweet_text, safe='')
 1. `src/components/Chat.tsx` にバナーを追加
 2. コミット & 両ブランチにpush（mainとkag）
 3. 不要になったらバナーを削除してpush
+
+---
+
+## ローカル開発（認証スキップ）
+
+フロントエンドのデザイン確認時に認証をスキップしてモックモードで起動できる。
+
+### 起動方法
+
+```bash
+VITE_USE_MOCK=true npm run dev
+```
+
+### 実装
+
+```typescript
+// src/main.tsx
+const useMock = import.meta.env.VITE_USE_MOCK === 'true';
+
+if (useMock) {
+  // Amplify設定をスキップしてモックアプリを表示
+  root.render(<MockApp />);
+} else {
+  // 通常の認証付きアプリを起動
+  Amplify.configure(outputs);
+  root.render(<AuthenticatedApp />);
+}
+```
+
+```typescript
+// src/App.tsx
+// モックモードの場合はAuthenticatorをスキップ
+if (useMock) {
+  return <MainApp signOut={() => {}} />;
+}
+```
 
 ---
 
