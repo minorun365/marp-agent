@@ -328,6 +328,11 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-3xl mx-auto space-y-4">
+        {/* 一時的なお知らせバナー（不要になったら削除） */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-yellow-800 text-sm">
+          <span className="mr-2">⚠️</span>
+          現在、利用殺到でみのるんの検索API無料枠が枯渇しています。すぐ修正します🙏
+        </div>
         {messages.length === 0 && (
           <div className="text-center text-gray-400 mt-8">
             <p className="text-lg">スライドを作成しましょう</p>
