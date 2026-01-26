@@ -5,10 +5,15 @@ import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
 import { exportPdf, exportPdfMock } from './hooks/useAgentCore';
 
-// モック使用フラグ
+// モック使用フラグ（ローカル開発用：認証スキップ＆モックAPI）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
 type Tab = 'chat' | 'preview';
+
+// モックのsignOut関数
+const mockSignOut = () => {
+  console.log('Mock signOut called');
+};
 
 const authComponents = {
   Header() {
@@ -55,6 +60,11 @@ const authComponents = {
 };
 
 function App() {
+  // モックモード時は認証をスキップ（ローカル開発用）
+  if (useMock) {
+    return <MainApp signOut={mockSignOut} />;
+  }
+
   return (
     <Authenticator components={authComponents}>
       {({ signOut }) => <MainApp signOut={signOut} />}

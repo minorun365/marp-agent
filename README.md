@@ -19,6 +19,15 @@ AWSの最新サービスを活用して、フルサーバーレスで構築。�
 <img width="1362" height="759" alt="アーキテクチャ図" src="https://github.com/user-attachments/assets/21c580e9-6c09-4ef8-ba82-90014522871b" />
 
 
+## ローカル開発
+
+認証をスキップしてフロントエンドのデザイン確認ができます。
+
+```bash
+# モックモードで起動（認証スキップ＆モックAPI）
+VITE_USE_MOCK=true npm run dev
+```
+
 ## 参考ブログ
 
 [Amplify & AgentCoreのAIエージェントをAWS CDKでデプロイしよう！ - Qiita](https://qiita.com/minorun365/items/0b4a980f2f4bb073a9e0)
