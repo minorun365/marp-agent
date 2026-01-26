@@ -44,6 +44,10 @@ def web_search(query: str) -> str:
             formatted_results.append(f"**{title}**\n{content}\nURL: {url}")
         return "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
     except Exception as e:
+        error_str = str(e).lower()
+        # レートリミット（無料枠超過）を検出
+        if "rate limit" in error_str or "429" in error_str or "quota" in error_str:
+            return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください🙏"
         return f"検索エラー: {str(e)}"
 
 
@@ -285,6 +289,13 @@ async def invoke(payload):
             tool_info = event["current_tool_use"]
             tool_name = tool_info.get("name", "unknown")
             yield {"type": "tool_use", "data": tool_name}
+        elif "result" in event:
+            # 最終結果からテキストを抽出（ツール使用後の回答など）
+            result = event["result"]
+            if hasattr(result, 'message') and result.message:
+                for content in getattr(result.message, 'content', []):
+                    if hasattr(content, 'text') and content.text:
+                        yield {"type": "text", "data": content.text}
 
     # output_slideツールで生成されたマークダウンを送信
     if _generated_markdown:
