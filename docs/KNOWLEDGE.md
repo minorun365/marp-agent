@@ -247,8 +247,8 @@ const runtime = new agentcore.Runtime(stack, 'MarpAgent', {
   agentRuntimeArtifact: artifact,
 });
 
-// エンドポイント作成（必須）
-const endpoint = runtime.addEndpoint('marp-agent-endpoint');
+// エンドポイントはDEFAULTを使用（addEndpoint不要）
+// runtime.addEndpoint() を呼ぶと不要なエンドポイントが増えるため注意
 ```
 
 ### Runtimeクラスのプロパティ
