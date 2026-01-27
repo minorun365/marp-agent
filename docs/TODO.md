@@ -2,65 +2,18 @@
 
 ## GitHub Issues（解消しやすい順）
 
-### #5 ブラウザによってはタイトルバーが折り返されてダサい
-**工数**: 小（CSS調整のみ）
-
-**現状**: `src/App.tsx` 131-144行目のヘッダーで、テキストサイズとパディングが固定値。
-
-**対応方法**:
-```tsx
-// 現状
-<h1 className="text-xl font-bold">パワポ作るマン　by みのるん</h1>
-
-// 修正案: レスポンシブサイズ + 折り返し防止
-<h1 className="text-base md:text-xl font-bold whitespace-nowrap">パワポ作るマン</h1>
-<span className="text-xs md:text-base">by みのるん</span>
-```
-- パディング調整: `px-4 md:px-6`
-- ログアウトボタンのサイズ調整: `text-xs md:text-sm`
+### ✅ #5 ブラウザによってはタイトルバーが折り返されてダサい
+**対応済み** — ヘッダーをレスポンシブ化（`truncate`で省略表示、ログアウトボタン縮小、`flex-shrink-0`で被り防止）
 
 ---
 
-### #4 PDFダウンロードを2連続で行った際、ツイート督促メッセージがうざい
-**工数**: 小
-
-**現状**: `src/App.tsx` 117-119行目で、PDF完了時に毎回 `sharePromptTrigger` をインクリメント → 毎回シェアメッセージ送信。
-
-**対応方法**:
-```tsx
-// App.tsx に状態追加
-const [hasShownSharePrompt, setHasShownSharePrompt] = useState(false);
-
-// handleDownloadPdf 内
-if (!hasShownSharePrompt) {
-  setSharePromptTrigger(prev => prev + 1);
-  setHasShownSharePrompt(true);
-}
-```
-- 1回目のダウンロード時のみシェア督促を表示
-- または「今後表示しない」チェックボックス追加
+### ✅ #4 PDFダウンロードを2連続で行った際、ツイート督促メッセージがうざい
+**対応済み** — `hasShownSharePrompt`フラグで初回のみシェア督促を表示
 
 ---
 
-### #3 PDFダウンロードがポップアップブロックされた場合、ユーザーが気づきづらい
-**工数**: 小
-
-**現状**: `src/App.tsx` 110-111行目で `window.open(url, '_blank')` を使用。戻り値チェックなし。
-
-**対応方法**:
-```tsx
-// App.tsx handleDownloadPdf 内
-const newWindow = window.open(url, '_blank');
-if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-  // ポップアップブロックされた場合
-  alert('ポップアップがブロックされました。ブラウザの設定を確認してください。');
-  // または: ダウンロードリンクをチャットに表示
-  setMessages(prev => [...prev, {
-    role: 'assistant',
-    content: `PDFが生成されました。[こちらをクリック](${url})してダウンロードしてください。`
-  }]);
-}
-```
+### ✅ #3 PDFダウンロードがポップアップブロックされた場合、ユーザーが気づきづらい
+**対応済み** — ポップアップブロック検出時に`<a>`タグで直接ダウンロードにフォールバック＋チャットにガイダンス表示
 
 ---
 
