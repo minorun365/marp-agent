@@ -8,9 +8,12 @@ from bedrock_agentcore import BedrockAgentCoreApp
 from strands import Agent, tool
 from tavily import TavilyClient
 
-# Tavily クライアント初期化（APIキーがある場合のみ）
-TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
-tavily_client = TavilyClient(api_key=TAVILY_API_KEY) if TAVILY_API_KEY else None
+# Tavily クライアント初期化（複数キーでフォールバック対応）
+_tavily_clients: list[TavilyClient] = []
+for _key_name in ["TAVILY_API_KEY", "TAVILY_API_KEY2", "TAVILY_API_KEY3"]:
+    _key = os.environ.get(_key_name, "")
+    if _key:
+        _tavily_clients.append(TavilyClient(api_key=_key))
 
 # テーマ名（環境変数から取得、デフォルトはborder）
 THEME_NAME = os.environ.get("MARP_THEME", "border")
@@ -26,29 +29,32 @@ def web_search(query: str) -> str:
     Returns:
         検索結果のテキスト
     """
-    if not tavily_client:
+    if not _tavily_clients:
         return "Web検索機能は現在利用できません（APIキー未設定）"
 
-    try:
-        results = tavily_client.search(
-            query=query,
-            max_results=5,
-            search_depth="advanced",
-        )
-        # 検索結果をテキストに整形
-        formatted_results = []
-        for result in results.get("results", []):
-            title = result.get("title", "")
-            content = result.get("content", "")
-            url = result.get("url", "")
-            formatted_results.append(f"**{title}**\n{content}\nURL: {url}")
-        return "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
-    except Exception as e:
-        error_str = str(e).lower()
-        # レートリミット（無料枠超過）を検出
-        if "rate limit" in error_str or "429" in error_str or "quota" in error_str:
-            return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください🙏"
-        return f"検索エラー: {str(e)}"
+    for client in _tavily_clients:
+        try:
+            results = client.search(
+                query=query,
+                max_results=5,
+                search_depth="advanced",
+            )
+            # 検索結果をテキストに整形
+            formatted_results = []
+            for result in results.get("results", []):
+                title = result.get("title", "")
+                content = result.get("content", "")
+                url = result.get("url", "")
+                formatted_results.append(f"**{title}**\n{content}\nURL: {url}")
+            return "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
+        except Exception as e:
+            error_str = str(e).lower()
+            if "rate limit" in error_str or "429" in error_str or "quota" in error_str or "usage limit" in error_str:
+                continue  # 次のキーで再試行
+            return f"検索エラー: {str(e)}"
+
+    # 全キー枯渇
+    return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください🙏"
 
 
 # スライド出力用のグローバル変数（invokeで参照）
