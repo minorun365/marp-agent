@@ -65,6 +65,8 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
     authorizerConfiguration: authConfig,
     environmentVariables: {
       TAVILY_API_KEY: process.env.TAVILY_API_KEY || '',
+      TAVILY_API_KEY2: process.env.TAVILY_API_KEY2 || '',
+      TAVILY_API_KEY3: process.env.TAVILY_API_KEY3 || '',
       // Observability（OTEL）設定
       AGENT_OBSERVABILITY_ENABLED: 'true',
       OTEL_PYTHON_DISTRO: 'aws_distro',
