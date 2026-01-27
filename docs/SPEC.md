@@ -162,7 +162,7 @@ paginate: true
 
 | ツール名 | 説明 |
 |---------|------|
-| `web_search` | Tavily APIを使用したWeb検索。最新情報の取得に使用 |
+| `web_search` | Tavily APIを使用したWeb検索。複数APIキーのフォールバック対応（レートリミット時に自動で次のキーに切替） |
 | `output_slide` | 生成したMarpマークダウンを出力するツール。テキストで直接出力せずこのツール経由で出力 |
 | `generate_tweet_url` | ツイート投稿用のURLを生成。ハッシュタグ `#パワポ作るマン` を含む100文字以内のツイート |
 
@@ -563,7 +563,9 @@ Amplify Console → **Environment variables** で設定:
 
 | 変数名 | 説明 |
 |--------|------|
-| `TAVILY_API_KEY` | Web検索API用 |
+| `TAVILY_API_KEY` | Web検索API用（1つ目） |
+| `TAVILY_API_KEY2` | Web検索API用（2つ目、フォールバック） |
+| `TAVILY_API_KEY3` | Web検索API用（3つ目、フォールバック） |
 
 ### 4. ブランチ連携
 
