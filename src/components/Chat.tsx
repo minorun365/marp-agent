@@ -162,7 +162,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               );
               return [
                 ...updated,
-                { role: 'assistant', content: `ダウンロードありがとうございます！今回の体験をXでシェアしませんか？ 👉 [ツイート](${url})\n\n&nbsp;\n\n※うまくダウンロードされない場合は、ブラウザのポップアップブロック設定を解除ください。` }
+                { role: 'assistant', content: `ダウンロードありがとうございます！今回の体験をXでシェアしませんか？ 👉 [ツイート](${url})` }
               ];
             });
           },
@@ -216,29 +216,35 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           setStatus(''); // テキストが来たらステータスを消す
           // テキストをストリーミング表示
           setMessages(prev => {
+            // テキストが来たら進行中のWeb検索ステータスを完了にする
+            let msgs = prev.map(msg =>
+              msg.isStatus && msg.statusText === 'Web検索中...'
+                ? { ...msg, statusText: 'Web検索完了' }
+                : msg
+            );
             // 最後のステータスメッセージと最後の非ステータスアシスタントメッセージのインデックスを探す
             let lastStatusIdx = -1;
             let lastTextAssistantIdx = -1;
-            for (let i = prev.length - 1; i >= 0; i--) {
-              if (prev[i].isStatus && lastStatusIdx === -1) {
+            for (let i = msgs.length - 1; i >= 0; i--) {
+              if (msgs[i].isStatus && lastStatusIdx === -1) {
                 lastStatusIdx = i;
               }
-              if (prev[i].role === 'assistant' && !prev[i].isStatus && lastTextAssistantIdx === -1) {
+              if (msgs[i].role === 'assistant' && !msgs[i].isStatus && lastTextAssistantIdx === -1) {
                 lastTextAssistantIdx = i;
               }
             }
             // ステータスがあり、その後にテキストメッセージがない場合は新しいメッセージを追加
             if (lastStatusIdx !== -1 && (lastTextAssistantIdx === -1 || lastTextAssistantIdx < lastStatusIdx)) {
-              return [...prev, { role: 'assistant', content: text, isStreaming: true }];
+              return [...msgs, { role: 'assistant', content: text, isStreaming: true }];
             }
             // そうでなければ、最後の非ステータスアシスタントメッセージにテキストを追加
             if (lastTextAssistantIdx !== -1) {
-              return prev.map((msg, idx) =>
+              return msgs.map((msg, idx) =>
                 idx === lastTextAssistantIdx ? { ...msg, content: msg.content + text } : msg
               );
             }
             // どちらもなければ新しいメッセージを追加
-            return [...prev, { role: 'assistant', content: text, isStreaming: true }];
+            return [...msgs, { role: 'assistant', content: text, isStreaming: true }];
           });
         },
         onStatus: (newStatus) => {
@@ -274,10 +280,13 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             });
           } else if (toolName === 'web_search') {
             setMessages(prev => {
-              const hasExisting = prev.some(
+              // 同じ検索中のステータスが既にあればスキップ（同一呼び出しの重複防止）
+              const hasInProgress = prev.some(
                 msg => msg.isStatus && msg.statusText === 'Web検索中...'
               );
-              if (hasExisting) return prev;
+              if (hasInProgress) return prev;
+
+              // 完了済みの検索がある場合は2回目以降 → そのまま新しいステータスを追加
               return [
                 ...prev,
                 { role: 'assistant', content: '', isStatus: true, statusText: 'Web検索中...' }

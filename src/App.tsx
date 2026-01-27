@@ -147,10 +147,10 @@ function MainApp({ signOut }: { signOut?: () => void }) {
       <header className="bg-kag-gradient text-white px-4 md:px-6 py-3 md:py-4 shadow-md">
         <div className="max-w-3xl mx-auto flex justify-between items-center gap-2">
           <div className="min-w-0">
-            <h1 className="text-base md:text-xl font-bold truncate">
-              パワポ作るマン　<span className="text-sm md:text-base font-normal ml-1">by みのるん</span>
+            <h1 className="text-base md:text-2xl font-bold truncate">
+              パワポ作るマン　<span className="text-sm md:text-lg font-normal ml-1">by みのるん</span>
             </h1>
-            <p className="text-[10px] md:text-xs text-white/50 truncate">AgentCore ＆ Amplifyでフルサーバーレス構築！</p>
+            <p className="text-[10px] md:text-sm text-white/50 truncate">AgentCore ＆ Amplifyでフルサーバーレス構築！</p>
           </div>
           <button
             onClick={signOut}
