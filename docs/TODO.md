@@ -8,8 +8,6 @@
 
 | # | タスク | 工数 | 状態 | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|-----------|-----------|----------|----------|
-| #13 | PDFダウンロード中の表示改善 | 小 | ✅ 完了 | ✅ | ✅ | ✅ | ✅ |
-| #11 | プロンプトキャッシュ適用 | 小 | ✅ 完了 | ✅ | ✅ | ✅ | ✅ |
 | #14 | 環境識別子リネーム（main→prod, dev→sandbox） | 小 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
 | #6 | Tavilyレートリミット枯渇通知 | 中 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
 | #2 | 追加指示の文脈理解改善 | 中 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -22,58 +20,6 @@
 ---
 
 ## タスク詳細
-
-### #13 PDFダウンロード中の表示改善
-
-**修正箇所**: `src/components/SlidePreview.tsx:89`
-
-```tsx
-// 現在
-{isDownloading ? '生成中...' : 'PDFダウンロード'}
-
-// 変更後
-{isDownloading ? 'ダウンロード中...' : 'PDFダウンロード'}
-```
-
-**関連フロー**:
-- `App.tsx:105` で `setIsDownloading(true)` → ボタン表示変更
-- `App.tsx:107` で `exportPdf()` → AgentCore APIでPDF生成
-- `App.tsx:140` で `setIsDownloading(false)` → ボタン表示復帰
-
----
-
-### #11 プロンプトキャッシュ適用
-
-**現状**: `agent.py:195-197` で文字列モデルID指定。キャッシュ未設定。
-
-**実装方法**:
-
-```python
-from strands.models import BedrockModel
-
-bedrock_model = BedrockModel(
-    model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    cache_prompt="default",   # System promptキャッシング
-    cache_tools="default",    # Tool定義キャッシング
-)
-
-agent = Agent(
-    model=bedrock_model,
-    system_prompt=SYSTEM_PROMPT,
-    tools=[web_search, output_slide, generate_tweet_url],
-)
-```
-
-**キャッシュ対象**:
-- System prompt（約1,800行 → 1,024トークン以上で条件クリア）
-- Tool定義（3個）
-- TTL: デフォルト5分
-
-**依存パッケージ**: 追加不要（`strands-agents>=1.23.0` で対応済み）
-
-**効果**: 同一セッション内の2回目以降の呼び出しでSystem prompt + Tool定義のトークンがキャッシュから読み込まれ、コスト削減・レイテンシ改善。
-
----
 
 ### #14 環境識別子リネーム
 
