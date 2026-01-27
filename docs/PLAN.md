@@ -147,7 +147,8 @@ marp-agent/
 │   └── KNOWLEDGE.md             # ナレッジベース
 ├── public/
 │   ├── agentcore.png            # ファビコン
-│   └── minorun.jpg              # OGP画像
+│   ├── ogp.jpg                  # OGP画像
+│   └── robots.txt               # クローラー制御
 ├── amplify/
 │   ├── auth/resource.ts         # Cognito認証設定
 │   ├── agent/

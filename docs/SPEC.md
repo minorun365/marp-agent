@@ -291,6 +291,7 @@ theme: border
 | リージョン | us-east-1 |
 | AgentCore Runtime | ARM64コンテナ |
 | Bedrockモデル | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| プロンプトキャッシュ | `cache_prompt="default"`, `cache_tools="default"` |
 | 認証 | Cognito（本番のみ） |
 
 ### フロントエンド

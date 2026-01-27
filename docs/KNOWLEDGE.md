@@ -618,7 +618,7 @@ return {
   slides: Array.from(svgs).map((svg, index) => {
     // SVGのwidth/height属性を100%に変更してレスポンシブ対応
     svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '100%');
+    svg.removeAttribute('height');
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     return {
       index,
