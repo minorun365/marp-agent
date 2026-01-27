@@ -36,30 +36,12 @@ aws cognito-idp describe-user-pool --user-pool-id us-east-1_ELK6OhHO8 --region u
   --query "UserPool.{Name:Name, EstimatedUsers:EstimatedNumberOfUsers}" --output table
 ```
 
-### 2. 日次ログ件数（過去7日間）
+### 2. 日次 invocation 数（過去7日間）
 
-CloudWatch Logs Insightsで日別のログ件数を取得する。
+CloudWatch Logs Insightsで日別のAPI呼び出し回数を取得する。
 
 ```bash
 # main
-QUERY_ID=$(aws logs start-query \
-  --log-group-name "/aws/bedrock-agentcore/runtimes/marp_agent_main-vE9ji6BCaL-DEFAULT" \
-  --start-time $(date -v-7d +%s) \
-  --end-time $(date +%s) \
-  --query-string 'fields @timestamp | stats count(*) as count by bin(1d) as day | sort day asc' \
-  --region us-east-1 \
-  --query 'queryId' --output text)
-sleep 8
-aws logs get-query-results --query-id "$QUERY_ID" --region us-east-1
-```
-
-kagも同様に実行する。
-
-### 3. 日次 invocation 数（過去7日間）
-
-実際のAPI呼び出し回数に近い数値を取得する。
-
-```bash
 QUERY_ID=$(aws logs start-query \
   --log-group-name "/aws/bedrock-agentcore/runtimes/marp_agent_main-vE9ji6BCaL-DEFAULT" \
   --start-time $(date -v-7d +%s) \
@@ -71,14 +53,17 @@ sleep 8
 aws logs get-query-results --query-id "$QUERY_ID" --region us-east-1
 ```
 
-### 4. 時間別ログ件数（直近24時間）
+kagも同様に実行する。
+
+### 3. 時間別 invocation 数（直近24時間）
 
 ```bash
+# main
 QUERY_ID=$(aws logs start-query \
   --log-group-name "/aws/bedrock-agentcore/runtimes/marp_agent_main-vE9ji6BCaL-DEFAULT" \
   --start-time $(date -v-24H +%s) \
   --end-time $(date +%s) \
-  --query-string 'fields @timestamp | stats count(*) as count by bin(1h) as hour | sort hour asc' \
+  --query-string 'filter @message like /invocations/ or @message like /POST/ or @message like /invoke/ | stats count(*) as count by bin(1h) as hour | sort hour asc' \
   --region us-east-1 \
   --query 'queryId' --output text)
 sleep 8
@@ -92,5 +77,5 @@ kagも同様に実行する。
 結果は以下の形式でまとめること：
 
 1. **Cognitoユーザー数**: 環境ごとのユーザー数テーブル
-2. **日次ログ件数**: 過去7日間の日別テーブル（全ログ + invocationフィルタ済み）
-3. **時間別ログ件数**: 直近24時間のJST表示テーブル（簡易グラフ付き）
+2. **日次invocation数**: 過去7日間の日別テーブル
+3. **時間別invocation数**: 直近24時間のJST表示テーブル（簡易グラフ付き）
