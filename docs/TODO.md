@@ -21,6 +21,7 @@
 | #12 | PowerPoint形式出力 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
 | #16 | スライド編集（マークダウンエディタ） | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
 | #9 | スライド共有機能 | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #23 | コードベースのリアーキテクチャ | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -316,3 +317,38 @@
    - `SlidePreview.tsx` のヘッダーに「共有リンクをコピー」ボタン追加
    - URLパラメータ（`?id=xxxx`）で共有スライド表示ページ作成
    - React Router導入、または `URLSearchParams` で実装
+
+---
+
+### #23 コードベースのリアーキテクチャ
+
+**現状**: コードベース全体を調査した結果、肥大化したファイルの分割・重複解消・テスト追加が必要。
+
+#### 1. フロントエンドの分割（優先度：高）
+
+**Chat.tsx（460行）** — UIロジック・ストリーミング処理・ステータス管理が混在
+
+- コンポーネント分割: `MessageList.tsx`, `ChatInput.tsx` 等
+- カスタムフック抽出: `useStreamingChat.ts`, `useStatusMessages.ts` 等
+- `setMessages` が40回以上呼ばれており、`useReducer` で状態管理を整理
+
+**useAgentCore.ts（310行）** — チャットSSEとPDF生成が同居
+
+- `useChatStream.ts`, `usePdfExport.ts` に分離
+- `lib/sseClient.ts` にSSE共通処理を抽出（`invokeAgent()` と `exportPdf()` で類似ロジックが重複）
+
+#### 2. バックエンドの分割（優先度：中）
+
+**agent.py（328行）** — ツール定義・エージェント管理・PDF生成が1ファイル
+
+- `tools/` ディレクトリにツール定義を分離（`web_search`, `output_slide`, `generate_tweet_url` 等）
+- `utils/pdf.py` にPDF生成ロジックを分離
+- 未使用の `extract_markdown()` 関数を削除
+
+#### 3. その他の改善
+
+| 項目 | 詳細 |
+|------|------|
+| border.css の重複解消 | `src/themes/` と `amplify/agent/runtime/` に同一ファイル。ビルド時コピー等で一元管理化 |
+| セッション管理のメモリリーク対策 | `_agent_sessions` にTTL付きキャッシュ（`cachetools` 等）導入 |
+| フロントエンドテスト追加 | Vitest設定済みだがテストファイルがゼロ。分割後にコンポーネントテスト追加 |
