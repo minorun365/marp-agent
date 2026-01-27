@@ -1,92 +1,6 @@
 # パワポ作るマン TODO
 
-## GitHub Issues（解消しやすい順）
-
-### ✅ #5 ブラウザによってはタイトルバーが折り返されてダサい
-**対応済み** — ヘッダーをレスポンシブ化（`truncate`で省略表示、ログアウトボタン縮小、`flex-shrink-0`で被り防止）
-
----
-
-### ✅ #4 PDFダウンロードを2連続で行った際、ツイート督促メッセージがうざい
-**対応済み** — `hasShownSharePrompt`フラグで初回のみシェア督促を表示
-
----
-
-### ✅ #3 PDFダウンロードがポップアップブロックされた場合、ユーザーが気づきづらい
-**対応済み** — ポップアップブロック検出時に`<a>`タグで直接ダウンロードにフォールバック＋チャットにガイダンス表示
-
----
-
-### #6 Tavilyレートリミット枯渇に気付きたい
-**工数**: 中
-
-**現状**: `agent.py` 44-48行目でレートリミット検出済み。ユーザーには通知するが、**管理者（みのるん）への通知がない**。
-
-**対応方法**:
-1. **CloudWatch Logs Insight** でエラーログを検知
-   ```
-   filter @message like /rate limit/ or @message like /quota/
-   ```
-2. **CloudWatch Alarm** → **SNS** → メール/Slack通知
-3. または `agent.py` 内でSNS直接通知:
-   ```python
-   import boto3
-   sns = boto3.client('sns')
-   sns.publish(
-     TopicArn='arn:aws:sns:us-east-1:xxx:tavily-alerts',
-     Message='Tavily API rate limit exceeded!'
-   )
-   ```
-
----
-
-### #7 エラーを監視、通知したい
-**工数**: 中
-
-**現状**: エラーログはCloudWatch Logsに出力されているが、アラート設定なし。
-
-**対応方法**:
-1. **CDKでCloudWatch Alarm追加** (`amplify/agent/resource.ts`):
-   ```typescript
-   import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-   import * as sns from 'aws-cdk-lib/aws-sns';
-
-   const errorAlarm = new cloudwatch.Alarm(stack, 'AgentErrorAlarm', {
-     metric: new cloudwatch.Metric({
-       namespace: 'AWS/Logs',
-       metricName: 'IncomingLogEvents',
-       dimensionsMap: { LogGroupName: runtime.logGroup.logGroupName },
-     }),
-     threshold: 5,
-     evaluationPeriods: 1,
-   });
-   ```
-2. **AgentCore Observability** で異常検知（既にトレース出力対応済み）
-3. **メトリクスフィルター** でエラー率を計測
-
----
-
-### #2 追加指示の文脈をうまく汲んでくれないことがある
-**工数**: 中
-
-**現状**: `agent.py` 139-164行目でセッションID管理、Strands Agentsの会話履歴は保持されている。
-
-**考えられる原因**:
-1. **コンテキストウィンドウ超過**: 長い会話で古い履歴が切り捨てられる
-2. **現在のマークダウンが長すぎる**: プロンプトに毎回全文を含めている（234-235行目）
-3. **システムプロンプトの指示不足**: 「前回の指示を踏まえて」の明示がない
-
-**対応方法**:
-1. **システムプロンプト改善** (`agent.py` SYSTEM_PROMPT):
-   ```
-   ## 重要: 会話の文脈
-   - ユーザーの追加指示は、直前のスライドに対する修正依頼です
-   - 「もっと」「さらに」「他に」などの言葉は、前回の内容を維持しつつ追加することを意味します
-   ```
-2. **マークダウンの要約**: 長いスライドは要約版をプロンプトに含める
-3. **会話履歴のサマリー機能**: Strands Agentsの `memory` 機能を検討
-
----
+## GitHub Issues（工数が軽い順）
 
 ### #8 検索APIキーの自動ローテーションに対応したい
 **工数**: 小
@@ -125,6 +39,77 @@
 5. **Amplify Console / `.env` に複数キーを設定**
 
 **変更ファイル**: `agent.py`, `resource.ts`, `.env`
+
+---
+
+### #6 Tavilyレートリミット枯渇に気付きたい
+**工数**: 中
+
+**現状**: `agent.py` 44-48行目でレートリミット検出済み。ユーザーには通知するが、**管理者（みのるん）への通知がない**。
+
+**対応方法**:
+1. **CloudWatch Logs Insight** でエラーログを検知
+   ```
+   filter @message like /rate limit/ or @message like /quota/
+   ```
+2. **CloudWatch Alarm** → **SNS** → メール/Slack通知
+3. または `agent.py` 内でSNS直接通知:
+   ```python
+   import boto3
+   sns = boto3.client('sns')
+   sns.publish(
+     TopicArn='arn:aws:sns:us-east-1:xxx:tavily-alerts',
+     Message='Tavily API rate limit exceeded!'
+   )
+   ```
+
+---
+
+### #2 追加指示の文脈をうまく汲んでくれないことがある
+**工数**: 中
+
+**現状**: `agent.py` 139-164行目でセッションID管理、Strands Agentsの会話履歴は保持されている。
+
+**考えられる原因**:
+1. **コンテキストウィンドウ超過**: 長い会話で古い履歴が切り捨てられる
+2. **現在のマークダウンが長すぎる**: プロンプトに毎回全文を含めている（234-235行目）
+3. **システムプロンプトの指示不足**: 「前回の指示を踏まえて」の明示がない
+
+**対応方法**:
+1. **システムプロンプト改善** (`agent.py` SYSTEM_PROMPT):
+   ```
+   ## 重要: 会話の文脈
+   - ユーザーの追加指示は、直前のスライドに対する修正依頼です
+   - 「もっと」「さらに」「他に」などの言葉は、前回の内容を維持しつつ追加することを意味します
+   ```
+2. **マークダウンの要約**: 長いスライドは要約版をプロンプトに含める
+3. **会話履歴のサマリー機能**: Strands Agentsの `memory` 機能を検討
+
+---
+
+### #7 エラーを監視、通知したい
+**工数**: 中
+
+**現状**: エラーログはCloudWatch Logsに出力されているが、アラート設定なし。
+
+**対応方法**:
+1. **CDKでCloudWatch Alarm追加** (`amplify/agent/resource.ts`):
+   ```typescript
+   import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+   import * as sns from 'aws-cdk-lib/aws-sns';
+
+   const errorAlarm = new cloudwatch.Alarm(stack, 'AgentErrorAlarm', {
+     metric: new cloudwatch.Metric({
+       namespace: 'AWS/Logs',
+       metricName: 'IncomingLogEvents',
+       dimensionsMap: { LogGroupName: runtime.logGroup.logGroupName },
+     }),
+     threshold: 5,
+     evaluationPeriods: 1,
+   });
+   ```
+2. **AgentCore Observability** で異常検知（既にトレース出力対応済み）
+3. **メトリクスフィルター** でエラー率を計測
 
 ---
 
