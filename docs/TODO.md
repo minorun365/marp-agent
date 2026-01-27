@@ -88,26 +88,8 @@
 
 ---
 
-### #8 検索APIキーの自動ローテーションに対応したい
-**工数**: 大
-
-**現状**: `TAVILY_API_KEY` は環境変数で固定設定（Amplify Console / CDK）。
-
-**対応方法**:
-1. **AWS Secrets Manager** でAPIキーを管理
-2. **Lambda Rotation Function** を作成:
-   - 定期的に新しいAPIキーを取得（Tavily API経由 or 手動更新）
-   - Secrets Managerの値を更新
-3. **AgentCore RuntimeからSecrets Manager参照**:
-   ```python
-   import boto3
-   secrets = boto3.client('secretsmanager')
-   secret = secrets.get_secret_value(SecretId='tavily-api-key')
-   TAVILY_API_KEY = json.loads(secret['SecretString'])['api_key']
-   ```
-4. **CDKでSecrets Manager + IAM権限追加**
-
-**注意**: Tavily APIがキーローテーションAPIを提供しているか要確認。
+### ✅ #8 検索APIキーの自動ローテーションに対応したい（クローズ済み）
+**対応済み** — 複数APIキーフォールバック方式で実装。`TAVILY_API_KEY` / `TAVILY_API_KEY2` / `TAVILY_API_KEY3` の環境変数を設定し、レートリミットエラー時に自動的に次のキーで再試行する。Amplify Console環境変数も設定済み。
 
 ---
 
