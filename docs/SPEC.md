@@ -567,6 +567,10 @@ Amplify Console → **Environment variables** で設定:
 | `TAVILY_API_KEY2` | Web検索API用（2つ目、フォールバック） |
 | `TAVILY_API_KEY3` | Web検索API用（3つ目、フォールバック） |
 
+**Amplify環境変数の更新時の注意事項**:
+- CLIで更新する場合、`aws amplify update-app --environment-variables` は**全変数を指定する必要がある**（指定しなかった変数は削除される）
+- 環境変数の更新は**コードプッシュ（デプロイ）より先に実行**すること（デプロイ時にCDKが環境変数を参照するため）
+
 ### 4. ブランチ連携
 
 - GitHubリポジトリを連携
