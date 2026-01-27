@@ -155,7 +155,8 @@ marp-agent/
 │   │   └── runtime/
 │   │       ├── Dockerfile       # エージェントコンテナ
 │   │       ├── agent.py         # Strands Agent実装
-│   │       └── border.css       # カスタムテーマ（PDF用）
+│   │       ├── border.css       # カスタムテーマ（PDF用）
+│   │       └── kag.css          # KAGテーマ（PDF用）
 │   └── backend.ts               # バックエンド統合
 ├── tests/
 │   └── e2e-test.md              # E2Eテストチェックリスト
@@ -167,7 +168,8 @@ marp-agent/
 │   │   ├── Chat.tsx             # チャットUI
 │   │   └── SlidePreview.tsx     # スライドプレビュー
 │   ├── hooks/useAgentCore.ts    # AgentCore API呼び出し
-│   └── themes/border.css        # カスタムテーマ（プレビュー用）
+│   ├── themes/border.css        # カスタムテーマ（プレビュー用）
+│   └── themes/kag.css           # KAGテーマ（プレビュー用）
 └── package.json
 ```
 
