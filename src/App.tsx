@@ -58,6 +58,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [editPromptTrigger, setEditPromptTrigger] = useState(0);
   const [sharePromptTrigger, setSharePromptTrigger] = useState(0);
+  const [hasShownSharePrompt, setHasShownSharePrompt] = useState(false);
   const chatInputRef = useRef<HTMLInputElement>(null);
   // セッションID（画面更新まで同じIDを使用して会話履歴を保持）
   const [sessionId] = useState(() => crypto.randomUUID());
@@ -88,15 +89,30 @@ function MainApp({ signOut }: { signOut?: () => void }) {
 
       // 新しいタブでPDFを開く
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const newWindow = window.open(url, '_blank');
+
+      // ポップアップブロック検出
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        // ブロックされた場合はダウンロードリンクで代替
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'slide.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        alert('ポップアップがブロックされたため、直接ダウンロードしました。');
+      }
 
       if (useMock) {
         alert('モックモード: マークダウンファイルをダウンロードしました。');
       }
 
-      // チャット画面に遷移してシェアトリガーを発火
+      // チャット画面に遷移（初回のみシェアトリガーを発火）
       setActiveTab('chat');
-      setSharePromptTrigger(prev => prev + 1);
+      if (!hasShownSharePrompt) {
+        setSharePromptTrigger(prev => prev + 1);
+        setHasShownSharePrompt(true);
+      }
     } catch (error) {
       console.error('Download error:', error);
       alert(`ダウンロードに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
@@ -108,18 +124,20 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* ヘッダー */}
-      <header className="bg-kag-gradient text-white px-6 py-4 shadow-md">
-        <div className="max-w-3xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold">パワポ作るマン　for KAG</h1>
-            <p className="text-xs text-white/50">AgentCore ＆ Amplifyでフルサーバーレス構築！</p>
+      <header className="bg-kag-gradient text-white px-4 md:px-6 py-3 md:py-4 shadow-md">
+        <div className="max-w-3xl mx-auto flex justify-between items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="text-base md:text-2xl font-bold truncate">
+              パワポ作るマン　<span className="text-sm md:text-lg font-normal ml-1">for KAG</span>
+            </h1>
+            <p className="text-[10px] md:text-sm text-white/50 truncate">AgentCore ＆ Amplifyでフルサーバーレス構築！</p>
           </div>
           <button
-              onClick={signOut}
-              className="bg-white/20 text-white px-4 py-1 rounded hover:bg-white/30 transition-colors text-sm"
-            >
-              ログアウト
-            </button>
+            onClick={signOut}
+            className="bg-white/20 text-white px-2 md:px-3 py-0.5 md:py-1 rounded hover:bg-white/30 transition-colors text-[10px] md:text-[10px] whitespace-nowrap flex-shrink-0"
+          >
+            ログアウト
+          </button>
         </div>
       </header>
 
