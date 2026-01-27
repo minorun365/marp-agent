@@ -582,12 +582,18 @@ Amplify Console → **Environment variables** で設定:
 
 | 変数名 | 説明 |
 |--------|------|
-| `TAVILY_API_KEY` | Web検索API用 |
+| `TAVILY_API_KEY` | Web検索API用（1つ目） |
+| `TAVILY_API_KEY2` | Web検索API用（2つ目、フォールバック） |
+| `TAVILY_API_KEY3` | Web検索API用（3つ目、フォールバック） |
 | `MARP_THEME` | テーマ名（ブランチで自動判定、手動上書き可） |
 | `AGENT_OBSERVABILITY_ENABLED` | OTELトレース有効化（CDKで自動設定） |
 | `OTEL_PYTHON_DISTRO` | ADOT設定（CDKで自動設定） |
 | `OTEL_PYTHON_CONFIGURATOR` | ADOT設定（CDKで自動設定） |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | OTEL出力プロトコル（CDKで自動設定） |
+
+**Amplify環境変数の更新時の注意事項**:
+- CLIで更新する場合、`aws amplify update-app --environment-variables` は**全変数を指定する必要がある**（指定しなかった変数は削除される）
+- 環境変数の更新は**コードプッシュ（デプロイ）より先に実行**すること（デプロイ時にCDKが環境変数を参照するため）
 
 ### 4. ブランチ連携
 
