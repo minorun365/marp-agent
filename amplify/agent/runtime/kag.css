@@ -121,7 +121,8 @@ negative {
 /* 見出しと本文のフォントサイズを設定 */
 h1 {
   color: #0e0d6a;
-  font-size: 38pt;
+  font-size: 46pt;
+  font-weight: bold;
 }
 
 section.crosshead h1 {
@@ -131,7 +132,8 @@ section.crosshead h1 {
 
 h2 {
   color: #0e0d6a;
-  font-size: 24pt;
+  font-size: 32pt;
+  font-weight: bold;
 }
 
 section.crosshead h2 {
@@ -141,7 +143,8 @@ section.crosshead h2 {
 
 h3 {
   color: #0e0d6a;
-  font-size: 24pt;
+  font-size: 28pt;
+  font-weight: bold;
 }
 
 p {
