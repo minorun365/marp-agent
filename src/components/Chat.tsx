@@ -162,7 +162,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               );
               return [
                 ...updated,
-                { role: 'assistant', content: `ダウンロードありがとうございます！今回の体験をXでシェアしませんか？ 👉 [ツイート](${url})` }
+                { role: 'assistant', content: `ダウンロードありがとうございます！今回の体験をXでシェアしませんか？ 👉 [ツイート](${url})\n\n&nbsp;\n\n※うまくダウンロードされない場合は、ブラウザのポップアップブロック設定を解除ください。` }
               ];
             });
           },
