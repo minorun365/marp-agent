@@ -6,6 +6,7 @@ from pathlib import Path
 
 from bedrock_agentcore import BedrockAgentCoreApp
 from strands import Agent, tool
+from strands.models import BedrockModel
 from tavily import TavilyClient
 
 # Tavily クライアント初期化（複数キーでフォールバック対応）
@@ -239,7 +240,11 @@ def get_or_create_agent(session_id: str | None) -> Agent:
     # セッションIDがない場合は新規Agentを作成（履歴なし）
     if not session_id:
         return Agent(
-            model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            model=BedrockModel(
+                model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                cache_prompt="default",
+                cache_tools="default",
+            ),
             system_prompt=SYSTEM_PROMPT,
             tools=[web_search, output_slide, generate_tweet_url],
         )
@@ -250,8 +255,11 @@ def get_or_create_agent(session_id: str | None) -> Agent:
 
     # 新規セッションの場合はAgentを作成して保存
     agent = Agent(
-        model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        # model="us.anthropic.claude-opus-4-5-20251101-v1:0",
+        model=BedrockModel(
+            model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            cache_prompt="default",
+            cache_tools="default",
+        ),
         system_prompt=SYSTEM_PROMPT,
         tools=[web_search, output_slide, generate_tweet_url],
     )
