@@ -89,25 +89,42 @@
 ---
 
 ### #8 検索APIキーの自動ローテーションに対応したい
-**工数**: 大
+**工数**: 小
 
-**現状**: `TAVILY_API_KEY` は環境変数で固定設定（Amplify Console / CDK）。
+**現状**: `TAVILY_API_KEY` は環境変数1つで固定設定。レートリミット超過時はエラーで終了。
 
-**対応方法**:
-1. **AWS Secrets Manager** でAPIキーを管理
-2. **Lambda Rotation Function** を作成:
-   - 定期的に新しいAPIキーを取得（Tavily API経由 or 手動更新）
-   - Secrets Managerの値を更新
-3. **AgentCore RuntimeからSecrets Manager参照**:
+**対応方法**: 複数APIキーのフォールバック方式
+1. **環境変数に複数キーを設定**:
+   - `TAVILY_API_KEY_1`, `TAVILY_API_KEY_2`, `TAVILY_API_KEY_3` ...
+2. **`agent.py` で複数クライアントを初期化**:
    ```python
-   import boto3
-   secrets = boto3.client('secretsmanager')
-   secret = secrets.get_secret_value(SecretId='tavily-api-key')
-   TAVILY_API_KEY = json.loads(secret['SecretString'])['api_key']
+   tavily_clients = []
+   for i in range(1, 10):
+       key = os.environ.get(f"TAVILY_API_KEY_{i}", "")
+       if key:
+           tavily_clients.append(TavilyClient(api_key=key))
+   # 後方互換: 単一キーもサポート
+   if not tavily_clients:
+       single_key = os.environ.get("TAVILY_API_KEY", "")
+       if single_key:
+           tavily_clients.append(TavilyClient(api_key=single_key))
    ```
-4. **CDKでSecrets Manager + IAM権限追加**
+3. **`web_search` でエラー時にリトライ**:
+   ```python
+   for client in tavily_clients:
+       try:
+           results = client.search(query=query, ...)
+           return format_results(results)
+       except Exception as e:
+           if "rate limit" in str(e).lower() or "429" in str(e).lower():
+               continue  # 次のキーで再試行
+           raise
+   return "すべてのAPIキーが枯渇しました..."
+   ```
+4. **CDK環境変数追加** (`amplify/agent/resource.ts`)
+5. **Amplify Console / `.env` に複数キーを設定**
 
-**注意**: Tavily APIがキーローテーションAPIを提供しているか要確認。
+**変更ファイル**: `agent.py`, `resource.ts`, `.env`
 
 ---
 
