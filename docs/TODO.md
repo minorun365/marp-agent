@@ -1,161 +1,276 @@
 # パワポ作るマン TODO
 
-## GitHub Issues（工数が軽い順）
+## タスク管理
 
-### ✅ #8 検索APIキーの自動ローテーションに対応したい（クローズ済み）
-**対応済み** — 複数APIキーフォールバック方式で実装。`TAVILY_API_KEY` / `TAVILY_API_KEY2` / `TAVILY_API_KEY3` の環境変数を設定し、レートリミットエラー時に自動的に次のキーで再試行する。Amplify Console環境変数も設定済み。
+反映先の凡例: ✅ 完了 / 🔧 作業中 / ⬜ 未着手 / ➖ 対象外
+
+| # | タスク | 工数 | 状態 | main 実装 | main docs | kag 実装 | kag docs |
+|---|--------|------|------|-----------|-----------|----------|----------|
+| #13 | PDFダウンロード中の表示改善 | 小 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #11 | プロンプトキャッシュ適用 | 小 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #14 | 環境識別子リネーム（main→prod, dev→sandbox） | 小 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #6 | Tavilyレートリミット枯渇通知 | 中 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #2 | 追加指示の文脈理解改善 | 中 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #7 | エラー監視・通知 | 中 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #10 | テーマ選択 | 中 | ⬜ 未着手 | ⬜ | ⬜ | ➖ | ➖ |
+| #12 | PowerPoint形式出力 | 中 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #9 | スライド共有機能 | 大 | ⬜ 未着手 | ⬜ | ⬜ | ➖ | ➖ |
+| #16 | スライド編集（マークダウンエディタ） | 大 | ⬜ 未着手 | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ---
 
-### #6 Tavilyレートリミット枯渇に気付きたい
-**工数**: 中
+## タスク詳細
 
-**現状**: `agent.py` 44-48行目でレートリミット検出済み。ユーザーには通知するが、**管理者（みのるん）への通知がない**。
+### #13 PDFダウンロード中の表示改善
 
-**対応方法**:
-1. **CloudWatch Logs Insight** でエラーログを検知
+**修正箇所**: `src/components/SlidePreview.tsx:89`
+
+```tsx
+// 現在
+{isDownloading ? '生成中...' : 'PDFダウンロード'}
+
+// 変更後
+{isDownloading ? 'ダウンロード中...' : 'PDFダウンロード'}
+```
+
+**関連フロー**:
+- `App.tsx:105` で `setIsDownloading(true)` → ボタン表示変更
+- `App.tsx:107` で `exportPdf()` → AgentCore APIでPDF生成
+- `App.tsx:140` で `setIsDownloading(false)` → ボタン表示復帰
+
+---
+
+### #11 プロンプトキャッシュ適用
+
+**現状**: `agent.py:195-197` で文字列モデルID指定。キャッシュ未設定。
+
+**実装方法**:
+
+```python
+from strands.models import BedrockModel
+
+bedrock_model = BedrockModel(
+    model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    cache_prompt="default",   # System promptキャッシング
+    cache_tools="default",    # Tool定義キャッシング
+)
+
+agent = Agent(
+    model=bedrock_model,
+    system_prompt=SYSTEM_PROMPT,
+    tools=[web_search, output_slide, generate_tweet_url],
+)
+```
+
+**キャッシュ対象**:
+- System prompt（約1,800行 → 1,024トークン以上で条件クリア）
+- Tool定義（3個）
+- TTL: デフォルト5分
+
+**依存パッケージ**: 追加不要（`strands-agents>=1.23.0` で対応済み）
+
+**効果**: 同一セッション内の2回目以降の呼び出しでSystem prompt + Tool定義のトークンがキャッシュから読み込まれ、コスト削減・レイテンシ改善。
+
+---
+
+### #14 環境識別子リネーム
+
+**変更内容**: main→prod、dev→sandbox
+
+**変更が必要なファイル**:
+
+| ファイル | 行 | 変更内容 |
+|---------|-----|---------|
+| `amplify/backend.ts` | 10 | `'dev'` → `'sandbox'` |
+| `amplify/agent/resource.ts` | 58 | コメント更新（`marp_agent_dev` → `marp_agent_sandbox` 等） |
+| `docs/KNOWLEDGE.md` | 923 | ランタイム名の例を更新 |
+
+**注意**:
+- `backend.ts:10` の `branchName` デフォルト値を変えるだけで、ランタイム名は自動追従
+- AgentCore Runtimeのランタイム名が変わるため再作成が必要
+- Gitブランチ名（main/kag）は変更不要
+
+---
+
+### #6 Tavilyレートリミット枯渇通知
+
+**現状**: `agent.py:47-51` でレートリミット検出済み（複数キーフォールバック対応）。全キー枯渇時のユーザー通知あり（`agent.py:54`）。管理者への通知がない。
+
+**実装方法（SNS通知方式）**:
+
+1. **CDKでSNSトピック作成**（`amplify/backend.ts` または `amplify/agent/resource.ts`）
+   ```typescript
+   const alarmTopic = new sns.Topic(stack, 'TavilyAlertTopic', {
+     topicName: `marp-agent-tavily-alerts-${nameSuffix}`,
+   });
    ```
-   filter @message like /rate limit/ or @message like /quota/
+
+2. **IAM権限追加**（`amplify/agent/resource.ts:84-93` に追加）
+   ```typescript
+   runtime.addToRolePolicy(new iam.PolicyStatement({
+     actions: ['sns:Publish'],
+     resources: [alarmTopic.topicArn],
+   }));
    ```
-2. **CloudWatch Alarm** → **SNS** → メール/Slack通知
-3. または `agent.py` 内でSNS直接通知:
+
+3. **agent.pyで全キー枯渇時にSNS通知**（`agent.py:54` 付近）
    ```python
-   import boto3
-   sns = boto3.client('sns')
-   sns.publish(
-     TopicArn='arn:aws:sns:us-east-1:xxx:tavily-alerts',
-     Message='Tavily API rate limit exceeded!'
+   sns_client = boto3.client('sns')
+   sns_client.publish(
+     TopicArn=os.environ['ALERT_TOPIC_ARN'],
+     Subject='Tavily API Rate Limit Exhausted',
+     Message='All Tavily API keys have been exhausted.',
    )
    ```
 
+4. **SNSサブスクリプション設定**（メールアドレス登録）
+
 ---
 
-### #2 追加指示の文脈をうまく汲んでくれないことがある
-**工数**: 中
+### #2 追加指示の文脈理解改善
 
-**現状**: `agent.py` 139-164行目でセッションID管理、Strands Agentsの会話履歴は保持されている。
+**現状の仕組み**:
+- `agent.py:186-211`: セッションIDごとにAgentインスタンスをメモリ管理 → Strands Agentsの会話履歴を自動保持
+- `agent.py:281-282`: 追加指示時に現在のマークダウン全文をプロンプトに埋め込み
+  ```python
+  user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
+  ```
 
-**考えられる原因**:
-1. **コンテキストウィンドウ超過**: 長い会話で古い履歴が切り捨てられる
-2. **現在のマークダウンが長すぎる**: プロンプトに毎回全文を含めている（234-235行目）
-3. **システムプロンプトの指示不足**: 「前回の指示を踏まえて」の明示がない
+**考えられる原因と対策**:
 
-**対応方法**:
-1. **システムプロンプト改善** (`agent.py` SYSTEM_PROMPT):
+1. **システムプロンプト改善**（`agent.py` SYSTEM_PROMPT に追加）
    ```
    ## 重要: 会話の文脈
    - ユーザーの追加指示は、直前のスライドに対する修正依頼です
    - 「もっと」「さらに」「他に」などの言葉は、前回の内容を維持しつつ追加することを意味します
+   - 修正時は既存スライドの構成を保ちつつ、指示された部分のみ変更してください
    ```
-2. **マークダウンの要約**: 長いスライドは要約版をプロンプトに含める
-3. **会話履歴のサマリー機能**: Strands Agentsの `memory` 機能を検討
+
+2. **マークダウンが長すぎる問題**: 長いスライドは要約版をプロンプトに含めるか、スライド枚数と主要トピックのみ伝える
+
+3. **会話履歴のサマリー**: Strands Agents の `memory` 機能で古い会話を要約
 
 ---
 
-### #7 エラーを監視、通知したい
-**工数**: 中
+### #7 エラー監視・通知
 
-**現状**: エラーログはCloudWatch Logsに出力されているが、アラート設定なし。
+**現状**: OTEL Observability有効（`resource.ts:71-74`）。CloudWatch Alarm/SNS未設定。
 
-**対応方法**:
-1. **CDKでCloudWatch Alarm追加** (`amplify/agent/resource.ts`):
+**実装方法**:
+
+1. **SNSトピック作成**（#6と共用可能）
    ```typescript
-   import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-   import * as sns from 'aws-cdk-lib/aws-sns';
-
-   const errorAlarm = new cloudwatch.Alarm(stack, 'AgentErrorAlarm', {
-     metric: new cloudwatch.Metric({
-       namespace: 'AWS/Logs',
-       metricName: 'IncomingLogEvents',
-       dimensionsMap: { LogGroupName: runtime.logGroup.logGroupName },
-     }),
-     threshold: 5,
-     evaluationPeriods: 1,
+   const alarmTopic = new sns.Topic(stack, 'MarpAgentAlarmTopic', {
+     topicName: `marp-agent-alarms-${nameSuffix}`,
    });
    ```
-2. **AgentCore Observability** で異常検知（既にトレース出力対応済み）
-3. **メトリクスフィルター** でエラー率を計測
+
+2. **CloudWatch Alarm追加**（`amplify/agent/resource.ts`）
+   - AgentCore Runtimeは自動でCloudWatchメトリクスを出力
+   - System Errors / User Errors / Throttling を監視
+
+3. **メール通知設定**（SNSサブスクリプション）
+
+**影響範囲**: 既存コード変更なし。CDKリソース追加のみ。
 
 ---
 
-### #9 作成したスライドを他の人と共有できるようにしたい
-**工数**: 大
+### #10 テーマ選択
 
-**現状**: スライドはフロントエンドのReact state（メモリ）のみ。永続化なし。
+**現状**:
+- テーマは `border` 固定（フロント: `src/themes/border.css`、バックエンド: `amplify/agent/runtime/border.css`）
+- `SlidePreview.tsx:28-30` で `marp.themeSet.add(borderTheme)` としてハードコード
+- `agent.py:109-115` のシステムプロンプトで `theme: border` を固定指示
+- PDF生成時も `border.css` を固定指定（`agent.py:224-255`）
 
-**対応方法**:
+**実装方法**:
 
-**1. インフラ追加（CDK）**:
-```typescript
-// DynamoDB テーブル
-const slidesTable = new dynamodb.Table(stack, 'SlidesTable', {
-  partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
-  sortKey: { name: 'slideId', type: dynamodb.AttributeType.STRING },
-});
+1. **フロントエンド**
+   - `App.tsx` に `selectedTheme` state追加
+   - `src/themes/` に複数テーマCSS配置（default, gaia等）
+   - `SlidePreview.tsx` で全テーマを `themeSet.add()` で登録
+   - ヘッダーにテーマ選択UIを追加
 
-// S3 バケット（マークダウン/PDF保存）
-const slidesBucket = new s3.Bucket(stack, 'SlidesBucket', {
-  cors: [{ allowedMethods: [s3.HttpMethods.GET], allowedOrigins: ['*'] }],
-});
-```
+2. **バックエンド**
+   - `amplify/agent/runtime/` に複数テーマCSS配置
+   - `generate_pdf()` でマークダウンの `theme:` フィールドから動的にテーマファイルを選択
+   - システムプロンプトを更新（利用可能テーマリストを提示）
 
-**2. データモデル**:
-```
-DynamoDB スキーマ:
-- userId (PK)
-- slideId (SK)
-- shareId (短縮URL用、GSI)
-- title
-- s3Key (マークダウン保存先)
-- isPublic
-- createdAt
-```
-
-**3. API追加**:
-- `POST /slides` - スライド保存、shareId発行
-- `GET /slides/{shareId}` - 共有スライド取得（認証不要）
-
-**4. フロントエンドUI**:
-- 「共有リンクをコピー」ボタン追加（SlidePreview.tsx）
-- 共有ページ作成（/share/{shareId}）
+3. **データフロー**: フロントでテーマ選択 → マークダウンのフロントマター `theme:` を変更 → プレビュー/PDF両方に反映
 
 ---
 
-## 今後のタスク
+### #12 PowerPoint形式出力
 
-| タスク | 説明 | 影響範囲 |
-|--------|------|----------|
-| 環境識別子のリネーム | main→prod、dev→sandbox に変更 | リソース名変更（AgentCore Runtime再作成の可能性あり） |
+**Marp CLIはPPTX出力に対応済み**（`--pptx` フラグ）。
 
-### 環境識別子リネームの詳細
+**実装方法**:
 
-**現状:**
-| 識別子 | 用途 |
-|--------|------|
-| main | 本番環境（mainブランチ） |
-| dev | sandbox環境（ローカル開発） |
+1. **バックエンド**（`agent.py`）
+   - `generate_pdf()` を汎用化、または `generate_pptx()` を追加
+   ```python
+   cmd = ["marp", str(md_path), "--pptx", "--allow-local-files", "-o", str(pptx_path)]
+   ```
+   - `action == "export_pptx"` を追加
+   - MIMEタイプ: `application/vnd.openxmlformats-officedocument.presentationml.presentation`
 
-**変更後:**
-| 識別子 | 用途 |
-|--------|------|
-| prod | 本番環境（mainブランチ） |
-| sandbox | sandbox環境（ローカル開発） |
+2. **フロントエンド**
+   - `useAgentCore.ts` に `exportPptx()` 関数追加（`exportPdf()` とほぼ同じ）
+   - `SlidePreview.tsx` にPPTXダウンロードボタン追加（またはドロップダウンで形式選択）
 
-**変更が必要なファイル:**
-- `amplify/backend.ts` - branchName/環境名の判定ロジック
-- `amplify/agent/resource.ts` - ランタイム名の生成ロジック
+3. **Dockerfile変更不要**（Marp CLIは既にインストール済み）
 
-**注意事項:**
-- AgentCore Runtimeのランタイム名が変わるため、新しいRuntimeが作成される
-- 既存のRuntime（marp_agent_main, marp_agent_dev）は手動削除が必要になる可能性あり
-- Amplify Consoleの環境変数設定も確認が必要
+**注意**: PPTX出力はプレレンダリング画像ベース。テキスト編集不可。編集可能版（`--pptx-editable`）は実験的で不安定。
 
 ---
 
-## 追加機能（Phase 2）
+### #9 スライド共有機能
 
-| タスク | 状態 | 工数 |
-|--------|------|------|
-| チャット応答のマークダウンレンダリング | ✅ | 中 |
-| テーマ選択 | - | 中 |
-| スライド編集（マークダウンエディタ） | - | 大 |
+**現状**:
+- スライドはフロントエンドの React state（メモリ）のみ。永続化なし
+- React Router未使用（タブUIのみ）
+- Cognito Identity Pool で未認証アクセス対応可能
+
+**実装方法**:
+
+1. **インフラ追加**（CDK）
+   - DynamoDB: スライドメタデータ（userId, slideId, shareId, title, s3Key, isPublic, createdAt）
+   - S3: マークダウン本体を保存
+   - Lambda（または AgentCore に追加ツール）: 保存・取得API
+
+2. **API追加**
+   - `POST /slides` - スライド保存、shareId発行
+   - `GET /slides/{shareId}` - 共有スライド取得（認証不要）
+
+3. **フロントエンド**
+   - `SlidePreview.tsx` のヘッダーに「共有リンクをコピー」ボタン追加
+   - URLパラメータ（`?id=xxxx`）で共有スライド表示ページ作成
+   - React Router導入、または `URLSearchParams` で実装
+
+---
+
+### #16 スライド編集（マークダウンエディタ）
+
+**現状**:
+- `App.tsx` で `markdown` stateを管理、`SlidePreview.tsx` に渡してプレビュー表示
+- タブは `chat` / `preview` の2つ（`hidden` クラスで状態保持）
+- マークダウン更新は Chat → AgentCore API → `onMarkdown` コールバック経由のみ
+
+**実装方法**:
+
+1. **UIパターン（推奨: SlidePreview内にタブ追加）**
+   - `SlidePreview.tsx` 内に「プレビュー」「エディタ」サブタブを追加
+   - エディタタブ: textarea または CodeMirror 等のエディタコンポーネント
+   - プレビュータブ: 現在のスライドグリッド表示
+
+2. **状態管理**
+   - `App.tsx` の `markdown` / `setMarkdown` を双方向バインド
+   - エディタでの変更 → `setMarkdown` → プレビュー即時反映
+
+3. **修正ファイル**:
+   | ファイル | 変更内容 |
+   |---------|---------|
+   | `src/components/SlidePreview.tsx` | サブタブUI + エディタコンポーネント追加 |
+   | `src/App.tsx` | エディタ用の `onMarkdownChange` コールバック追加 |
+   | `src/index.css` | エディタ用スタイル追加 |
+   | `package.json` | エディタライブラリ追加（CodeMirror等、任意） |
