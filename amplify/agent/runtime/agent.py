@@ -9,6 +9,16 @@ from strands import Agent, tool
 from strands.models import BedrockModel
 from tavily import TavilyClient
 
+
+def _get_model_id() -> str:
+    """デプロイリージョンに応じたクロスリージョン推論のモデルIDを返す"""
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    if region == "ap-northeast-1":
+        prefix = "jp"
+    else:
+        prefix = "us"  # us-east-1, us-west-2
+    return f"{prefix}.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
 # Tavily クライアント初期化（複数キーでフォールバック対応）
 _tavily_clients: list[TavilyClient] = []
 for _key_name in ["TAVILY_API_KEY", "TAVILY_API_KEY2", "TAVILY_API_KEY3"]:
@@ -194,7 +204,7 @@ def get_or_create_agent(session_id: str | None) -> Agent:
     if not session_id:
         return Agent(
             model=BedrockModel(
-                model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                model_id=_get_model_id(),
                 cache_prompt="default",
                 cache_tools="default",
             ),
@@ -209,7 +219,7 @@ def get_or_create_agent(session_id: str | None) -> Agent:
     # 新規セッションの場合はAgentを作成して保存
     agent = Agent(
         model=BedrockModel(
-            model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            model_id=_get_model_id(),
             cache_prompt="default",
             cache_tools="default",
         ),

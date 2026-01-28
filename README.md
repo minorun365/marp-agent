@@ -28,8 +28,10 @@ AWSの最新サービスを活用して、フルサーバーレスで構築。�
 - ARMアーキテクチャのPC（MacBookなど）
 - Node.js 18以上
 - Docker Desktop（起動しておく）
-- AWSアカウント（Bedrock Claude モデルアクセスを有効化済み）
-- [Tavily](https://tavily.com/) APIキー（Web検索機能に必要）
+- AWSアカウント
+  - リージョンはバージニア/オレゴン/東京のいずれか
+  - BedrockプレイグランドからClaudeのユースケース送信をしておく
+- [Tavily](https://tavily.com/) APIキー（無料、Web検索機能に必要）
 
 ### 1. セットアップ
 
