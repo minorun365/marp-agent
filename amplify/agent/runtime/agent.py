@@ -47,6 +47,10 @@ def web_search(query: str) -> str:
                 max_results=5,
                 search_depth="advanced",
             )
+            # レスポンス内にエラーメッセージが含まれていないかチェック
+            results_str = str(results).lower()
+            if "usage limit" in results_str or "exceeds your plan" in results_str:
+                continue  # 次のキーで再試行
             # 検索結果をテキストに整形
             formatted_results = []
             for result in results.get("results", []):
@@ -275,7 +279,7 @@ def generate_pdf(markdown: str) -> bytes:
 
 
 @app.entrypoint
-async def invoke(payload):
+async def invoke(payload, context=None):
     """エージェント実行（ストリーミング対応）"""
     global _generated_markdown, _generated_tweet_url
     _generated_markdown = None  # リセット
@@ -284,7 +288,8 @@ async def invoke(payload):
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")  # chat or export_pdf
     current_markdown = payload.get("markdown", "")
-    session_id = payload.get("session_id")  # セッションID（会話履歴保持用）
+    # セッションIDはHTTPヘッダー経由でcontextから取得（スティッキーセッション用）
+    session_id = getattr(context, 'session_id', None) if context else None
 
     if action == "export_pdf" and current_markdown:
         # PDF出力
@@ -296,12 +301,15 @@ async def invoke(payload):
             yield {"type": "error", "message": str(e)}
         return
 
-    # チャット（スライド生成・編集）
-    if current_markdown:
-        user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
-
     # セッションIDに対応するAgentを取得（会話履歴が保持される）
     agent = get_or_create_agent(session_id)
+
+    # 現在のスライドはシステムプロンプトに動的反映（会話履歴に蓄積させない）
+    if current_markdown:
+        agent.system_prompt = SYSTEM_PROMPT + f"\n\n## 現在のスライド\n```markdown\n{current_markdown}\n```"
+    else:
+        agent.system_prompt = SYSTEM_PROMPT
+
     stream = agent.stream_async(user_message)
 
     async for event in stream:
