@@ -70,6 +70,7 @@ npm run dev
 
 ### 4. 本番環境へのデプロイ（Amplify Console）
 
+1. AWSマネコンでAmplifyアプリを作成
 1. GitHubリポジトリをAmplify Consoleに接続
 2. **ビルドイメージを変更**（Docker対応のため）：
    - Build settings → Build image settings → Custom Build Image
