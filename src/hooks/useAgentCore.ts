@@ -50,11 +50,12 @@ export async function invokeAgent(
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
         'Authorization': `Bearer ${accessToken}`,
+        // セッションIDをヘッダーで渡すことで、同じコンテナにルーティングされる（スティッキーセッション）
+        ...(sessionId && { 'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId }),
       },
       body: JSON.stringify({
         prompt,
         markdown: currentMarkdown,
-        session_id: sessionId,
       }),
     });
 
