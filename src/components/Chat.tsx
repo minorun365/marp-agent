@@ -355,9 +355,9 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-3xl mx-auto space-y-4">
-        {/* 一時的なお知らせバナー（不要になったら削除）
+        {/* お知らせバナー（必要時にコメントを解除し、テキストを書き換えて使用）
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-700 text-sm">
-          1/26(月)午後、利用殺到によりみのるんの検索API利用枠が枯渇し、スライド内容が少しアホになっていました。同日19時半に修正済みです🙏
+          お知らせテキストをここに記載
         </div>
         */}
         {messages.length === 0 && (

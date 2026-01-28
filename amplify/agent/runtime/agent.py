@@ -301,15 +301,12 @@ async def invoke(payload, context=None):
             yield {"type": "error", "message": str(e)}
         return
 
+    # 現在のスライドがある場合はユーザーメッセージに付加
+    if current_markdown:
+        user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
+
     # セッションIDに対応するAgentを取得（会話履歴が保持される）
     agent = get_or_create_agent(session_id)
-
-    # 現在のスライドはシステムプロンプトに動的反映（会話履歴に蓄積させない）
-    if current_markdown:
-        agent.system_prompt = SYSTEM_PROMPT + f"\n\n## 現在のスライド\n```markdown\n{current_markdown}\n```"
-    else:
-        agent.system_prompt = SYSTEM_PROMPT
-
     stream = agent.stream_async(user_message)
 
     async for event in stream:
@@ -342,5 +339,3 @@ async def invoke(payload, context=None):
 
 if __name__ == "__main__":
     app.run()
-
-# trigger
