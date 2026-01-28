@@ -179,7 +179,7 @@ marp-agent/
 | 認証 | 本番のみCognito認証 |
 | テーマ | borderテーマ（コミュニティテーマ） |
 | モデル | Claude Sonnet 4.5 |
-| リージョン | us-east-1 |
+| リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
 
 ## 参考リンク
 

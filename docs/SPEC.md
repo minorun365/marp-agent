@@ -13,8 +13,8 @@
 | スライド | 出力形式 | PDFのみ（MVP） |
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search, output_slide, generate_tweet_url |
-| インフラ | リージョン | us-east-1（バージニア） |
-| インフラ | モデル | Claude Sonnet 4.5 |
+| インフラ | リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
+| インフラ | モデル | Claude Sonnet 4.5（リージョンに応じてプレフィックス自動判定） |
 | 認証 | スコープ | 誰でもサインアップ可能（本番時） |
 
 ---
@@ -288,9 +288,9 @@ theme: border
 
 | リソース | 設定 |
 |---------|------|
-| リージョン | us-east-1 |
+| リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
 | AgentCore Runtime | ARM64コンテナ |
-| Bedrockモデル | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| Bedrockモデル | リージョンに応じて自動判定（`us.` or `jp.`プレフィックス） |
 | プロンプトキャッシュ | `cache_prompt="default"`, `cache_tools="default"` |
 | 認証 | Cognito（本番のみ） |
 

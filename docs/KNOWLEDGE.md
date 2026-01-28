@@ -60,7 +60,7 @@ from bedrock_agentcore import BedrockAgentCoreApp
 from strands import Agent
 
 app = BedrockAgentCoreApp()
-agent = Agent(model="us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+agent = Agent(model=_get_model_id())
 
 @app.entrypoint
 async def invoke(payload):
@@ -100,7 +100,7 @@ tavily-python
 from strands import Agent
 
 agent = Agent(
-    model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    model=_get_model_id(),
     system_prompt="あなたはアシスタントです",
 )
 ```
@@ -290,7 +290,7 @@ runtime.addToRolePolicy(new iam.PolicyStatement({
 }));
 ```
 
-**重要**: クロスリージョン推論（`us.anthropic.claude-*`形式のモデルID）を使用する場合、`inference-profile/*` リソースへの権限も必要。`foundation-model/*` だけでは `AccessDeniedException` が発生する。
+**重要**: クロスリージョン推論（`us.`/`jp.`等のプレフィックス付きモデルID）を使用する場合、`inference-profile/*` リソースへの権限も必要。`foundation-model/*` だけでは `AccessDeniedException` が発生する。
 
 ### Amplify Gen2との統合
 ```typescript

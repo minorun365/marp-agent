@@ -54,8 +54,11 @@ TAVILY_API_KEY=tvly-xxxxx
 ### 3. sandbox環境で起動（ローカル開発）
 
 ```bash
+aws login
 npx ampx sandbox
 ```
+
+`aws login` でデプロイ先リージョン（バージニア/オレゴン/東京）のAWSアカウントに認証してください。
 
 初回はCloudFormationスタックの作成に数分かかります。完了すると `amplify_outputs.json` が生成されます。
 
