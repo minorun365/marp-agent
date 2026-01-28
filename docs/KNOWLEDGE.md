@@ -121,6 +121,33 @@ async for event in agent.stream_async(prompt):
 
 Strands Agentは同じインスタンスを使い続けると会話履歴を自動的に保持する。複数ユーザー/セッション対応のため、セッションIDごとにAgentインスタンスを管理する方式が有効。
 
+#### AgentCore Runtimeのスティッキーセッション機能（重要）
+
+AgentCore Runtimeは**HTTPヘッダーでセッションIDを渡す**ことで、同じセッションIDのリクエストを**同じコンテナにルーティング**する（スティッキーセッション）。これにより、メモリ内のAgentインスタンスが保持され、会話履歴が維持される。
+
+**⚠️ 注意**: リクエストボディに`session_id`を入れても**スティッキーセッションは機能しない**。必ずHTTPヘッダーで渡すこと。
+
+#### フロントエンド実装
+
+```typescript
+// App.tsx - 画面読み込み時にセッションIDを生成
+const [sessionId] = useState(() => crypto.randomUUID());
+
+// HTTPヘッダーでセッションIDを渡す（スティッキーセッション用）
+const response = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    // ★ このヘッダーが重要！ボディに入れてもスティッキーセッションは効かない
+    'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId,
+  },
+  body: JSON.stringify({ prompt, markdown }),
+});
+```
+
+#### バックエンド実装
+
 ```python
 # セッションごとのAgentインスタンスを管理
 _agent_sessions: dict[str, Agent] = {}
@@ -136,18 +163,21 @@ def get_or_create_agent(session_id: str | None) -> Agent:
     agent = Agent(model=MODEL_ID, system_prompt=PROMPT, tools=TOOLS)
     _agent_sessions[session_id] = agent
     return agent
+
+@app.entrypoint
+async def invoke(payload, context=None):
+    # セッションIDはHTTPヘッダー経由でcontextから取得
+    session_id = getattr(context, 'session_id', None) if context else None
+    agent = get_or_create_agent(session_id)
+    # ...
 ```
 
-フロントエンド側でセッションIDを生成し、リクエストに含める：
-```typescript
-// App.tsx - 画面読み込み時にセッションIDを生成
-const [sessionId] = useState(() => crypto.randomUUID());
+#### セッションの有効期限
 
-// リクエストボディにsession_idを含める
-body: JSON.stringify({ prompt, markdown, session_id: sessionId })
-```
+- **非アクティブタイムアウト**: 15分（15分間リクエストがないとコンテナ終了）
+- **最大継続時間**: 8時間（どれだけアクティブでも8時間でコンテナ終了）
 
-**注意**: この方式はメモリ内でセッションを管理するため、コンテナ再起動で履歴が消える。永続化が必要な場合はStrands Agentの`FileSessionManager`や`S3SessionManager`を使用する。
+**注意**: コンテナ再起動でセッション（メモリ内のAgent）は消える。永続化が必要な場合はDynamoDB等を検討。
 
 ### SSEレスポンス形式（AgentCore経由）
 
