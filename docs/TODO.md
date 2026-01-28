@@ -10,21 +10,21 @@
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
 | #17 | スライド生成直後の返答メッセージを簡素にしたい | 小 | ✅ 完了 | 🔴 重要 | ✅ | ✅ | ✅ | ✅ |
-| #24 | editable-pptx形式でダウンロードできるようにしたい | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ⬜ | ⬜ |
 | #20 | PowerPoint生成中の待ちストレス軽減 | 小〜中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ⬜ | ⬜ |
+| #10 | テーマ選択 | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
+| #24 | editable-pptx形式でダウンロードできるようにしたい | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ⬜ | ⬜ |
 | #19 | ツイートおすすめメッセージのストリーミング対応 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #18 | 検索クエリのリアルタイム表示 | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
 | #14 | 環境識別子リネーム（main→prod, dev→sandbox） | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
+| #18 | 検索クエリのリアルタイム表示 | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
 | #2 | 追加指示の文脈理解改善 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
 | #6 | Tavilyレートリミット枯渇通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
 | #7 | エラー監視・通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #10 | テーマ選択 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #12 | PowerPoint形式出力 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #16 | スライド編集（マークダウンエディタ） | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #9 | スライド共有機能 | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #22 | 参考資料などをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #23 | コードベースのリアーキテクチャ | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
+| #16 | スライド編集（マークダウンエディタ） | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
+| #9 | スライド共有機能 | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 
 ---
 
@@ -57,22 +57,88 @@
 
 ### #20 PowerPoint生成中の待ちストレス軽減 🔴重要
 
-**現状**: 生成中は「スライドを作成中...（20秒ほどかかります）」のスピナーのみ。
+**現状**: 生成中は「スライドを作成中...（20秒ほどかかります）」のスピナーのみ（`Chat.tsx:262-280`）。
+
+**関連コード箇所**:
+| ファイル | 処理内容 | 行番号 |
+|---------|---------|--------|
+| `Chat.tsx` | onToolUse イベントハンドラ | 253-296 |
+| `Chat.tsx` | ステータスメッセージ表示 | 379-394 |
+| `useAgentCore.ts` | tool_use イベント処理 | 134-138 |
 
 **推奨修正（段階的に実施）**:
 
-#### Phase 1: 豆知識ローテーション（フロントエンドのみ、工数：小）
-- ステータスメッセージ下に3〜5秒ごとにTips表示をローテーション
-- `Chat.tsx`の`onToolUse`イベント内で`setInterval`で実装
-- 例:「💡 Marpは Markdown + CSS でスライドを作成するツールです」
+#### Phase 1: 豆知識ローテーション（フロントエンドのみ、工数：小）⭐推奨
+
+**実装場所**: `Chat.tsx:262-280` の `onToolUse('output_slide')` 内
+
+1. **豆知識配列を定義**
+   ```typescript
+   const TIPS = [
+     '💡 Marpは Markdown + CSS でスライドを作成するツールです',
+     '💡 #パワポ作るマン は AWS Amplifyでフルサーバーレス構築されています',
+     '💡 スライドはAIアシスタントで自由に修正・編集できます',
+     '💡 PDFだけでなく、PowerPoint形式でのダウンロードも検討中です',
+     '💡 このアプリはXでシェアすることができます'
+   ];
+   ```
+
+2. **Message インターフェース拡張**（`Chat.tsx:5-11`）
+   ```typescript
+   interface Message {
+     // ... 既存
+     tipIndex?: number;  // 豆知識ローテーション用
+   }
+   ```
+
+3. **`onToolUse` 内で `setInterval` でローテーション**
+   - 3秒ごとに `tipIndex` をインクリメント
+   - `useEffect` でクリーンアップ必須（メモリリーク防止）
+
+**注意点**:
+- React StrictMode で2重実行されるため、既存タイマーのクリアが必要
+- `setMessages` はイミュータブルに更新すること
 
 #### Phase 2: スケルトン画面（フロントエンドのみ、工数：小）
-- マークダウン受信直後、レンダリング完了前にグレースケールのプレースホルダーを表示
-- `SlidePreview.tsx`でスケルトンローダー表示 → 実スライドにフェードイン
+
+**実装場所**: `SlidePreview.tsx:24-55` の useMemo 内
+
+```tsx
+function SkeletonSlide() {
+  return (
+    <div className="border rounded-lg overflow-hidden shadow-sm bg-white">
+      <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-b">
+        スライド 1
+      </div>
+      <div className="bg-gray-50 p-1 overflow-hidden">
+        <div className="w-full h-48 bg-gradient-to-r from-gray-200 to-gray-100 animate-pulse rounded" />
+      </div>
+    </div>
+  );
+}
+```
+
+- `onMarkdown` 受信時に一時的にスケルトン表示
+- Tailwind `transition` でフェードインアニメーション
 
 #### Phase 3: 段階的プログレスステータス（バックエンド+フロント、工数：中）
-- `agent.py`で処理段階ごとにstatusイベントを送信
-- 「構文チェック中...」→「Marpでレンダリング中...」→「最終調整中...」
+
+**バックエンド** (`agent.py:318-326`):
+```python
+elif "current_tool_use" in event:
+    tool_info = event["current_tool_use"]
+    tool_name = tool_info.get("name", "unknown")
+    if tool_name == "output_slide":
+        yield {"type": "status", "data": "Marpでレンダリング中..."}
+    yield {"type": "tool_use", "data": tool_name}
+```
+
+**フロントエンド** (`useAgentCore.ts:119` に追加):
+```typescript
+case 'status':
+  if (textValue) callbacks.onStatus?.(textValue);
+  break;
+```
 
 ---
 
@@ -221,79 +287,243 @@
 
 ---
 
-### #10 テーマ選択
+### #10 テーマ選択 🔴重要
 
 **現状**:
 - テーマは `border` 固定（フロント: `src/themes/border.css`、バックエンド: `amplify/agent/runtime/border.css`）
-- `SlidePreview.tsx:28-30` で `marp.themeSet.add(borderTheme)` としてハードコード
-- `agent.py:109-115` のシステムプロンプトで `theme: border` を固定指示
-- PDF生成時も `border.css` を固定指定（`agent.py:224-255`）
+- `SlidePreview.tsx:4,28-30` で `borderTheme` をインポート＆ `marp.themeSet.add()`
+- `agent.py:124-130` のシステムプロンプトで `theme: border` を固定指示
+- PDF生成時も `border.css` を固定指定（`agent.py:256`）
+
+**利用可能なMarpビルトインテーマ**:
+| テーマ | 特徴 |
+|--------|------|
+| **default** | Marpの標準テーマ、シンプル |
+| **gaia** | モダンでカラフル |
+| **uncover** | ミニマリスト＆エレガント |
+| **border** | カスタム（グラデーション + 太い枠線） |
 
 **実装方法**:
 
-1. **フロントエンド**
-   - `App.tsx` に `selectedTheme` state追加
-   - `src/themes/` に複数テーマCSS配置（default, gaia等）
-   - `SlidePreview.tsx` で全テーマを `themeSet.add()` で登録
-   - ヘッダーにテーマ選択UIを追加
+#### 1. フロントエンド
 
-2. **バックエンド**
-   - `amplify/agent/runtime/` に複数テーマCSS配置
-   - `generate_pdf()` でマークダウンの `theme:` フィールドから動的にテーマファイルを選択
-   - システムプロンプトを更新（利用可能テーマリストを提示）
+**App.tsx** に state追加:
+```typescript
+const [selectedTheme, setSelectedTheme] = useState<'default' | 'gaia' | 'uncover' | 'border'>('border');
 
-3. **データフロー**: フロントでテーマ選択 → マークダウンのフロントマター `theme:` を変更 → プレビュー/PDF両方に反映
+// マークダウン生成時にテーマを反映
+const handleMarkdownGenerated = (newMarkdown: string) => {
+  const updatedMarkdown = newMarkdown.replace(
+    /^(---[\s\S]*?theme:\s*)\w+/m,
+    `$1${selectedTheme}`
+  );
+  setMarkdown(updatedMarkdown);
+};
+```
+
+**ヘッダーにセレクタ追加**:
+```tsx
+<select
+  value={selectedTheme}
+  onChange={(e) => setSelectedTheme(e.target.value as any)}
+  className="bg-white/20 text-white px-3 py-1 rounded text-sm border border-white/30"
+>
+  <option value="border" className="text-gray-900">Border（推奨）</option>
+  <option value="default" className="text-gray-900">Default</option>
+  <option value="gaia" className="text-gray-900">Gaia</option>
+  <option value="uncover" className="text-gray-900">Uncover</option>
+</select>
+```
+
+**SlidePreview.tsx** で全テーマ登録:
+```typescript
+import borderTheme from '../themes/border.css?raw';
+import defaultTheme from '../themes/default.css?raw';
+import gaiaTheme from '../themes/gaia.css?raw';
+import uncoverTheme from '../themes/uncover.css?raw';
+
+const marp = new Marp();
+marp.themeSet.add(borderTheme);
+marp.themeSet.add(defaultTheme);
+marp.themeSet.add(gaiaTheme);
+marp.themeSet.add(uncoverTheme);
+```
+
+#### 2. バックエンド
+
+**agent.py の `generate_pdf()` を動的選択に修正**:
+```python
+def generate_pdf(markdown: str) -> bytes:
+    import re
+    theme_match = re.search(r'theme:\s*(\w+)', markdown)
+    selected_theme = theme_match.group(1) if theme_match else 'border'
+
+    theme_files = {
+        'border': Path(__file__).parent / 'border.css',
+        'default': Path(__file__).parent / 'default.css',
+        'gaia': Path(__file__).parent / 'gaia.css',
+        'uncover': Path(__file__).parent / 'uncover.css',
+    }
+    theme_path = theme_files.get(selected_theme, theme_files['border'])
+    # ... 以下既存処理
+```
+
+#### 3. テーマCSSファイル配置
+
+| 配置場所 | 用途 |
+|---------|------|
+| `src/themes/` | フロントエンド（Marp Core） |
+| `amplify/agent/runtime/` | バックエンド（Marp CLI PDF生成） |
+
+**テーマCSS入手方法**: `@marp-team/marp-core` の node_modules から抽出、または [marp-community-themes](https://github.com/rnd195/marp-community-themes) を参照
+
+#### 4. データフロー図
+
+```
+[ヘッダー: テーマセレクタ▼] → selectedTheme state
+         ↓ onChange
+[マークダウンのフロントマター theme: を書き換え]
+         ↓
+[SlidePreview] → marp.themeSet に全テーマ登録済み → プレビュー反映
+         ↓
+[PDFダウンロード] → generate_pdf() がmarkdownからtheme:抽出 → Marp CLIに --theme 指定
+```
 
 ---
 
 ### #12 PowerPoint形式出力
 
-**Marp CLIはPPTX出力に対応済み**（`--pptx` フラグ）。
+**Marp CLIはPPTX出力に対応済み**（`--pptx` フラグ）。#24と統合して実装推奨。
 
-**実装方法**:
-
-1. **バックエンド**（`agent.py`）
-   - `generate_pdf()` を汎用化、または `generate_pptx()` を追加
-   ```python
-   cmd = ["marp", str(md_path), "--pptx", "--allow-local-files", "-o", str(pptx_path)]
-   ```
-   - `action == "export_pptx"` を追加
-   - MIMEタイプ: `application/vnd.openxmlformats-officedocument.presentationml.presentation`
-
-2. **フロントエンド**
-   - `useAgentCore.ts` に `exportPptx()` 関数追加（`exportPdf()` とほぼ同じ）
-   - `SlidePreview.tsx` にPPTXダウンロードボタン追加（またはドロップダウンで形式選択）
-
-3. **Dockerfile変更不要**（Marp CLIは既にインストール済み）
-
-**注意**: PPTX出力はプレレンダリング画像ベース。テキスト編集不可。編集可能版（`--pptx-editable`）は実験的で不安定。
+→ **#24と統合実装** を参照
 
 ---
 
 ### #24 editable-pptx形式でダウンロードできるようにしたい 🔴重要
 
-**現状**: #12でPPTX出力を実装予定だが、デフォルトの `--pptx` は画像ベースでテキスト編集不可。
+**現状**:
+- PDF生成: `agent.py:253-284` の `generate_pdf()` 関数
+- フロントエンド: `useAgentCore.ts:157-243` の `exportPdf()` 関数
+- UIボタン: `SlidePreview.tsx:84-90`
 
-**Marp CLIの `--pptx-editable` オプション**:
-- 実験的機能だがテキスト編集可能なPPTXを生成
-- Marp CLI v4.0.0以降で利用可能
+**Marp CLI の PPTX オプション比較**:
 
-**実装方法**:
+| オプション | 編集可能 | デザイン精度 | 発表者ノート | 推奨用途 |
+|-----------|---------|-------------|-------------|---------|
+| `--pptx` | ❌ | 🟢 高 | ✅ | デザイン重視 |
+| `--pptx-editable` | ✅ | 🔴 低 | ❌ | テキスト修正が必要な場合 |
 
-1. **バックエンド**（`agent.py`）
-   ```python
-   def generate_editable_pptx(markdown: str) -> bytes:
-       cmd = ["marp", str(md_path), "--pptx", "--pptx-editable", "--allow-local-files", "-o", str(pptx_path)]
-   ```
-   - `action == "export_editable_pptx"` を追加
+**⚠️ Marp公式の警告**:
+> We do not recommend to export the editable PPTX if maintaining the slide's appearance is important.
 
-2. **フロントエンド**
-   - ダウンロードメニューに「編集可能なPPTX」オプションを追加
-   - または #12 と統合してドロップダウンで形式選択
+**実装方法（#12と統合）**:
 
-**注意事項**:
-- 実験的機能のため、複雑なスライドでレイアウトが崩れる可能性あり
-- ユーザーに「実験的機能」である旨を表示することを推奨
+#### 1. バックエンド（agent.py）
+
+```python
+def generate_pptx(markdown: str, editable: bool = False) -> bytes:
+    """Marp CLIでPPTXを生成
+
+    Args:
+        markdown: Marp形式のマークダウン
+        editable: True の場合は --pptx-editable を使用（実験的）
+    """
+    theme_path = Path(__file__).parent / "border.css"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        md_path = Path(tmpdir) / "slide.md"
+        pptx_path = Path(tmpdir) / "slide.pptx"
+        md_path.write_text(markdown, encoding="utf-8")
+
+        cmd = [
+            "marp",
+            str(md_path),
+            "--pptx-editable" if editable else "--pptx",
+            "--allow-local-files",
+            "-o", str(pptx_path),
+        ]
+        if theme_path.exists():
+            cmd.extend(["--theme", str(theme_path)])
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"Marp CLI error: {result.stderr}")
+
+        return pptx_path.read_bytes()
+```
+
+**invoke エンドポイント追加**（`agent.py:300` 付近）:
+```python
+if action == "export_pptx" and current_markdown:
+    pptx_bytes = generate_pptx(current_markdown, editable=False)
+    yield {"type": "pptx", "data": base64.b64encode(pptx_bytes).decode("utf-8")}
+    return
+
+if action == "export_pptx_editable" and current_markdown:
+    pptx_bytes = generate_pptx(current_markdown, editable=True)
+    yield {"type": "pptx_editable", "data": base64.b64encode(pptx_bytes).decode("utf-8")}
+    return
+```
+
+#### 2. フロントエンド（useAgentCore.ts）
+
+```typescript
+export async function exportPptx(markdown: string): Promise<Blob> {
+  return exportDocument(markdown, 'export_pptx', 'pptx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+}
+
+export async function exportPptxEditable(markdown: string): Promise<Blob> {
+  return exportDocument(markdown, 'export_pptx_editable', 'pptx_editable',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+}
+
+// exportPdf と共通化した汎用関数
+async function exportDocument(
+  markdown: string,
+  action: string,
+  eventType: string,
+  mimeType: string
+): Promise<Blob> {
+  // ... exportPdf と同様の実装
+}
+```
+
+#### 3. UI（SlidePreview.tsx）
+
+```tsx
+{/* ダウンロードボタングループ */}
+<div className="flex gap-1">
+  <button onClick={onDownloadPdf} className="btn-kag ...">PDF</button>
+
+  {/* PPTXドロップダウン */}
+  <div className="relative group">
+    <button className="btn-kag ...">PPTX ▼</button>
+    <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg
+                    opacity-0 invisible group-hover:opacity-100 group-hover:visible z-10">
+      <button onClick={onDownloadPptx} className="block w-full px-4 py-2 text-sm ...">
+        標準PPTX
+      </button>
+      <button onClick={onDownloadPptxEditable} className="block w-full px-4 py-2 text-sm border-t ...">
+        編集可能PPTX ⚠️
+      </button>
+    </div>
+  </div>
+</div>
+```
+
+#### 4. 注意事項・制限
+
+| 制限事項 | 影響度 | 対策 |
+|--------|------|------|
+| レンダリング精度低下 | 🔴 高 | UI上で「実験的」警告を表示 |
+| 複雑CSSでエラー | 🔴 高 | border テーマで失敗の可能性あり |
+| 発表者ノート非対応 | 🟡 中 | 標準PPTX推奨の表示 |
+
+**推奨実装戦略**:
+1. **PDF**: デフォルト（プリント最適化）
+2. **標準PPTX**: デザイン重視（編集不可）
+3. **編集可能PPTX**: オプション（⚠️マーク付き、警告表示）
 
 ---
 
