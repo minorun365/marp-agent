@@ -321,6 +321,38 @@ def generate_pdf(markdown: str) -> bytes:
         return pdf_path.read_bytes()
 
 
+def generate_pptx(markdown: str) -> bytes:
+    """Marp CLIでPPTXを生成"""
+    theme_path = Path(__file__).parent / "border.css"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        md_path = Path(tmpdir) / "slide.md"
+        pptx_path = Path(tmpdir) / "slide.pptx"
+
+        md_path.write_text(markdown, encoding="utf-8")
+
+        cmd = [
+            "marp",
+            str(md_path),
+            "--pptx",
+            "--allow-local-files",
+            "-o", str(pptx_path),
+        ]
+        if theme_path.exists():
+            cmd.extend(["--theme", str(theme_path)])
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Marp CLI error: {result.stderr}")
+
+        return pptx_path.read_bytes()
+
+
 @app.entrypoint
 async def invoke(payload, context=None):
     """エージェント実行（ストリーミング対応）"""
@@ -340,6 +372,16 @@ async def invoke(payload, context=None):
             pdf_bytes = generate_pdf(current_markdown)
             pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
             yield {"type": "pdf", "data": pdf_base64}
+        except Exception as e:
+            yield {"type": "error", "message": str(e)}
+        return
+
+    if action == "export_pptx" and current_markdown:
+        # PPTX出力
+        try:
+            pptx_bytes = generate_pptx(current_markdown)
+            pptx_base64 = base64.b64encode(pptx_bytes).decode("utf-8")
+            yield {"type": "pptx", "data": pptx_base64}
         except Exception as e:
             yield {"type": "error", "message": str(e)}
         return

@@ -13,11 +13,12 @@ const currentTheme = themeMap[themeName] || borderTheme;
 interface SlidePreviewProps {
   markdown: string;
   onDownloadPdf: () => void;
+  onDownloadPptx: () => void;
   isDownloading: boolean;
   onRequestEdit?: () => void;
 }
 
-export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequestEdit }: SlidePreviewProps) {
+export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownloading, onRequestEdit }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Safari/iOS WebKit向けのpolyfillを適用
@@ -88,13 +89,31 @@ export function SlidePreview({ markdown, onDownloadPdf, isDownloading, onRequest
               修正を依頼
             </button>
           )}
-          <button
-            onClick={onDownloadPdf}
-            disabled={isDownloading || slides.length === 0}
-            className="btn-kag text-white px-4 py-2 rounded-lg flex items-center gap-2"
-          >
-            {isDownloading ? 'ダウンロード中...' : 'PDFダウンロード'}
-          </button>
+          {/* ダウンロードドロップダウン */}
+          <div className="relative group">
+            <button
+              disabled={isDownloading || slides.length === 0}
+              className="btn-kag text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              {isDownloading ? 'ダウンロード中...' : 'ダウンロード ▼'}
+            </button>
+            {!isDownloading && slides.length > 0 && (
+              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 min-w-[160px]">
+                <button
+                  onClick={onDownloadPdf}
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left rounded-t-lg"
+                >
+                  PDF形式
+                </button>
+                <button
+                  onClick={onDownloadPptx}
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left border-t rounded-b-lg"
+                >
+                  PPTX形式
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
