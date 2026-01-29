@@ -21,6 +21,7 @@ const TIPS = [
   'このアプリはOSSとして、GitHub上でコードと構築方法を公開しています！',
   'みのるんのQiitaブログで、このアプリと似た構成をAWS CDKで構築する手順も紹介しています！',
   'このアプリへの感想や要望は、Xで #パワポ作るマン のハッシュタグを付けてフィードバックください！',
+  'このアプリ開発者のみのるんのXアカウントは @minorun365 です。フォローしてね！',
 ];
 
 interface ChatProps {
@@ -32,12 +33,40 @@ interface ChatProps {
   sessionId?: string;  // 会話履歴を保持するためのセッションID
 }
 
-const INITIAL_MESSAGE = 'どんな資料を作りたいですか？ URLの要約もできます！';
-
 // モック使用フラグ（VITE_USE_MOCK=true で強制的にモック使用）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
-const EDIT_PROMPT_MESSAGE = 'どのように修正しますか？ 内容や枚数の調整、はみ出しの抑制もできます！';
+// UIメッセージ定数
+const MESSAGES = {
+  // 初期・プロンプト
+  INITIAL: 'どんな資料を作りたいですか？ URLの要約もできます！',
+  EDIT_PROMPT: 'どのように修正しますか？ 内容や枚数の調整、はみ出しの抑制もできます！',
+  EMPTY_STATE_TITLE: 'スライドを作成しましょう',
+  EMPTY_STATE_EXAMPLE: '例: 「AWS入門の5枚スライドを作って」',
+  ERROR: 'エラーが発生しました。もう一度お試しください。',
+
+  // ステータス - スライド生成
+  SLIDE_GENERATING_PREFIX: 'スライドを作成中...',
+  SLIDE_GENERATING: 'スライドを作成中...',
+  SLIDE_COMPLETED: 'スライドを作成しました',
+
+  // ステータス - Web検索
+  WEB_SEARCH_PREFIX: 'Web検索中...',
+  WEB_SEARCH_DEFAULT: 'Web検索中...',
+  WEB_SEARCH_COMPLETED: 'Web検索完了',
+
+  // ステータス - ツイート
+  TWEET_GENERATING: 'ツイート案を作成中...',
+  TWEET_COMPLETED: 'ツイート案を作成しました',
+} as const;
+
+// 検索クエリ付きのステータスを生成
+const getWebSearchStatus = (query?: string) =>
+  query ? `${MESSAGES.WEB_SEARCH_PREFIX} "${query}"` : MESSAGES.WEB_SEARCH_DEFAULT;
+
+// シェアメッセージを生成
+const getShareMessage = (url: string) =>
+  `ダウンロードありがとうございます！今回の体験をXでシェアしませんか？ 👉 [ツイート](${url})`;
 
 export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sharePromptTrigger, sessionId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -77,7 +106,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
     const streamInitialMessage = async () => {
       setMessages([{ role: 'assistant', content: '', isStreaming: true }]);
 
-      for (const char of INITIAL_MESSAGE) {
+      for (const char of MESSAGES.INITIAL) {
         await new Promise(resolve => setTimeout(resolve, 30));
         setMessages(prev =>
           prev.map((msg, idx) =>
@@ -104,12 +133,12 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       // 既存の「どのように修正しますか？」メッセージを削除してから追加
       setMessages(prev => {
         const filtered = prev.filter(
-          msg => !(msg.role === 'assistant' && msg.content === EDIT_PROMPT_MESSAGE)
+          msg => !(msg.role === 'assistant' && msg.content === MESSAGES.EDIT_PROMPT)
         );
         return [...filtered, { role: 'assistant', content: '', isStreaming: true }];
       });
 
-      for (const char of EDIT_PROMPT_MESSAGE) {
+      for (const char of MESSAGES.EDIT_PROMPT) {
         await new Promise(resolve => setTimeout(resolve, 30));
         setMessages(prev =>
           prev.map((msg, idx) =>
@@ -167,12 +196,12 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             if (toolName === 'generate_tweet_url') {
               setMessages(prev => {
                 const hasExisting = prev.some(
-                  msg => msg.isStatus && msg.statusText === 'ツイート案を作成中...'
+                  msg => msg.isStatus && msg.statusText === MESSAGES.TWEET_GENERATING
                 );
                 if (hasExisting) return prev;
                 return [
                   ...prev,
-                  { role: 'assistant', content: '', isStatus: true, statusText: 'ツイート案を作成中...' }
+                  { role: 'assistant', content: '', isStatus: true, statusText: MESSAGES.TWEET_GENERATING }
                 ];
               });
             }
@@ -183,13 +212,13 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             // ツイートURLステータスを完了に更新し、リンクメッセージを追加
             setMessages(prev => {
               const updated = prev.map(msg =>
-                msg.isStatus && msg.statusText === 'ツイート案を作成中...'
-                  ? { ...msg, statusText: 'ツイート案を作成しました' }
+                msg.isStatus && msg.statusText === MESSAGES.TWEET_GENERATING
+                  ? { ...msg, statusText: MESSAGES.TWEET_COMPLETED }
                   : msg
               );
               return [
                 ...updated,
-                { role: 'assistant', content: `ダウンロードありがとうございます！今回の体験をXでシェアしませんか？ 👉 [ツイート](${url})` }
+                { role: 'assistant', content: getShareMessage(url) }
               ];
             });
           },
@@ -203,8 +232,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                   return { ...msg, isStreaming: false };
                 }
                 // ツイートステータスを確実に完了に更新
-                if (msg.isStatus && msg.statusText === 'ツイート案を作成中...') {
-                  return { ...msg, statusText: 'ツイート案を作成しました' };
+                if (msg.isStatus && msg.statusText === MESSAGES.TWEET_GENERATING) {
+                  return { ...msg, statusText: MESSAGES.TWEET_COMPLETED };
                 }
                 return msg;
               })
@@ -245,8 +274,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           setMessages(prev => {
             // テキストが来たら進行中のWeb検索ステータスを完了にする
             let msgs = prev.map(msg =>
-              msg.isStatus && msg.statusText === 'Web検索中...'
-                ? { ...msg, statusText: 'Web検索完了' }
+              msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)
+                ? { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED }
                 : msg
             );
             // 最後のステータスメッセージと最後の非ステータスアシスタントメッセージのインデックスを探す
@@ -277,7 +306,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         onStatus: (newStatus) => {
           setStatus(newStatus);
         },
-        onToolUse: (toolName) => {
+        onToolUse: (toolName, query) => {
           // ツール使用開始時にストリーミングカーソルを消す
           setMessages(prev =>
             prev.map(msg =>
@@ -300,19 +329,19 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             setMessages(prev => {
               // Web検索があれば完了に更新し、output_slideのステータスを追加
               const hasExisting = prev.some(
-                msg => msg.isStatus && msg.statusText?.startsWith('スライドを作成中')
+                msg => msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
               );
               if (hasExisting) return prev;
 
               // Web検索中を完了に更新
               const updated = prev.map(msg =>
-                msg.isStatus && msg.statusText === 'Web検索中...'
-                  ? { ...msg, statusText: 'Web検索完了' }
+                msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)
+                  ? { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED }
                   : msg
               );
               return [
                 ...updated,
-                { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを作成中...（20秒ほどかかります）', tipIndex: undefined }
+                { role: 'assistant', content: '', isStatus: true, statusText: MESSAGES.SLIDE_GENERATING, tipIndex: undefined }
               ];
             });
 
@@ -329,7 +358,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             tipTimeoutRef.current = setTimeout(() => {
               setMessages(prev =>
                 prev.map(msg =>
-                  msg.isStatus && msg.statusText?.startsWith('スライドを作成中')
+                  msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
                     ? { ...msg, tipIndex: getRandomTipIndex() }
                     : msg
                 )
@@ -339,7 +368,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               tipIntervalRef.current = setInterval(() => {
                 setMessages(prev =>
                   prev.map(msg =>
-                    msg.isStatus && msg.statusText?.startsWith('スライドを作成中')
+                    msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
                       ? { ...msg, tipIndex: getRandomTipIndex(msg.tipIndex) }
                       : msg
                   )
@@ -347,17 +376,22 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               }, 5000);
             }, 3000);
           } else if (toolName === 'web_search') {
+            const searchStatus = getWebSearchStatus(query);
             setMessages(prev => {
-              // 同じ検索中のステータスが既にあればスキップ（同一呼び出しの重複防止）
+              // 同じクエリの検索中ステータスが既にあればスキップ（同一呼び出しの重複防止）
               const hasInProgress = prev.some(
-                msg => msg.isStatus && msg.statusText === 'Web検索中...'
+                msg => msg.isStatus && msg.statusText === searchStatus
               );
               if (hasInProgress) return prev;
 
-              // 完了済みの検索がある場合は2回目以降 → そのまま新しいステータスを追加
+              // 既存のWeb検索中ステータス（完了以外）を削除して、新しいステータスを追加
+              // これにより「Web検索中」の吹き出しは常に1つだけになる
+              const filtered = prev.filter(
+                msg => !(msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX) && msg.statusText !== MESSAGES.WEB_SEARCH_COMPLETED)
+              );
               return [
-                ...prev,
-                { role: 'assistant', content: '', isStatus: true, statusText: 'Web検索中...' }
+                ...filtered,
+                { role: 'assistant', content: '', isStatus: true, statusText: searchStatus }
               ];
             });
           }
@@ -376,8 +410,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           // output_slideのステータスを完了状態に更新
           setMessages(prev =>
             prev.map(msg =>
-              msg.isStatus && msg.statusText?.startsWith('スライドを作成中...')
-                ? { ...msg, statusText: 'スライドを作成しました', tipIndex: undefined }
+              msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
+                ? { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined }
                 : msg
             )
           );
@@ -390,8 +424,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           // Web検索のステータスも完了に更新
           setMessages(prev =>
             prev.map(msg =>
-              msg.isStatus && msg.statusText === 'Web検索中...'
-                ? { ...msg, statusText: 'Web検索完了' }
+              msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)
+                ? { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED }
                 : msg
             )
           );
@@ -411,7 +445,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       setMessages(prev =>
         prev.map((msg, idx) =>
           idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
-            ? { ...msg, content: 'エラーが発生しました。もう一度お試しください。', isStreaming: false }
+            ? { ...msg, content: MESSAGES.ERROR, isStreaming: false }
             : msg
         )
       );
@@ -448,8 +482,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         */}
         {messages.length === 0 && (
           <div className="text-center text-gray-400 mt-8">
-            <p className="text-lg">スライドを作成しましょう</p>
-            <p className="text-sm mt-2">例: 「AWS入門の5枚スライドを作って」</p>
+            <p className="text-lg">{MESSAGES.EMPTY_STATE_TITLE}</p>
+            <p className="text-sm mt-2">{MESSAGES.EMPTY_STATE_EXAMPLE}</p>
           </div>
         )}
         {messages.map((message, index) => {
@@ -463,14 +497,15 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
 
           // ステータスメッセージの場合
           if (message.isStatus) {
-            const isSlideGenerating = message.statusText?.startsWith('スライドを作成中...');
+            const isSlideGenerating = message.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX);
+            const isWebSearching = message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX) && message.statusText !== MESSAGES.WEB_SEARCH_COMPLETED;
             const currentTip = isSlideGenerating && message.tipIndex !== undefined ? TIPS[message.tipIndex] : null;
 
             return (
-              <div key={index} className="flex justify-start">
-                <div className="bg-blue-50 text-blue-700 rounded-lg px-4 py-2 border border-blue-200">
+              <div key={isWebSearching ? `web-search-${message.statusText}` : index} className="flex justify-start">
+                <div className={`bg-blue-50 text-blue-700 rounded-lg px-4 py-2 border border-blue-200 ${isWebSearching ? 'animate-fade-in' : ''}`}>
                   <span className="text-sm flex items-center gap-2">
-                    {message.statusText === 'スライドを作成しました' || message.statusText === 'Web検索完了' || message.statusText === 'ツイート案を作成しました' ? (
+                    {message.statusText === MESSAGES.SLIDE_COMPLETED || message.statusText === MESSAGES.WEB_SEARCH_COMPLETED || message.statusText === MESSAGES.TWEET_COMPLETED ? (
                       <span className="text-green-600">&#10003;</span>
                     ) : (
                       <span className="animate-spin">&#9696;</span>
@@ -482,7 +517,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                       key={message.tipIndex}
                       className="text-xs text-gray-400 mt-2 animate-fade-in"
                     >
-                      {currentTip}
+                      Tips: {currentTip}
                     </p>
                   )}
                 </div>
