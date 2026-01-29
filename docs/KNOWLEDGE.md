@@ -451,7 +451,7 @@ paginate: true
 
 **ファイル配置**:
 - `src/themes/border.css` - フロントエンド（Marp Core）用
-- `amplify/agent/runtime/border.css` - PDF生成（Marp CLI）用
+- `amplify/agent/runtime/border.css` - PDF/PPTX生成（Marp CLI）用
 
 **参考**: https://rnd195.github.io/marp-community-themes/theme/border.html
 
@@ -735,7 +735,14 @@ src/
 ### 状態管理
 - `markdown`: 生成されたMarpマークダウン
 - `activeTab`: 現在のタブ（chat / preview）
-- `isDownloading`: PDF生成中フラグ
+- `isDownloading`: PDF/PPTX生成中フラグ
+
+### ダウンロード機能
+プレビュー画面のヘッダーにドロップダウンメニューでダウンロード形式を選択：
+- **PDF形式**: `exportPdf()` → バックエンド `action: 'export_pdf'` → Marp CLI `--pdf`
+- **PPTX形式**: `exportPptx()` → バックエンド `action: 'export_pptx'` → Marp CLI `--pptx`
+
+※ `--pptx-editable`（編集可能PPTX）はLibreOffice依存のため未対応
 
 ### ストリーミングUI実装パターン
 ```typescript
