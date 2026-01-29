@@ -8,7 +8,20 @@ interface Message {
   isStreaming?: boolean;
   isStatus?: boolean;  // ステータス表示用メッセージ
   statusText?: string; // ステータステキスト
+  tipIndex?: number;   // 豆知識ローテーション用
 }
+
+// スライド生成中に表示する豆知識
+const TIPS = [
+  'このアプリのベースは、みのるんがClaude Codeと一緒に一晩で開発しました！',
+  'このアプリはAWSのBedrock AgentCoreとAmplify Gen2でフルサーバーレス構築されています。',
+  'このアプリの裏ではStrands Agentsフレームワークで構築されたAIエージェントが稼働しています。',
+  'このアプリはサーバーレス構成なので維持費が激安、かかる費用はほぼ推論時のAPI料金のみです。',
+  'このアプリのLLMには、Amazon BedrockのClaude Sonnet 4.5を利用しています。',
+  'このアプリはOSSとして、GitHub上でコードと構築方法を公開しています！',
+  'みのるんのQiitaブログで、このアプリと似た構成をAWS CDKで構築する手順も紹介しています！',
+  'このアプリへの感想や要望は、Xで #パワポ作るマン のハッシュタグを付けてフィードバックください！',
+];
 
 interface ChatProps {
   onMarkdownGenerated: (markdown: string) => void;
@@ -33,6 +46,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
   const [status, setStatus] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
+  const tipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tipIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,6 +56,18 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // コンポーネントアンマウント時に豆知識タイマーをクリア
+  useEffect(() => {
+    return () => {
+      if (tipTimeoutRef.current) {
+        clearTimeout(tipTimeoutRef.current);
+      }
+      if (tipIntervalRef.current) {
+        clearInterval(tipIntervalRef.current);
+      }
+    };
+  }, []);
 
   // 初期メッセージをストリーミング表示
   useEffect(() => {
@@ -260,10 +287,20 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
 
           // ツール使用中のステータスを表示（既存のステータスがなければ追加）
           if (toolName === 'output_slide') {
+            // 既存のタイマーをクリア
+            if (tipTimeoutRef.current) {
+              clearTimeout(tipTimeoutRef.current);
+              tipTimeoutRef.current = null;
+            }
+            if (tipIntervalRef.current) {
+              clearInterval(tipIntervalRef.current);
+              tipIntervalRef.current = null;
+            }
+
             setMessages(prev => {
               // Web検索があれば完了に更新し、output_slideのステータスを追加
               const hasExisting = prev.some(
-                msg => msg.isStatus && msg.statusText === 'スライドを作成中...（20秒ほどかかります）'
+                msg => msg.isStatus && msg.statusText?.startsWith('スライドを作成中')
               );
               if (hasExisting) return prev;
 
@@ -275,9 +312,40 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               );
               return [
                 ...updated,
-                { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを作成中...（20秒ほどかかります）' }
+                { role: 'assistant', content: '', isStatus: true, statusText: 'スライドを作成中...（20秒ほどかかります）', tipIndex: undefined }
               ];
             });
+
+            // ランダムにTipsを選択する関数（前回と異なるものを選択）
+            const getRandomTipIndex = (currentIndex?: number): number => {
+              let newIndex: number;
+              do {
+                newIndex = Math.floor(Math.random() * TIPS.length);
+              } while (TIPS.length > 1 && newIndex === currentIndex);
+              return newIndex;
+            };
+
+            // 3秒後に最初のTipsを表示
+            tipTimeoutRef.current = setTimeout(() => {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.isStatus && msg.statusText?.startsWith('スライドを作成中')
+                    ? { ...msg, tipIndex: getRandomTipIndex() }
+                    : msg
+                )
+              );
+
+              // その後5秒ごとにランダムにローテーション
+              tipIntervalRef.current = setInterval(() => {
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.isStatus && msg.statusText?.startsWith('スライドを作成中')
+                      ? { ...msg, tipIndex: getRandomTipIndex(msg.tipIndex) }
+                      : msg
+                  )
+                );
+              }, 5000);
+            }, 3000);
           } else if (toolName === 'web_search') {
             setMessages(prev => {
               // 同じ検索中のステータスが既にあればスキップ（同一呼び出しの重複防止）
@@ -296,11 +364,20 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         },
         onMarkdown: (markdown) => {
           onMarkdownGenerated(markdown);
+          // 豆知識ローテーションタイマーをクリア
+          if (tipTimeoutRef.current) {
+            clearTimeout(tipTimeoutRef.current);
+            tipTimeoutRef.current = null;
+          }
+          if (tipIntervalRef.current) {
+            clearInterval(tipIntervalRef.current);
+            tipIntervalRef.current = null;
+          }
           // output_slideのステータスを完了状態に更新
           setMessages(prev =>
             prev.map(msg =>
-              msg.isStatus && msg.statusText === 'スライドを作成中...（20秒ほどかかります）'
-                ? { ...msg, statusText: 'スライドを作成しました' }
+              msg.isStatus && msg.statusText?.startsWith('スライドを作成中...')
+                ? { ...msg, statusText: 'スライドを作成しました', tipIndex: undefined }
                 : msg
             )
           );
@@ -341,6 +418,15 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
     } finally {
       setIsLoading(false);
       setStatus('');
+      // 豆知識タイマーをクリア
+      if (tipTimeoutRef.current) {
+        clearTimeout(tipTimeoutRef.current);
+        tipTimeoutRef.current = null;
+      }
+      if (tipIntervalRef.current) {
+        clearInterval(tipIntervalRef.current);
+        tipIntervalRef.current = null;
+      }
       // 確実に全てのストリーミング状態を解除
       setMessages(prev =>
         prev.map(msg =>
@@ -377,6 +463,9 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
 
           // ステータスメッセージの場合
           if (message.isStatus) {
+            const isSlideGenerating = message.statusText?.startsWith('スライドを作成中...');
+            const currentTip = isSlideGenerating && message.tipIndex !== undefined ? TIPS[message.tipIndex] : null;
+
             return (
               <div key={index} className="flex justify-start">
                 <div className="bg-blue-50 text-blue-700 rounded-lg px-4 py-2 border border-blue-200">
@@ -388,6 +477,14 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                     )}
                     {message.statusText}
                   </span>
+                  {currentTip && (
+                    <p
+                      key={message.tipIndex}
+                      className="text-xs text-gray-400 mt-2 animate-fade-in"
+                    >
+                      {currentTip}
+                    </p>
+                  )}
                 </div>
               </div>
             );
