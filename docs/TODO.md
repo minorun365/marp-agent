@@ -11,7 +11,7 @@
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
 | #10 | テーマ選択 | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
-| #24 | PPTX形式でダウンロードできるようにする | 中 | ✅ 完了 | 🔴 重要 | ✅ | ✅ | ⬜ | ➖ |
+| #30 | スライドタイトルをAIが再設定するよう改善 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #29 | 絵文字（❌✅）直後の文字が改行される問題 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #28 | 表のセル内パディング調整 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #27 | 既存テーマにデザインバリエーション追加（タイトル・仕切りなど） | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
@@ -137,131 +137,30 @@ def generate_pdf(markdown: str) -> bytes:
 
 ---
 
-### #24 editable-pptx形式でダウンロードできるようにしたい 🔴重要
+### #30 スライドタイトルをAIが再設定するよう改善
+
+**概要**: ユーザーの質問がそのままスライドタイトルになってしまう問題。Web検索後にAIエージェントがスライドタイトルを適切に設定し直す必要がある。
 
 **現状**:
-- PDF生成: `agent.py:253-284` の `generate_pdf()` 関数
-- フロントエンド: `useAgentCore.ts:157-243` の `exportPdf()` 関数
-- UIボタン: `SlidePreview.tsx:84-90`
+- ユーザーの入力（例：「AWSについて教えて」）がそのままスライドの `# タイトル` になってしまう
+- Web検索結果を踏まえた適切なタイトル設定がされていない
 
-**Marp CLI の PPTX オプション比較**:
+**原因**:
+- システムプロンプトでタイトル設定のガイドラインが不足
 
-| オプション | 編集可能 | デザイン精度 | 発表者ノート | 推奨用途 |
-|-----------|---------|-------------|-------------|---------|
-| `--pptx` | ❌ | 🟢 高 | ✅ | デザイン重視 |
-| `--pptx-editable` | ✅ | 🔴 低 | ❌ | テキスト修正が必要な場合 |
+**修正方法**:
 
-**⚠️ Marp公式の警告**:
-> We do not recommend to export the editable PPTX if maintaining the slide's appearance is important.
-
-**実装方法（#12と統合）**:
-
-#### 1. バックエンド（agent.py）
-
-```python
-def generate_pptx(markdown: str, editable: bool = False) -> bytes:
-    """Marp CLIでPPTXを生成
-
-    Args:
-        markdown: Marp形式のマークダウン
-        editable: True の場合は --pptx-editable を使用（実験的）
-    """
-    theme_path = Path(__file__).parent / "border.css"
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        md_path = Path(tmpdir) / "slide.md"
-        pptx_path = Path(tmpdir) / "slide.pptx"
-        md_path.write_text(markdown, encoding="utf-8")
-
-        cmd = [
-            "marp",
-            str(md_path),
-            "--pptx-editable" if editable else "--pptx",
-            "--allow-local-files",
-            "-o", str(pptx_path),
-        ]
-        if theme_path.exists():
-            cmd.extend(["--theme", str(theme_path)])
-
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"Marp CLI error: {result.stderr}")
-
-        return pptx_path.read_bytes()
+**agent.py の SYSTEM_PROMPT に追加**:
+```markdown
+## スライドタイトルの設定ルール
+- ユーザーの質問文をそのままタイトルにしないこと
+- Web検索結果を踏まえて、内容を端的に表す**名詞句**でタイトルを設定
+- 例:
+  - ❌「AWSについて教えて」→ ✅「AWS入門ガイド」
+  - ❌「生成AIの最新動向を調べて」→ ✅「生成AI最新トレンド 2025」
 ```
 
-**invoke エンドポイント追加**（`agent.py:300` 付近）:
-```python
-if action == "export_pptx" and current_markdown:
-    pptx_bytes = generate_pptx(current_markdown, editable=False)
-    yield {"type": "pptx", "data": base64.b64encode(pptx_bytes).decode("utf-8")}
-    return
-
-if action == "export_pptx_editable" and current_markdown:
-    pptx_bytes = generate_pptx(current_markdown, editable=True)
-    yield {"type": "pptx_editable", "data": base64.b64encode(pptx_bytes).decode("utf-8")}
-    return
-```
-
-#### 2. フロントエンド（useAgentCore.ts）
-
-```typescript
-export async function exportPptx(markdown: string): Promise<Blob> {
-  return exportDocument(markdown, 'export_pptx', 'pptx',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-}
-
-export async function exportPptxEditable(markdown: string): Promise<Blob> {
-  return exportDocument(markdown, 'export_pptx_editable', 'pptx_editable',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-}
-
-// exportPdf と共通化した汎用関数
-async function exportDocument(
-  markdown: string,
-  action: string,
-  eventType: string,
-  mimeType: string
-): Promise<Blob> {
-  // ... exportPdf と同様の実装
-}
-```
-
-#### 3. UI（SlidePreview.tsx）
-
-```tsx
-{/* ダウンロードボタングループ */}
-<div className="flex gap-1">
-  <button onClick={onDownloadPdf} className="btn-kag ...">PDF</button>
-
-  {/* PPTXドロップダウン */}
-  <div className="relative group">
-    <button className="btn-kag ...">PPTX ▼</button>
-    <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg
-                    opacity-0 invisible group-hover:opacity-100 group-hover:visible z-10">
-      <button onClick={onDownloadPptx} className="block w-full px-4 py-2 text-sm ...">
-        標準PPTX
-      </button>
-      <button onClick={onDownloadPptxEditable} className="block w-full px-4 py-2 text-sm border-t ...">
-        編集可能PPTX ⚠️
-      </button>
-    </div>
-  </div>
-</div>
-```
-
-#### 4. 注意事項・制限
-
-| 制限事項 | 影響度 | 対策 |
-|--------|------|------|
-| レンダリング精度低下 | 🔴 高 | UI上で「実験的」警告を表示 |
-| 複雑CSSでエラー | 🔴 高 | border テーマで失敗の可能性あり |
-| 発表者ノート非対応 | 🟡 中 | 標準PPTX推奨の表示 |
-
-**推奨実装戦略**:
-1. **PDF**: デフォルト（プリント最適化）
-2. **標準PPTX**: デザイン重視（編集不可）
-3. **編集可能PPTX**: オプション（⚠️マーク付き、警告表示）
+**工数**: 小（システムプロンプト修正のみ、30分程度）
 
 ---
 
