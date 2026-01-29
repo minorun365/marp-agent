@@ -10,116 +10,25 @@
 
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
-| #20 | PowerPoint生成中の待ちストレス軽減 | 小〜中 | 🔧 作業中 | 🔴 重要 | 🔧 | ✅ | ⬜ | ⬜ |
-| #18 | 検索クエリのリアルタイム表示 | 小〜中 | ✅ 完了 | 🔴 重要 | ✅ | ✅ | ⬜ | ⬜ |
 | #10 | テーマ選択 | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
-| #24 | editable-pptx形式でダウンロードできるようにしたい | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ⬜ | ⬜ |
-| #25 | == は使わないようにする（=== に統一） | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #27 | 既存テーマにデザインバリエーション追加（タイトル・仕切りなど） | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #19 | ツイートおすすめメッセージのストリーミング対応 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #14 | 環境識別子リネーム（main→prod, dev→sandbox） | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
+| #24 | editable-pptx形式でダウンロードできるようにしたい | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ⬜ | ➖ |
+| #25 | == は使わないようにする（=== に統一） | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #27 | 既存テーマにデザインバリエーション追加（タイトル・仕切りなど） | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #19 | ツイートおすすめメッセージのストリーミング対応 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #14 | 環境識別子リネーム（main→prod, dev→sandbox） | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #26 | Kimiに変えてみる | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #2 | 追加指示の文脈理解改善 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #6 | Tavilyレートリミット枯渇通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #7 | エラー監視・通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
+| #2 | 追加指示の文脈理解改善 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #6 | Tavilyレートリミット枯渇通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #7 | エラー監視・通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #22 | 参考資料などをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #23 | コードベースのリアーキテクチャ | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
-| #16 | スライド編集（マークダウンエディタ） | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ⬜ |
+| #23 | コードベースのリアーキテクチャ | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #16 | スライド編集（マークダウンエディタ） | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #9 | スライド共有機能 | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 
 ---
 
 ## タスク詳細
-
-### #20 PowerPoint生成中の待ちストレス軽減 🔴重要
-
-**ステータス**: 🔧 Phase 1 完了、Phase 2以降は未着手
-
-**現状**: ~~生成中は「スライドを作成中...」のスピナーのみ~~ → Phase 1実装済み！
-
-**関連コード箇所**:
-| ファイル | 処理内容 | 行番号 |
-|---------|---------|--------|
-| `Chat.tsx` | TIPS配列定義 | 15-25 |
-| `Chat.tsx` | onToolUse イベントハンドラ | 317-377 |
-| `Chat.tsx` | ステータスメッセージ表示（Tips含む） | 497-524 |
-
-**推奨修正（段階的に実施）**:
-
-#### Phase 1: 豆知識ローテーション（フロントエンドのみ、工数：小）✅ 完了
-
-**実装場所**: `Chat.tsx:262-280` の `onToolUse('output_slide')` 内
-
-1. **豆知識配列を定義**
-   ```typescript
-   const TIPS = [
-     '💡 Marpは Markdown + CSS でスライドを作成するツールです',
-     '💡 #パワポ作るマン は AWS Amplifyでフルサーバーレス構築されています',
-     '💡 スライドはAIアシスタントで自由に修正・編集できます',
-     '💡 PDFだけでなく、PowerPoint形式でのダウンロードも検討中です',
-     '💡 このアプリはXでシェアすることができます'
-   ];
-   ```
-
-2. **Message インターフェース拡張**（`Chat.tsx:5-11`）
-   ```typescript
-   interface Message {
-     // ... 既存
-     tipIndex?: number;  // 豆知識ローテーション用
-   }
-   ```
-
-3. **`onToolUse` 内で `setInterval` でローテーション**
-   - 3秒ごとに `tipIndex` をインクリメント
-   - `useEffect` でクリーンアップ必須（メモリリーク防止）
-
-**注意点**:
-- React StrictMode で2重実行されるため、既存タイマーのクリアが必要
-- `setMessages` はイミュータブルに更新すること
-
-#### Phase 2: スケルトン画面（フロントエンドのみ、工数：小）
-
-**実装場所**: `SlidePreview.tsx:24-55` の useMemo 内
-
-```tsx
-function SkeletonSlide() {
-  return (
-    <div className="border rounded-lg overflow-hidden shadow-sm bg-white">
-      <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-b">
-        スライド 1
-      </div>
-      <div className="bg-gray-50 p-1 overflow-hidden">
-        <div className="w-full h-48 bg-gradient-to-r from-gray-200 to-gray-100 animate-pulse rounded" />
-      </div>
-    </div>
-  );
-}
-```
-
-- `onMarkdown` 受信時に一時的にスケルトン表示
-- Tailwind `transition` でフェードインアニメーション
-
-#### Phase 3: 段階的プログレスステータス（バックエンド+フロント、工数：中）
-
-**バックエンド** (`agent.py:318-326`):
-```python
-elif "current_tool_use" in event:
-    tool_info = event["current_tool_use"]
-    tool_name = tool_info.get("name", "unknown")
-    if tool_name == "output_slide":
-        yield {"type": "status", "data": "Marpでレンダリング中..."}
-    yield {"type": "tool_use", "data": tool_name}
-```
-
-**フロントエンド** (`useAgentCore.ts:119` に追加):
-```typescript
-case 'status':
-  if (textValue) callbacks.onStatus?.(textValue);
-  break;
-```
-
----
 
 ### #19 ツイートおすすめメッセージのストリーミング対応
 
@@ -142,43 +51,6 @@ case 'status':
    1. まず体験をシェアすることを勧める短いメッセージを出力
    2. その後 generate_tweet_url ツールを使ってURLを生成
    ```
-
----
-
-### #18 検索クエリのリアルタイム表示 ✅ 完了
-
-**ステータス**: ✅ main環境で実装完了
-
-**実装内容**:
-
-1. **バックエンド**（`agent.py:336-342`）
-   - `current_tool_use`イベントの`input`からクエリを抽出
-   - 文字列の場合はJSONパースを試みる（ストリーミング中は不完全なJSONが来るため）
-   - **重要**: `web_search`の場合はクエリが取得できた時のみイベントを送信
-   ```python
-   if isinstance(tool_input, str):
-       try:
-           tool_input = json.loads(tool_input)
-       except json.JSONDecodeError:
-           pass
-   # web_searchはクエリ取得時のみ送信（ストリーミング中は複数回イベントが来るため）
-   if tool_name == "web_search":
-       if isinstance(tool_input, dict) and "query" in tool_input:
-           yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
-       # クエリがない場合はイベントを送信しない（完全なJSONを待つ）
-   else:
-       yield {"type": "tool_use", "data": tool_name}
-   ```
-
-2. **フロントエンド**（`useAgentCore.ts:134-137`）
-   - `onToolUse`コールバックに`query`パラメータを追加
-   - `handleEvent`でqueryフィールドを検出して渡す
-
-3. **フロントエンド**（`Chat.tsx:63-64, 377-395`）
-   - ステータス表示を `Web検索中... "クエリ"` 形式で表示
-   - クエリが変わると古いステータスを削除して新しいものをフェードイン表示
-
-**⚠️ ハマりポイント**: `current_tool_use`イベントはストリーミング中に`input`が蓄積されながら複数回発火する。最初は空文字列→不完全なJSON→完全なJSONと徐々に構築される。クエリなしで即座にイベント送信すると、フロントエンドで「クエリなし」のステータスが先に表示され、後から来る「クエリあり」がスキップされてしまう。
 
 ---
 
