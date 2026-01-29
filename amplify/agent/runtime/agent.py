@@ -333,9 +333,11 @@ async def invoke(payload, context=None):
                 except json.JSONDecodeError:
                     pass  # パースできない場合はそのまま（不完全なJSON）
 
-            # web_searchの場合はクエリも送信
-            if tool_name == "web_search" and isinstance(tool_input, dict) and "query" in tool_input:
-                yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+            # web_searchの場合はクエリが取得できた時のみ送信（ストリーミング中は複数回イベントが来るため）
+            if tool_name == "web_search":
+                if isinstance(tool_input, dict) and "query" in tool_input:
+                    yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+                # クエリがない場合はイベントを送信しない（完全なJSONを待つ）
             else:
                 yield {"type": "tool_use", "data": tool_name}
         elif "result" in event:
