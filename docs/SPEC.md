@@ -588,7 +588,8 @@ Amplify Console → **Environment variables** で設定:
 - [ ] テーマ選択（default / gaia / uncover）
 - [ ] 画像アップロード・挿入
 - [ ] スライド履歴管理
-- [ ] HTML / PPTX 出力対応
+- [x] PPTX 出力対応（ドロップダウンでPDF/PPTX選択）
+- [ ] HTML 出力対応
 
 ---
 
