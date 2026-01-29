@@ -2,6 +2,7 @@ import subprocess
 import tempfile
 import base64
 import os
+import json
 from pathlib import Path
 
 from bedrock_agentcore import BedrockAgentCoreApp
@@ -363,7 +364,20 @@ async def invoke(payload, context=None):
             # ツール使用中イベントを送信
             tool_info = event["current_tool_use"]
             tool_name = tool_info.get("name", "unknown")
-            yield {"type": "tool_use", "data": tool_name}
+            tool_input = tool_info.get("input", {})
+
+            # 文字列の場合はJSONパースを試みる（ストリーミング中は不完全なJSONが来る）
+            if isinstance(tool_input, str):
+                try:
+                    tool_input = json.loads(tool_input)
+                except json.JSONDecodeError:
+                    pass  # パースできない場合はそのまま（不完全なJSON）
+
+            # web_searchの場合はクエリも送信
+            if tool_name == "web_search" and isinstance(tool_input, dict) and "query" in tool_input:
+                yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+            else:
+                yield {"type": "tool_use", "data": tool_name}
         elif "result" in event:
             # 最終結果からテキストを抽出（ツール使用後の回答など）
             result = event["result"]
