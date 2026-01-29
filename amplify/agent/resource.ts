@@ -33,14 +33,20 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, t
     );
   } else {
     // 本番: CodeBuildでARM64ビルド（deploy-time-build）
+    // tag省略でassetHashベースのタグを使用（CloudFormationが変更を検知できるように）
     containerImageBuild = new ContainerImageBuild(stack, 'MarpAgentImageBuild', {
       directory: path.join(__dirname, 'runtime'),
       platform: Platform.LINUX_ARM64,
-      tag: 'latest',
+    });
+    // 古いイメージを自動削除（直近5件を保持）
+    containerImageBuild.repository.addLifecycleRule({
+      description: 'Keep last 5 images',
+      maxImageCount: 5,
+      rulePriority: 1,
     });
     agentRuntimeArtifact = agentcore.AgentRuntimeArtifact.fromEcrRepository(
       containerImageBuild.repository,
-      'latest'
+      containerImageBuild.imageTag,
     );
   }
 
