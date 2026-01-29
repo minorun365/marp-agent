@@ -3,7 +3,7 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
-import { exportPdf, exportPdfMock } from './hooks/useAgentCore';
+import { exportPdf, exportPdfMock, exportPptx, exportPptxMock } from './hooks/useAgentCore';
 
 // モック使用フラグ（ローカル開発用：認証スキップ＆モックAPI）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
@@ -121,6 +121,44 @@ function MainApp({ signOut }: { signOut?: () => void }) {
     }
   };
 
+  const handleDownloadPptx = async () => {
+    if (!markdown) return;
+
+    setIsDownloading(true);
+    try {
+      const exportFn = useMock ? exportPptxMock : exportPptx;
+      const blob = await exportFn(markdown);
+
+      const url = URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank');
+
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'slide.pptx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        alert('ポップアップがブロックされたため、直接ダウンロードしました。');
+      }
+
+      if (useMock) {
+        alert('モックモード: マークダウンファイルをダウンロードしました。');
+      }
+
+      setActiveTab('chat');
+      if (!hasShownSharePrompt) {
+        setSharePromptTrigger(prev => prev + 1);
+        setHasShownSharePrompt(true);
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert(`PPTXダウンロードに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* ヘッダー */}
@@ -186,6 +224,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
           <SlidePreview
             markdown={markdown}
             onDownloadPdf={handleDownloadPdf}
+            onDownloadPptx={handleDownloadPptx}
             isDownloading={isDownloading}
             onRequestEdit={handleRequestEdit}
           />
