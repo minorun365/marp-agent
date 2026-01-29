@@ -744,6 +744,8 @@ src/
 
 ※ `--pptx-editable`（編集可能PPTX）はLibreOffice依存のため未対応
 
+**iOS Safari対応**: ドロップダウンメニューはCSS `:hover` ではなく `useState` によるクリック/タップベースで実装。iOS Safariでは `:hover` がタップで正しく動作しないため、`onClick` でメニューを開閉し、`touchstart` イベントで外側タップ時に閉じる処理を実装。
+
 ### ストリーミングUI実装パターン
 ```typescript
 // メッセージを逐次更新（イミュータブル更新が必須）
