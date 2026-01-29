@@ -1113,6 +1113,44 @@ CloudWatch Console → **Bedrock AgentCore GenAI Observability** → Agents View
 
 ---
 
+## Amplify ビルドスキップ（Diff-based Deploy）
+
+### 概要
+
+ドキュメントのみの変更でフロントエンドのビルド・デプロイを避けるための設定。
+
+### 設定済み環境変数
+
+| ブランチ | 環境変数 |
+|----------|----------|
+| main | `AMPLIFY_DIFF_DEPLOY=true` |
+| kag | `AMPLIFY_DIFF_DEPLOY=true` |
+
+### 動作
+
+- `src/` や `amplify/` に変更がない場合、フロントエンドビルドがスキップされる
+- `docs/` のみの変更はスキップ対象
+
+### 手動スキップ
+
+コミットメッセージに `[skip-cd]` を追加することでも可能：
+
+```bash
+git commit -m "ドキュメント更新 [skip-cd]"
+```
+
+**注意**: `[skip ci]` や `[ci skip]` は Amplify では無効。`[skip-cd]` のみ。
+
+### 設定コマンド（参考）
+
+```bash
+# 既存の環境変数を確認してからマージして更新すること
+aws amplify update-branch --app-id d3i0gx3tizcqc1 --branch-name main \
+  --environment-variables AMPLIFY_DIFF_DEPLOY=true --region us-east-1
+```
+
+---
+
 ## deploy-time-build（本番環境ビルド）
 
 ### 概要
@@ -1134,6 +1172,59 @@ const artifact = isSandbox
       },
     });
 ```
+
+### ⚠️ コンテナイメージのタグ指定に関する重要な注意
+
+**`tag: 'latest'` を指定すると、コード変更時にAgentCoreランタイムが更新されない問題が発生する。**
+
+#### 問題の仕組み
+
+1. コードをプッシュ → ECRに新イメージがプッシュ（タグ: `latest`）
+2. CDKがCloudFormationテンプレートを生成
+3. CloudFormation: 「タグは同じ `latest` だから変更なし」と判断
+4. **AgentCoreランタイムが更新されない**
+
+#### NG: 固定タグを使用
+
+```typescript
+containerImageBuild = new ContainerImageBuild(stack, 'ImageBuild', {
+  directory: path.join(__dirname, 'runtime'),
+  platform: Platform.LINUX_ARM64,
+  tag: 'latest',  // ❌ CloudFormationが変更を検知できない
+});
+agentRuntimeArtifact = agentcore.AgentRuntimeArtifact.fromEcrRepository(
+  containerImageBuild.repository,
+  'latest'  // ❌ ハードコード
+);
+```
+
+#### OK: タグを省略してassetHashを使用
+
+```typescript
+containerImageBuild = new ContainerImageBuild(stack, 'ImageBuild', {
+  directory: path.join(__dirname, 'runtime'),
+  platform: Platform.LINUX_ARM64,
+  // tag を省略 → assetHashベースのタグが自動生成される
+});
+// 古いイメージを自動削除（直近5件を保持）
+containerImageBuild.repository.addLifecycleRule({
+  description: 'Keep last 5 images',
+  maxImageCount: 5,
+  rulePriority: 1,
+});
+agentRuntimeArtifact = agentcore.AgentRuntimeArtifact.fromEcrRepository(
+  containerImageBuild.repository,
+  containerImageBuild.imageTag,  // ✅ 動的なタグ
+);
+```
+
+#### 比較表
+
+| 項目 | `tag: 'latest'` | タグ省略（推奨） |
+|------|-----------------|-----------------|
+| デプロイ時の更新 | ❌ 反映されないことがある | ✅ 常に反映される |
+| ECRイメージ数 | 1つのみ | 蓄積（要Lifecycle Policy） |
+| ロールバック | ❌ 不可 | ✅ 可能 |
 
 ### 参考
 
