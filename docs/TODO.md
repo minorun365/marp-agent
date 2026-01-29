@@ -151,17 +151,23 @@ case 'status':
 
 **実装内容**:
 
-1. **バックエンド**（`agent.py:329-340`）
+1. **バックエンド**（`agent.py:336-342`）
    - `current_tool_use`イベントの`input`からクエリを抽出
    - 文字列の場合はJSONパースを試みる（ストリーミング中は不完全なJSONが来るため）
+   - **重要**: `web_search`の場合はクエリが取得できた時のみイベントを送信
    ```python
    if isinstance(tool_input, str):
        try:
            tool_input = json.loads(tool_input)
        except json.JSONDecodeError:
            pass
-   if tool_name == "web_search" and isinstance(tool_input, dict) and "query" in tool_input:
-       yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+   # web_searchはクエリ取得時のみ送信（ストリーミング中は複数回イベントが来るため）
+   if tool_name == "web_search":
+       if isinstance(tool_input, dict) and "query" in tool_input:
+           yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+       # クエリがない場合はイベントを送信しない（完全なJSONを待つ）
+   else:
+       yield {"type": "tool_use", "data": tool_name}
    ```
 
 2. **フロントエンド**（`useAgentCore.ts:134-137`）
@@ -171,6 +177,8 @@ case 'status':
 3. **フロントエンド**（`Chat.tsx:63-64, 377-395`）
    - ステータス表示を `Web検索中... "クエリ"` 形式で表示
    - クエリが変わると古いステータスを削除して新しいものをフェードイン表示
+
+**⚠️ ハマりポイント**: `current_tool_use`イベントはストリーミング中に`input`が蓄積されながら複数回発火する。最初は空文字列→不完全なJSON→完全なJSONと徐々に構築される。クエリなしで即座にイベント送信すると、フロントエンドで「クエリなし」のステータスが先に表示され、後から来る「クエリあり」がスキップされてしまう。
 
 ---
 
