@@ -5,8 +5,8 @@ export interface AgentCoreCallbacks {
   onText: (text: string) => void;
   onStatus: (status: string) => void;
   onMarkdown: (markdown: string) => void;
-  onToolUse: (toolName: string) => void;
   onTweetUrl?: (url: string) => void;
+  onToolUse: (toolName: string, query?: string) => void;
   onError: (error: Error) => void;
   onComplete: () => void;
 }
@@ -104,7 +104,7 @@ export async function invokeAgent(
 }
 
 function handleEvent(
-  event: { type?: string; content?: string; data?: string; error?: string; message?: string },
+  event: { type?: string; content?: string; data?: string; error?: string; message?: string; query?: string },
   callbacks: AgentCoreCallbacks
 ) {
   // APIはcontent または data フィールドでデータを返す
@@ -128,7 +128,8 @@ function handleEvent(
       break;
     case 'tool_use':
       if (textValue) {
-        callbacks.onToolUse(textValue);
+        const query = event.query as string | undefined;
+        callbacks.onToolUse(textValue, query);
       }
       break;
     case 'tweet_url':
