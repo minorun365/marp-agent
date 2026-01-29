@@ -182,3 +182,17 @@ html, body {
 .marpit ol ul ul {
   list-style: square !important;
 }
+
+/* 豆知識のフェードインアニメーション */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
