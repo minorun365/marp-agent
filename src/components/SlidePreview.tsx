@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import Marp from '@marp-team/marp-core';
 import { observe } from '@marp-team/marpit-svg-polyfill';
 import borderTheme from '../themes/border.css?raw';
@@ -13,6 +13,8 @@ interface SlidePreviewProps {
 
 export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownloading, onRequestEdit }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Safari/iOS WebKit向けのpolyfillを適用
   useEffect(() => {
@@ -21,6 +23,25 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
       return cleanup;
     }
   }, [markdown]);
+
+  // ドロップダウン外クリックで閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const { slides, css } = useMemo(() => {
     if (!markdown) return { slides: [], css: '' };
@@ -83,24 +104,31 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
             </button>
           )}
           {/* ダウンロードドロップダウン */}
-          <div className="relative group">
+          <div className="relative" ref={dropdownRef}>
             <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={isDownloading || slides.length === 0}
               className="btn-kag text-white px-4 py-2 rounded-lg flex items-center gap-2"
             >
               {isDownloading ? 'ダウンロード中...' : 'ダウンロード ▼'}
             </button>
-            {!isDownloading && slides.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 min-w-[160px]">
+            {isDropdownOpen && !isDownloading && slides.length > 0 && (
+              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[160px]">
                 <button
-                  onClick={onDownloadPdf}
-                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left rounded-t-lg"
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onDownloadPdf();
+                  }}
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left rounded-t-lg"
                 >
                   PDF形式
                 </button>
                 <button
-                  onClick={onDownloadPptx}
-                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left border-t rounded-b-lg"
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onDownloadPptx();
+                  }}
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t rounded-b-lg"
                 >
                   PPTX形式
                 </button>
