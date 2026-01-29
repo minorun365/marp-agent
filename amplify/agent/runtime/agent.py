@@ -323,7 +323,8 @@ def generate_pdf(markdown: str) -> bytes:
 
 def generate_pptx(markdown: str) -> bytes:
     """Marp CLIでPPTXを生成"""
-    theme_path = Path(__file__).parent / "border.css"
+    # カスタムテーマのパス（環境変数で切り替え）
+    theme_path = Path(__file__).parent / f"{THEME_NAME}.css"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
