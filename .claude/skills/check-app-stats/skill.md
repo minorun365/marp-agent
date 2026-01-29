@@ -1,6 +1,6 @@
 ---
 name: check-app-stats
-description: このアプリの利用統計を確認（Cognitoユーザー数、AgentCore呼び出し回数）。※Tavily APIの残量は /check-tavily-credits を使用
+description: このアプリの利用統計を確認（Cognitoユーザー数、AgentCore呼び出し回数、Bedrockコスト）。※Tavily APIの残量は /check-tavily-credits を使用
 allowed-tools: Bash(aws:*)
 ---
 
@@ -91,10 +91,35 @@ aws logs get-query-results --query-id "$QUERY_ID" --region us-east-1
 
 kagも同様に `$LOG_KAG` で実行する。
 
+### 4. Bedrockコスト（過去7日間・日別）
+
+Cost Explorerで日別のBedrockコストを取得する。サービス名は「Claude Sonnet 4.5 (Amazon Bedrock Edition)」等のモデル名で分類されている。
+
+```bash
+# 全サービスのコストを取得してBedrock関連をフィルタ
+aws ce get-cost-and-usage \
+  --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+  --granularity DAILY \
+  --metrics "UnblendedCost" \
+  --group-by Type=DIMENSION,Key=SERVICE \
+  --region us-east-1 \
+  --output json > /tmp/all_cost.json
+
+# 日別のClaude/Bedrock関連コストを集計
+cat /tmp/all_cost.json | jq -r '
+  .ResultsByTime[] |
+  .TimePeriod.Start as $date |
+  [.Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] |
+  add // 0 |
+  "\($date)\t\(.)"
+' | awk -F'\t' '{printf "%s: $%.2f\n", $1, $2}'
+```
+
 ## 出力フォーマット
 
 結果は以下の形式でまとめること：
 
 1. **Cognitoユーザー数**: 環境ごとのユーザー数テーブル
-2. **日次invocation数**: 過去7日間の日別テーブル
+2. **日次invocation数**: 過去7日間の日別テーブル（簡易グラフ付き）
 3. **時間別invocation数**: 直近24時間のJST表示テーブル（簡易グラフ付き）
+4. **Bedrockコスト（日別）**: 過去7日間の日別コストテーブル（簡易グラフ付き）
