@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as url from 'url';
 import * as cdk from 'aws-cdk-lib';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
 import { ContainerImageBuild } from 'deploy-time-build';
@@ -39,7 +40,8 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, t
       platform: Platform.LINUX_ARM64,
     });
     // 古いイメージを自動削除（直近5件を保持）
-    containerImageBuild.repository.addLifecycleRule({
+    // Note: deploy-time-buildのrepositoryはIRepository型だが、実体はRepositoryなので型アサーションで対応
+    (containerImageBuild.repository as ecr.Repository).addLifecycleRule({
       description: 'Keep last 5 images',
       maxImageCount: 5,
       rulePriority: 1,
