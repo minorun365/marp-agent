@@ -394,6 +394,25 @@ export TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) && npx ampx sand
 
 **identifier指定**: `npm run sandbox -- --identifier todo10`
 
+### identifierとRuntime名の連携（二重管理にならない）
+
+「`--identifier` と `RUNTIME_SUFFIX` を同じ値で毎回揃える必要があるのでは？」という懸念があるが、**二重管理にならない**。
+
+AmplifyはCDKコンテキストに `amplify-backend-name` として identifier を設定しているため、backend.ts から直接取得できる：
+
+```typescript
+// amplify/backend.ts
+const backendName = agentCoreStack.node.tryGetContext('amplify-backend-name') as string;
+nameSuffix = backendName || 'dev';
+```
+
+| やること | 管理場所 |
+|---------|---------|
+| 環境変数（APIキー等） | `.env` → `npm run sandbox` で自動読込 |
+| identifier | `--identifier` → CDKコンテキストで自動取得 |
+
+**参考**: [aws-amplify/amplify-backend - CDKContextKey.ts](https://github.com/aws-amplify/amplify-backend/blob/main/packages/platform-core/src/cdk_context_key.ts)
+
 **なぜシェル環境変数は動くか**:
 1. シェルで `export` した値は子プロセス（amplify sandbox）に自動継承される
 2. `dotenv/config` は既存の `process.env` を上書きしない
