@@ -139,10 +139,11 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
             {slides.length} スライド
           </span>
           {/* テーマ選択 */}
+          <span className="text-sm text-gray-600">テーマ：</span>
           <select
             value={selectedTheme}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTheme(e.target.value as ThemeId)}
-            className="text-sm border rounded px-2 py-1"
+            className="text-sm border rounded px-2 py-1 -ml-2"
           >
             {THEMES.map(theme => (
               <option key={theme.id} value={theme.id}>{theme.name}</option>
