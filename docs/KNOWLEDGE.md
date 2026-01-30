@@ -167,13 +167,18 @@ await invokeAgent(prompt, markdown, callbacks, sessionId, modelType);
 
 **ポイント**: `<option>`に▾を入れるとドロップダウンメニューにも表示されてしまうので、別の`<span>`で表示し、`pointer-events-none`でクリック透過させる。
 
-**会話中のモデル切り替え無効化**: モデルを変えると別のAgentになり会話履歴が引き継がれないため、会話中（`messages.length > 0`）はセレクターを無効化する。
+**会話中のモデル切り替え無効化**: モデルを変えると別のAgentになり会話履歴が引き継がれないため、ユーザーが発言したらセレクターを無効化する。
 
 ```typescript
-disabled={isLoading || messages.length > 0}
-className={messages.length > 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 cursor-pointer'}
-title={messages.length > 0 ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
+// ユーザー発言があるかで判定（初期メッセージは除外）
+const hasUserMessage = messages.some(m => m.role === 'user');
+
+disabled={isLoading || hasUserMessage}
+className={hasUserMessage ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 cursor-pointer'}
+title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
 ```
+
+**注意**: `messages.length > 0` だと初期メッセージ（アシスタントの挨拶）も含まれてしまうため、`messages.some(m => m.role === 'user')` でユーザー発言の有無を判定する。
 
 #### API（useAgentCore.ts）
 ```typescript
