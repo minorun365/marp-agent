@@ -7,7 +7,6 @@ import { createMarpAgent } from './agent/resource';
 // - Sandbox: AWS_BRANCHが未定義
 // - 本番/ステージング: AWS_BRANCHにブランチ名が設定される
 const isSandbox = !process.env.AWS_BRANCH;
-const branchName = process.env.AWS_BRANCH || 'dev';
 
 const backend = defineBackend({
   auth,
@@ -16,18 +15,32 @@ const backend = defineBackend({
 // AgentCoreスタックを作成
 const agentCoreStack = backend.createStack('AgentCoreStack');
 
+// nameSuffix の決定
+// - 本番: AWS_BRANCH を使用
+// - Sandbox: CDKコンテキストから identifier を取得
+//   Amplifyが amplify-backend-name にsandbox識別子を設定している
+let nameSuffix: string;
+if (isSandbox) {
+  // CDKコンテキストからAmplifyが設定した識別子を取得
+  const backendName = agentCoreStack.node.tryGetContext('amplify-backend-name') as string;
+  console.log('[DEBUG] backendName:', backendName);
+  nameSuffix = backendName || 'dev';
+} else {
+  nameSuffix = process.env.AWS_BRANCH || 'main';
+}
+
 // Marp Agentを作成（Cognito認証統合）
 const { runtime } = createMarpAgent({
   stack: agentCoreStack,
   userPool: backend.auth.resources.userPool,
   userPoolClient: backend.auth.resources.userPoolClient,
-  nameSuffix: branchName,
+  nameSuffix,
 });
 
 // フロントエンドにランタイム情報を渡す（DEFAULTエンドポイントを使用）
 backend.addOutput({
   custom: {
     agentRuntimeArn: runtime.agentRuntimeArn,
-    environment: isSandbox ? 'sandbox' : branchName,
+    environment: isSandbox ? 'sandbox' : nameSuffix,
   },
 });

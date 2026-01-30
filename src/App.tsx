@@ -99,13 +99,13 @@ function MainApp({ signOut }: { signOut?: () => void }) {
     }, 100);
   };
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = async (theme: string) => {
     if (!markdown) return;
 
     setIsDownloading(true);
     try {
       const exportFn = useMock ? exportPdfMock : exportPdf;
-      const blob = await exportFn(markdown);
+      const blob = await exportFn(markdown, theme);
 
       // 新しいタブでPDFを開く
       const url = URL.createObjectURL(blob);
@@ -141,13 +141,13 @@ function MainApp({ signOut }: { signOut?: () => void }) {
     }
   };
 
-  const handleDownloadPptx = async () => {
+  const handleDownloadPptx = async (theme: string) => {
     if (!markdown) return;
 
     setIsDownloading(true);
     try {
       const exportFn = useMock ? exportPptxMock : exportPptx;
-      const blob = await exportFn(markdown);
+      const blob = await exportFn(markdown, theme);
 
       const url = URL.createObjectURL(blob);
       const newWindow = window.open(url, '_blank');
