@@ -578,18 +578,18 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               <select
                 value={modelType}
                 onChange={(e) => setModelType(e.target.value as ModelType)}
-                disabled={isLoading || messages.length > 0}
+                disabled={isLoading || messages.some(m => m.role === 'user')}
                 className={`text-xs bg-transparent border-none outline-none pl-3 pr-1 py-2 appearance-none transition-colors ${
-                  messages.length > 0
+                  messages.some(m => m.role === 'user')
                     ? 'text-gray-300 cursor-not-allowed'
                     : 'text-gray-400 cursor-pointer hover:text-gray-600'
                 }`}
-                title={messages.length > 0 ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
+                title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
                 <option value="claude">Claude</option>
                 <option value="kimi">Kimi</option>
               </select>
-              <span className={`pointer-events-none text-xl ml-1 mr-2 ${messages.length > 0 ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
+              <span className={`pointer-events-none text-xl ml-1 mr-2 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
             </div>
             <div className="w-px h-5 bg-gray-200 mx-1" />
             <input
