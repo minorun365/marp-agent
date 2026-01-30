@@ -10,12 +10,11 @@
 
 ## 決定事項
 
-### テーマ一覧（4種類）
+### テーマ一覧（3種類）
 
 | ID | 表示名 | 種類 | クラス指定 | 特徴 |
 |----|--------|------|-----------|------|
 | `border` | Border | 既存カスタム | なし | 白黒グラデーション＋太枠 |
-| `uncover` | Uncover | Marp標準 | デフォルト | モダン、上部アクセント |
 | `gradient` | Gradient | コミュニティ | デフォルト（blue不使用） | カラフル対角グラデーション |
 | `beam` | Beam | コミュニティ | デフォルト | LaTeX Beamer風、学術向け |
 
@@ -23,7 +22,6 @@
 
 - `gradient`: https://raw.githubusercontent.com/rnd195/marp-community-themes/live/themes/gradient.css
 - `beam`: https://raw.githubusercontent.com/rnd195/marp-community-themes/live/themes/beam.css
-- `uncover`: Marp標準テーマ（CSS不要、Marp Coreに内蔵）
 
 ### ライセンス
 
@@ -360,6 +358,20 @@ if (isSandbox) {
 ### 参考リンク
 
 - [aws-amplify/amplify-backend - CDKContextKey.ts](https://github.com/aws-amplify/amplify-backend/blob/main/packages/platform-core/src/cdk_context_key.ts)
+
+### 二重管理にならない理由
+
+「`--identifier` と `RUNTIME_SUFFIX` を同じ値で毎回揃える必要があるのでは？」という懸念があるが、**現状の実装では二重管理にならない**。
+
+| やること | 管理場所 |
+|---------|---------|
+| 環境変数（APIキー等） | `.env` → `npm run sandbox` で自動読込 |
+| identifier | `--identifier` → CDKコンテキストで自動取得 |
+
+**ポイント**:
+- `--identifier` を渡せば、CDKコンテキスト経由で `amplify-backend-name` として自動的に取得される
+- 別途 `RUNTIME_SUFFIX` のような環境変数を用意する必要はない
+- Amplifyが内部的にCDKコンテキストを設定しているため、公式ドキュメントには記載がないが動作する
 
 ---
 

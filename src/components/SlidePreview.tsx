@@ -9,7 +9,6 @@ import beamTheme from '../themes/beam.css?raw';
 // テーマ定義
 const THEMES = [
   { id: 'border', name: 'Border', css: borderTheme },
-  { id: 'uncover', name: 'Uncover', css: null },  // Marp標準テーマ
   { id: 'gradient', name: 'Gradient', css: gradientTheme },
   { id: 'beam', name: 'Beam', css: beamTheme },
 ] as const;

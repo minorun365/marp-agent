@@ -266,13 +266,10 @@ def generate_pdf(markdown: str, theme: str = 'border') -> bytes:
             "-o", str(pdf_path),
         ]
 
-        # テーマ設定: uncoverはMarp標準テーマ、それ以外はカスタムCSS
-        if theme == 'uncover':
-            cmd.extend(["--theme", "uncover"])
-        else:
-            theme_path = Path(__file__).parent / f"{theme}.css"
-            if theme_path.exists():
-                cmd.extend(["--theme", str(theme_path)])
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
+        if theme_path.exists():
+            cmd.extend(["--theme", str(theme_path)])
 
         result = subprocess.run(
             cmd,
@@ -302,13 +299,10 @@ def generate_pptx(markdown: str, theme: str = 'border') -> bytes:
             "-o", str(pptx_path),
         ]
 
-        # テーマ設定: uncoverはMarp標準テーマ、それ以外はカスタムCSS
-        if theme == 'uncover':
-            cmd.extend(["--theme", "uncover"])
-        else:
-            theme_path = Path(__file__).parent / f"{theme}.css"
-            if theme_path.exists():
-                cmd.extend(["--theme", str(theme_path)])
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
+        if theme_path.exists():
+            cmd.extend(["--theme", str(theme_path)])
 
         result = subprocess.run(
             cmd,
