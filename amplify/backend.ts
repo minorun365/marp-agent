@@ -26,7 +26,9 @@ if (isSandbox) {
   console.log('[DEBUG] backendName:', backendName);
   nameSuffix = backendName || 'dev';
 } else {
-  nameSuffix = process.env.AWS_BRANCH || 'main';
+  const branchName = process.env.AWS_BRANCH || 'main';
+  // Runtime名に使える文字のみに変換（/ や - を _ に置換）
+  nameSuffix = branchName.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
 // Marp Agentを作成（Cognito認証統合）
