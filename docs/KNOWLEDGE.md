@@ -849,14 +849,16 @@ return {
 モデルセレクターなどを追加すると、スマホ表示でボタンが狭くなりテキストが折り返されることがある。
 
 ```tsx
-<button className="whitespace-nowrap shrink-0 px-6 py-2">
+<button className="whitespace-nowrap px-4 sm:px-6 py-2">
   送信
 </button>
 ```
 
 **ポイント**:
 - `whitespace-nowrap` → テキストの折り返しを防止
-- `shrink-0` → Flexboxで縮まないように固定
+- `px-4 sm:px-6` → スマホではパディングを小さく
+
+**注意**: `shrink-0`を使うとボタンが縮まなくなり、画面からはみ出す可能性があるので使用しない。
 
 ### Tailwind CSS との競合
 

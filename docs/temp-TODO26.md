@@ -27,9 +27,11 @@ Strands AgentsでMoonshot AI (Kimi K2 Thinking) の動作確認完了。フロ�
 - `feature/kimi` のスラッシュがRuntime名エラーの原因に
 - `branchName.replace(/[^a-zA-Z0-9_]/g, '_')` で `feature_kimi` に変換
 
-### 4. スマホ表示の送信ボタン折り返し防止
+### 4. スマホ表示の送信ボタン調整
 - モデルセレクター追加で送信ボタンが狭くなる問題
-- `whitespace-nowrap shrink-0` を追加
+- `whitespace-nowrap` で折り返し防止
+- `px-4 sm:px-6` でスマホ時のパディングを小さく
+- ※ `shrink-0` は画面からはみ出すので使用しない
 
 ### 5. スマホ表示でモデルセレクターを簡略化
 - スマホではモデル名が幅を取りすぎる問題
