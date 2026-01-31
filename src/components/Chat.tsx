@@ -586,8 +586,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
-                <option value="claude">Claude</option>
-                <option value="kimi">Kimi（実験的）</option>
+                <option value="claude">Claude Sonnet 4.5</option>
+                <option value="kimi">Kimi K2 Thinking（実験的）</option>
               </select>
             </div>
             <div className="w-px h-5 bg-gray-200 mx-1" />
