@@ -134,16 +134,13 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
     <div className="flex flex-col h-full">
       {/* ヘッダー */}
       <div className="flex justify-between items-center px-6 py-4 border-b">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">
-            {slides.length} スライド
-          </span>
+        <div className="flex flex-col gap-1">
           {/* テーマ選択 */}
-          <span className="text-sm text-gray-600">テーマ：</span>
+          <span className="text-xs text-gray-500">テーマ</span>
           <select
             value={selectedTheme}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTheme(e.target.value as ThemeId)}
-            className="text-sm border rounded px-2 py-1 -ml-2"
+            className="text-sm border rounded px-2 py-1"
           >
             {THEMES.map(theme => (
               <option key={theme.id} value={theme.id}>{theme.name}</option>
@@ -203,14 +200,14 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
               key={slide.index}
               className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white"
             >
-              <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-b">
-                スライド {slide.index + 1}
-              </div>
               <div className="bg-gray-50 p-1 overflow-hidden">
                 <div
                   className="marpit w-full overflow-hidden"
                   dangerouslySetInnerHTML={{ __html: slide.html }}
                 />
+              </div>
+              <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-t text-center">
+                スライド {slide.index + 1}/{slides.length}
               </div>
             </div>
           ))}
