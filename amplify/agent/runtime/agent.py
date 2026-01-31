@@ -340,6 +340,34 @@ def extract_markdown(text: str) -> str | None:
     return None
 
 
+def extract_marp_markdown_from_text(text: str) -> str | None:
+    """テキストからMarpマークダウンを抽出（フォールバック用）
+
+    Kimi K2がoutput_slideツールを呼ばずにテキストとしてマークダウンを出力した場合に使用
+    """
+    import re
+
+    if not text or "marp: true" not in text:
+        return None
+
+    # フロントマター（---で始まるブロック）からスライド終端まで抽出
+    # パターン: ---\nmarp: true で始まり、最後のスライド内容まで
+    pattern = r'(---\s*\nmarp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
+    match = re.search(pattern, text)
+    if match:
+        markdown = match.group(1).strip()
+        # 内部トークンが残っていたら除去
+        markdown = re.sub(r'<\|[^>]+\|>', '', markdown)
+        # 末尾の不完全な行を除去
+        lines = markdown.split('\n')
+        # 最後の行が不完全（閉じタグなど）なら除去
+        while lines and (lines[-1].strip().startswith('<|') or not lines[-1].strip()):
+            lines.pop()
+        return '\n'.join(lines) if lines else None
+
+    return None
+
+
 def generate_pdf(markdown: str, theme: str = 'kag') -> bytes:
     """Marp CLIでPDFを生成"""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -450,9 +478,16 @@ async def invoke(payload, context=None):
 
     # Kimi K2のツール名破損時のリトライループ
     retry_count = 0
+    fallback_markdown: str | None = None  # フォールバック用マークダウン
+
     while retry_count <= MAX_RETRY_COUNT:
         _generated_markdown = None  # リトライ時にリセット
+        fallback_markdown = None  # リトライ時にリセット
         tool_name_corrupted = False  # 破損検出フラグ
+
+        # Kimi K2の場合、dataイベントを蓄積してマークダウン検出に使用
+        kimi_text_buffer = "" if model_type == "kimi" else None
+        kimi_skip_text = False  # マークダウン検出後はテキスト送信をスキップ
 
         stream = agent.stream_async(user_message)
 
@@ -463,7 +498,17 @@ async def invoke(payload, context=None):
 
             if "data" in event:
                 chunk = event["data"]
-                yield {"type": "text", "data": chunk}
+                if model_type == "kimi":
+                    # Kimi K2: テキストを蓄積してマークダウン開始を検出
+                    kimi_text_buffer += chunk
+                    if not kimi_skip_text and "marp: true" in kimi_text_buffer.lower():
+                        kimi_skip_text = True
+                        print(f"[INFO] Kimi K2: Marp markdown detected in text stream, skipping text output")
+                    if not kimi_skip_text:
+                        yield {"type": "text", "data": chunk}
+                else:
+                    # Claude: そのままテキスト送信
+                    yield {"type": "text", "data": chunk}
             elif "current_tool_use" in event:
                 # ツール使用中イベントを送信
                 tool_info = event["current_tool_use"]
@@ -496,14 +541,29 @@ async def invoke(payload, context=None):
                 result = event["result"]
                 if hasattr(result, 'message') and result.message:
                     for content in getattr(result.message, 'content', []):
-                        # Kimi K2 Thinking の reasoningContent は無視（思考プロセス）
+                        # Kimi K2 Thinking の reasoningContent からマークダウンを抽出（フォールバック）
                         if hasattr(content, 'reasoningContent'):
+                            reasoning = content.reasoningContent
+                            if hasattr(reasoning, 'reasoningText'):
+                                reasoning_text = reasoning.reasoningText
+                                if hasattr(reasoning_text, 'text') and reasoning_text.text:
+                                    extracted = extract_marp_markdown_from_text(reasoning_text.text)
+                                    if extracted and not fallback_markdown:
+                                        fallback_markdown = extracted
+                                        print(f"[INFO] Fallback markdown extracted from reasoningContent")
                             continue
                         if hasattr(content, 'text') and content.text:
                             yield {"type": "text", "data": content.text}
 
+        # Kimi K2: テキストストリームからマークダウンを抽出（フォールバック）
+        if model_type == "kimi" and kimi_text_buffer and not fallback_markdown:
+            extracted = extract_marp_markdown_from_text(kimi_text_buffer)
+            if extracted:
+                fallback_markdown = extracted
+                print(f"[INFO] Kimi K2: Fallback markdown extracted from text stream")
+
         # リトライ判定: ツール名破損が検出され、markdownが生成されていない場合
-        if tool_name_corrupted and not _generated_markdown and model_type == "kimi":
+        if tool_name_corrupted and not _generated_markdown and not fallback_markdown and model_type == "kimi":
             retry_count += 1
             if retry_count <= MAX_RETRY_COUNT:
                 yield {"type": "status", "data": f"リトライ中... ({retry_count}/{MAX_RETRY_COUNT})"}
@@ -515,8 +575,12 @@ async def invoke(payload, context=None):
         break  # 正常完了またはリトライ上限
 
     # output_slideツールで生成されたマークダウンを送信
-    if _generated_markdown:
-        yield {"type": "markdown", "data": _generated_markdown}
+    # output_slideが呼ばれなかった場合はフォールバックを使用（Kimi K2対策）
+    markdown_to_send = _generated_markdown or fallback_markdown
+    if markdown_to_send:
+        if fallback_markdown and not _generated_markdown:
+            print(f"[INFO] Using fallback markdown (output_slide was not called)")
+        yield {"type": "markdown", "data": markdown_to_send}
 
     # generate_tweet_urlツールで生成されたツイートURLを送信
     if _generated_tweet_url:
