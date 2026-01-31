@@ -180,6 +180,21 @@ title={hasUserMessage ? '会話中はモデルを変更できません' : '使�
 
 **注意**: `messages.length > 0` だと初期メッセージ（アシスタントの挨拶）も含まれてしまうため、`messages.some(m => m.role === 'user')` でユーザー発言の有無を判定する。
 
+**スマホ対応（矢印のみ表示）**: スマホではモデル名が幅を取りすぎるので、矢印だけ表示してタップでドロップダウンを開く。
+
+```typescript
+<select
+  className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
+>
+  <option value="claude">Claude</option>
+  <option value="kimi">Kimi</option>
+</select>
+<span className="ml-2 sm:ml-1">▾</span>
+```
+
+- スマホ（sm未満）: `w-0` でテキスト非表示、矢印のみ
+- PC（sm以上）: `sm:w-auto` で通常表示
+
 #### API（useAgentCore.ts）
 ```typescript
 body: JSON.stringify({

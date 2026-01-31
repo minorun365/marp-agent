@@ -31,6 +31,12 @@ Strands AgentsでMoonshot AI (Kimi K2 Thinking) の動作確認完了。フロ�
 - モデルセレクター追加で送信ボタンが狭くなる問題
 - `whitespace-nowrap shrink-0` を追加
 
+### 5. スマホ表示でモデルセレクターを簡略化
+- スマホではモデル名が幅を取りすぎる問題
+- スマホ（sm未満）: 矢印▾のみ表示
+- PC（sm以上）: モデル名+矢印を表示
+- `w-0 sm:w-auto` でレスポンシブ切り替え
+
 ## 解決済みの問題
 
 ### 1. cache_prompt/cache_tools非対応 ✅ 解決済み
