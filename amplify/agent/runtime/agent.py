@@ -501,7 +501,13 @@ async def invoke(payload, context=None):
                             if hasattr(reasoning, 'reasoningText'):
                                 reasoning_text = reasoning.reasoningText
                                 if hasattr(reasoning_text, 'text') and reasoning_text.text:
-                                    extracted = extract_marp_markdown_from_text(reasoning_text.text)
+                                    text = reasoning_text.text
+                                    # ツール呼び出しがテキストとして埋め込まれている場合を検出（リトライ対象）
+                                    if "<|tool_call" in text or "functions.web_search" in text or "functions.output_slide" in text:
+                                        tool_name_corrupted = True
+                                        print(f"[WARN] Tool call found in reasoning text (retry {retry_count + 1}/{MAX_RETRY_COUNT})")
+                                    # マークダウン抽出（フォールバック用）
+                                    extracted = extract_marp_markdown_from_text(text)
                                     if extracted and not fallback_markdown:
                                         fallback_markdown = extracted
                                         print(f"[INFO] Fallback markdown extracted from reasoningContent")
