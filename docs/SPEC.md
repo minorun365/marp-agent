@@ -585,7 +585,7 @@ Amplify Console → **Environment variables** で設定:
 
 - [x] チャット応答のマークダウンレンダリング（react-markdown）
 - [ ] マークダウン編集機能（シンタックスハイライト付き）
-- [ ] テーマ選択（default / gaia / uncover）
+- [x] テーマ選択（Border / Gradient / Beam の3種類）
 - [ ] 画像アップロード・挿入
 - [ ] スライド履歴管理
 - [x] PPTX 出力対応（ドロップダウンでPDF/PPTX選択）

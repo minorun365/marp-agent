@@ -10,7 +10,7 @@
 
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
-| #10 | テーマ選択 | 中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
+| #10 | テーマ選択 | 中 | ✅ 完了 | 🔴 重要 | ✅ | ✅ | ➖ | ➖ |
 | #26 | Kimiに変えてみる | 小〜中 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
 | #33 | TavilyのExtractに対応 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
@@ -34,107 +34,39 @@
 
 > **並び順**: 上記タスク管理表と同じ順番（①重要度が高い順 → ②実装が簡単な順）で記載しています。
 
-### #10 テーマ選択 🔴重要
+### #10 テーマ選択 🔴重要 ✅完了
 
-**現状**:
-- テーマは `border` 固定（フロント: `src/themes/border.css`、バックエンド: `amplify/agent/runtime/border.css`）
-- `SlidePreview.tsx:4,28-30` で `borderTheme` をインポート＆ `marp.themeSet.add()`
-- `agent.py:124-130` のシステムプロンプトで `theme: border` を固定指示
-- PDF生成時も `border.css` を固定指定（`agent.py:256`）
+**実装済み（2026-01-31）**
 
-**利用可能なMarpビルトインテーマ**:
-| テーマ | 特徴 |
-|--------|------|
-| **default** | Marpの標準テーマ、シンプル |
-| **gaia** | モダンでカラフル |
-| **uncover** | ミニマリスト＆エレガント |
-| **border** | カスタム（グラデーション + 太い枠線） |
+#### テーマ一覧（3種類）
 
-**実装方法**:
+| ID | 表示名 | 種類 | 特徴 |
+|----|--------|------|------|
+| `border` | Border | カスタム | 白黒グラデーション＋太枠（デフォルト） |
+| `gradient` | Gradient | コミュニティ | カラフル対角グラデーション |
+| `beam` | Beam | コミュニティ | LaTeX Beamer風、学術向け |
 
-#### 1. フロントエンド
+#### UI配置
 
-**App.tsx** に state追加:
-```typescript
-const [selectedTheme, setSelectedTheme] = useState<'default' | 'gaia' | 'uncover' | 'border'>('border');
+プレビュー画面のヘッダー左側にテーマ選択（ラベル＋ドロップダウン）を縦配置：
 
-// マークダウン生成時にテーマを反映
-const handleMarkdownGenerated = (newMarkdown: string) => {
-  const updatedMarkdown = newMarkdown.replace(
-    /^(---[\s\S]*?theme:\s*)\w+/m,
-    `$1${selectedTheme}`
-  );
-  setMarkdown(updatedMarkdown);
-};
+```
+┌───────────────────────────────────────────────────────┐
+│ テーマ                       [修正を依頼] [ダウンロード▼] │
+│ [Border ▼]                                            │
+└───────────────────────────────────────────────────────┘
+
+各スライドカードの下部に「スライド 1/28」形式で表示
 ```
 
-**ヘッダーにセレクタ追加**:
-```tsx
-<select
-  value={selectedTheme}
-  onChange={(e) => setSelectedTheme(e.target.value as any)}
-  className="bg-white/20 text-white px-3 py-1 rounded text-sm border border-white/30"
->
-  <option value="border" className="text-gray-900">Border（推奨）</option>
-  <option value="default" className="text-gray-900">Default</option>
-  <option value="gaia" className="text-gray-900">Gaia</option>
-  <option value="uncover" className="text-gray-900">Uncover</option>
-</select>
-```
+#### 実装ファイル
 
-**SlidePreview.tsx** で全テーマ登録:
-```typescript
-import borderTheme from '../themes/border.css?raw';
-import defaultTheme from '../themes/default.css?raw';
-import gaiaTheme from '../themes/gaia.css?raw';
-import uncoverTheme from '../themes/uncover.css?raw';
-
-const marp = new Marp();
-marp.themeSet.add(borderTheme);
-marp.themeSet.add(defaultTheme);
-marp.themeSet.add(gaiaTheme);
-marp.themeSet.add(uncoverTheme);
-```
-
-#### 2. バックエンド
-
-**agent.py の `generate_pdf()` を動的選択に修正**:
-```python
-def generate_pdf(markdown: str) -> bytes:
-    import re
-    theme_match = re.search(r'theme:\s*(\w+)', markdown)
-    selected_theme = theme_match.group(1) if theme_match else 'border'
-
-    theme_files = {
-        'border': Path(__file__).parent / 'border.css',
-        'default': Path(__file__).parent / 'default.css',
-        'gaia': Path(__file__).parent / 'gaia.css',
-        'uncover': Path(__file__).parent / 'uncover.css',
-    }
-    theme_path = theme_files.get(selected_theme, theme_files['border'])
-    # ... 以下既存処理
-```
-
-#### 3. テーマCSSファイル配置
-
-| 配置場所 | 用途 |
+| ファイル | 内容 |
 |---------|------|
-| `src/themes/` | フロントエンド（Marp Core） |
-| `amplify/agent/runtime/` | バックエンド（Marp CLI PDF生成） |
-
-**テーマCSS入手方法**: `@marp-team/marp-core` の node_modules から抽出、または [marp-community-themes](https://github.com/rnd195/marp-community-themes) を参照
-
-#### 4. データフロー図
-
-```
-[ヘッダー: テーマセレクタ▼] → selectedTheme state
-         ↓ onChange
-[マークダウンのフロントマター theme: を書き換え]
-         ↓
-[SlidePreview] → marp.themeSet に全テーマ登録済み → プレビュー反映
-         ↓
-[PDFダウンロード] → generate_pdf() がmarkdownからtheme:抽出 → Marp CLIに --theme 指定
-```
+| `src/components/SlidePreview.tsx` | THEMES配列、テーマ選択UI、マークダウンへのテーマ注入 |
+| `src/themes/*.css` | border.css, gradient.css, beam.css |
+| `amplify/agent/runtime/agent.py` | PDF/PPTX生成時のテーマ指定 |
+| `amplify/agent/runtime/*.css` | 同上（バックエンド用） |
 
 ---
 

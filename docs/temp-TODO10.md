@@ -116,7 +116,6 @@ import beamTheme from '../themes/beam.css?raw';
 ```typescript
 const THEMES = [
   { id: 'border', name: 'Border', css: borderTheme },
-  { id: 'uncover', name: 'Uncover', css: null },  // Marp標準
   { id: 'gradient', name: 'Gradient', css: gradientTheme },
   { id: 'beam', name: 'Beam', css: beamTheme },
 ] as const;
@@ -134,9 +133,7 @@ const [selectedTheme, setSelectedTheme] = useState<ThemeId>('border');
 const marp = new Marp();
 // 全カスタムテーマを登録
 THEMES.forEach(theme => {
-  if (theme.css) {
-    marp.themeSet.add(theme.css);
-  }
+  marp.themeSet.add(theme.css);
 });
 const { html, css } = marp.render(markdown);
 ```
@@ -235,23 +232,10 @@ export async function exportPptx(markdown: string, theme: string = 'border'): Pr
 ```python
 def generate_pdf(markdown: str, theme: str = 'border') -> bytes:
     """Marp CLIでPDFを生成"""
-    # uncoverはMarp標準テーマ（CSSファイル不要）
-    if theme == 'uncover':
-        theme_option = ['--theme', 'uncover']
-    else:
-        theme_path = Path(__file__).parent / f"{theme}.css"
-        if theme_path.exists():
-            theme_option = ['--theme', str(theme_path)]
-        else:
-            theme_option = []
-
-    cmd = [
-        "marp",
-        str(md_path),
-        "--pdf",
-        "--allow-local-files",
-        "-o", str(pdf_path),
-    ] + theme_option
+    # テーマ設定: カスタムCSS
+    theme_path = Path(__file__).parent / f"{theme}.css"
+    if theme_path.exists():
+        cmd.extend(["--theme", str(theme_path)])
     # ...
 ```
 
