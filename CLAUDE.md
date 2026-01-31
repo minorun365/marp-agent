@@ -57,3 +57,18 @@ gh release create vX.Y.Z --generate-notes --title "vX.Y.Z 変更内容の要約"
 
 - ドキュメントのみの変更
 - CI/CD・開発環境の設定変更
+
+### ブランチ別バージョニング
+
+| ブランチ | 形式 | 例 |
+|---------|------|-----|
+| main | `vX.Y.Z` | `v1.2.0` |
+| kag | `vX.Y.Z-kag.N` | `v1.2.0-kag.1` |
+
+- kagはmainのバージョンをベースに `-kag.N` サフィックスを付与
+- kag固有の変更があるたびにNをインクリメント
+
+```bash
+# kagブランチのリリース作成
+gh release create vX.Y.Z-kag.N --generate-notes --target kag --title "vX.Y.Z-kag.N 変更内容の要約"
+```
