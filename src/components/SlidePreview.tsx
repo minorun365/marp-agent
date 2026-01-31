@@ -27,7 +27,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('border');
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('gradient');
 
   // Safari/iOS WebKit向けのpolyfillを適用
   useEffect(() => {

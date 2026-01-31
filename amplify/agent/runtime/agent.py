@@ -141,7 +141,7 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 - フロントマターには以下を含める：
   ---
   marp: true
-  theme: border
+  theme: gradient
   size: 16:9
   paginate: true
   ---
@@ -293,7 +293,7 @@ def extract_markdown(text: str) -> str | None:
     return None
 
 
-def generate_pdf(markdown: str, theme: str = 'border') -> bytes:
+def generate_pdf(markdown: str, theme: str = 'gradient') -> bytes:
     """Marp CLIでPDFを生成"""
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
@@ -326,7 +326,7 @@ def generate_pdf(markdown: str, theme: str = 'border') -> bytes:
         return pdf_path.read_bytes()
 
 
-def generate_pptx(markdown: str, theme: str = 'border') -> bytes:
+def generate_pptx(markdown: str, theme: str = 'gradient') -> bytes:
     """Marp CLIでPPTXを生成"""
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
@@ -373,7 +373,7 @@ async def invoke(payload, context=None):
     # セッションIDはHTTPヘッダー経由でcontextから取得（スティッキーセッション用）
     session_id = getattr(context, 'session_id', None) if context else None
 
-    theme = payload.get("theme", "border")
+    theme = payload.get("theme", "gradient")
 
     if action == "export_pdf" and current_markdown:
         # PDF出力
