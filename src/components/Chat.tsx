@@ -478,9 +478,9 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-3xl mx-auto space-y-4">
-        {/* 一時的なお知らせバナー（不要になったら削除）
+        {/* お知らせバナー（必要時にコメントを解除し、テキストを書き換えて使用）
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-700 text-sm">
-          1/26(月)午後、利用殺到によりみのるんの検索API利用枠が枯渇し、スライド内容が少しアホになっていました。同日19時半に修正済みです🙏
+          お知らせテキストをここに記載
         </div>
         */}
         {messages.length === 0 && (
@@ -574,12 +574,12 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         <div className="max-w-3xl mx-auto flex gap-2">
           {/* 入力欄（左端にモデルセレクター内蔵） */}
           <div className="flex-1 flex items-center border border-gray-200 rounded-lg bg-gray-50 focus-within:ring-2 focus-within:ring-[#5ba4d9] focus-within:border-transparent">
-            <div className="relative flex items-center pl-2 sm:pl-3">
+            <div className="relative flex items-center pl-3 sm:pl-4">
               {/* PC: モデル名表示、スマホ: 矢印のみ */}
               <span className={`hidden sm:inline text-xs ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>
                 {modelType === 'claude' ? 'Claude' : 'Kimi'}
               </span>
-              <span className={`text-xl sm:ml-1 mr-1 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>▾</span>
+              <span className={`text-xl sm:ml-1 mr-2 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>▾</span>
               {/* 透明なselectを上に重ねてタップ領域を確保 */}
               <select
                 value={modelType}
@@ -598,7 +598,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="例： 製造業のAIエージェント事例"
+              placeholder="例：AgentCoreの入門資料"
               className="flex-1 bg-transparent px-3 py-2 focus:outline-none"
               disabled={isLoading}
             />
@@ -606,7 +606,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="btn-kag text-white px-6 py-2 rounded-lg"
+            className="btn-kag text-white px-4 sm:px-6 py-2 rounded-lg whitespace-nowrap"
           >
             送信
           </button>

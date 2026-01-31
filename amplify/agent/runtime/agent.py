@@ -43,8 +43,8 @@ for _key_name in ["TAVILY_API_KEY", "TAVILY_API_KEY2", "TAVILY_API_KEY3"]:
     if _key:
         _tavily_clients.append(TavilyClient(api_key=_key))
 
-# テーマ名（環境変数から取得、デフォルトはborder）
-THEME_NAME = os.environ.get("MARP_THEME", "border")
+# デフォルトテーマ（kagブランチではKAG）
+DEFAULT_THEME = os.environ.get("MARP_THEME", "kag")
 
 
 @tool
@@ -144,7 +144,7 @@ SYSTEM_PROMPT = f"""あなたは「パワポ作るマン」、プロフェッシ
 - フロントマターには以下を含める：
   ---
   marp: true
-  theme: {THEME_NAME}
+  theme: {DEFAULT_THEME}
   size: 16:9
   paginate: true
   ---
@@ -322,11 +322,8 @@ def extract_markdown(text: str) -> str | None:
     return None
 
 
-def generate_pdf(markdown: str) -> bytes:
+def generate_pdf(markdown: str, theme: str = 'kag') -> bytes:
     """Marp CLIでPDFを生成"""
-    # カスタムテーマのパス（環境変数で切り替え）
-    theme_path = Path(__file__).parent / f"{THEME_NAME}.css"
-
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
         pdf_path = Path(tmpdir) / "slide.pdf"
@@ -340,7 +337,9 @@ def generate_pdf(markdown: str) -> bytes:
             "--allow-local-files",
             "-o", str(pdf_path),
         ]
-        # カスタムテーマが存在する場合は適用
+
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
         if theme_path.exists():
             cmd.extend(["--theme", str(theme_path)])
 
@@ -356,11 +355,8 @@ def generate_pdf(markdown: str) -> bytes:
         return pdf_path.read_bytes()
 
 
-def generate_pptx(markdown: str) -> bytes:
+def generate_pptx(markdown: str, theme: str = 'kag') -> bytes:
     """Marp CLIでPPTXを生成"""
-    # カスタムテーマのパス（環境変数で切り替え）
-    theme_path = Path(__file__).parent / f"{THEME_NAME}.css"
-
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
         pptx_path = Path(tmpdir) / "slide.pptx"
@@ -374,6 +370,9 @@ def generate_pptx(markdown: str) -> bytes:
             "--allow-local-files",
             "-o", str(pptx_path),
         ]
+
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
         if theme_path.exists():
             cmd.extend(["--theme", str(theme_path)])
 
@@ -400,13 +399,14 @@ async def invoke(payload, context=None):
     action = payload.get("action", "chat")  # chat or export_pdf
     current_markdown = payload.get("markdown", "")
     model_type = payload.get("model_type", "claude")  # claude or kimi
+    theme = payload.get("theme", DEFAULT_THEME)  # テーマ（フロントエンドから指定）
     # セッションIDはHTTPヘッダー経由でcontextから取得（スティッキーセッション用）
     session_id = getattr(context, 'session_id', None) if context else None
 
     if action == "export_pdf" and current_markdown:
         # PDF出力
         try:
-            pdf_bytes = generate_pdf(current_markdown)
+            pdf_bytes = generate_pdf(current_markdown, theme)
             pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
             yield {"type": "pdf", "data": pdf_base64}
         except Exception as e:
@@ -416,7 +416,7 @@ async def invoke(payload, context=None):
     if action == "export_pptx" and current_markdown:
         # PPTX出力
         try:
-            pptx_bytes = generate_pptx(current_markdown)
+            pptx_bytes = generate_pptx(current_markdown, theme)
             pptx_base64 = base64.b64encode(pptx_bytes).decode("utf-8")
             yield {"type": "pptx", "data": pptx_base64}
         except Exception as e:
@@ -432,6 +432,10 @@ async def invoke(payload, context=None):
     stream = agent.stream_async(user_message)
 
     async for event in stream:
+        # Kimi K2 Thinking の思考プロセスは無視（最終回答のみ表示）
+        if event.get("reasoning"):
+            continue
+
         if "data" in event:
             chunk = event["data"]
             yield {"type": "text", "data": chunk}
@@ -460,6 +464,9 @@ async def invoke(payload, context=None):
             result = event["result"]
             if hasattr(result, 'message') and result.message:
                 for content in getattr(result.message, 'content', []):
+                    # Kimi K2 Thinking の reasoningContent は無視（思考プロセス）
+                    if hasattr(content, 'reasoningContent'):
+                        continue
                     if hasattr(content, 'text') and content.text:
                         yield {"type": "text", "data": content.text}
 
