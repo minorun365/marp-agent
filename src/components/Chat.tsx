@@ -606,7 +606,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="btn-kag text-white px-6 py-2 rounded-lg whitespace-nowrap shrink-0"
+            className="btn-kag text-white px-4 sm:px-6 py-2 rounded-lg whitespace-nowrap"
           >
             送信
           </button>
