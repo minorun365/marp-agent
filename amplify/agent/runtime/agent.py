@@ -293,6 +293,34 @@ def extract_markdown(text: str) -> str | None:
     return None
 
 
+def extract_marp_markdown_from_text(text: str) -> str | None:
+    """テキストからMarpマークダウンを抽出（フォールバック用）
+
+    Kimi K2がoutput_slideツールを呼ばずにテキストとしてマークダウンを出力した場合に使用
+    """
+    import re
+
+    if not text or "marp: true" not in text:
+        return None
+
+    # フロントマター（---で始まるブロック）からスライド終端まで抽出
+    # パターン: ---\nmarp: true で始まり、最後のスライド内容まで
+    pattern = r'(---\s*\nmarp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
+    match = re.search(pattern, text)
+    if match:
+        markdown = match.group(1).strip()
+        # 内部トークンが残っていたら除去
+        markdown = re.sub(r'<\|[^>]+\|>', '', markdown)
+        # 末尾の不完全な行を除去
+        lines = markdown.split('\n')
+        # 最後の行が不完全（閉じタグなど）なら除去
+        while lines and (lines[-1].strip().startswith('<|') or not lines[-1].strip()):
+            lines.pop()
+        return '\n'.join(lines) if lines else None
+
+    return None
+
+
 def generate_pdf(markdown: str, theme: str = 'gradient') -> bytes:
     """Marp CLIでPDFを生成"""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -404,8 +432,11 @@ async def invoke(payload, context=None):
 
     # Kimi K2のツール名破損時のリトライループ
     retry_count = 0
+    fallback_markdown: str | None = None  # フォールバック用マークダウン
+
     while retry_count <= MAX_RETRY_COUNT:
         _generated_markdown = None  # リトライ時にリセット
+        fallback_markdown = None  # リトライ時にリセット
         tool_name_corrupted = False  # 破損検出フラグ
 
         stream = agent.stream_async(user_message)
@@ -450,8 +481,16 @@ async def invoke(payload, context=None):
                 result = event["result"]
                 if hasattr(result, 'message') and result.message:
                     for content in getattr(result.message, 'content', []):
-                        # Kimi K2 Thinking の reasoningContent は無視（思考プロセス）
+                        # Kimi K2 Thinking の reasoningContent からマークダウンを抽出（フォールバック）
                         if hasattr(content, 'reasoningContent'):
+                            reasoning = content.reasoningContent
+                            if hasattr(reasoning, 'reasoningText'):
+                                reasoning_text = reasoning.reasoningText
+                                if hasattr(reasoning_text, 'text') and reasoning_text.text:
+                                    extracted = extract_marp_markdown_from_text(reasoning_text.text)
+                                    if extracted and not fallback_markdown:
+                                        fallback_markdown = extracted
+                                        print(f"[INFO] Fallback markdown extracted from reasoningContent")
                             continue
                         if hasattr(content, 'text') and content.text:
                             yield {"type": "text", "data": content.text}
@@ -469,8 +508,12 @@ async def invoke(payload, context=None):
         break  # 正常完了またはリトライ上限
 
     # output_slideツールで生成されたマークダウンを送信
-    if _generated_markdown:
-        yield {"type": "markdown", "data": _generated_markdown}
+    # output_slideが呼ばれなかった場合はフォールバックを使用（Kimi K2対策）
+    markdown_to_send = _generated_markdown or fallback_markdown
+    if markdown_to_send:
+        if fallback_markdown and not _generated_markdown:
+            print(f"[INFO] Using fallback markdown (output_slide was not called)")
+        yield {"type": "markdown", "data": markdown_to_send}
 
     # generate_tweet_urlツールで生成されたツイートURLを送信
     if _generated_tweet_url:
