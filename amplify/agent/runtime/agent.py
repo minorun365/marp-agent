@@ -54,6 +54,8 @@ def web_search(query: str) -> str:
     Returns:
         検索結果のテキスト
     """
+    global _last_search_result
+
     if not _tavily_clients:
         return "Web検索機能は現在利用できません（APIキー未設定）"
 
@@ -75,7 +77,9 @@ def web_search(query: str) -> str:
                 content = result.get("content", "")
                 url = result.get("url", "")
                 formatted_results.append(f"**{title}**\n{content}\nURL: {url}")
-            return "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
+            search_result = "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
+            _last_search_result = search_result  # フォールバック用に保存
+            return search_result
         except Exception as e:
             error_str = str(e).lower()
             if "rate limit" in error_str or "429" in error_str or "quota" in error_str or "usage limit" in error_str:
@@ -91,6 +95,9 @@ _generated_markdown: str | None = None
 
 # ツイートURL用のグローバル変数
 _generated_tweet_url: str | None = None
+
+# Web検索結果用のグローバル変数（フォールバック用）
+_last_search_result: str | None = None
 
 
 @tool
@@ -390,9 +397,10 @@ def generate_pptx(markdown: str, theme: str = 'gradient') -> bytes:
 @app.entrypoint
 async def invoke(payload, context=None):
     """エージェント実行（ストリーミング対応）"""
-    global _generated_markdown, _generated_tweet_url
+    global _generated_markdown, _generated_tweet_url, _last_search_result
     _generated_markdown = None  # リセット
     _generated_tweet_url = None  # リセット
+    _last_search_result = None  # リセット
 
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")  # chat or export_pdf
@@ -438,6 +446,7 @@ async def invoke(payload, context=None):
         _generated_markdown = None  # リトライ時にリセット
         fallback_markdown = None  # リトライ時にリセット
         tool_name_corrupted = False  # 破損検出フラグ
+        has_any_output = False  # テキスト出力があったかのフラグ
 
         # Kimi K2の場合、dataイベントを蓄積してマークダウン検出に使用
         kimi_text_buffer = "" if model_type == "kimi" else None
@@ -459,9 +468,11 @@ async def invoke(payload, context=None):
                         kimi_skip_text = True
                         print(f"[INFO] Kimi K2: Marp markdown detected in text stream, skipping text output")
                     if not kimi_skip_text:
+                        has_any_output = True
                         yield {"type": "text", "data": chunk}
                 else:
                     # Claude: そのままテキスト送信
+                    has_any_output = True
                     yield {"type": "text", "data": chunk}
             elif "current_tool_use" in event:
                 # ツール使用中イベントを送信
@@ -513,6 +524,7 @@ async def invoke(payload, context=None):
                                         print(f"[INFO] Fallback markdown extracted from reasoningContent")
                             continue
                         if hasattr(content, 'text') and content.text:
+                            has_any_output = True
                             yield {"type": "text", "data": content.text}
 
         # Kimi K2: テキストストリームからマークダウンを抽出（フォールバック）
@@ -541,6 +553,16 @@ async def invoke(payload, context=None):
         if fallback_markdown and not _generated_markdown:
             print(f"[INFO] Using fallback markdown (output_slide was not called)")
         yield {"type": "markdown", "data": markdown_to_send}
+
+    # Web検索後に何も出力されなかった場合のフォールバック（Kimi K2対策 #42）
+    if not has_any_output and not markdown_to_send and _last_search_result:
+        # 検索結果を500文字に切り詰めて表示
+        truncated_result = _last_search_result[:500]
+        if len(_last_search_result) > 500:
+            truncated_result += "..."
+        fallback_message = f"Web検索結果:\n\n{truncated_result}\n\n---\nスライドを作成しますか？"
+        print(f"[INFO] No output after web search, returning search result as fallback")
+        yield {"type": "text", "data": fallback_message}
 
     # generate_tweet_urlツールで生成されたツイートURLを送信
     if _generated_tweet_url:
