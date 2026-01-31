@@ -576,10 +576,10 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           <div className="flex-1 flex items-center border border-gray-200 rounded-lg bg-gray-50 focus-within:ring-2 focus-within:ring-[#5ba4d9] focus-within:border-transparent">
             <div className="relative flex items-center pl-2 sm:pl-3">
               {/* PC: モデル名表示、スマホ: 矢印のみ */}
-              <span className={`hidden sm:inline text-xs ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>
+              <span className={`hidden sm:inline text-xs ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>
                 {modelType === 'claude' ? 'Claude' : 'Kimi'}
               </span>
-              <span className={`text-xl sm:ml-1 mr-1 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
+              <span className={`text-xl sm:ml-1 mr-1 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>▾</span>
               {/* 透明なselectを上に重ねてタップ領域を確保 */}
               <select
                 value={modelType}
