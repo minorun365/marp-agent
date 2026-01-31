@@ -829,6 +829,20 @@ return {
 - `preserveAspectRatio="xMidYMid meet"` → アスペクト比を維持しつつ収まるように
 - CSSの`!important`よりもSVG属性の直接変更が確実
 
+### フォーム要素の折り返し防止
+
+モデルセレクターなどを追加すると、スマホ表示でボタンが狭くなりテキストが折り返されることがある。
+
+```tsx
+<button className="whitespace-nowrap shrink-0 px-6 py-2">
+  送信
+</button>
+```
+
+**ポイント**:
+- `whitespace-nowrap` → テキストの折り返しを防止
+- `shrink-0` → Flexboxで縮まないように固定
+
 ### Tailwind CSS との競合
 
 #### invertクラスの競合
