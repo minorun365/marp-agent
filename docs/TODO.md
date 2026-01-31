@@ -10,25 +10,26 @@
 
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
-| #35 | 環境構築時に検証用ユーザーを最初から作っておきたい | 小 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
-| #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #40 | kimiがスライド内容をチャットに出力しがち問題 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #39 | 画面のどこかに最後のリリースの情報を表示したい | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #37 | Sandboxのhotswap問題をまとめる | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #33 | TavilyのExtractに対応 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #30 | スライドタイトルをAIが再設定するよう改善 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #32 | deploy-time-build: Repositoryを自前で渡す方式に修正 | 小 | ⬜ 未着手 | | ⬜ | ➖ | ➖ | ➖ |
-| #29 | 絵文字（❌✅）直後の文字が改行される問題 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #28 | 表のセル内パディング調整 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #27 | 既存テーマにデザインバリエーション追加（タイトル・仕切りなど） | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #19 | ツイートおすすめメッセージのストリーミング対応 | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #14 | 環境識別子リネーム（main→prod, dev→sandbox） | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #6 | Tavilyレートリミット枯渇通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #7 | エラー監視・通知 | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #22 | 参考資料などをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #23 | コードベースのリアーキテクチャ | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #16 | スライド編集（マークダウンエディタ） | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #9 | スライド共有機能 | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #35 | 環境構築時に検証用ユーザーを最初から作っておきたい | 1-2h | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
+| #40 | Kimiがスライド内容をチャットに出力しがち問題 | 10分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #41 | スライドデザイン選択UIのデザイン改善 | 23分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #30 | スライドタイトルをAIが再設定するよう改善 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #28 | 表のセル内パディング調整 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #29 | 絵文字（❌✅）直後の文字が改行される問題 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #19 | ツイートおすすめメッセージのストリーミング対応 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #14 | 環境識別子リネーム（dev→sandbox） | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #37 | Sandboxのhotswap問題をまとめる | 1-2h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #32 | deploy-time-build: Repositoryを自前で渡す方式に修正 | 1.5h | ⬜ 未着手 | | ⬜ | ➖ | ➖ | ➖ |
+| #33 | TavilyのExtractに対応 | 2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #39 | 画面のどこかに最後のリリースの情報を表示したい | 3h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #27 | 既存テーマにデザインバリエーション追加（タイトル・仕切りなど） | 1-2日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #6 | Tavilyレートリミット枯渇通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #7 | エラー監視・通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #22 | 参考資料などをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #23 | コードベースのリアーキテクチャ | 1週間 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #16 | スライド編集（マークダウンエディタ） | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #9 | スライド共有機能 | 1週間 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 
 ---
 
@@ -46,70 +47,80 @@
 - CDKでCognito User Poolにテストユーザーを自動作成する仕組みを追加
 - または、sandbox起動時にAWS CLIでユーザー作成するスクリプトを用意
 
-**工数**: 小（1-2時間）
+**工数**: 1-2時間
 
 ---
 
-### #39 画面のどこかに最後のリリースの情報を表示したい
-
-**概要**: 画面のどこかに最後のリリース情報を表示したい。
-
-**現状**: バージョン情報が画面に表示されていない。
-
-**修正方法**:
-- GitHub Releases APIから最新リリース情報を取得
-- フッター等に「v1.2.0」のようにバージョンを表示
-
-**工数**: 小（2-3時間）
-
----
-
-### #40 kimiがスライド内容をチャットに出力しがち問題
+### #40 Kimiがスライド内容をチャットに出力しがち問題 ⚡最速
 
 **概要**: Kimi K2 Thinking使用時、スライド内容がチャットに直接出力されてしまうことがある。
 
-**現状**: Claudeでは`output_slide`ツールを使って出力するよう指示しているが、Kimiはテキストとしてチャットに出力してしまうことがある。
+**根本原因**: Kimi K2は思考プロセスを経由するため、「テキスト出力NG」という消極的指示より「ツール出力の必須性」を強調する方が効果的。
 
-**原因の推測**:
-- Kimi K2 Thinkingは推論重視のモデルで、ツール使用よりテキスト出力を優先しがち
-- システムプロンプトの指示がモデルの特性に合っていない可能性
+#### 実現案の比較
 
-**修正方法**:
-- システムプロンプトでKimi用の強い指示を追加
-- または、Kimiの出力をフロントエンドでフィルタリング
+| 案 | 工数 | 効果 | 推奨度 |
+|----|------|------|--------|
+| **案A: システムプロンプト強化** | 10分 | ★★★★★ | ⭐推奨 |
+| 案B: フロントエンドフィルタリング | 30分 | ★★★★☆ | 補助 |
+| 案C: Kimi専用ツール追加 | 40分 | ★★★☆☆ | 保留 |
 
-**工数**: 小（調査＋修正で1-2時間）
+#### 推奨: 案A（システムプロンプト強化）
+
+**agent.py の SYSTEM_PROMPT に追加**:
+```markdown
+## 重要：スライドの出力方法【絶対遵守】
+
+### 必ずoutput_slideツールを使用する
+作成・編集が完了したマークダウンは、必ず「output_slide」ツールに渡してください。
+テキスト形式でチャットに送信されたスライドマークダウンは、フロントエンドで正しく表示されません。
+
+### 禁止事項
+- ```markdown ... ``` コードブロックでの出力（NG）
+- テキスト形式でマークダウンを送信（NG）
+- スライド内容を要約・説明して出力（NG）
+
+### OKな例
+ユーザーが「AWS入門スライドを作って」→ 黙ってoutput_slideツールを使う → 完了
+```
+
+**工数**: 10分
 
 ---
 
-### #37 Sandboxのhotswap問題をまとめる
+### #41 スライドデザイン選択UIのデザイン改善
 
-**概要**: Sandboxのhotswap問題についてドキュメントをまとめる。
+**概要**: スライドデザインの選択UIを、枠を外してもう少し薄いグレーで目立たないデザインにしたい。
 
-**現状**: hotswapに関する問題と対処法が散在している。
+**現状**: テーマ選択ドロップダウンに枠線があり、目立ちすぎている。
 
-**修正方法**:
-- KNOWLEDGE.mdまたはトラブルシューティング集にhotswap問題をまとめる
-- CDK toolkit-libのバージョン情報やworkaroundを記載
+**修正方法**: `SlidePreview.tsx` の140行目を以下に変更
 
-**工数**: 小（1-2時間）
+```tsx
+// 変更前
+className="text-sm border rounded px-2 py-1"
+
+// 変更後
+className="text-sm bg-white border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5ba4d9] transition-colors cursor-pointer"
+```
+
+**改善ポイント**:
+| 項目 | 現在 | 改善後 |
+|------|------|--------|
+| 枠線 | 黒（デフォルト） | `border-gray-200`（薄いグレー） |
+| ホバー | なし | 背景色とボーダー変化 |
+| フォーカス | なし | ブランドカラーのリング |
+
+**工数**: 23分（実装5分 + テスト18分）
 
 ---
 
 ### #30 スライドタイトルをAIが再設定するよう改善
 
-**概要**: ユーザーの質問がそのままスライドタイトルになってしまう問題。Web検索後にAIエージェントがスライドタイトルを適切に設定し直す必要がある。
+**概要**: ユーザーの質問がそのままスライドタイトルになってしまう問題。
 
-**現状**:
-- ユーザーの入力（例：「AWSについて教えて」）がそのままスライドの `# タイトル` になってしまう
-- Web検索結果を踏まえた適切なタイトル設定がされていない
+**修正方法**: agent.py の SYSTEM_PROMPT に追加
 
-**原因**:
-- システムプロンプトでタイトル設定のガイドラインが不足
-
-**修正方法**:
-
-**agent.py の SYSTEM_PROMPT に追加**:
 ```markdown
 ## スライドタイトルの設定ルール
 - ユーザーの質問文をそのままタイトルにしないこと
@@ -119,58 +130,22 @@
   - ❌「生成AIの最新動向を調べて」→ ✅「生成AI最新トレンド 2025」
 ```
 
-**工数**: 小（システムプロンプト修正のみ、30分程度）
-
----
-
-### #29 絵文字（❌✅）直後の文字が改行される問題
-
-**概要**: Marp内で❌や✅の絵文字を使うと、その直後の文字が改行されて表示されてしまう問題。
-
-**原因の可能性**:
-- 絵文字の幅計算とフォント・行高の相性問題
-- MarpのCSS（デフォルトまたはborderテーマ）における行ボックス処理
-
-**調査項目**:
-1. 特定のフォント設定で発生するか確認
-2. `border.css` の line-height 設定を確認
-3. 絵文字の前後にゼロ幅スペースや改行が入っていないか確認
-
-**考えられる対策**:
-- システムプロンプトで❌✅の代わりに「×」「○」や「NG」「OK」を使うよう指示
-- CSSで絵文字を含む要素の `white-space: nowrap` を設定
-- フォントファミリーに絵文字対応フォントを追加
-
-**工数**: 小（調査＋修正で1-2時間）
+**工数**: 30分
 
 ---
 
 ### #28 表のセル内パディング調整
 
-**概要**: 表の中の文字と表の枠の間のパディングが少ないため、見た目のバランスが悪い問題を修正する。
+**概要**: 表の中の文字と表の枠の間のパディングが少ないため、見た目のバランスが悪い。
 
-**現状**:
-- `border.css` にはテーブル固有のスタイルが**未定義**（`@import "default"` で継承しているのみ）
-- Marpのデフォルトテーマではパディングが小さめに設定されている
+**修正ファイル**: `src/themes/*.css` + `amplify/agent/runtime/*.css`
 
-**修正ファイル**:
-| ファイル | 変更内容 |
-|---------|---------|
-| `src/themes/border.css` | テーブルスタイルを追加 |
-| `amplify/agent/runtime/border.css` | 同じ内容を追加 |
-
-**実装コード（border.css の末尾に追加）**:
+**実装コード（各テーマCSSの末尾に追加）**:
 ```css
 /* || TABLE: セル内パディング調整 */
-section table {
-  border-collapse: collapse;
-  margin: 1em 0;
-}
-
 section table th,
 section table td {
-  padding: 0.6em 1.2em;  /* 上下0.6em、左右1.2em */
-  border: 1px solid var(--border-color);
+  padding: 0.6em 1.2em;
 }
 
 section table th {
@@ -178,183 +153,56 @@ section table th {
   font-weight: 700;
 }
 
-/* 偶数行の背景色（視認性向上） */
 section table tr:nth-child(even) td {
   background-color: rgba(0, 0, 0, 0.03);
 }
 ```
 
-**パディング値の根拠**:
-| 値 | 選定理由 |
-|-----|---------|
-| 上下 `0.6em` | 行間に余裕を持たせつつ、スライド内でコンパクトに収まる |
-| 左右 `1.2em` | 列間の区切りを明確にし、文字が枠に接触しない |
-
-**注意点**:
-- フロントエンド（`src/themes/`）とバックエンド（`amplify/agent/runtime/`）の**両方を同じ内容に更新**すること
-- プレビューとPDF出力で同じ見た目になることを確認
-
-**工数**: 小（30分〜1時間）
+**工数**: 30分
 
 ---
 
-### #27 既存テーマにデザインバリエーション追加（タイトル・仕切りなど）
+### #29 絵文字（❌✅）直後の文字が改行される問題
 
-**概要**: 現在の`border`テーマにスライドクラスを追加し、タイトルスライド・セクション区切り・引用など、デザインバリエーションを使えるようにする。
+**概要**: Marp内で❌や✅の絵文字を使うと、その直後の文字が改行されて表示される。
 
-**現在のテーマ構成**:
-- `src/themes/border.css` / `amplify/agent/runtime/border.css`（同一内容）
-- 既存クラス: `tinytext`（参考文献用の小さい文字）のみ
+**根本原因**: Unicode Line Breaking Algorithm (UAX #14) により、絵文字の直後が行分割機会となる。カスタムテーマに `word-break` が未実装。
 
-**Marpのスライドクラス機能**:
-```markdown
-<!-- _class: title -->
-# タイトル
+#### 実現案の比較
 
-<!-- _class: crosshead -->
-## セクション区切り
-```
-`_` プレフィックス = **そのスライドのみ**に適用
+| 案 | 工数 | 効果 | 推奨度 |
+|----|------|------|--------|
+| **案A: CSS修正** | 20分 | ★★★★☆ | ⭐推奨 |
+| **案B: プロンプト強化** | 10分 | ★★★★★ | ⭐推奨 |
+| 案C: フォント設定 | 1h | ★★☆☆☆ | 不要 |
 
-**追加するクラス定義（border.css に追加）**:
+#### 推奨: 案A + 案B（両方実施）
 
+**案A: src/index.css に追加**
 ```css
-/* タイトルスライド - グラデーション背景 + 中央配置 */
-section.title {
-  background: linear-gradient(135deg, #0e0d6a 0%, #1a3a6e 100%);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-section.title h1 {
-  font-size: 3.5em;
-  margin: 0.5em 0;
-  font-weight: 700;
-}
-
-section.title h3 {
-  font-size: 1.3em;
-  color: rgba(255, 255, 255, 0.8);
-  margin: 0;
-  font-weight: 400;
-}
-
-/* セクション区切り - グレー背景 + 左ボーダー */
-section.crosshead {
-  background: linear-gradient(to bottom right, #f0f0f0 0%, #e0e0e0 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  border-left: 1em solid var(--border-color);
-}
-
-section.crosshead h2 {
-  font-size: 2.5em;
-  color: var(--border-color);
-  margin: 0;
-}
-
-/* 引用スライド - 左ボーダー + イタリック */
-section.quote {
-  background: linear-gradient(to bottom right, #fffaf0 0%, #fff5e6 100%);
-  border-left: 5px solid #5ba4d9;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 2em;
-}
-
-section.quote blockquote {
-  font-size: 1.8em;
-  font-style: italic;
-  color: var(--border-color);
-  margin: 0;
-  border: none;
-  padding: 0;
-}
-
-/* 画像中心スライド */
-section.image {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5em;
-}
-
-section.image img {
-  max-width: 90%;
-  max-height: 60%;
-  object-fit: contain;
-}
-
-/* ダークモード */
-section.invert {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  color: #ffffff;
-  border-color: #ffffff;
-}
-
-/* ハイライト背景 */
-section.highlight {
-  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-  border-left: 1em solid #ff9800;
+.marpit section {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 ```
 
-**システムプロンプト更新（agent.py）**:
-
+**案B: agent.py の SYSTEM_PROMPT を強化**（既存の「絵文字は使用しない」を具体化）
 ```markdown
-## スライドクラス（デザインバリエーション）【推奨】
-
-### タイトルスライド【必須】
-1枚目は必ず `title` クラス:
-<!-- _class: title -->
-# タイトル
-### サブタイトル
-
-### セクション区切り【推奨】
-3〜4スライドごとに `crosshead`:
-<!-- _class: crosshead -->
-## セクション2. テーマ別展開
-
-### 引用【推奨】
-重要な定義は `quote`:
-<!-- _class: quote -->
-> 「重要なポイント」
-— 出典
-
-### 画像中心【推奨】
-写真を大きく表示: `image`
-
-### ダーク/ハイライト【オプション】
-`invert` / `highlight`
+## 禁止される表現の例
+❌ 成功です  → ◎ 完了しました
+❌ チェック完了  → ◎ 確認完了
+✅ 対応済み  → ◎ 対応済み
 ```
 
-**修正ファイル**:
-| ファイル | 変更内容 |
-|---------|---------|
-| `src/themes/border.css` | クラス定義を追加 |
-| `amplify/agent/runtime/border.css` | 同じ内容を追加 |
-| `amplify/agent/runtime/agent.py` | SYSTEM_PROMPT にクラス使用ガイド追加 |
-
-**注意**: フロントエンド修正不要（CSSとプロンプトのみ）
-
-**工数**: 小〜中（1-2日）
+**工数**: 30分（CSS + プロンプト）
 
 ---
 
 ### #19 ツイートおすすめメッセージのストリーミング対応
 
-**現状**: シェアボタン押下時、`Chat.tsx`で「無言でツール使用開始すること」という指示を送信しているため、LLMがテキストを出力せずツールを即実行。結果、ツイート推奨メッセージがストリーミング表示されない。
+**現状**: シェアボタン押下時、「無言でツール使用開始すること」という指示のため、ツイート推奨メッセージがストリーミング表示されない。
 
-**推奨修正（2箇所、工数：小）**:
+**修正（2箇所）**:
 
 1. **Chat.tsxの「無言」指示を削除**
    ```typescript
@@ -364,7 +212,7 @@ section.highlight {
    await invoke('今回の体験をXでシェアするURLを提案してください', ...)
    ```
 
-2. **システムプロンプトでシェア時の振る舞いを明記**（`agent.py` SYSTEM_PROMPT）
+2. **システムプロンプトでシェア時の振る舞いを明記**
    ```markdown
    ## Xでシェア機能
    ユーザーが「シェアしたい」などと言った場合：
@@ -372,133 +220,242 @@ section.highlight {
    2. その後 generate_tweet_url ツールを使ってURLを生成
    ```
 
+**工数**: 30分
+
 ---
 
 ### #14 環境識別子リネーム
 
-**変更内容**: main→prod、dev→sandbox
+**変更内容**: dev→sandbox
 
 **変更が必要なファイル**:
 
-| ファイル | 行 | 変更内容 |
-|---------|-----|---------|
-| `amplify/backend.ts` | 10 | `'dev'` → `'sandbox'` |
-| `amplify/agent/resource.ts` | 58 | コメント更新（`marp_agent_dev` → `marp_agent_sandbox` 等） |
-| `docs/KNOWLEDGE.md` | 923 | ランタイム名の例を更新 |
+| ファイル | 変更内容 |
+|---------|---------|
+| `amplify/backend.ts:10` | `'dev'` → `'sandbox'` |
+| `amplify/agent/resource.ts:58` | コメント更新 |
+| `docs/KNOWLEDGE.md` | ランタイム名の例を更新 |
 
-**注意**:
-- `backend.ts:10` の `branchName` デフォルト値を変えるだけで、ランタイム名は自動追従
-- AgentCore Runtimeのランタイム名が変わるため再作成が必要
-- Gitブランチ名（main/kag）は変更不要
+**注意**: AgentCore Runtimeのランタイム名が変わるため再作成が必要
+
+**工数**: 30分
+
+---
+
+### #37 Sandboxのhotswap問題をまとめる
+
+**概要**: Sandboxのhotswap問題についてドキュメントをまとめる。
+
+**修正方法**:
+- `~/.claude/rules/amplify-cdk.md` にhotswap問題をまとめる
+- CDK toolkit-libのバージョン情報やworkaroundを記載
+
+**工数**: 1-2時間
+
+---
+
+### #32 deploy-time-build: Repositoryを自前で渡す方式に修正
+
+**概要**: 現在の型アサーション `(containerImageBuild.repository as ecr.Repository)` を排除し、型安全にする。
+
+**現状の問題**:
+```typescript
+// 型安全性が低い
+(containerImageBuild.repository as ecr.Repository).addLifecycleRule(...)
+```
+
+#### 実現案の比較
+
+| 案 | 工数 | 効果 | 推奨度 |
+|----|------|------|--------|
+| **案A: シンプル版** | 30分 | 型安全化 | ⭐推奨 |
+| 案B: 分割版（repository.ts新規作成） | 1h | 将来拡張性 | 後で |
+
+#### 推奨: 案A（シンプル版）
+
+```typescript
+// amplify/agent/resource.ts
+if (!isSandbox) {
+  // ECRリポジトリを自前で作成
+  const repository = new ecr.Repository(stack, 'MarpAgentRepository', {
+    repositoryName: `marp-agent-${nameSuffix}`,
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+    emptyOnDelete: true,
+    imageScanOnPush: true,
+  });
+
+  // Lifecycle Policy を設定（型安全）
+  repository.addLifecycleRule({
+    description: 'Keep last 5 images',
+    maxImageCount: 5,
+    rulePriority: 1,
+  });
+
+  // ContainerImageBuild で repository を指定
+  containerImageBuild = new ContainerImageBuild(stack, 'MarpAgentImageBuild', {
+    directory: path.join(__dirname, 'runtime'),
+    platform: Platform.LINUX_ARM64,
+    repository,  // ← 自前のリポジトリを指定
+  });
+}
+```
+
+**工数**: 1.5時間（実装30分 + テスト1時間）
 
 ---
 
 ### #33 TavilyのExtractに対応
 
-**概要**: Tavily APIのExtract機能を使えるようにしたい。
+**概要**: Tavily APIのExtract機能（URLからコンテンツ抽出）を使えるようにしたい。
 
-**Tavily Extract機能**:
-- URLからコンテンツを抽出するAPI
-- Web検索とは別のエンドポイント
+#### 実現案の比較
 
-**実装方法**:
-- `agent.py`に`tavily_extract`ツールを追加
-- システムプロンプトで使い方を説明
+| 案 | 工数 | 効果 | 推奨度 |
+|----|------|------|--------|
+| 案A: web_searchに統合 | 1.5h | シンプル | △ 曖昧 |
+| **案B: 別ツール追加** | 2h | 明確 | ⭐推奨 |
+| 案C: URL自動判定 | 1.5h | - | ❌ 脆弱 |
 
-**工数**: 小（新規ツール追加）
+#### 推奨: 案B（別ツール tavily_extract として追加）
+
+```python
+@tool
+def tavily_extract(urls: list[str], query: str = "") -> str:
+    """指定したURLからコンテンツを抽出します。
+
+    Args:
+        urls: 抽出対象のURL（最大20個）
+        query: コンテンツの優先度付け用クエリ（オプション）
+
+    Returns:
+        抽出されたコンテンツのテキスト
+    """
+    response = client.extract(
+        urls=urls[:20],
+        query=query,
+        chunks_per_source=3,
+        extract_depth="advanced",
+        include_images=True,
+    )
+    # エラーハンドリング + フォーマット
+```
+
+**追加作業**:
+- `VALID_TOOL_NAMES` に `"tavily_extract"` を追加
+- `get_or_create_agent()` の `tools` リストに追加
+
+**工数**: 2時間
 
 ---
 
-### #26 Kimiに変えてみる ✅完了
+### #39 画面のどこかに最後のリリースの情報を表示したい
 
-**概要**: Moonshot AIのKimi K2 Thinking（推論モデル）を試してみる。
+**概要**: 画面にバージョン情報を表示したい。
 
-**実装内容**:
-- フロントエンド: Chat.tsx にモデル選択ドロップダウンを追加
-- バックエンド: agent.py で Kimi K2 Thinking のモデル選択ロジック実装
-- useAgentCore.ts でモデルタイプをペイロードに含める実装
+#### 実現案の比較
 
-**基本情報**:
-- 最新モデル: Kimi K2 Thinking（Bedrock経由、`moonshot.kimi-k2-thinking`）
-- **Bedrock経由のためクロスリージョン推論なし**
+| 案 | 工数 | 常に最新 | クライアント負荷 | 推奨度 |
+|----|------|---------|----------------|--------|
+| **案A: クライアントサイドAPI** | 3h | ✅ | 1リクエスト | ⭐推奨 |
+| 案B: ビルド時package.json埋め込み | 1h | ❌ | 0 | △ 手動同期 |
+| 案C: ビルド時API取得 | 2.5h | ✅ | 0 | △ CI依存 |
 
-**⚠️ 注意点**:
-| 項目 | 状況 |
-|------|------|
-| **クロスリージョン推論** | ❌ なし（`us.`/`jp.`プレフィックス使用不可） |
-| **cache_prompt / cache_tools** | ❌ 非対応（指定するとAccessDeniedException） |
-| **日本語サポート** | 🟢 問題なく動作 |
-| **Strands統合** | 🟢 BedrockModel経由で動作確認済み |
+#### 推奨: 案A（クライアントサイドでGitHub API取得）
 
-**参考**: 詳細は `docs/KNOWLEDGE.md` の「Kimi K2 Thinking 対応」セクションを参照
+```typescript
+// hooks/useLatestRelease.ts
+export function useLatestRelease(owner: string, repo: string) {
+  const [release, setRelease] = useState<Release | null>(null);
+
+  useEffect(() => {
+    // キャッシュチェック（1時間有効）
+    const cached = localStorage.getItem(`github_release_${owner}_${repo}`);
+    if (cached && Date.now() - JSON.parse(cached).timestamp < 3600000) {
+      setRelease(JSON.parse(cached).data);
+      return;
+    }
+
+    fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`)
+      .then(res => res.json())
+      .then(data => {
+        localStorage.setItem(`github_release_${owner}_${repo}`, JSON.stringify({
+          data, timestamp: Date.now()
+        }));
+        setRelease(data);
+      });
+  }, [owner, repo]);
+
+  return release;
+}
+
+// 使用例
+function VersionBadge() {
+  const release = useLatestRelease('minorun365', 'marp-agent');
+  if (!release) return null;
+  return <span>Latest: {release.tag_name}</span>;
+}
+```
+
+**レート制限**: 認証なし60回/時間（キャッシュで対応可能）
+
+**工数**: 3時間
+
+---
+
+### #27 既存テーマにデザインバリエーション追加（タイトル・仕切りなど）
+
+**概要**: タイトルスライド・セクション区切り・引用など、デザインバリエーションを使えるようにする。
+
+**追加するクラス**:
+- `title` - タイトルスライド（グラデーション背景 + 中央配置）
+- `crosshead` - セクション区切り（グレー背景 + 左ボーダー）
+- `quote` - 引用（左ボーダー + イタリック）
+- `image` - 画像中心
+- `invert` - ダークモード
+- `highlight` - ハイライト背景
+
+**修正ファイル**:
+| ファイル | 変更内容 |
+|---------|---------|
+| `src/themes/*.css` | クラス定義を追加 |
+| `amplify/agent/runtime/*.css` | 同じ内容を追加 |
+| `amplify/agent/runtime/agent.py` | SYSTEM_PROMPT にクラス使用ガイド追加 |
+
+**工数**: 1-2日
 
 ---
 
 ### #6 Tavilyレートリミット枯渇通知
 
-**現状**: `agent.py:47-51` でレートリミット検出済み（複数キーフォールバック対応）。全キー枯渇時のユーザー通知あり（`agent.py:54`）。管理者への通知がない。
+**現状**: 全キー枯渇時のユーザー通知あり。管理者への通知がない。
 
 **実装方法（SNS通知方式）**:
 
-1. **CDKでSNSトピック作成**（`amplify/backend.ts` または `amplify/agent/resource.ts`）
-   ```typescript
-   const alarmTopic = new sns.Topic(stack, 'TavilyAlertTopic', {
-     topicName: `marp-agent-tavily-alerts-${nameSuffix}`,
-   });
-   ```
+1. CDKでSNSトピック作成
+2. IAM権限追加（sns:Publish）
+3. agent.pyで全キー枯渇時にSNS通知
+4. SNSサブスクリプション設定（メールアドレス登録）
 
-2. **IAM権限追加**（`amplify/agent/resource.ts:84-93` に追加）
-   ```typescript
-   runtime.addToRolePolicy(new iam.PolicyStatement({
-     actions: ['sns:Publish'],
-     resources: [alarmTopic.topicArn],
-   }));
-   ```
-
-3. **agent.pyで全キー枯渇時にSNS通知**（`agent.py:54` 付近）
-   ```python
-   sns_client = boto3.client('sns')
-   sns_client.publish(
-     TopicArn=os.environ['ALERT_TOPIC_ARN'],
-     Subject='Tavily API Rate Limit Exhausted',
-     Message='All Tavily API keys have been exhausted.',
-   )
-   ```
-
-4. **SNSサブスクリプション設定**（メールアドレス登録）
+**工数**: 3-4時間
 
 ---
 
 ### #7 エラー監視・通知
 
-**現状**: OTEL Observability有効（`resource.ts:71-74`）。CloudWatch Alarm/SNS未設定。
+**現状**: OTEL Observability有効。CloudWatch Alarm/SNS未設定。
 
 **実装方法**:
+1. SNSトピック作成（#6と共用可能）
+2. CloudWatch Alarm追加（System Errors / User Errors / Throttling）
+3. メール通知設定
 
-1. **SNSトピック作成**（#6と共用可能）
-   ```typescript
-   const alarmTopic = new sns.Topic(stack, 'MarpAgentAlarmTopic', {
-     topicName: `marp-agent-alarms-${nameSuffix}`,
-   });
-   ```
-
-2. **CloudWatch Alarm追加**（`amplify/agent/resource.ts`）
-   - AgentCore Runtimeは自動でCloudWatchメトリクスを出力
-   - System Errors / User Errors / Throttling を監視
-
-3. **メール通知設定**（SNSサブスクリプション）
-
-**影響範囲**: 既存コード変更なし。CDKリソース追加のみ。
+**工数**: 3-4時間
 
 ---
 
-### #21 企業のカスタムテンプレをアップロードして使えるようにしたい 🔴重要
+### #21 企業のカスタムテンプレをアップロードして使えるようにしたい
 
 **概要**: 企業独自のMarpテーマ（CSS）をアップロードして使用できるようにする。
-
-**現在のテーマ管理**:
-- フロントエンド: `src/themes/border.css` を `?raw` でインポート → `marp.themeSet.add()`
-- バックエンド: `amplify/agent/runtime/border.css` を Marp CLI `--theme` で指定
 
 **推奨アーキテクチャ**:
 ```
@@ -508,288 +465,61 @@ section.highlight {
 バックエンド: S3 URLからCSS取得 → Marp CLI --theme指定
 ```
 
-**必要なインフラ（CDK）**:
+**必要なインフラ**: S3バケット + DynamoDBテーブル
 
-```typescript
-// S3バケット（テーマCSS保存）
-const themeBucket = new s3.Bucket(stack, 'ThemeBucket', {
-  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-  encryption: s3.BucketEncryption.S3_MANAGED,
-});
-
-// DynamoDBテーブル（テーマメタデータ）
-const themeTable = new dynamodb.Table(stack, 'ThemeTable', {
-  partitionKey: { name: 'organizationId', type: dynamodb.AttributeType.STRING },
-  sortKey: { name: 'themeName', type: dynamodb.AttributeType.STRING },
-  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-});
-```
-
-**フロントエンド実装**:
-
-```typescript
-// src/hooks/useThemeStorage.ts
-export async function uploadTheme(input: { file: File; themeName: string }) {
-  // ファイルサイズチェック（100KB制限）
-  if (input.file.size > 100 * 1024) throw new Error('ファイルサイズ超過');
-
-  // CSSバリデーション
-  const content = await input.file.text();
-  if (!content.includes('@theme') && !content.includes('section')) {
-    throw new Error('無効なMarpテーマ');
-  }
-
-  // Amplify Storage or Lambda経由でS3アップロード
-}
-
-// SlidePreview.tsx でS3テーマを動的登録
-useEffect(() => {
-  if (selectedThemeUrl?.startsWith('http')) {
-    fetch(selectedThemeUrl).then(res => res.text()).then(css => {
-      marp.themeSet.add(css);
-    });
-  }
-}, [selectedThemeUrl]);
-```
-
-**バックエンド実装**（agent.py）:
-
-```python
-def generate_pdf(markdown: str, theme_url: str | None = None) -> bytes:
-    if theme_url:
-        # S3からテーマを取得
-        response = requests.get(theme_url, timeout=5)
-        theme_path = Path(tmpdir) / "theme.css"
-        theme_path.write_bytes(response.content)
-        cmd.extend(["--theme", str(theme_path)])
-```
-
-**セキュリティ考慮**:
-- CSSバリデーション（`javascript:`, `expression(` 等を除外）
-- ファイルサイズ制限: 100KB
-- S3ブロックパブリックアクセス
-
-**工数**: 中〜大（5-7日）
+**工数**: 5-7日
 
 ---
 
 ### #22 参考資料などをアップロードして使えるようにしたい
 
-**概要**: PDF/Word/テキスト/画像をアップロードし、その内容に基づいてスライドを生成できるようにする。
-
-**推奨アーキテクチャ**:
-```
-ユーザー → ファイルアップロードUI → Amplify Storage (S3)
-                                    ↓
-AgentCore Runtime (agent.py) → ファイル処理ツール
-  ├─ PDF → pdfplumber でテキスト抽出
-  ├─ Word → python-docx でテキスト抽出
-  ├─ テキスト → そのまま使用
-  └─ 画像 → Bedrock Multimodal LLM で認識
-                                    ↓
-LLMプロンプトに埋め込み → スライド生成
-```
+**概要**: PDF/Word/テキスト/画像をアップロードし、その内容に基づいてスライドを生成。
 
 **対応ファイル形式**:
-| 形式 | 処理方法 | ライブラリ | 難度 |
-|------|---------|---------|------|
-| PDF | テキスト抽出 | `pdfplumber` | 低 |
-| Word (.docx) | テキスト抽出 | `python-docx` | 低 |
-| テキスト | そのまま | - | 低 |
-| 画像 | OCR | Bedrock Multimodal | 中 |
+| 形式 | 処理方法 | ライブラリ |
+|------|---------|---------|
+| PDF | テキスト抽出 | `pdfplumber` |
+| Word (.docx) | テキスト抽出 | `python-docx` |
+| テキスト | そのまま | - |
+| 画像 | OCR | Bedrock Multimodal |
 
-**バックエンド実装**（agent.py に追加）:
-
-```python
-import pdfplumber
-from docx import Document
-
-_reference_material: str = ""
-
-@tool
-def add_reference_material(file_path: str, file_type: str) -> str:
-    """参考資料をアップロード・処理します"""
-    global _reference_material
-
-    if file_type == "pdf":
-        with pdfplumber.open(file_path) as pdf:
-            text = "\n".join([page.extract_text() for page in pdf.pages])
-    elif file_type == "docx":
-        doc = Document(file_path)
-        text = "\n".join([p.text for p in doc.paragraphs])
-    elif file_type == "txt":
-        text = Path(file_path).read_text(encoding="utf-8")
-
-    _reference_material = text[:5000]  # Token節約
-    return f"参考資料を処理しました（{len(text)}文字）"
-```
-
-**requirements.txt に追加**:
-```
-pdfplumber
-python-docx
-```
-
-**フロントエンド実装**（Chat.tsx に追加）:
-
-```typescript
-<input
-  type="file"
-  accept=".pdf,.docx,.txt,image/*"
-  onChange={(e) => handleFileUpload(e.target.files?.[0])}
-/>
-```
-
-**インフラ変更**（CDK）:
-```typescript
-const referenceBucket = new s3.Bucket(stack, 'ReferenceMaterialBucket', {
-  encryption: s3.BucketEncryption.S3_MANAGED,
-  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-});
-
-runtime.addToRolePolicy(new iam.PolicyStatement({
-  actions: ['s3:GetObject'],
-  resources: [referenceBucket.arnForObjects('*')],
-}));
-```
-
-**注意点**:
-- Token コスト: テキスト抽出時に膨らみやすい → 5000文字制限推奨
-- 日本語PDF: `pdfplumber` は画像ベースPDFに弱い → OCR推奨
-
-**工数**: 中〜大（5-7日）
+**工数**: 5-7日
 
 ---
 
 ### #23 コードベースのリアーキテクチャ
 
-**現状**: コードベース全体を調査した結果、肥大化したファイルの分割・重複解消・テスト追加が必要。
+**概要**: 肥大化したファイルの分割・重複解消・テスト追加。
 
-#### 1. フロントエンドの分割（優先度：高）
+**優先度順**:
+1. Chat.tsx（460行）→ コンポーネント分割 + useReducer導入
+2. useAgentCore.ts（310行）→ useChatStream.ts + usePdfExport.ts に分離
+3. agent.py（328行）→ tools/ ディレクトリに分離
+4. border.css の重複解消 → ビルド時コピーで一元管理化
 
-**Chat.tsx（460行）** — UIロジック・ストリーミング処理・ステータス管理が混在
-
-- コンポーネント分割: `MessageList.tsx`, `ChatInput.tsx` 等
-- カスタムフック抽出: `useStreamingChat.ts`, `useStatusMessages.ts` 等
-- `setMessages` が40回以上呼ばれており、`useReducer` で状態管理を整理
-
-**useAgentCore.ts（310行）** — チャットSSEとPDF生成が同居
-
-- `useChatStream.ts`, `usePdfExport.ts` に分離
-- `lib/sseClient.ts` にSSE共通処理を抽出（`invokeAgent()` と `exportPdf()` で類似ロジックが重複）
-
-#### 2. バックエンドの分割（優先度：中）
-
-**agent.py（328行）** — ツール定義・エージェント管理・PDF生成が1ファイル
-
-- `tools/` ディレクトリにツール定義を分離（`web_search`, `output_slide`, `generate_tweet_url` 等）
-- `utils/pdf.py` にPDF生成ロジックを分離
-- 未使用の `extract_markdown()` 関数を削除
-
-#### 3. その他の改善
-
-| 項目 | 詳細 |
-|------|------|
-| border.css の重複解消 | `src/themes/` と `amplify/agent/runtime/` に同一ファイル。ビルド時コピー等で一元管理化 |
-| セッション管理のメモリリーク対策 | `_agent_sessions` にTTL付きキャッシュ（`cachetools` 等）導入 |
-| フロントエンドテスト追加 | Vitest設定済みだがテストファイルがゼロ。分割後にコンポーネントテスト追加 |
+**工数**: 1週間
 
 ---
 
 ### #16 スライド編集（マークダウンエディタ）
 
-**現状**:
-- `App.tsx` で `markdown` stateを管理、`SlidePreview.tsx` に渡してプレビュー表示
-- タブは `chat` / `preview` の2つ（`hidden` クラスで状態保持）
-- マークダウン更新は Chat → AgentCore API → `onMarkdown` コールバック経由のみ
+**推奨ライブラリ**: @uiw/react-codemirror（YAML frontmatter対応、モバイル優秀）
 
-**推奨ライブラリ: @uiw/react-codemirror** ⭐
-
-エディタライブラリ比較結果：
-
-| ライブラリ | サイズ | YAML frontmatter | モバイル | 推奨度 |
-|-----------|--------|-----------------|---------|-------|
-| **@uiw/react-codemirror** | ~300KB | ✅ `yamlFrontmatter()` | ✅ 優秀 | ⭐推奨 |
-| @uiw/react-md-editor | 4.6KB | ❌ 要カスタム | ✅ | 軽量用途 |
-| @monaco-editor/react | 5-10MB | ❌ 要カスタム | ❌ 非対応 | 非推奨 |
-| react-simplemde-editor | 数MB | ❌ | 不明 | ❌ メンテ停止 |
-
-**選定理由**:
-- Marp YAML frontmatter（`---` で囲まれた部分）のシンタックスハイライト対応
-- モバイルサポートが優秀
-- TypeScriptネイティブ対応
-- ダークモード対応
-
-**インストール**:
 ```bash
 npm install @uiw/react-codemirror @codemirror/lang-markdown @codemirror/lang-yaml
 ```
 
-**実装例**（SlidePreview.tsx に追加）:
-
-```typescript
-import CodeMirror from '@uiw/react-codemirror';
-import { markdown } from '@codemirror/lang-markdown';
-import { yamlFrontmatter } from '@codemirror/lang-yaml';
-
-// サブタブ state
-const [subTab, setSubTab] = useState<'preview' | 'editor'>('preview');
-
-// エディタタブ
-{subTab === 'editor' && (
-  <CodeMirror
-    value={markdown}
-    height="100%"
-    extensions={[
-      markdown(),
-      yamlFrontmatter()  // YAML frontmatterサポート
-    ]}
-    onChange={(value) => onMarkdownChange(value)}
-    className="border rounded"
-  />
-)}
-```
-
-**ダークモード対応**:
-```typescript
-import { vscodeDark } from '@uiw/codemirror-theme-vscode';
-
-<CodeMirror
-  theme={isDarkMode ? vscodeDark : 'light'}
-  // ...
-/>
-```
-
-**修正ファイル**:
-| ファイル | 変更内容 |
-|---------|---------|
-| `src/components/SlidePreview.tsx` | サブタブUI + CodeMirrorエディタ追加 |
-| `src/App.tsx` | `onMarkdownChange` コールバック追加 |
-| `package.json` | `@uiw/react-codemirror` 等追加 |
-
-**工数**: 大（3-5日）
+**工数**: 3-5日
 
 ---
 
 ### #9 スライド共有機能
 
-**現状**:
-- スライドはフロントエンドの React state（メモリ）のみ。永続化なし
-- React Router未使用（タブUIのみ）
-- Cognito Identity Pool で未認証アクセス対応可能
+**概要**: スライドを他の人と共有できるようにする。
 
-**実装方法**:
+**必要なインフラ**:
+- DynamoDB: スライドメタデータ
+- S3: マークダウン本体
+- Lambda or AgentCore: 保存・取得API
 
-1. **インフラ追加**（CDK）
-   - DynamoDB: スライドメタデータ（userId, slideId, shareId, title, s3Key, isPublic, createdAt）
-   - S3: マークダウン本体を保存
-   - Lambda（または AgentCore に追加ツール）: 保存・取得API
-
-2. **API追加**
-   - `POST /slides` - スライド保存、shareId発行
-   - `GET /slides/{shareId}` - 共有スライド取得（認証不要）
-
-3. **フロントエンド**
-   - `SlidePreview.tsx` のヘッダーに「共有リンクをコピー」ボタン追加
-   - URLパラメータ（`?id=xxxx`）で共有スライド表示ページ作成
-   - React Router導入、または `URLSearchParams` で実装
+**工数**: 1週間
