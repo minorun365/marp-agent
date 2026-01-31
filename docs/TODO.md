@@ -11,7 +11,6 @@
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
 | #35 | 環境構築時に検証用ユーザーを最初から作っておきたい | 小 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
-| #26 | Kimiに変えてみる | 小〜中 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 中〜大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #39 | 画面のどこかに最後のリリースの情報を表示したい | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #36 | バージョン管理する | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
@@ -406,65 +405,28 @@ section.highlight {
 
 ---
 
-### #26 Kimiに変えてみる
+### #26 Kimiに変えてみる ✅完了
 
-**概要**: Moonshot AIのKimi（中国製LLM）を試してみる。
+**概要**: Moonshot AIのKimi K2 Thinking（推論モデル）を試してみる。
+
+**実装内容**:
+- フロントエンド: Chat.tsx にモデル選択ドロップダウンを追加
+- バックエンド: agent.py で Kimi K2 Thinking のモデル選択ロジック実装
+- useAgentCore.ts でモデルタイプをペイロードに含める実装
 
 **基本情報**:
-- 公式: https://platform.moonshot.ai/
-- 最新モデル: Kimi K2.5（2026年1月27日リリース）
-- **OpenAI互換API**: `base_url` を変えるだけで移行可能
+- 最新モデル: Kimi K2 Thinking（Bedrock経由、`moonshot.kimi-k2-thinking`）
+- **Bedrock経由のためクロスリージョン推論なし**
 
-**APIエンドポイント**:
-```
-https://api.moonshot.ai/v1/chat/completions
-```
-
-**料金比較（Claude Sonnetの約1/10）**:
-| モデル | 入力 | 出力 |
-|--------|------|------|
-| Kimi K2 | $0.60/M | $2.50/M |
-| Claude Sonnet 4 | - | $10-15/M |
-
-**Python実装例**:
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=os.environ.get("MOONSHOT_API_KEY"),
-    base_url="https://api.moonshot.ai/v1",
-)
-
-response = client.chat.completions.create(
-    model="kimi-k2.5-preview",
-    messages=[{"role": "user", "content": "スライドを作成して"}],
-    stream=True,
-)
-```
-
-**Strands Agents統合**:
-```python
-from strands import Agent
-from litellm import LiteLLMModel
-
-agent = Agent(
-    model=LiteLLMModel("moonshot/kimi-k2-thinking"),
-    system_prompt="あなたはアシスタントです",
-)
-```
-
-**⚠️ 制限事項・懸念点**:
+**⚠️ 注意点**:
 | 項目 | 状況 |
 |------|------|
-| **日本語サポート** | 🔴 不明（公式に明示なし、要検証） |
-| **速度** | 🟡 Claude Sonnetの約1/3（34 vs 91 tokens/sec） |
-| **Strands統合** | 🔴 マルチターン会話でバグあり（[Issue #1150](https://github.com/strands-agents/sdk-python/issues/1150)） |
-| **地域制限** | 🟢 日本からアクセス可能 |
-| **レート制限** | 🟡 無料プラン: 3リクエスト/分 |
+| **クロスリージョン推論** | ❌ なし（`us.`/`jp.`プレフィックス使用不可） |
+| **cache_prompt / cache_tools** | ❌ 非対応（指定するとAccessDeniedException） |
+| **日本語サポート** | 🟢 問題なく動作 |
+| **Strands統合** | 🟢 BedrockModel経由で動作確認済み |
 
-**結論**: コストは魅力的だが、**日本語サポート不明**と**Strands統合バグ**があるため、本番利用は慎重に。まずは小規模テストで日本語品質を検証することを推奨。
-
-**工数**: 小〜中（2-3日、テスト含む）
+**参考**: 詳細は `docs/KNOWLEDGE.md` の「Kimi K2 Thinking 対応」セクションを参照
 
 ---
 

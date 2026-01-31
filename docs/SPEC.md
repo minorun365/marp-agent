@@ -10,11 +10,11 @@
 | UI | 編集機能 | なし（MVP。チャットで修正指示のみ） |
 | スライド | テーマ | border（コミュニティテーマ） |
 | スライド | アスペクト比 | 16:9（ワイド） |
-| スライド | 出力形式 | PDFのみ（MVP） |
+| スライド | 出力形式 | PDF / PPTX |
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search, output_slide, generate_tweet_url |
 | インフラ | リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
-| インフラ | モデル | Claude Sonnet 4.5（リージョンに応じてプレフィックス自動判定） |
+| インフラ | モデル | Claude Sonnet 4.5 / Kimi K2 Thinking（UI選択可能） |
 | 認証 | スコープ | 誰でもサインアップ可能（本番時） |
 
 ---
@@ -435,6 +435,10 @@ data: {"type": "tool_use", "data": "generate_tweet_url"}
 
 data: {"type": "tweet_url", "data": "https://twitter.com/intent/tweet?text=..."}
 
+data: {"type": "pdf", "data": "Base64エンコードされたPDFバイナリ"}
+
+data: {"type": "pptx", "data": "Base64エンコードされたPPTXバイナリ"}
+
 data: {"type": "done"}
 ```
 
@@ -586,6 +590,7 @@ Amplify Console → **Environment variables** で設定:
 - [x] チャット応答のマークダウンレンダリング（react-markdown）
 - [ ] マークダウン編集機能（シンタックスハイライト付き）
 - [x] テーマ選択（Border / Gradient / Beam の3種類）
+- [x] モデル選択（Claude Sonnet 4.5 / Kimi K2 Thinking）
 - [ ] 画像アップロード・挿入
 - [ ] スライド履歴管理
 - [x] PPTX 出力対応（ドロップダウンでPDF/PPTX選択）
