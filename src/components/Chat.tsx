@@ -574,23 +574,23 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         <div className="max-w-3xl mx-auto flex gap-2">
           {/* 入力欄（左端にモデルセレクター内蔵） */}
           <div className="flex-1 flex items-center border border-gray-200 rounded-lg bg-gray-50 focus-within:ring-2 focus-within:ring-[#5ba4d9] focus-within:border-transparent">
-            <div className="relative flex items-center">
+            <div className="relative flex items-center pl-2 sm:pl-0">
+              {/* PC: モデル名表示、スマホ: 矢印のみ */}
+              <span className={`hidden sm:inline text-xs ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>
+                {modelType === 'claude' ? 'Claude' : 'Kimi'}
+              </span>
+              <span className={`text-xl sm:ml-1 mr-1 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
+              {/* 透明なselectを上に重ねてタップ領域を確保 */}
               <select
                 value={modelType}
                 onChange={(e) => setModelType(e.target.value as ModelType)}
                 disabled={isLoading || messages.some(m => m.role === 'user')}
-                className={`text-xs bg-transparent border-none outline-none py-2 appearance-none transition-colors
-                  w-0 sm:w-auto sm:pl-3 sm:pr-1
-                  ${messages.some(m => m.role === 'user')
-                    ? 'sm:text-gray-300 cursor-not-allowed'
-                    : 'sm:text-gray-400 cursor-pointer sm:hover:text-gray-600'
-                  }`}
+                className="absolute inset-0 opacity-0 cursor-pointer"
                 title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
                 <option value="claude">Claude</option>
                 <option value="kimi">Kimi</option>
               </select>
-              <span className={`pointer-events-none text-xl ml-2 sm:ml-1 mr-2 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
             </div>
             <div className="w-px h-5 bg-gray-200 mx-1" />
             <input
