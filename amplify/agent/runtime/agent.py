@@ -439,6 +439,10 @@ async def invoke(payload, context=None):
         fallback_markdown = None  # リトライ時にリセット
         tool_name_corrupted = False  # 破損検出フラグ
 
+        # Kimi K2の場合、dataイベントを蓄積してマークダウン検出に使用
+        kimi_text_buffer = "" if model_type == "kimi" else None
+        kimi_skip_text = False  # マークダウン検出後はテキスト送信をスキップ
+
         stream = agent.stream_async(user_message)
 
         async for event in stream:
@@ -448,7 +452,17 @@ async def invoke(payload, context=None):
 
             if "data" in event:
                 chunk = event["data"]
-                yield {"type": "text", "data": chunk}
+                if model_type == "kimi":
+                    # Kimi K2: テキストを蓄積してマークダウン開始を検出
+                    kimi_text_buffer += chunk
+                    if not kimi_skip_text and "marp: true" in kimi_text_buffer.lower():
+                        kimi_skip_text = True
+                        print(f"[INFO] Kimi K2: Marp markdown detected in text stream, skipping text output")
+                    if not kimi_skip_text:
+                        yield {"type": "text", "data": chunk}
+                else:
+                    # Claude: そのままテキスト送信
+                    yield {"type": "text", "data": chunk}
             elif "current_tool_use" in event:
                 # ツール使用中イベントを送信
                 tool_info = event["current_tool_use"]
@@ -495,8 +509,15 @@ async def invoke(payload, context=None):
                         if hasattr(content, 'text') and content.text:
                             yield {"type": "text", "data": content.text}
 
+        # Kimi K2: テキストストリームからマークダウンを抽出（フォールバック）
+        if model_type == "kimi" and kimi_text_buffer and not fallback_markdown:
+            extracted = extract_marp_markdown_from_text(kimi_text_buffer)
+            if extracted:
+                fallback_markdown = extracted
+                print(f"[INFO] Kimi K2: Fallback markdown extracted from text stream")
+
         # リトライ判定: ツール名破損が検出され、markdownが生成されていない場合
-        if tool_name_corrupted and not _generated_markdown and model_type == "kimi":
+        if tool_name_corrupted and not _generated_markdown and not fallback_markdown and model_type == "kimi":
             retry_count += 1
             if retry_count <= MAX_RETRY_COUNT:
                 yield {"type": "status", "data": f"リトライ中... ({retry_count}/{MAX_RETRY_COUNT})"}
