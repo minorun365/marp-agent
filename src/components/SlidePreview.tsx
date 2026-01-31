@@ -136,7 +136,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
       <div className="flex justify-between items-center px-6 py-4 border-b">
         <div className="flex flex-col gap-1">
           {/* テーマ選択 */}
-          <span className="text-xs text-gray-500">テーマ</span>
+          <span className="text-xs text-gray-500">デザイン</span>
           <select
             value={selectedTheme}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTheme(e.target.value as ThemeId)}
