@@ -478,9 +478,9 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-3xl mx-auto space-y-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-700 text-sm">
+        {/* <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-700 text-sm">
           ⚠️ オプションのKimiモデルは現在、試験運用中です。まだ若干、動作が不安定なためご注意ください。
-        </div>       
+        </div> */}
         {messages.length === 0 && (
           <div className="text-center text-gray-400 mt-8">
             <p className="text-lg">{MESSAGES.EMPTY_STATE_TITLE}</p>
@@ -587,7 +587,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
                 <option value="claude">Claude</option>
-                <option value="kimi">Kimi</option>
+                <option value="kimi">Kimi（実験的）</option>
               </select>
             </div>
             <div className="w-px h-5 bg-gray-200 mx-1" />
