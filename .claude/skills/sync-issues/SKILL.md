@@ -34,8 +34,10 @@ cat docs/TODO.md
 
 以下を確認：
 - **追加が必要**: オープンなissueでTODO.mdにないもの
-- **クローズが必要**: TODO.mdで「✅ 完了」だがissueがまだOPENのもの
+- **クローズが必要**: TODO.mdで「✅ 完了」かつ **main・kag両方の実装列が完了（✅ or ➖）** のもの
 - **削除が必要**: TODO.mdにあるがissueがクローズ済みのもの
+
+**重要**: kagブランチへの反映も含めて完了とみなす。main実装が完了していてもkag実装が「⬜」の場合はissueをクローズしない。
 
 ### 3. TODO.mdを更新
 
@@ -93,3 +95,6 @@ git diff docs/TODO.md
   - `gh issue view <番号>` で `labels` を確認し、「重要」ラベルがある場合のみ「🔴 重要」を付与
 - kag列は基本的に「➖ 対象外」（mainのみ実装のタスクが多い）
 - issueの詳細が不明な場合は `gh issue view <番号>` で確認
+- **issueクローズの条件**: main実装だけでなく、kag実装も完了（✅ or ➖）していること
+  - kag実装が「⬜」の場合はissueをクローズしない
+  - 誤ってクローズした場合は `gh issue reopen <番号>` で再オープン
