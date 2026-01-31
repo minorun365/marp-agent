@@ -11,16 +11,32 @@ from strands.models import BedrockModel
 from tavily import TavilyClient
 
 
-def _get_model_id() -> str:
-    """デプロイリージョンに応じたクロスリージョン推論のモデルIDを返す"""
-    region = os.environ.get("AWS_REGION", "us-east-1")
-    if region == "ap-northeast-1":
-        prefix = "jp"
+def _get_model_config(model_type: str = "claude") -> dict:
+    """モデルタイプに応じた設定を返す"""
+    if model_type == "kimi":
+        # Kimi K2 Thinking（Moonshot AI）
+        # - クロスリージョン推論なし
+        # - cache_prompt/cache_tools非対応
+        return {
+            "model_id": "moonshot.kimi-k2-thinking",
+            "cache_prompt": None,
+            "cache_tools": None,
+        }
     else:
-        prefix = "us"  # us-east-1, us-west-2
-    return f"{prefix}.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        # Claude Sonnet 4.5（デフォルト）
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        if region == "ap-northeast-1":
+            prefix = "jp"
+        else:
+            prefix = "us"
+        return {
+            "model_id": f"{prefix}.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "cache_prompt": "default",
+            "cache_tools": "default",
+        }
 
-# Tavily クライアント初期化（複数キーでフォールバック対応）
+
+# Tavilyクライアント初期化（複数キーでフォールバック対応）
 _tavily_clients: list[TavilyClient] = []
 for _key_name in ["TAVILY_API_KEY", "TAVILY_API_KEY2", "TAVILY_API_KEY3"]:
     _key = os.environ.get(_key_name, "")
@@ -208,35 +224,44 @@ app = BedrockAgentCoreApp()
 _agent_sessions: dict[str, Agent] = {}
 
 
-def get_or_create_agent(session_id: str | None) -> Agent:
-    """セッションIDに対応するAgentを取得または作成"""
+def _create_bedrock_model(model_type: str = "claude") -> BedrockModel:
+    """モデル設定に基づいてBedrockModelを作成"""
+    config = _get_model_config(model_type)
+    # cache_prompt/cache_toolsがNoneの場合は引数に含めない（Kimi K2対応）
+    if config["cache_prompt"] is None:
+        return BedrockModel(model_id=config["model_id"])
+    else:
+        return BedrockModel(
+            model_id=config["model_id"],
+            cache_prompt=config["cache_prompt"],
+            cache_tools=config["cache_tools"],
+        )
+
+
+def get_or_create_agent(session_id: str | None, model_type: str = "claude") -> Agent:
+    """セッションIDとモデルタイプに対応するAgentを取得または作成"""
+    # セッションキーにモデルタイプを含める（モデル切り替え時に新しいAgentを作成）
+    cache_key = f"{session_id}:{model_type}" if session_id else None
+
     # セッションIDがない場合は新規Agentを作成（履歴なし）
-    if not session_id:
+    if not cache_key:
         return Agent(
-            model=BedrockModel(
-                model_id=_get_model_id(),
-                cache_prompt="default",
-                cache_tools="default",
-            ),
+            model=_create_bedrock_model(model_type),
             system_prompt=SYSTEM_PROMPT,
             tools=[web_search, output_slide, generate_tweet_url],
         )
 
     # 既存のセッションがあればそのAgentを返す
-    if session_id in _agent_sessions:
-        return _agent_sessions[session_id]
+    if cache_key in _agent_sessions:
+        return _agent_sessions[cache_key]
 
     # 新規セッションの場合はAgentを作成して保存
     agent = Agent(
-        model=BedrockModel(
-            model_id=_get_model_id(),
-            cache_prompt="default",
-            cache_tools="default",
-        ),
+        model=_create_bedrock_model(model_type),
         system_prompt=SYSTEM_PROMPT,
         tools=[web_search, output_slide, generate_tweet_url],
     )
-    _agent_sessions[session_id] = agent
+    _agent_sessions[cache_key] = agent
     return agent
 
 
@@ -326,6 +351,7 @@ async def invoke(payload, context=None):
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")  # chat or export_pdf
     current_markdown = payload.get("markdown", "")
+    model_type = payload.get("model_type", "claude")  # claude or kimi
     # セッションIDはHTTPヘッダー経由でcontextから取得（スティッキーセッション用）
     session_id = getattr(context, 'session_id', None) if context else None
 
@@ -355,8 +381,8 @@ async def invoke(payload, context=None):
     if current_markdown:
         user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
 
-    # セッションIDに対応するAgentを取得（会話履歴が保持される）
-    agent = get_or_create_agent(session_id)
+    # セッションIDとモデルタイプに対応するAgentを取得（会話履歴が保持される）
+    agent = get_or_create_agent(session_id, model_type)
     stream = agent.stream_async(user_message)
 
     async for event in stream:

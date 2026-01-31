@@ -11,11 +11,14 @@ export interface AgentCoreCallbacks {
   onComplete: () => void;
 }
 
+export type ModelType = 'claude' | 'kimi';
+
 export async function invokeAgent(
   prompt: string,
   currentMarkdown: string,
   callbacks: AgentCoreCallbacks,
-  sessionId?: string
+  sessionId?: string,
+  modelType: ModelType = 'claude'
 ): Promise<void> {
   const runtimeArn = outputs.custom?.agentRuntimeArn;
   if (!runtimeArn) {
@@ -56,6 +59,7 @@ export async function invokeAgent(
       body: JSON.stringify({
         prompt,
         markdown: currentMarkdown,
+        model_type: modelType,
       }),
     });
 
@@ -349,7 +353,8 @@ export async function invokeAgentMock(
   prompt: string,
   _currentMarkdown: string,
   callbacks: AgentCoreCallbacks,
-  _sessionId?: string
+  _sessionId?: string,
+  _modelType: ModelType = 'claude'
 ): Promise<void> {
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

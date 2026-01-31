@@ -95,6 +95,131 @@ tavily-python
 - Python で実装
 - Bedrock モデルと統合
 
+### 利用可能なモデル（Bedrock）
+
+```python
+# Claude Sonnet 4.5（推奨）
+model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+# Claude Haiku 4.5（高速・低コスト）
+model = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+# Kimi K2 Thinking（Moonshot AI）
+# 注意: クロスリージョン推論なし、cache_prompt/cache_tools非対応
+model = "moonshot.kimi-k2-thinking"
+```
+
+### モデル別の設定差異
+
+| モデル | クロスリージョン推論 | cache_prompt | cache_tools |
+|--------|-------------------|--------------|-------------|
+| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
+| Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
+| Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 |
+
+**Kimi K2 Thinking使用時の注意**:
+- BedrockModelの`cache_prompt`と`cache_tools`を指定しないこと
+- 指定すると `AccessDeniedException: You invoked an unsupported model or your request did not allow prompt caching` が発生する
+
+```python
+# NG: Kimi K2では使用不可
+agent = Agent(
+    model=BedrockModel(
+        model_id="moonshot.kimi-k2-thinking",
+        cache_prompt="default",  # エラーになる
+        cache_tools="default",   # エラーになる
+    ),
+)
+
+# OK: キャッシュオプションなし
+agent = Agent(
+    model=BedrockModel(
+        model_id="moonshot.kimi-k2-thinking",
+    ),
+)
+```
+
+### フロントエンドからのモデル切り替え
+
+リクエストごとにモデルを動的に切り替える実装パターン：
+
+#### フロントエンド（Chat.tsx）
+```typescript
+type ModelType = 'claude' | 'kimi';
+const [modelType, setModelType] = useState<ModelType>('claude');
+
+// 入力欄の左端にセレクター配置（矢印は別要素で表示）
+<div className="relative flex items-center">
+  <select
+    value={modelType}
+    onChange={(e) => setModelType(e.target.value as ModelType)}
+    className="text-xs text-gray-400 bg-transparent appearance-none"
+  >
+    <option value="claude">Claude</option>
+    <option value="kimi">Kimi</option>
+  </select>
+  <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
+</div>
+
+// APIコールにmodelTypeを渡す
+await invokeAgent(prompt, markdown, callbacks, sessionId, modelType);
+```
+
+**ポイント**: `<option>`に▾を入れるとドロップダウンメニューにも表示されてしまうので、別の`<span>`で表示し、`pointer-events-none`でクリック透過させる。
+
+**会話中のモデル切り替え無効化**: モデルを変えると別のAgentになり会話履歴が引き継がれないため、ユーザーが発言したらセレクターを無効化する。
+
+```typescript
+// ユーザー発言があるかで判定（初期メッセージは除外）
+const hasUserMessage = messages.some(m => m.role === 'user');
+
+disabled={isLoading || hasUserMessage}
+className={hasUserMessage ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 cursor-pointer'}
+title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
+```
+
+**注意**: `messages.length > 0` だと初期メッセージ（アシスタントの挨拶）も含まれてしまうため、`messages.some(m => m.role === 'user')` でユーザー発言の有無を判定する。
+
+**スマホ対応（矢印のみ表示）**: スマホではモデル名が幅を取りすぎるので、矢印だけ表示してタップでドロップダウンを開く。
+
+```typescript
+<select
+  className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
+>
+  <option value="claude">Claude</option>
+  <option value="kimi">Kimi</option>
+</select>
+<span className="ml-2 sm:ml-1">▾</span>
+```
+
+- スマホ（sm未満）: `w-0` でテキスト非表示、矢印のみ
+- PC（sm以上）: `sm:w-auto` で通常表示
+
+#### API（useAgentCore.ts）
+```typescript
+body: JSON.stringify({
+  prompt,
+  markdown: currentMarkdown,
+  model_type: modelType,  // リクエストに含める
+}),
+```
+
+#### バックエンド（agent.py）
+```python
+def _get_model_config(model_type: str = "claude") -> dict:
+    if model_type == "kimi":
+        return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None}
+    else:
+        return {"model_id": f"{prefix}.anthropic.claude-sonnet-4-5-...", "cache_prompt": "default"}
+
+@app.entrypoint
+async def invoke(payload, context=None):
+    model_type = payload.get("model_type", "claude")
+    agent = get_or_create_agent(session_id, model_type)
+```
+
+**セッション管理の注意**: モデル切り替え時に新しいAgentを作成するため、キャッシュキーは `session_id:model_type` の形式で管理する。
+
 ### Agent作成
 ```python
 from strands import Agent
@@ -434,6 +559,61 @@ npx ampx sandbox delete --yes
 npx ampx sandbox
 ```
 
+#### sandbox環境で環境変数が反映されない問題
+
+**症状**: CloudFormationには環境変数（例: `TAVILY_API_KEY`）が正しく設定されているのに、コンテナ内では空文字になる
+
+**デバッグ方法**: コンテナ内の環境変数を確認するコードを追加
+```python
+# 一時的なデバッグコード
+debug_info = f"[DEBUG] TAVILY_API_KEY in env: {'TAVILY_API_KEY' in os.environ}, value: {os.environ.get('TAVILY_API_KEY', 'NOT_SET')[:15] if os.environ.get('TAVILY_API_KEY') else 'EMPTY'}"
+```
+
+**原因**: AgentCore Hotswapは**環境変数の変更を反映しない**。最初のデプロイ時に空だった値がそのまま使われる。
+
+**解決策**: sandboxを完全に削除して再起動（上記と同じ）
+
+**注意**: `.env`ファイルと`dotenv/config`が正しく設定されていても、sandbox起動前に環境変数をエクスポートしていないと最初のデプロイで空になる可能性がある。
+
+```bash
+# 確実な方法: 環境変数を明示的にエクスポートしてからsandbox起動
+export TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) && npx ampx sandbox
+```
+
+#### AgentCore Runtime重複エラー
+
+**症状**:
+```
+Resource of type 'AWS::BedrockAgentCore::Runtime' with identifier 'marp_agent_dev' already exists.
+```
+
+**原因**: 前回のsandboxで作成されたAgentCore Runtimeが削除されずに残っている
+
+**解決策**: CLIでRuntimeを削除してからsandbox再起動
+
+```bash
+# 1. Runtime一覧を確認
+aws bedrock-agentcore-control list-agent-runtimes --region us-east-1
+
+# 2. 該当するRuntimeを削除
+aws bedrock-agentcore-control delete-agent-runtime \
+  --agent-runtime-id {runtimeId} \
+  --region us-east-1
+
+# 3. 削除完了を確認（DELETINGからDELETED）
+aws bedrock-agentcore-control list-agent-runtimes --region us-east-1 \
+  --query "agentRuntimes[?agentRuntimeName=='marp_agent_dev']"
+
+# 4. sandbox起動
+npx ampx sandbox
+```
+
+**代替策**: 別の識別子でsandbox起動
+```bash
+npx ampx sandbox --identifier kimi
+```
+→ `marp_agent_kimi` として新規作成される
+
 #### Amplify で Hotswap を先行利用する方法（Workaround）
 
 Amplify の公式アップデートを待たずに試す場合、`package.json` の `overrides` を使用：
@@ -722,6 +902,22 @@ return {
 - `preserveAspectRatio="xMidYMid meet"` → アスペクト比を維持しつつ収まるように
 - CSSの`!important`よりもSVG属性の直接変更が確実
 
+### フォーム要素の折り返し防止
+
+モデルセレクターなどを追加すると、スマホ表示でボタンが狭くなりテキストが折り返されることがある。
+
+```tsx
+<button className="whitespace-nowrap px-4 sm:px-6 py-2">
+  送信
+</button>
+```
+
+**ポイント**:
+- `whitespace-nowrap` → テキストの折り返しを防止
+- `px-4 sm:px-6` → スマホではパディングを小さく
+
+**注意**: `shrink-0`を使うとボタンが縮まなくなり、画面からはみ出す可能性があるので使用しない。
+
 ### Tailwind CSS との競合
 
 #### invertクラスの競合
@@ -935,6 +1131,37 @@ onText: (text) => {
 ```
 
 **用途**: Xシェア機能のツイートリンクなど、外部サイトへのリンクを新しいタブで開く場合に使用。
+
+### TypeScript型インポートエラー（Vite + esbuild）
+
+**症状**:
+```
+Uncaught SyntaxError: The requested module '/src/hooks/useAgentCore.ts'
+does not provide an export named 'ModelType'
+```
+
+**原因**: Vite + esbuild + TypeScriptの型エクスポートの相性問題
+- `export type ModelType = ...` は型のみのエクスポートで、コンパイル後のJSには残らない
+- esbuildは型のみのエクスポートを適切に処理しないことがある
+- `isolatedModules`モード（Viteのデフォルト）で問題が起きやすい
+
+**解決策**:
+
+1. **型をローカルで定義**（シンプル、2-3箇所でしか使わない場合に推奨）
+   ```typescript
+   // Chat.tsx 内で直接定義
+   type ModelType = 'claude' | 'kimi';
+   ```
+
+2. **`import type` を使う**（多くのファイルで使う場合）
+   ```typescript
+   import type { ModelType } from '../hooks/useAgentCore';
+   import { invokeAgent } from '../hooks/useAgentCore';
+   ```
+
+**判断基準**:
+- 2-3箇所でしか使わない → ローカル定義
+- 多くのファイルで使う、頻繁に変更される → `import type` で一元管理
 
 ### タブ切り替え時の状態保持
 ```tsx

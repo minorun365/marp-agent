@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { invokeAgent, invokeAgentMock } from '../hooks/useAgentCore';
 
+type ModelType = 'claude' | 'kimi';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -73,6 +75,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [modelType, setModelType] = useState<ModelType>('claude');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const tipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -239,7 +242,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               })
             );
           },
-        }, sessionId);
+        }, sessionId, modelType);
       } catch (error) {
         console.error('Error:', error);
       } finally {
@@ -248,7 +251,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
     };
 
     sendShareRequest();
-  }, [sharePromptTrigger]);
+  }, [sharePromptTrigger, modelType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -430,7 +433,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             )
           );
         },
-      }, sessionId);
+      }, sessionId, modelType);
 
       // ストリーミング完了
       setMessages(prev =>
@@ -569,19 +572,41 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       {/* 入力フォーム */}
       <form onSubmit={handleSubmit} className="border-t px-6 py-4">
         <div className="max-w-3xl mx-auto flex gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="例： 製造業のAIエージェント事例"
-            className="flex-1 border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#5ba4d9] focus:border-transparent bg-gray-50"
-            disabled={isLoading}
-          />
+          {/* 入力欄（左端にモデルセレクター内蔵） */}
+          <div className="flex-1 flex items-center border border-gray-200 rounded-lg bg-gray-50 focus-within:ring-2 focus-within:ring-[#5ba4d9] focus-within:border-transparent">
+            <div className="relative flex items-center pl-2 sm:pl-0">
+              {/* PC: モデル名表示、スマホ: 矢印のみ */}
+              <span className={`hidden sm:inline text-xs ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>
+                {modelType === 'claude' ? 'Claude' : 'Kimi'}
+              </span>
+              <span className={`text-xl sm:ml-1 mr-1 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
+              {/* 透明なselectを上に重ねてタップ領域を確保 */}
+              <select
+                value={modelType}
+                onChange={(e) => setModelType(e.target.value as ModelType)}
+                disabled={isLoading || messages.some(m => m.role === 'user')}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
+              >
+                <option value="claude">Claude</option>
+                <option value="kimi">Kimi</option>
+              </select>
+            </div>
+            <div className="w-px h-5 bg-gray-200 mx-1" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="例：AgentCoreの入門資料"
+              className="flex-1 bg-transparent px-3 py-2 focus:outline-none"
+              disabled={isLoading}
+            />
+          </div>
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="btn-kag text-white px-6 py-2 rounded-lg"
+            className="btn-kag text-white px-4 sm:px-6 py-2 rounded-lg whitespace-nowrap"
           >
             送信
           </button>

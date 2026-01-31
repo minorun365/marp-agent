@@ -16,7 +16,7 @@ const backend = defineBackend({
 const agentCoreStack = backend.createStack('AgentCoreStack');
 
 // nameSuffix の決定
-// - 本番: AWS_BRANCH を使用
+// - 本番: AWS_BRANCH を使用（Runtime名に使えない文字をサニタイズ）
 // - Sandbox: CDKコンテキストから identifier を取得
 //   Amplifyが amplify-backend-name にsandbox識別子を設定している
 let nameSuffix: string;
