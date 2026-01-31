@@ -478,11 +478,9 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-3xl mx-auto space-y-4">
-        {/* お知らせバナー（必要時にコメントを解除し、テキストを書き換えて使用）
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-700 text-sm">
-          お知らせテキストをここに記載
-        </div>
-        */}
+          ⚠️ オプションのKimiモデルは現在、試験運用中です。まだ若干、動作が不安定なためご注意ください。
+        </div>       
         {messages.length === 0 && (
           <div className="text-center text-gray-400 mt-8">
             <p className="text-lg">{MESSAGES.EMPTY_STATE_TITLE}</p>
