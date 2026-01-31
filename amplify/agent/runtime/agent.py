@@ -275,11 +275,8 @@ def extract_markdown(text: str) -> str | None:
     return None
 
 
-def generate_pdf(markdown: str) -> bytes:
+def generate_pdf(markdown: str, theme: str = 'border') -> bytes:
     """Marp CLIでPDFを生成"""
-    # カスタムテーマのパス
-    theme_path = Path(__file__).parent / "border.css"
-
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
         pdf_path = Path(tmpdir) / "slide.pdf"
@@ -293,7 +290,9 @@ def generate_pdf(markdown: str) -> bytes:
             "--allow-local-files",
             "-o", str(pdf_path),
         ]
-        # カスタムテーマが存在する場合は適用
+
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
         if theme_path.exists():
             cmd.extend(["--theme", str(theme_path)])
 
@@ -309,10 +308,8 @@ def generate_pdf(markdown: str) -> bytes:
         return pdf_path.read_bytes()
 
 
-def generate_pptx(markdown: str) -> bytes:
+def generate_pptx(markdown: str, theme: str = 'border') -> bytes:
     """Marp CLIでPPTXを生成"""
-    theme_path = Path(__file__).parent / "border.css"
-
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = Path(tmpdir) / "slide.md"
         pptx_path = Path(tmpdir) / "slide.pptx"
@@ -326,6 +323,9 @@ def generate_pptx(markdown: str) -> bytes:
             "--allow-local-files",
             "-o", str(pptx_path),
         ]
+
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
         if theme_path.exists():
             cmd.extend(["--theme", str(theme_path)])
 
@@ -355,10 +355,12 @@ async def invoke(payload, context=None):
     # セッションIDはHTTPヘッダー経由でcontextから取得（スティッキーセッション用）
     session_id = getattr(context, 'session_id', None) if context else None
 
+    theme = payload.get("theme", "border")
+
     if action == "export_pdf" and current_markdown:
         # PDF出力
         try:
-            pdf_bytes = generate_pdf(current_markdown)
+            pdf_bytes = generate_pdf(current_markdown, theme)
             pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
             yield {"type": "pdf", "data": pdf_base64}
         except Exception as e:
@@ -368,7 +370,7 @@ async def invoke(payload, context=None):
     if action == "export_pptx" and current_markdown:
         # PPTX出力
         try:
-            pptx_bytes = generate_pptx(current_markdown)
+            pptx_bytes = generate_pptx(current_markdown, theme)
             pptx_base64 = base64.b64encode(pptx_bytes).decode("utf-8")
             yield {"type": "pptx", "data": pptx_base64}
         except Exception as e:

@@ -1,12 +1,24 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import Marp from '@marp-team/marp-core';
 import { observe } from '@marp-team/marpit-svg-polyfill';
 import borderTheme from '../themes/border.css?raw';
+import gradientTheme from '../themes/gradient.css?raw';
+import beamTheme from '../themes/beam.css?raw';
+
+// テーマ定義
+const THEMES = [
+  { id: 'border', name: 'Border', css: borderTheme },
+  { id: 'gradient', name: 'Gradient', css: gradientTheme },
+  { id: 'beam', name: 'Beam', css: beamTheme },
+] as const;
+
+type ThemeId = typeof THEMES[number]['id'];
 
 interface SlidePreviewProps {
   markdown: string;
-  onDownloadPdf: () => void;
-  onDownloadPptx: () => void;
+  onDownloadPdf: (theme: string) => void;
+  onDownloadPptx: (theme: string) => void;
   isDownloading: boolean;
   onRequestEdit?: () => void;
 }
@@ -15,6 +27,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('border');
 
   // Safari/iOS WebKit向けのpolyfillを適用
   useEffect(() => {
@@ -43,14 +56,44 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
     };
   }, [isDropdownOpen]);
 
+  // マークダウンにテーマ指定を注入
+  const markdownWithTheme = useMemo(() => {
+    if (!markdown) return '';
+
+    // 既存のフロントマターを解析
+    const frontMatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+
+    if (frontMatterMatch) {
+      // 既存のフロントマターにthemeを追加/上書き
+      const frontMatter = frontMatterMatch[1];
+      const hasTheme = /^theme:/m.test(frontMatter);
+
+      if (hasTheme) {
+        // 既存のthemeを置換
+        const newFrontMatter = frontMatter.replace(/^theme:.*$/m, `theme: ${selectedTheme}`);
+        return markdown.replace(frontMatterMatch[0], `---\n${newFrontMatter}\n---`);
+      } else {
+        // themeを追加
+        return markdown.replace(frontMatterMatch[0], `---\n${frontMatter}\ntheme: ${selectedTheme}\n---`);
+      }
+    } else {
+      // フロントマターがない場合は追加
+      return `---\ntheme: ${selectedTheme}\n---\n\n${markdown}`;
+    }
+  }, [markdown, selectedTheme]);
+
   const { slides, css } = useMemo(() => {
-    if (!markdown) return { slides: [], css: '' };
+    if (!markdownWithTheme) return { slides: [], css: '' };
 
     try {
       const marp = new Marp();
-      // カスタムテーマ「border」を追加
-      marp.themeSet.add(borderTheme);
-      const { html, css } = marp.render(markdown);
+      // 全カスタムテーマを登録
+      THEMES.forEach(theme => {
+        if (theme.css) {
+          marp.themeSet.add(theme.css);
+        }
+      });
+      const { html, css } = marp.render(markdownWithTheme);
 
       // Marpが生成したsvg要素をそのまま抽出（DOM構造を維持）
       const parser = new DOMParser();
@@ -74,7 +117,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
       console.error('Marp render error:', error);
       return { slides: [], css: '' };
     }
-  }, [markdown]);
+  }, [markdownWithTheme]);
 
   if (!markdown) {
     return (
@@ -91,16 +134,26 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
     <div className="flex flex-col h-full">
       {/* ヘッダー */}
       <div className="flex justify-between items-center px-6 py-4 border-b">
-        <span className="text-sm text-gray-600">
-          {slides.length} スライド
-        </span>
+        <div className="flex flex-col gap-1">
+          {/* テーマ選択 */}
+          <span className="text-xs text-gray-500">デザイン</span>
+          <select
+            value={selectedTheme}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTheme(e.target.value as ThemeId)}
+            className="text-sm border rounded px-2 py-1"
+          >
+            {THEMES.map(theme => (
+              <option key={theme.id} value={theme.id}>{theme.name}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex gap-2">
           {onRequestEdit && (
             <button
               onClick={onRequestEdit}
               className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              修正を依頼
+              修正
             </button>
           )}
           {/* ダウンロードドロップダウン */}
@@ -117,7 +170,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
-                    onDownloadPdf();
+                    onDownloadPdf(selectedTheme);
                   }}
                   className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left rounded-t-lg"
                 >
@@ -126,7 +179,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
-                    onDownloadPptx();
+                    onDownloadPptx(selectedTheme);
                   }}
                   className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t rounded-b-lg"
                 >
@@ -147,14 +200,14 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
               key={slide.index}
               className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white"
             >
-              <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-b">
-                スライド {slide.index + 1}
-              </div>
               <div className="bg-gray-50 p-1 overflow-hidden">
                 <div
                   className="marpit w-full overflow-hidden"
                   dangerouslySetInnerHTML={{ __html: slide.html }}
                 />
+              </div>
+              <div className="bg-gray-100 px-3 py-1 text-xs text-gray-600 border-t text-center">
+                スライド {slide.index + 1}/{slides.length}
               </div>
             </div>
           ))}

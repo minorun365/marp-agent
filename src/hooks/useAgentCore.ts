@@ -159,7 +159,7 @@ function handleEvent(
 }
 
 // PDF生成（本番API）
-export async function exportPdf(markdown: string): Promise<Blob> {
+export async function exportPdf(markdown: string, theme: string = 'border'): Promise<Blob> {
   const runtimeArn = outputs.custom?.agentRuntimeArn;
   if (!runtimeArn) {
     throw new Error('AgentCore runtime ARN not configured');
@@ -189,6 +189,7 @@ export async function exportPdf(markdown: string): Promise<Blob> {
     body: JSON.stringify({
       action: 'export_pdf',
       markdown,
+      theme,
     }),
   });
 
@@ -248,14 +249,14 @@ export async function exportPdf(markdown: string): Promise<Blob> {
 }
 
 // PDF生成モック（ローカル開発用）
-export async function exportPdfMock(markdown: string): Promise<Blob> {
+export async function exportPdfMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
   // モックではマークダウンをテキストとして返す
   await new Promise(resolve => setTimeout(resolve, 1000));
   return new Blob([markdown], { type: 'text/markdown' });
 }
 
 // PPTX生成（本番API）
-export async function exportPptx(markdown: string): Promise<Blob> {
+export async function exportPptx(markdown: string, theme: string = 'border'): Promise<Blob> {
   const runtimeArn = outputs.custom?.agentRuntimeArn;
   if (!runtimeArn) {
     throw new Error('AgentCore runtime ARN not configured');
@@ -284,6 +285,7 @@ export async function exportPptx(markdown: string): Promise<Blob> {
     body: JSON.stringify({
       action: 'export_pptx',
       markdown,
+      theme,
     }),
   });
 
@@ -341,7 +343,7 @@ export async function exportPptx(markdown: string): Promise<Blob> {
 }
 
 // PPTXモック（ローカル開発用）
-export async function exportPptxMock(markdown: string): Promise<Blob> {
+export async function exportPptxMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
   await new Promise(resolve => setTimeout(resolve, 1000));
   return new Blob([markdown], { type: 'text/markdown' });
 }

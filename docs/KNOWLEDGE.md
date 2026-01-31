@@ -485,6 +485,64 @@ const userPoolClient = backend.auth.resources.userPoolClient;
 - Mac ARM64 でビルドできるなら `deploy-time-build` は不要
 - Amplify の toolkit-lib 更新後は hotswap も使える
 
+#### sandbox起動時の環境変数読み込み
+
+`backend.ts` に `import 'dotenv/config'` を追加しても、Amplify sandbox の内部実行環境では `.env` が正しく読み込まれないことがある。
+
+**原因（推測）**: Amplify sandbox が TypeScript をトランスパイル・実行する際のカレントディレクトリが、`dotenv` が期待するプロジェクトルートと異なる可能性がある。
+
+**確実な解決策**: シェル環境変数として明示的に設定してから起動する。
+
+```bash
+export TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) && npx ampx sandbox
+```
+
+**package.json スクリプト化（推奨）**:
+
+```json
+{
+  "scripts": {
+    "sandbox": "export $(grep -v '^#' .env | xargs) && npx ampx sandbox"
+  }
+}
+```
+
+これで `npm run sandbox` だけで環境変数付きで起動できる。
+
+| 部分 | 説明 |
+|------|------|
+| `grep -v '^#' .env` | .env からコメント行を除外 |
+| `xargs` | 各行を `KEY=value` 形式でスペース区切りに |
+| `export $(...)` | 全部まとめてexport |
+
+**メリット**: `.env` に変数を追加しても package.json の変更不要。
+
+**identifier指定**: `npm run sandbox -- --identifier todo10`
+
+### identifierとRuntime名の連携（二重管理にならない）
+
+「`--identifier` と `RUNTIME_SUFFIX` を同じ値で毎回揃える必要があるのでは？」という懸念があるが、**二重管理にならない**。
+
+AmplifyはCDKコンテキストに `amplify-backend-name` として identifier を設定しているため、backend.ts から直接取得できる：
+
+```typescript
+// amplify/backend.ts
+const backendName = agentCoreStack.node.tryGetContext('amplify-backend-name') as string;
+nameSuffix = backendName || 'dev';
+```
+
+| やること | 管理場所 |
+|---------|---------|
+| 環境変数（APIキー等） | `.env` → `npm run sandbox` で自動読込 |
+| identifier | `--identifier` → CDKコンテキストで自動取得 |
+
+**参考**: [aws-amplify/amplify-backend - CDKContextKey.ts](https://github.com/aws-amplify/amplify-backend/blob/main/packages/platform-core/src/cdk_context_key.ts)
+
+**なぜシェル環境変数は動くか**:
+1. シェルで `export` した値は子プロセス（amplify sandbox）に自動継承される
+2. `dotenv/config` は既存の `process.env` を上書きしない
+3. よってシェル環境変数が優先される
+
 #### sandbox環境でDockerイメージがキャッシュされる問題
 
 **症状**: Dockerfileに新しいファイル（例: `border.css`）を追加しても、sandbox環境で反映されない
@@ -955,6 +1013,30 @@ setMessages(prev =>
 ```
 
 **注意**: シャローコピー（`[...prev]`）してオブジェクトを直接変更すると、React StrictModeで2回実行され文字がダブる。必ず `map` + スプレッド構文でイミュータブルに更新する。
+
+### useMemoの依存配列バグ
+
+派生値（derived value）を使った `useMemo` では、派生値自体を依存配列に含める必要がある。
+
+```typescript
+// 派生値を生成
+const markdownWithTheme = useMemo(() => {
+  // markdownにテーマ指定を注入
+  return injectTheme(markdown, selectedTheme);
+}, [markdown, selectedTheme]);
+
+// NG: 元の値だけ依存配列に入れると、selectedTheme変更で再計算されない
+const slides = useMemo(() => {
+  return renderSlides(markdownWithTheme);
+}, [markdown]);  // ❌ markdownWithThemeの変更を検知できない
+
+// OK: 派生値を依存配列に
+const slides = useMemo(() => {
+  return renderSlides(markdownWithTheme);
+}, [markdownWithTheme]);  // ✅ selectedTheme変更 → markdownWithTheme変更 → slides再計算
+```
+
+**症状**: 状態を変えても UI が更新されない場合、`useMemo` の依存配列を疑う。
 
 ### ステータスメッセージ後のテキスト表示
 
