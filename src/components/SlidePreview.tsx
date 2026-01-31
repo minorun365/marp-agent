@@ -153,7 +153,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
               onClick={onRequestEdit}
               className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              修正を依頼
+              修正
             </button>
           )}
           {/* ダウンロードドロップダウン */}
