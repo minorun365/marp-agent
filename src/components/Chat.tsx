@@ -597,7 +597,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="例： 製造業のAIエージェント事例"
+              placeholder="例：AgentCoreの解説"
               className="flex-1 bg-transparent px-3 py-2 focus:outline-none"
               disabled={isLoading}
             />
