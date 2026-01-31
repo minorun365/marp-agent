@@ -579,17 +579,18 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 value={modelType}
                 onChange={(e) => setModelType(e.target.value as ModelType)}
                 disabled={isLoading || messages.some(m => m.role === 'user')}
-                className={`text-xs bg-transparent border-none outline-none pl-3 pr-1 py-2 appearance-none transition-colors ${
-                  messages.some(m => m.role === 'user')
-                    ? 'text-gray-300 cursor-not-allowed'
-                    : 'text-gray-400 cursor-pointer hover:text-gray-600'
-                }`}
+                className={`text-xs bg-transparent border-none outline-none py-2 appearance-none transition-colors
+                  w-0 sm:w-auto sm:pl-3 sm:pr-1
+                  ${messages.some(m => m.role === 'user')
+                    ? 'sm:text-gray-300 cursor-not-allowed'
+                    : 'sm:text-gray-400 cursor-pointer sm:hover:text-gray-600'
+                  }`}
                 title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
                 <option value="claude">Claude</option>
                 <option value="kimi">Kimi</option>
               </select>
-              <span className={`pointer-events-none text-xl ml-1 mr-2 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
+              <span className={`pointer-events-none text-xl ml-2 sm:ml-1 mr-2 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-400'}`}>▾</span>
             </div>
             <div className="w-px h-5 bg-gray-200 mx-1" />
             <input
