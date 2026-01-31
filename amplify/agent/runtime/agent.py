@@ -265,6 +265,24 @@ def get_or_create_agent(session_id: str | None, model_type: str = "claude") -> A
     return agent
 
 
+# Kimi K2のツール名破損検出用
+VALID_TOOL_NAMES = {"web_search", "output_slide", "generate_tweet_url"}
+MAX_RETRY_COUNT = 5  # ツール名破損時の最大リトライ回数
+
+
+def is_tool_name_corrupted(tool_name: str) -> bool:
+    """ツール名が破損しているかチェック（Kimi K2対策）"""
+    if not tool_name:
+        return False
+    # 有効なツール名でなければ破損とみなす
+    if tool_name not in VALID_TOOL_NAMES:
+        return True
+    # 内部トークンが混入していたら破損
+    if "<|" in tool_name or "tooluse_" in tool_name:
+        return True
+    return False
+
+
 def extract_markdown(text: str) -> str | None:
     """レスポンスからマークダウンを抽出"""
     import re
@@ -383,46 +401,72 @@ async def invoke(payload, context=None):
 
     # セッションIDとモデルタイプに対応するAgentを取得（会話履歴が保持される）
     agent = get_or_create_agent(session_id, model_type)
-    stream = agent.stream_async(user_message)
 
-    async for event in stream:
-        # Kimi K2 Thinking の思考プロセスは無視（最終回答のみ表示）
-        if event.get("reasoning"):
-            continue
+    # Kimi K2のツール名破損時のリトライループ
+    retry_count = 0
+    while retry_count <= MAX_RETRY_COUNT:
+        _generated_markdown = None  # リトライ時にリセット
+        tool_name_corrupted = False  # 破損検出フラグ
 
-        if "data" in event:
-            chunk = event["data"]
-            yield {"type": "text", "data": chunk}
-        elif "current_tool_use" in event:
-            # ツール使用中イベントを送信
-            tool_info = event["current_tool_use"]
-            tool_name = tool_info.get("name", "unknown")
-            tool_input = tool_info.get("input", {})
+        stream = agent.stream_async(user_message)
 
-            # 文字列の場合はJSONパースを試みる（ストリーミング中は不完全なJSONが来る）
-            if isinstance(tool_input, str):
-                try:
-                    tool_input = json.loads(tool_input)
-                except json.JSONDecodeError:
-                    pass  # パースできない場合はそのまま（不完全なJSON）
+        async for event in stream:
+            # Kimi K2 Thinking の思考プロセスは無視（最終回答のみ表示）
+            if event.get("reasoning"):
+                continue
 
-            # web_searchの場合はクエリが取得できた時のみ送信（ストリーミング中は複数回イベントが来るため）
-            if tool_name == "web_search":
-                if isinstance(tool_input, dict) and "query" in tool_input:
-                    yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
-                # クエリがない場合はイベントを送信しない（完全なJSONを待つ）
+            if "data" in event:
+                chunk = event["data"]
+                yield {"type": "text", "data": chunk}
+            elif "current_tool_use" in event:
+                # ツール使用中イベントを送信
+                tool_info = event["current_tool_use"]
+                tool_name = tool_info.get("name", "unknown")
+                tool_input = tool_info.get("input", {})
+
+                # Kimi K2のツール名破損をチェック
+                if is_tool_name_corrupted(tool_name):
+                    tool_name_corrupted = True
+                    # リトライ対象であることをログ出力（デバッグ用）
+                    print(f"[WARN] Corrupted tool name detected: {tool_name[:50]}... (retry {retry_count + 1}/{MAX_RETRY_COUNT})")
+                    continue  # 破損したツール呼び出しは無視
+
+                # 文字列の場合はJSONパースを試みる（ストリーミング中は不完全なJSONが来る）
+                if isinstance(tool_input, str):
+                    try:
+                        tool_input = json.loads(tool_input)
+                    except json.JSONDecodeError:
+                        pass  # パースできない場合はそのまま（不完全なJSON）
+
+                # web_searchの場合はクエリが取得できた時のみ送信（ストリーミング中は複数回イベントが来るため）
+                if tool_name == "web_search":
+                    if isinstance(tool_input, dict) and "query" in tool_input:
+                        yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+                    # クエリがない場合はイベントを送信しない（完全なJSONを待つ）
+                else:
+                    yield {"type": "tool_use", "data": tool_name}
+            elif "result" in event:
+                # 最終結果からテキストを抽出（ツール使用後の回答など）
+                result = event["result"]
+                if hasattr(result, 'message') and result.message:
+                    for content in getattr(result.message, 'content', []):
+                        # Kimi K2 Thinking の reasoningContent は無視（思考プロセス）
+                        if hasattr(content, 'reasoningContent'):
+                            continue
+                        if hasattr(content, 'text') and content.text:
+                            yield {"type": "text", "data": content.text}
+
+        # リトライ判定: ツール名破損が検出され、markdownが生成されていない場合
+        if tool_name_corrupted and not _generated_markdown and model_type == "kimi":
+            retry_count += 1
+            if retry_count <= MAX_RETRY_COUNT:
+                yield {"type": "status", "data": f"リトライ中... ({retry_count}/{MAX_RETRY_COUNT})"}
+                # Agentの会話履歴をクリアしてリトライ（破損した履歴を引き継がない）
+                agent.messages.clear()
+                continue
             else:
-                yield {"type": "tool_use", "data": tool_name}
-        elif "result" in event:
-            # 最終結果からテキストを抽出（ツール使用後の回答など）
-            result = event["result"]
-            if hasattr(result, 'message') and result.message:
-                for content in getattr(result.message, 'content', []):
-                    # Kimi K2 Thinking の reasoningContent は無視（思考プロセス）
-                    if hasattr(content, 'reasoningContent'):
-                        continue
-                    if hasattr(content, 'text') and content.text:
-                        yield {"type": "text", "data": content.text}
+                yield {"type": "error", "message": "スライド生成に失敗しました。Claudeモデルをお試しください。"}
+        break  # 正常完了またはリトライ上限
 
     # output_slideツールで生成されたマークダウンを送信
     if _generated_markdown:
