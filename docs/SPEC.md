@@ -8,7 +8,7 @@
 | UI | ライブラリ | Tailwind CSS |
 | UI | プレビュー | 全スライド一覧（サムネイル） |
 | UI | 編集機能 | なし（MVP。チャットで修正指示のみ） |
-| スライド | テーマ | border（コミュニティテーマ） |
+| スライド | テーマ | gradient（デフォルト）、border、beam から選択可能 |
 | スライド | アスペクト比 | 16:9（ワイド） |
 | スライド | 出力形式 | PDF / PPTX |
 | エージェント | 性格 | プロフェッショナル |
@@ -136,18 +136,22 @@ const [sessionId] = useState(() => crypto.randomUUID());
 ```yaml
 ---
 marp: true
-theme: border
+theme: gradient
 size: 16:9
 paginate: true
 ---
 ```
 
-**borderテーマの特徴**:
-- グレーのグラデーション背景（`#f7f7f7` → `#d3d3d3`）
-- 濃いグレーの太枠線（`#303030`）
-- 白いアウトライン
-- Interフォント
+**利用可能なテーマ**:
+| テーマ | 特徴 |
+|--------|------|
+| `gradient`（デフォルト） | グレーグラデーション背景、シンプルでビジネスライク |
+| `border` | 濃いグレーの太枠線、白アウトライン |
+| `beam` | 明るい配色、モダンなデザイン |
+
+**共通機能**:
 - `<!-- _class: tinytext -->` で参考文献用の小さいテキスト対応
+- UIのテーマ選択ドロップダウンから切り替え可能
 
 ### スライド構成ガイドライン
 
@@ -195,7 +199,7 @@ paginate: true
 - フロントマターには以下を含める：
   ---
   marp: true
-  theme: border
+  theme: gradient
   size: 16:9
   paginate: true
   ---
@@ -267,7 +271,7 @@ AWS入門のスライドですね。以下の構成で5枚作成します：
 ```markdown
 ---
 marp: true
-theme: border
+theme: gradient
 ...
 ```
 
