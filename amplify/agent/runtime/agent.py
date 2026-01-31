@@ -386,6 +386,10 @@ async def invoke(payload, context=None):
     stream = agent.stream_async(user_message)
 
     async for event in stream:
+        # Kimi K2 Thinking の思考プロセスは無視（最終回答のみ表示）
+        if event.get("reasoning"):
+            continue
+
         if "data" in event:
             chunk = event["data"]
             yield {"type": "text", "data": chunk}
@@ -414,6 +418,9 @@ async def invoke(payload, context=None):
             result = event["result"]
             if hasattr(result, 'message') and result.message:
                 for content in getattr(result.message, 'content', []):
+                    # Kimi K2 Thinking の reasoningContent は無視（思考プロセス）
+                    if hasattr(content, 'reasoningContent'):
+                        continue
                     if hasattr(content, 'text') and content.text:
                         yield {"type": "text", "data": content.text}
 
