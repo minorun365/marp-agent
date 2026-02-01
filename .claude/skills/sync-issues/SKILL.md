@@ -1,7 +1,7 @@
 ---
 name: sync-issues
 description: GitHubのissueとdocs/TODO.mdを双方向同期する。新規issueをTODOに追加し、完了したTODOのissueをクローズする。
-allowed-tools: Bash(gh:*), Read, Edit
+allowed-tools: Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue close:*), Read
 ---
 
 # GitHub Issue と TODO.md の同期
