@@ -315,7 +315,7 @@ def extract_marp_markdown_from_text(text: str) -> str | None:
         return None
 
     # "marp: true" または "marp:" がない場合はスキップ（エスケープ版も考慮）
-    if "marp:" not in text and "marp\\":" not in text:
+    if "marp:" not in text and 'marp\\":' not in text:
         return None
 
     # ケース1: JSON引数内のマークダウンを抽出（Kimi K2がreasoningText内にツール呼び出しを埋め込んだ場合）
