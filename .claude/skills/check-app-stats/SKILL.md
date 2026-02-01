@@ -45,13 +45,32 @@ LOG_DEV=$(aws logs describe-log-groups \
   --region $REGION --query "logGroups[0].logGroupName" --output text 2>/dev/null || echo "None")
 
 # ========================================
-# 2. Cognitoユーザー数取得
+# 2. Cognitoユーザー数取得（前回値との比較用キャッシュ付き）
 # ========================================
 echo "👥 Cognitoユーザー数を取得中..."
 USERS_MAIN=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_MAIN" --region $REGION \
   --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
 USERS_KAG=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_KAG" --region $REGION \
   --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
+
+# 前回値を読み込み（キャッシュファイルがあれば）
+CACHE_FILE="$OUTPUT_DIR/cognito_cache.json"
+PREV_MAIN=0
+PREV_KAG=0
+PREV_DATE=""
+if [ -f "$CACHE_FILE" ]; then
+  PREV_MAIN=$(jq -r '.main // 0' "$CACHE_FILE")
+  PREV_KAG=$(jq -r '.kag // 0' "$CACHE_FILE")
+  PREV_DATE=$(jq -r '.date // ""' "$CACHE_FILE")
+fi
+
+# 増加数を計算
+DIFF_MAIN=$((USERS_MAIN - PREV_MAIN))
+DIFF_KAG=$((USERS_KAG - PREV_KAG))
+
+# 現在の値をキャッシュに保存
+TODAY=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+echo "{\"main\": $USERS_MAIN, \"kag\": $USERS_KAG, \"date\": \"$TODAY\"}" > "$CACHE_FILE"
 
 # ========================================
 # 3. CloudWatch Logsクエリを並列開始
@@ -235,9 +254,28 @@ printf "  合計   | %4d | %4d | %4d | %4d\n" "$SUM_MAIN_12H" "$SUM_KAG_12H" "$S
 echo ""
 
 echo "👥 Cognitoユーザー数"
-echo "  main: $USERS_MAIN 人"
-echo "  kag:  $USERS_KAG 人"
-echo "  合計: $((USERS_MAIN + USERS_KAG)) 人"
+if [ -n "$PREV_DATE" ] && [ "$PREV_DATE" != "$TODAY" ]; then
+  # 前回記録が別日の場合、増減を表示
+  DIFF_MAIN_STR=""
+  DIFF_KAG_STR=""
+  DIFF_TOTAL=$((DIFF_MAIN + DIFF_KAG))
+  if [ $DIFF_MAIN -gt 0 ]; then DIFF_MAIN_STR=" (+$DIFF_MAIN)"; elif [ $DIFF_MAIN -lt 0 ]; then DIFF_MAIN_STR=" ($DIFF_MAIN)"; fi
+  if [ $DIFF_KAG -gt 0 ]; then DIFF_KAG_STR=" (+$DIFF_KAG)"; elif [ $DIFF_KAG -lt 0 ]; then DIFF_KAG_STR=" ($DIFF_KAG)"; fi
+  DIFF_TOTAL_STR=""
+  if [ $DIFF_TOTAL -gt 0 ]; then DIFF_TOTAL_STR=" (+$DIFF_TOTAL)"; elif [ $DIFF_TOTAL -lt 0 ]; then DIFF_TOTAL_STR=" ($DIFF_TOTAL)"; fi
+  echo "  main: $USERS_MAIN 人$DIFF_MAIN_STR"
+  echo "  kag:  $USERS_KAG 人$DIFF_KAG_STR"
+  echo "  合計: $((USERS_MAIN + USERS_KAG)) 人$DIFF_TOTAL_STR"
+  echo "  （前回記録: $PREV_DATE）"
+else
+  # 初回または同日の場合は増減なし
+  echo "  main: $USERS_MAIN 人"
+  echo "  kag:  $USERS_KAG 人"
+  echo "  合計: $((USERS_MAIN + USERS_KAG)) 人"
+  if [ -z "$PREV_DATE" ]; then
+    echo "  （初回記録 - 次回以降増減を表示）"
+  fi
+fi
 echo ""
 
 # UTC→JST変換関数（日付用：+9時間で日付が変わる場合を考慮）
