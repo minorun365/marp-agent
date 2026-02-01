@@ -139,6 +139,40 @@ agent = Agent(
 )
 ```
 
+### Kimi K2 トラブルシューティング
+
+#### Web検索後にスライドが生成されない
+
+**症状**: Web検索を実行すると「Web検索完了」と表示された後、スライドが生成されずに終了する。「〜検索しておきます」というテキストは表示される。
+
+**原因**: Kimi K2がWeb検索ツール実行後に、空のメッセージで`end_turn`している。既存のフォールバック条件（`not has_any_output`）では、検索前のテキスト出力があるためフォールバックが発動しない。
+
+**解決策**: `has_any_output`ではなく`web_search_executed`フラグで判定
+
+```python
+web_search_executed = False
+
+# Web検索ツール実行時にフラグを立てる
+if tool_name == "web_search":
+    web_search_executed = True
+
+# フォールバック条件を変更
+# 旧: if not has_any_output and not markdown_to_send and _last_search_result:
+# 新:
+if web_search_executed and not markdown_to_send and _last_search_result:
+    # 検索結果を表示してユーザーに次のアクションを促す
+    yield {"type": "text", "data": f"Web検索結果:\n\n{_last_search_result[:500]}...\n\n---\nスライドを作成しますか？"}
+```
+
+#### その他の既知問題
+
+| 問題 | 原因 | 対応状況 |
+|------|------|---------|
+| ツール実行後に応答が表示されない | `reasoning`イベントを処理していない | ✅ 対応済み |
+| ツール名が破損してツールが実行されない | 内部トークンがツール名に混入 | ✅ リトライロジックで対応 |
+| ツール呼び出しがreasoningText内に埋め込まれる | tool_useイベントに変換されない | ✅ 検出してリトライ |
+| テキストストリームへのマークダウン混入 | ツールを呼ばずに直接出力 | ✅ バッファリングで抽出 |
+
 ### フロントエンドからのモデル切り替え
 
 リクエストごとにモデルを動的に切り替える実装パターン：
