@@ -303,27 +303,54 @@ def extract_markdown(text: str) -> str | None:
 def extract_marp_markdown_from_text(text: str) -> str | None:
     """テキストからMarpマークダウンを抽出（フォールバック用）
 
-    Kimi K2がoutput_slideツールを呼ばずにテキストとしてマークダウンを出力した場合に使用
+    Kimi K2がoutput_slideツールを呼ばずにテキストとしてマークダウンを出力した場合に使用。
+    以下の2パターンに対応：
+    1. 直接的なマークダウン: ---\nmarp: true\n...
+    2. JSON引数内のマークダウン: {"markdown": "---\\nmarp: true\\n..."}
     """
     import re
+    import json
 
-    if not text or "marp: true" not in text:
+    if not text:
         return None
 
-    # フロントマター（---で始まるブロック）からスライド終端まで抽出
-    # パターン: ---\nmarp: true で始まり、最後のスライド内容まで
-    pattern = r'(---\s*\nmarp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
-    match = re.search(pattern, text)
-    if match:
-        markdown = match.group(1).strip()
-        # 内部トークンが残っていたら除去
-        markdown = re.sub(r'<\|[^>]+\|>', '', markdown)
-        # 末尾の不完全な行を除去
-        lines = markdown.split('\n')
-        # 最後の行が不完全（閉じタグなど）なら除去
-        while lines and (lines[-1].strip().startswith('<|') or not lines[-1].strip()):
-            lines.pop()
-        return '\n'.join(lines) if lines else None
+    # "marp: true" または "marp:" がない場合はスキップ（エスケープ版も考慮）
+    if "marp:" not in text and "marp\\":" not in text:
+        return None
+
+    # ケース1: JSON引数内のマークダウンを抽出（Kimi K2がreasoningText内にツール呼び出しを埋め込んだ場合）
+    # パターン: <|tool_call_argument_begin|> {"markdown": "..."} <|tool_call_end|>
+    json_arg_pattern = r'<\|tool_call_argument_begin\|>\s*(\{[\s\S]*?\})\s*<\|tool_call_end\|>'
+    json_match = re.search(json_arg_pattern, text)
+    if json_match:
+        try:
+            json_str = json_match.group(1)
+            # エスケープされた改行を処理
+            data = json.loads(json_str)
+            if isinstance(data, dict) and "markdown" in data:
+                markdown = data["markdown"]
+                if markdown and "marp: true" in markdown:
+                    print(f"[INFO] Extracted markdown from JSON tool argument in reasoningText")
+                    return markdown
+        except json.JSONDecodeError as e:
+            print(f"[WARN] Failed to parse JSON from tool argument: {e}")
+
+    # ケース2: 直接的なマークダウンを抽出（既存の処理）
+    if "marp: true" in text:
+        # フロントマター（---で始まるブロック）からスライド終端まで抽出
+        # パターン: ---\nmarp: true で始まり、最後のスライド内容まで
+        pattern = r'(---\s*\nmarp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
+        match = re.search(pattern, text)
+        if match:
+            markdown = match.group(1).strip()
+            # 内部トークンが残っていたら除去
+            markdown = re.sub(r'<\|[^>]+\|>', '', markdown)
+            # 末尾の不完全な行を除去
+            lines = markdown.split('\n')
+            # 最後の行が不完全（閉じタグなど）なら除去
+            while lines and (lines[-1].strip().startswith('<|') or not lines[-1].strip()):
+                lines.pop()
+            return '\n'.join(lines) if lines else None
 
     return None
 
