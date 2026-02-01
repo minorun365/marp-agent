@@ -493,6 +493,7 @@ async def invoke(payload, context=None):
         fallback_markdown = None  # リトライ時にリセット
         tool_name_corrupted = False  # 破損検出フラグ
         has_any_output = False  # テキスト出力があったかのフラグ
+        web_search_executed = False  # Web検索が実行されたかのフラグ（Kimi K2対策）
 
         # Kimi K2の場合、dataイベントを蓄積してマークダウン検出に使用
         kimi_text_buffer = "" if model_type == "kimi" else None
@@ -542,6 +543,7 @@ async def invoke(payload, context=None):
 
                 # web_searchの場合はクエリが取得できた時のみ送信（ストリーミング中は複数回イベントが来るため）
                 if tool_name == "web_search":
+                    web_search_executed = True  # Web検索実行フラグを立てる
                     if isinstance(tool_input, dict) and "query" in tool_input:
                         yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
                     # クエリがない場合はイベントを送信しない（完全なJSONを待つ）
@@ -600,14 +602,15 @@ async def invoke(payload, context=None):
             print(f"[INFO] Using fallback markdown (output_slide was not called)")
         yield {"type": "markdown", "data": markdown_to_send}
 
-    # Web検索後に何も出力されなかった場合のフォールバック（Kimi K2対策 #42）
-    if not has_any_output and not markdown_to_send and _last_search_result:
+    # Web検索後にスライドが生成されなかった場合のフォールバック（Kimi K2対策 #42）
+    # 条件: Web検索が実行されたが、マークダウンが生成されず、検索結果がある場合
+    if web_search_executed and not markdown_to_send and _last_search_result:
         # 検索結果を500文字に切り詰めて表示
         truncated_result = _last_search_result[:500]
         if len(_last_search_result) > 500:
             truncated_result += "..."
         fallback_message = f"Web検索結果:\n\n{truncated_result}\n\n---\nスライドを作成しますか？"
-        print(f"[INFO] No output after web search, returning search result as fallback")
+        print(f"[INFO] Web search executed but no slide generated, returning search result as fallback (model_type={model_type})")
         yield {"type": "text", "data": fallback_message}
 
     # generate_tweet_urlツールで生成されたツイートURLを送信
