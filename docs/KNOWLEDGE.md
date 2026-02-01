@@ -164,6 +164,39 @@ if web_search_executed and not markdown_to_send and _last_search_result:
     yield {"type": "text", "data": f"Web検索結果:\n\n{_last_search_result[:500]}...\n\n---\nスライドを作成しますか？"}
 ```
 
+#### ツール引数のJSON内マークダウンが抽出できない
+
+**症状**: 「お願いします」と言ってスライド生成を依頼すると、何も応答せずに終了する。ログを見ると`reasoningText`内にツール呼び出しがJSON引数ごと埋め込まれている。
+
+**原因**: `extract_marp_markdown_from_text`関数が直接的なマークダウン（`---\nmarp: true`）のみを抽出していたが、Kimi K2は`{"markdown": "---\\nmarp: true\\n..."}`のようなJSON引数内にマークダウンを埋め込むことがある。エスケープされた改行（`\\n`）が正規表現パターンにマッチしない。
+
+**ログの特徴**:
+```json
+"reasoningText": {
+  "text": "...スライドを作成します。 <|tool_call_argument_begin|> {\"markdown\": \"---\\nmarp: true\\ntheme: gradient\\n...\"} <|tool_call_end|>"
+}
+"finish_reason": "end_turn"
+```
+
+**解決策**: JSON引数からもマークダウンを抽出できるようにフォールバック関数を拡張
+
+```python
+def extract_marp_markdown_from_text(text: str) -> str | None:
+    # ケース1: JSON引数内のマークダウンを抽出
+    json_arg_pattern = r'<\|tool_call_argument_begin\|>\s*(\{[\s\S]*?\})\s*<\|tool_call_end\|>'
+    json_match = re.search(json_arg_pattern, text)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(1))
+            if "markdown" in data and "marp: true" in data["markdown"]:
+                return data["markdown"]
+        except json.JSONDecodeError:
+            pass
+
+    # ケース2: 直接的なマークダウンを抽出（既存の処理）
+    # ...
+```
+
 #### その他の既知問題
 
 | 問題 | 原因 | 対応状況 |
@@ -172,6 +205,7 @@ if web_search_executed and not markdown_to_send and _last_search_result:
 | ツール名が破損してツールが実行されない | 内部トークンがツール名に混入 | ✅ リトライロジックで対応 |
 | ツール呼び出しがreasoningText内に埋め込まれる | tool_useイベントに変換されない | ✅ 検出してリトライ |
 | テキストストリームへのマークダウン混入 | ツールを呼ばずに直接出力 | ✅ バッファリングで抽出 |
+| ツール引数のJSON内マークダウンが抽出できない | エスケープされた改行がパターンにマッチしない | ✅ JSON引数からの抽出に対応 |
 
 ### フロントエンドからのモデル切り替え
 
