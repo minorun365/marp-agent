@@ -337,21 +337,37 @@ def extract_marp_markdown_from_text(text: str) -> str | None:
             print(f"[WARN] Failed to parse JSON from tool argument: {e}")
 
     # ケース2: 直接的なマークダウンを抽出（既存の処理）
-    if "marp: true" in text:
-        # フロントマター（---で始まるブロック）からスライド終端まで抽出
-        # パターン: ---\nmarp: true で始まり、最後のスライド内容まで
-        pattern = r'(---\s*\nmarp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
-        match = re.search(pattern, text)
-        if match:
+    text_lower = text.lower()
+    if "marp: true" in text_lower:
+        # パターンA: ---で始まるフロントマター形式（改行は\nまたは\r\n）
+        pattern_with_frontmatter = r'(---\s*[\r\n]+marp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
+        match = re.search(pattern_with_frontmatter, text, re.IGNORECASE)
+
+        if not match:
+            # パターンB: ---がない場合、marp: trueから始まる部分を抽出
+            # （Kimi K2がフロントマター記号なしで出力した場合の対応）
+            pattern_without_frontmatter = r'(marp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
+            match = re.search(pattern_without_frontmatter, text, re.IGNORECASE)
+            if match:
+                # フロントマターの開始記号を補完
+                markdown = "---\n" + match.group(1).strip()
+                print(f"[INFO] Extracted markdown without frontmatter delimiter (added ---)")
+            else:
+                # デバッグ: マッチしなかった場合、先頭100文字をログ出力
+                preview = text[:200].replace('\n', '\\n').replace('\r', '\\r')
+                print(f"[WARN] Marp markdown detected but extraction failed. Text preview: {preview}")
+                return None
+        else:
             markdown = match.group(1).strip()
-            # 内部トークンが残っていたら除去
-            markdown = re.sub(r'<\|[^>]+\|>', '', markdown)
-            # 末尾の不完全な行を除去
-            lines = markdown.split('\n')
-            # 最後の行が不完全（閉じタグなど）なら除去
-            while lines and (lines[-1].strip().startswith('<|') or not lines[-1].strip()):
-                lines.pop()
-            return '\n'.join(lines) if lines else None
+
+        # 内部トークンが残っていたら除去
+        markdown = re.sub(r'<\|[^>]+\|>', '', markdown)
+        # 末尾の不完全な行を除去
+        lines = markdown.split('\n')
+        # 最後の行が不完全（閉じタグなど）なら除去
+        while lines and (lines[-1].strip().startswith('<|') or not lines[-1].strip()):
+            lines.pop()
+        return '\n'.join(lines) if lines else None
 
     return None
 
