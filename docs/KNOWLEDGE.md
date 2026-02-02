@@ -596,7 +596,8 @@ AmplifyはCDKコンテキストに `amplify-backend-name` として identifier �
 ```typescript
 // amplify/backend.ts
 const backendName = agentCoreStack.node.tryGetContext('amplify-backend-name') as string;
-nameSuffix = backendName || 'dev';
+// Runtime名に使えない文字をサニタイズ（本番と同様）
+nameSuffix = (backendName || 'dev').replace(/[^a-zA-Z0-9_]/g, '_');
 ```
 
 | やること | 管理場所 |
