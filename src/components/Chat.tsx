@@ -24,6 +24,7 @@ const TIPS = [
   'みのるんのQiitaブログで、このアプリと似た構成をAWS CDKで構築する手順も紹介しています！',
   'このアプリへの感想や要望は、Xで #パワポ作るマン のハッシュタグを付けてフィードバックください！',
   'このアプリ開発者のみのるんのXアカウントは @minorun365 です。フォローしてね！',
+  'Kimi K2 Thinkingモデルを選ぶと、利用コストがとても安くなるためみのるんが喜びます！',
 ];
 
 interface ChatProps {
@@ -586,8 +587,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
-                <option value="claude">Claude Sonnet 4.5</option>
-                <option value="kimi">Kimi K2 Thinking（実験的）</option>
+                <option value="claude">標準（Claude Sonnet 4.5）</option>
+                <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
               </select>
             </div>
             <div className="w-px h-5 bg-gray-200 mx-1" />
