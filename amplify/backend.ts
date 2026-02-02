@@ -24,7 +24,8 @@ if (isSandbox) {
   // CDKコンテキストからAmplifyが設定した識別子を取得
   const backendName = agentCoreStack.node.tryGetContext('amplify-backend-name') as string;
   console.log('[DEBUG] backendName:', backendName);
-  nameSuffix = backendName || 'dev';
+  // Runtime名に使えない文字をサニタイズ（本番と同様）
+  nameSuffix = (backendName || 'dev').replace(/[^a-zA-Z0-9_]/g, '_');
 } else {
   const branchName = process.env.AWS_BRANCH || 'main';
   // Runtime名に使える文字のみに変換（/ や - を _ に置換）
