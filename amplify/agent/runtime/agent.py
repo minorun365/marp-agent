@@ -26,15 +26,18 @@ def _get_model_config(model_type: str = "claude") -> dict:
             "cache_prompt": None,
             "cache_tools": None,
         }
+    elif model_type == "claude5":
+        # Claude Sonnet 5（2026年リリース予定）
+        # リリース前はエラーになるが、フロントエンドでユーザーに通知
+        return {
+            "model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0",
+            "cache_prompt": "default",
+            "cache_tools": "default",
+        }
     else:
         # Claude Sonnet 4.5（デフォルト）
-        region = os.environ.get("AWS_REGION", "us-east-1")
-        if region == "ap-northeast-1":
-            prefix = "jp"
-        else:
-            prefix = "us"
         return {
-            "model_id": f"{prefix}.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
             "cache_prompt": "default",
             "cache_tools": "default",
         }
