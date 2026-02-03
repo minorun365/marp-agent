@@ -98,8 +98,12 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Claude Sonnet 4.5（推奨）
+# Claude Sonnet 4.5（推奨・デフォルト）
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+# Claude Sonnet 5（2026年リリース予定）
+# 注意: 未リリース。リリース前はエラーになるが、フロントエンドでユーザーに通知
+model = "us.anthropic.claude-sonnet-5-20260203-v1:0"
 
 # Claude Haiku 4.5（高速・低コスト）
 model = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -111,11 +115,12 @@ model = "moonshot.kimi-k2-thinking"
 
 ### モデル別の設定差異
 
-| モデル | クロスリージョン推論 | cache_prompt | cache_tools |
-|--------|-------------------|--------------|-------------|
-| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
-| Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
-| Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 |
+| モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
+|--------|-------------------|--------------|-------------|------|
+| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 推奨・デフォルト |
+| Claude Sonnet 5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 2026年リリース予定 |
+| Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 高速・低コスト |
+| Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 | Moonshot AI |
 
 **Kimi K2 Thinking使用時の注意**:
 - BedrockModelの`cache_prompt`と`cache_tools`を指定しないこと
@@ -214,7 +219,7 @@ def extract_marp_markdown_from_text(text: str) -> str | None:
 
 #### フロントエンド（Chat.tsx）
 ```typescript
-type ModelType = 'claude' | 'kimi';
+type ModelType = 'claude' | 'kimi' | 'claude5';
 const [modelType, setModelType] = useState<ModelType>('claude');
 
 // 入力欄の左端にセレクター配置（矢印は別要素で表示）
@@ -224,8 +229,9 @@ const [modelType, setModelType] = useState<ModelType>('claude');
     onChange={(e) => setModelType(e.target.value as ModelType)}
     className="text-xs text-gray-400 bg-transparent appearance-none"
   >
-    <option value="claude">Claude</option>
-    <option value="kimi">Kimi</option>
+    <option value="claude">標準（Claude Sonnet 4.5）</option>
+    <option value="claude5">宇宙最速（Claude Sonnet 5）</option>
+    <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
   </select>
   <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
 </div>
@@ -256,6 +262,7 @@ title={hasUserMessage ? '会話中はモデルを変更できません' : '使�
   className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
 >
   <option value="claude">Claude</option>
+  <option value="claude5">宇宙最速</option>
   <option value="kimi">Kimi</option>
 </select>
 <span className="ml-2 sm:ml-1">▾</span>
@@ -278,8 +285,10 @@ body: JSON.stringify({
 def _get_model_config(model_type: str = "claude") -> dict:
     if model_type == "kimi":
         return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None}
+    elif model_type == "claude5":
+        return {"model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0", "cache_prompt": "default"}
     else:
-        return {"model_id": f"{prefix}.anthropic.claude-sonnet-4-5-...", "cache_prompt": "default"}
+        return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default"}
 
 @app.entrypoint
 async def invoke(payload, context=None):
@@ -288,6 +297,74 @@ async def invoke(payload, context=None):
 ```
 
 **セッション管理の注意**: モデル切り替え時に新しいAgentを作成するため、キャッシュキーは `session_id:model_type` の形式で管理する。
+
+### 新モデル追加時のチェックリスト
+
+新しいモデルを追加する際は、以下のファイルを更新する：
+
+| ファイル | 修正内容 |
+|---------|---------|
+| `amplify/agent/runtime/agent.py` | `_get_model_config()` に新モデルの設定を追加 |
+| `src/components/Chat.tsx` | `ModelType` 型に追加、セレクター選択肢を追加 |
+| `src/hooks/useAgentCore.ts` | `ModelType` 型に追加 |
+
+**バックエンド修正例**:
+```python
+def _get_model_config(model_type: str = "claude") -> dict:
+    if model_type == "claude5":
+        # Claude Sonnet 5（2026年リリース予定）
+        # リリース前はエラーになるが、フロントエンドでユーザーに通知
+        return {
+            "model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0",
+            "cache_prompt": "default",
+            "cache_tools": "default",
+        }
+    # ...
+```
+
+**未リリースモデルの先行対応**:
+- リリース前でもモデルIDを設定しておける
+- Bedrockがモデルを認識できないと `ValidationException: The provided model identifier is invalid` エラーになる
+- フロントエンドの `onError` コールバックでエラーメッセージを判定し、ユーザーフレンドリーなメッセージを疑似ストリーミング表示
+
+```typescript
+// Chat.tsx - onErrorコールバック内
+onError: (error) => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
+  const displayMessage = isModelNotAvailable
+    ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE  // 「Claude Sonnet 5はまだリリースされていないようです...」
+    : MESSAGES.ERROR;
+
+  // 疑似ストリーミングでエラーメッセージを表示
+  // 注意: finallyブロックとの競合を避けるため、isStreamingチェックを緩和
+  const streamErrorMessage = async () => {
+    setMessages(prev => [...prev.filter(msg => !msg.isStatus),
+      { role: 'assistant', content: '', isStreaming: true }]);
+    for (const char of displayMessage) {
+      await new Promise(resolve => setTimeout(resolve, 30));
+      // isStreamingチェックを削除（finallyが先に実行されてfalseになるため）
+      setMessages(prev => prev.map((msg, idx) =>
+        idx === prev.length - 1 && msg.role === 'assistant'
+          ? { ...msg, content: msg.content + char } : msg
+      ));
+    }
+    // ...
+  };
+  streamErrorMessage();
+}
+```
+
+**⚠️ finallyブロックとの競合に注意**:
+`onError` コールバック内の `streamErrorMessage()` は非同期関数だが、`await` されずに呼ばれる。そのため `finally` ブロックが先に実行され、`isStreaming: false` に設定される。疑似ストリーミングのループ内で `isStreaming` をチェックしていると、テキストが追加されなくなる。
+
+```typescript
+// NG: finallyブロックでisStreaming: falseにされた後、条件がfalseになる
+idx === prev.length - 1 && msg.role === 'assistant' && msg.isStreaming
+
+// OK: isStreamingチェックを削除
+idx === prev.length - 1 && msg.role === 'assistant'
+```
 
 ### Agent作成
 ```python

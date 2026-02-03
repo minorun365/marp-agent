@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { invokeAgent, invokeAgentMock } from '../hooks/useAgentCore';
 
-type ModelType = 'claude' | 'kimi';
+type ModelType = 'claude' | 'kimi' | 'claude5';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -47,6 +47,7 @@ const MESSAGES = {
   EMPTY_STATE_TITLE: 'スライドを作成しましょう',
   EMPTY_STATE_EXAMPLE: '例: 「AWS入門の5枚スライドを作って」',
   ERROR: 'エラーが発生しました。もう一度お試しください。',
+  ERROR_MODEL_NOT_AVAILABLE: 'Claude Sonnet 5はまだリリースされていないようです。Amazon Bedrockへのモデル追加をお待ちください！（ブラウザでページ更新すると、別のモデルを選んで新規チャットができます）',
 
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',
@@ -422,7 +423,45 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         },
         onError: (error) => {
           console.error('Agent error:', error);
-          throw error;
+          // モデルが未リリースの場合は専用メッセージを表示
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
+          const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
+
+          // 疑似ストリーミングでエラーメッセージを表示
+          // finallyブロックとの競合を避けるため、isStreamingのチェックを緩和
+          const streamErrorMessage = async () => {
+            // ステータスメッセージを削除し、空のアシスタントメッセージを追加
+            setMessages(prev => {
+              const filtered = prev.filter(msg => !msg.isStatus);
+              return [...filtered, { role: 'assistant' as const, content: '', isStreaming: true }];
+            });
+
+            // 1文字ずつ表示（isStreaming: trueを維持してカーソル表示を継続）
+            for (const char of displayMessage) {
+              await new Promise(resolve => setTimeout(resolve, 30));
+              setMessages(prev =>
+                prev.map((msg, idx) =>
+                  idx === prev.length - 1 && msg.role === 'assistant'
+                    ? { ...msg, content: msg.content + char, isStreaming: true }
+                    : msg
+                )
+              );
+            }
+
+            // ストリーミング完了
+            setMessages(prev =>
+              prev.map((msg, idx) =>
+                idx === prev.length - 1 && msg.role === 'assistant'
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              )
+            );
+            setIsLoading(false);
+            setStatus('');
+          };
+
+          streamErrorMessage();
         },
         onComplete: () => {
           // Web検索のステータスも完了に更新
@@ -446,13 +485,31 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       );
     } catch (error) {
       console.error('Error:', error);
-      setMessages(prev =>
-        prev.map((msg, idx) =>
-          idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
-            ? { ...msg, content: MESSAGES.ERROR, isStreaming: false }
-            : msg
-        )
-      );
+      // モデルが未リリースの場合は専用メッセージを表示
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
+      const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
+
+      // ステータスメッセージを削除し、エラーメッセージを表示
+      setMessages(prev => {
+        // ステータスメッセージを除外
+        const filtered = prev.filter(msg => !msg.isStatus);
+        // 最後のアシスタントメッセージを探す
+        const lastAssistantIdx = filtered.findIndex((msg, idx) =>
+          idx === filtered.length - 1 && msg.role === 'assistant'
+        );
+        if (lastAssistantIdx !== -1) {
+          // 既存のアシスタントメッセージを更新
+          return filtered.map((msg, idx) =>
+            idx === lastAssistantIdx
+              ? { ...msg, content: displayMessage, isStreaming: false }
+              : msg
+          );
+        } else {
+          // アシスタントメッセージがなければ新規追加
+          return [...filtered, { role: 'assistant' as const, content: displayMessage, isStreaming: false }];
+        }
+      });
     } finally {
       setIsLoading(false);
       setStatus('');
@@ -576,7 +633,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             <div className="relative flex items-center pl-3 sm:pl-4">
               {/* PC: モデル名表示、スマホ: 矢印のみ */}
               <span className={`hidden sm:inline text-xs ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>
-                {modelType === 'claude' ? 'Claude' : 'Kimi'}
+                {modelType === 'claude' ? 'Claude' : modelType === 'kimi' ? 'Kimi' : 'Claude 5'}
               </span>
               <span className={`text-xl sm:ml-1 mr-2 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>▾</span>
               {/* 透明なselectを上に重ねてタップ領域を確保 */}
@@ -588,6 +645,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
                 <option value="claude">標準（Claude Sonnet 4.5）</option>
+                <option value="claude5">宇宙最速（Claude Sonnet 5）</option>
                 <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
               </select>
             </div>
