@@ -47,7 +47,7 @@ const MESSAGES = {
   EMPTY_STATE_TITLE: 'スライドを作成しましょう',
   EMPTY_STATE_EXAMPLE: '例: 「AWS入門の5枚スライドを作って」',
   ERROR: 'エラーが発生しました。もう一度お試しください。',
-  ERROR_MODEL_NOT_AVAILABLE: 'Claude Sonnet 5はまだリリースされていないようです。Amazon Bedrockへのモデル追加をお待ちください！',
+  ERROR_MODEL_NOT_AVAILABLE: 'Claude Sonnet 5はまだリリースされていないようです。Amazon Bedrockへのモデル追加をお待ちください！（ブラウザでページ更新すると、別のモデルを選んで新規チャットができます）',
 
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',
@@ -428,24 +428,39 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
           const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
 
-          // ステータスメッセージを削除し、エラーメッセージを表示
-          setMessages(prev => {
-            const filtered = prev.filter(msg => !msg.isStatus);
-            const lastAssistantIdx = filtered.findIndex((msg, idx) =>
-              idx === filtered.length - 1 && msg.role === 'assistant'
-            );
-            if (lastAssistantIdx !== -1) {
-              return filtered.map((msg, idx) =>
-                idx === lastAssistantIdx
-                  ? { ...msg, content: displayMessage, isStreaming: false }
-                  : msg
+          // 疑似ストリーミングでエラーメッセージを表示
+          const streamErrorMessage = async () => {
+            // ステータスメッセージを削除し、空のアシスタントメッセージを追加
+            setMessages(prev => {
+              const filtered = prev.filter(msg => !msg.isStatus);
+              return [...filtered, { role: 'assistant' as const, content: '', isStreaming: true }];
+            });
+
+            // 1文字ずつ表示
+            for (const char of displayMessage) {
+              await new Promise(resolve => setTimeout(resolve, 30));
+              setMessages(prev =>
+                prev.map((msg, idx) =>
+                  idx === prev.length - 1 && msg.role === 'assistant' && msg.isStreaming
+                    ? { ...msg, content: msg.content + char }
+                    : msg
+                )
               );
-            } else {
-              return [...filtered, { role: 'assistant' as const, content: displayMessage, isStreaming: false }];
             }
-          });
-          setIsLoading(false);
-          setStatus('');
+
+            // ストリーミング完了
+            setMessages(prev =>
+              prev.map((msg, idx) =>
+                idx === prev.length - 1 && msg.isStreaming
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              )
+            );
+            setIsLoading(false);
+            setStatus('');
+          };
+
+          streamErrorMessage();
         },
         onComplete: () => {
           // Web検索のステータスも完了に更新
