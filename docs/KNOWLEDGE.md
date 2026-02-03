@@ -337,13 +337,15 @@ onError: (error) => {
     : MESSAGES.ERROR;
 
   // 疑似ストリーミングでエラーメッセージを表示
+  // 注意: finallyブロックとの競合を避けるため、isStreamingチェックを緩和
   const streamErrorMessage = async () => {
     setMessages(prev => [...prev.filter(msg => !msg.isStatus),
       { role: 'assistant', content: '', isStreaming: true }]);
     for (const char of displayMessage) {
       await new Promise(resolve => setTimeout(resolve, 30));
+      // isStreamingチェックを削除（finallyが先に実行されてfalseになるため）
       setMessages(prev => prev.map((msg, idx) =>
-        idx === prev.length - 1 && msg.isStreaming
+        idx === prev.length - 1 && msg.role === 'assistant'
           ? { ...msg, content: msg.content + char } : msg
       ));
     }
@@ -351,6 +353,17 @@ onError: (error) => {
   };
   streamErrorMessage();
 }
+```
+
+**⚠️ finallyブロックとの競合に注意**:
+`onError` コールバック内の `streamErrorMessage()` は非同期関数だが、`await` されずに呼ばれる。そのため `finally` ブロックが先に実行され、`isStreaming: false` に設定される。疑似ストリーミングのループ内で `isStreaming` をチェックしていると、テキストが追加されなくなる。
+
+```typescript
+// NG: finallyブロックでisStreaming: falseにされた後、条件がfalseになる
+idx === prev.length - 1 && msg.role === 'assistant' && msg.isStreaming
+
+// OK: isStreamingチェックを削除
+idx === prev.length - 1 && msg.role === 'assistant'
 ```
 
 ### Agent作成
