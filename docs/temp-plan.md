@@ -26,11 +26,12 @@ Claude Sonnet 5のリリースに備えて、フロントエンドでモデルID
 
 ### 1. バックエンド: `amplify/agent/runtime/agent.py`
 
-`_get_model_config()` に `sonnet5` を追加:
+`_get_model_config()` に `claude5` を追加:
 
 ```python
-elif model_type == "sonnet5":
+elif model_type == "claude5":
     # Claude Sonnet 5（2026年リリース予定）
+    # リリース前はエラーになるが、フロントエンドでユーザーに通知
     return {
         "model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0",
         "cache_prompt": "default",
@@ -40,9 +41,9 @@ elif model_type == "sonnet5":
 
 ### 2. フロントエンド: `src/components/Chat.tsx`
 
-- 型定義: `ModelType = 'claude' | 'kimi' | 'sonnet5';`
-- モデル名表示: sonnet5 → 「Claude 5」
-- セレクター選択肢追加: 「Claude 5 (Preview)」
+- 型定義: `ModelType = 'claude' | 'kimi' | 'claude5';`
+- モデル名表示: claude5 → 「Claude 5」
+- セレクター選択肢追加: 「Claude 5（Preview）」
 
 ---
 

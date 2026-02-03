@@ -11,7 +11,7 @@ export interface AgentCoreCallbacks {
   onComplete: () => void;
 }
 
-export type ModelType = 'claude' | 'kimi';
+export type ModelType = 'claude' | 'kimi' | 'claude5';
 
 export async function invokeAgent(
   prompt: string,
