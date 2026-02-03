@@ -423,7 +423,29 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         },
         onError: (error) => {
           console.error('Agent error:', error);
-          throw error;
+          // モデルが未リリースの場合は専用メッセージを表示
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
+          const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
+
+          // ステータスメッセージを削除し、エラーメッセージを表示
+          setMessages(prev => {
+            const filtered = prev.filter(msg => !msg.isStatus);
+            const lastAssistantIdx = filtered.findIndex((msg, idx) =>
+              idx === filtered.length - 1 && msg.role === 'assistant'
+            );
+            if (lastAssistantIdx !== -1) {
+              return filtered.map((msg, idx) =>
+                idx === lastAssistantIdx
+                  ? { ...msg, content: displayMessage, isStreaming: false }
+                  : msg
+              );
+            } else {
+              return [...filtered, { role: 'assistant' as const, content: displayMessage, isStreaming: false }];
+            }
+          });
+          setIsLoading(false);
+          setStatus('');
         },
         onComplete: () => {
           // Web検索のステータスも完了に更新
