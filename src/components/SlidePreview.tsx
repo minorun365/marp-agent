@@ -162,10 +162,10 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, onShareS
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              disabled={isDownloading || slides.length === 0}
+              disabled={isDownloading || isSharing || slides.length === 0}
               className="btn-kag text-white px-4 py-2 rounded-lg flex items-center gap-2"
             >
-              {isDownloading ? 'ダウンロード中...' : 'エクスポート'}
+              {isDownloading ? 'ダウンロード中...' : isSharing ? '公開中...' : 'エクスポート'}
               {!isDownloading && <span className="text-xs">▼</span>}
             </button>
             {isDropdownOpen && !isDownloading && slides.length > 0 && (
