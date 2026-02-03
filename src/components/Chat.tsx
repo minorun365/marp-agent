@@ -450,13 +450,28 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       // モデルが未リリースの場合は専用メッセージを表示
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
-      setMessages(prev =>
-        prev.map((msg, idx) =>
-          idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
-            ? { ...msg, content: isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR, isStreaming: false }
-            : msg
-        )
-      );
+      const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
+
+      // ステータスメッセージを削除し、エラーメッセージを表示
+      setMessages(prev => {
+        // ステータスメッセージを除外
+        const filtered = prev.filter(msg => !msg.isStatus);
+        // 最後のアシスタントメッセージを探す
+        const lastAssistantIdx = filtered.findIndex((msg, idx) =>
+          idx === filtered.length - 1 && msg.role === 'assistant'
+        );
+        if (lastAssistantIdx !== -1) {
+          // 既存のアシスタントメッセージを更新
+          return filtered.map((msg, idx) =>
+            idx === lastAssistantIdx
+              ? { ...msg, content: displayMessage, isStreaming: false }
+              : msg
+          );
+        } else {
+          // アシスタントメッセージがなければ新規追加
+          return [...filtered, { role: 'assistant' as const, content: displayMessage, isStreaming: false }];
+        }
+      });
     } finally {
       setIsLoading(false);
       setStatus('');
