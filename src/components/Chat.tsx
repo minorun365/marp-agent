@@ -437,13 +437,13 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               return [...filtered, { role: 'assistant' as const, content: '', isStreaming: true }];
             });
 
-            // 1文字ずつ表示（isStreamingチェックを削除してfinallyブロックとの競合を防ぐ）
+            // 1文字ずつ表示（isStreaming: trueを維持してカーソル表示を継続）
             for (const char of displayMessage) {
               await new Promise(resolve => setTimeout(resolve, 30));
               setMessages(prev =>
                 prev.map((msg, idx) =>
                   idx === prev.length - 1 && msg.role === 'assistant'
-                    ? { ...msg, content: msg.content + char }
+                    ? { ...msg, content: msg.content + char, isStreaming: true }
                     : msg
                 )
               );
