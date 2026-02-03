@@ -219,7 +219,7 @@ def extract_marp_markdown_from_text(text: str) -> str | None:
 
 #### フロントエンド（Chat.tsx）
 ```typescript
-type ModelType = 'claude' | 'kimi';
+type ModelType = 'claude' | 'kimi' | 'claude5';
 const [modelType, setModelType] = useState<ModelType>('claude');
 
 // 入力欄の左端にセレクター配置（矢印は別要素で表示）
@@ -229,8 +229,9 @@ const [modelType, setModelType] = useState<ModelType>('claude');
     onChange={(e) => setModelType(e.target.value as ModelType)}
     className="text-xs text-gray-400 bg-transparent appearance-none"
   >
-    <option value="claude">Claude</option>
-    <option value="kimi">Kimi</option>
+    <option value="claude">標準（Claude Sonnet 4.5）</option>
+    <option value="claude5">Claude 5（Preview）</option>
+    <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
   </select>
   <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
 </div>
@@ -293,6 +294,34 @@ async def invoke(payload, context=None):
 ```
 
 **セッション管理の注意**: モデル切り替え時に新しいAgentを作成するため、キャッシュキーは `session_id:model_type` の形式で管理する。
+
+### 新モデル追加時のチェックリスト
+
+新しいモデルを追加する際は、以下のファイルを更新する：
+
+| ファイル | 修正内容 |
+|---------|---------|
+| `amplify/agent/runtime/agent.py` | `_get_model_config()` に新モデルの設定を追加 |
+| `src/components/Chat.tsx` | `ModelType` 型に追加、セレクター選択肢を追加 |
+
+**バックエンド修正例**:
+```python
+def _get_model_config(model_type: str = "claude") -> dict:
+    if model_type == "claude5":
+        # Claude Sonnet 5（2026年リリース予定）
+        # リリース前はエラーになるが、フロントエンドでユーザーに通知
+        return {
+            "model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0",
+            "cache_prompt": "default",
+            "cache_tools": "default",
+        }
+    # ...
+```
+
+**未リリースモデルの先行対応**:
+- リリース前でもモデルIDを設定しておける
+- Bedrockがモデルを認識できないとエラーになる
+- フロントエンドでエラー時にユーザーフレンドリーなメッセージを表示
 
 ### Agent作成
 ```python
