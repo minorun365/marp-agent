@@ -131,6 +131,8 @@ fi
 # 4. Bedrockコスト取得（クエリ待機中に並列実行）
 # ========================================
 echo "💰 Bedrockコストを取得中..."
+
+# サービス別コスト（Claude/Kimi/Bedrock全体）
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
@@ -138,6 +140,21 @@ aws ce get-cost-and-usage \
   --group-by Type=DIMENSION,Key=SERVICE \
   --region $REGION \
   --output json > "$OUTPUT_DIR/cost.json"
+
+# Claude Sonnet 4.5の使用タイプ別コスト（キャッシュ効果分析用）
+aws ce get-cost-and-usage \
+  --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+  --granularity DAILY \
+  --metrics "UnblendedCost" \
+  --filter '{
+    "Dimensions": {
+      "Key": "SERVICE",
+      "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]
+    }
+  }' \
+  --group-by Type=DIMENSION,Key=USAGE_TYPE \
+  --region $REGION \
+  --output json > "$OUTPUT_DIR/sonnet_usage.json"
 
 # ========================================
 # 5. クエリ結果取得（10秒待機後）
@@ -438,6 +455,67 @@ TOTAL_COST=$(jq -r '
 echo "  週間合計: \$$TOTAL_COST"
 echo ""
 
+# ========================================
+# モデル別コスト内訳
+# ========================================
+echo "🤖 モデル別コスト内訳（過去7日間）"
+
+# Claude Sonnet 4.5
+CLAUDE_SONNET_COST=$(jq -r '
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.5")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost.json")
+
+# Kimi K2
+KIMI_COST=$(jq -r '
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Kimi")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost.json")
+
+# その他のBedrock
+OTHER_BEDROCK_COST=$(jq -r '
+  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.5") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost.json")
+
+printf "  Claude Sonnet 4.5: \$%.2f\n" $CLAUDE_SONNET_COST
+printf "  Kimi K2:           \$%.2f （クレジット適用で実質\$0）\n" $KIMI_COST
+printf "  その他Bedrock:     \$%.2f\n" $OTHER_BEDROCK_COST
+echo ""
+
+# ========================================
+# Claude Sonnet 4.5 キャッシュ効果
+# ========================================
+echo "📊 Claude Sonnet 4.5 キャッシュ効果"
+
+# 使用タイプ別コスト集計
+INPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+OUTPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+CACHE_READ_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+CACHE_WRITE_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+
+printf "  通常Input:   \$%.2f\n" $INPUT_COST
+printf "  Output:      \$%.2f\n" $OUTPUT_COST
+printf "  CacheRead:   \$%.2f\n" $CACHE_READ_COST
+printf "  CacheWrite:  \$%.2f\n" $CACHE_WRITE_COST
+
+# キャッシュヒット率計算（コストからトークン数を逆算）
+# Input: $3/1M, CacheRead: $0.30/1M
+if (( $(echo "$INPUT_COST > 0 || $CACHE_READ_COST > 0" | bc -l) )); then
+  INPUT_TOKENS=$(echo "scale=0; $INPUT_COST / 0.000003" | bc)
+  CACHE_READ_TOKENS=$(echo "scale=0; $CACHE_READ_COST / 0.0000003" | bc)
+  TOTAL_INPUT_TOKENS=$(echo "$INPUT_TOKENS + $CACHE_READ_TOKENS" | bc)
+  if [ "$TOTAL_INPUT_TOKENS" != "0" ]; then
+    CACHE_HIT_RATE=$(echo "scale=1; $CACHE_READ_TOKENS * 100 / $TOTAL_INPUT_TOKENS" | bc)
+    echo ""
+    echo "  📈 キャッシュヒット率: ${CACHE_HIT_RATE}%"
+
+    # 節約額計算
+    WOULD_HAVE_COST=$(echo "scale=2; $CACHE_READ_TOKENS * 0.000003" | bc)
+    SAVINGS=$(echo "scale=2; $WOULD_HAVE_COST - $CACHE_READ_COST" | bc)
+    NET_SAVINGS=$(echo "scale=2; $SAVINGS - $CACHE_WRITE_COST" | bc)
+    printf "  💰 キャッシュ節約額: \$%.2f（CacheWrite考慮後: \$%.2f）\n" $SAVINGS $NET_SAVINGS
+  fi
+fi
+echo ""
+
 echo "💵 Bedrockコスト（環境別内訳・推定）"
 TOTAL_INV=$((TOTAL_MAIN + TOTAL_KAG + TOTAL_DEV))
 if [ "$TOTAL_INV" -gt 0 ]; then
@@ -471,7 +549,9 @@ echo "✅ 完了！"
 2. **日次セッション数**: 過去7日間の日別回数（main/kag/dev別）
 3. **時間別セッション数**: 直近24時間の全時間帯（ASCIIバーグラフ・JST表示、main/kag/dev）
 4. **Bedrockコスト（日別）**: 過去7日間の日別コスト
-5. **Bedrockコスト（環境別内訳）**: セッション数で按分した推定コスト（週間・月間、main/kag/dev）
+5. **モデル別コスト内訳**: Claude Sonnet 4.5 / Kimi K2 / その他の内訳
+6. **Claude Sonnet 4.5 キャッシュ効果**: Input/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額
+7. **Bedrockコスト（環境別内訳）**: セッション数で按分した推定コスト（週間・月間、main/kag/dev）
 
 ## 技術詳細
 
