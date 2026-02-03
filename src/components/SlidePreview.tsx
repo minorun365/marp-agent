@@ -19,11 +19,13 @@ interface SlidePreviewProps {
   markdown: string;
   onDownloadPdf: (theme: string) => void;
   onDownloadPptx: (theme: string) => void;
+  onShareSlide: (theme: string) => void;
   isDownloading: boolean;
+  isSharing: boolean;
   onRequestEdit?: () => void;
 }
 
-export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownloading, onRequestEdit }: SlidePreviewProps) {
+export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, onShareSlide, isDownloading, isSharing, onRequestEdit }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -156,14 +158,15 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
               修正
             </button>
           )}
-          {/* ダウンロードドロップダウン */}
+          {/* エクスポートドロップダウン */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={isDownloading || slides.length === 0}
               className="btn-kag text-white px-4 py-2 rounded-lg flex items-center gap-2"
             >
-              {isDownloading ? 'ダウンロード中...' : 'ダウンロード ▼'}
+              {isDownloading ? 'ダウンロード中...' : 'エクスポート'}
+              {!isDownloading && <span className="text-xs">▼</span>}
             </button>
             {isDropdownOpen && !isDownloading && slides.length > 0 && (
               <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[160px]">
@@ -172,18 +175,28 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, isDownlo
                     setIsDropdownOpen(false);
                     onDownloadPdf(selectedTheme);
                   }}
-                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left rounded-t-lg"
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left rounded-t-lg whitespace-nowrap"
                 >
-                  PDF形式
+                  PDF形式でダウンロード
                 </button>
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
                     onDownloadPptx(selectedTheme);
                   }}
-                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t rounded-b-lg"
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t whitespace-nowrap"
                 >
-                  PPTX形式
+                  PPTX形式でダウンロード
+                </button>
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onShareSlide(selectedTheme);
+                  }}
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t rounded-b-lg flex items-center justify-between whitespace-nowrap"
+                >
+                  <span>URLで公開</span>
+                  <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">NEW</span>
                 </button>
               </div>
             )}

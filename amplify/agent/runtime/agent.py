@@ -3,7 +3,11 @@ import tempfile
 import base64
 import os
 import json
+import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
+
+import boto3
 
 from bedrock_agentcore import BedrockAgentCoreApp
 from strands import Agent, tool
@@ -438,6 +442,184 @@ def generate_pptx(markdown: str, theme: str = 'gradient') -> bytes:
         return pptx_path.read_bytes()
 
 
+def generate_standalone_html(markdown: str, theme: str = 'gradient') -> str:
+    """Marp CLIでスタンドアロンHTMLを生成（共有用）"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        md_path = Path(tmpdir) / "slide.md"
+        html_path = Path(tmpdir) / "slide.html"
+
+        md_path.write_text(markdown, encoding="utf-8")
+
+        cmd = [
+            "marp",
+            str(md_path),
+            "--html",
+            "--allow-local-files",
+            "-o", str(html_path),
+        ]
+
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
+        if theme_path.exists():
+            cmd.extend(["--theme", str(theme_path)])
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Marp CLI error: {result.stderr}")
+
+        return html_path.read_text(encoding="utf-8")
+
+
+def generate_thumbnail(markdown: str, theme: str = 'gradient') -> bytes:
+    """Marp CLIで1枚目のスライドをPNG画像として生成（OGP用サムネイル）"""
+    import re as thumb_re
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        md_path = Path(tmpdir) / "slide.md"
+        png_output = Path(tmpdir) / "slide.png"
+
+        md_path.write_text(markdown, encoding="utf-8")
+
+        cmd = [
+            "marp",
+            str(md_path),
+            "--image", "png",
+            "--allow-local-files",
+            "-o", str(png_output),
+        ]
+
+        # テーマ設定: カスタムCSS
+        theme_path = Path(__file__).parent / f"{theme}.css"
+        if theme_path.exists():
+            cmd.extend(["--theme", str(theme_path)])
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Marp CLI thumbnail error: {result.stderr}")
+
+        # Marpは複数スライドの場合 slide.001.png, slide.002.png... を生成
+        # 1枚目のサムネイルを取得
+        png_files = sorted(Path(tmpdir).glob("slide*.png"))
+        if not png_files:
+            raise RuntimeError("Thumbnail generation failed: no PNG files created")
+
+        return png_files[0].read_bytes()
+
+
+def extract_slide_title(markdown: str) -> str | None:
+    """マークダウンからスライドタイトルを抽出"""
+    import re as title_re
+
+    # 最初の # 見出しを探す
+    match = title_re.search(r'^#\s+(.+)$', markdown, title_re.MULTILINE)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def inject_ogp_tags(html: str, title: str, image_url: str, page_url: str) -> str:
+    """HTMLにOGPメタタグを挿入"""
+    import html as html_escape
+
+    # タイトルをHTMLエスケープ
+    safe_title = html_escape.escape(title)
+
+    ogp_tags = f'''
+    <meta property="og:title" content="{safe_title}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{page_url}">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:description" content="パワポ作るマンで作成したスライド">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{safe_title}">
+    <meta name="twitter:image" content="{image_url}">
+    '''
+    # </head>の前にOGPタグを挿入
+    return html.replace('</head>', f'{ogp_tags}</head>')
+
+
+# S3クライアント（共有スライド用）
+_s3_client = None
+
+def get_s3_client():
+    """S3クライアントを取得（遅延初期化）"""
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client('s3')
+    return _s3_client
+
+
+def share_slide(markdown: str, theme: str = 'gradient') -> dict:
+    """スライドをHTML化してS3に保存し、公開URLを返す（OGP対応）"""
+    bucket_name = os.environ.get('SHARED_SLIDES_BUCKET')
+    cloudfront_domain = os.environ.get('CLOUDFRONT_DOMAIN')
+
+    if not bucket_name or not cloudfront_domain:
+        raise RuntimeError("共有機能が設定されていません（環境変数未設定）")
+
+    # スライドID生成（UUID v4）
+    slide_id = str(uuid.uuid4())
+    s3_client = get_s3_client()
+
+    # サムネイル生成・アップロード
+    try:
+        thumbnail_bytes = generate_thumbnail(markdown, theme)
+        thumbnail_key = f"slides/{slide_id}/thumbnail.png"
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=thumbnail_key,
+            Body=thumbnail_bytes,
+            ContentType='image/png',
+        )
+        thumbnail_url = f"https://{cloudfront_domain}/{thumbnail_key}"
+        print(f"[INFO] Thumbnail uploaded: {thumbnail_url}")
+    except Exception as e:
+        # サムネイル生成に失敗してもHTML共有は続行
+        print(f"[WARN] Thumbnail generation failed: {e}")
+        thumbnail_url = None
+
+    # 共有URL（OGPタグ挿入前に決定）
+    share_url = f"https://{cloudfront_domain}/slides/{slide_id}/index.html"
+
+    # HTML生成
+    html_content = generate_standalone_html(markdown, theme)
+
+    # OGPタグ挿入（サムネイルがある場合のみ）
+    if thumbnail_url:
+        title = extract_slide_title(markdown) or "スライド"
+        html_content = inject_ogp_tags(html_content, title, thumbnail_url, share_url)
+
+    # S3にHTMLアップロード
+    s3_key = f"slides/{slide_id}/index.html"
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=s3_key,
+        Body=html_content.encode('utf-8'),
+        ContentType='text/html; charset=utf-8',
+    )
+
+    # 有効期限（7日後）
+    expires_at = int((datetime.utcnow() + timedelta(days=7)).timestamp())
+
+    print(f"[INFO] Slide shared: {share_url} (expires: {expires_at})")
+
+    return {
+        'slideId': slide_id,
+        'url': share_url,
+        'expiresAt': expires_at,
+    }
+
+
 @app.entrypoint
 async def invoke(payload, context=None):
     """エージェント実行（ストリーミング対応）"""
@@ -471,6 +653,19 @@ async def invoke(payload, context=None):
             pptx_bytes = generate_pptx(current_markdown, theme)
             pptx_base64 = base64.b64encode(pptx_bytes).decode("utf-8")
             yield {"type": "pptx", "data": pptx_base64}
+        except Exception as e:
+            yield {"type": "error", "message": str(e)}
+        return
+
+    if action == "share_slide" and current_markdown:
+        # スライド共有（S3にアップロードして公開URLを返す）
+        try:
+            result = share_slide(current_markdown, theme)
+            yield {
+                "type": "share_result",
+                "url": result['url'],
+                "expiresAt": result['expiresAt'],
+            }
         except Exception as e:
             yield {"type": "error", "message": str(e)}
         return

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { createMarpAgent } from './agent/resource';
+import { SharedSlidesConstruct } from './storage/resource';
 
 // 環境判定
 // - Sandbox: AWS_BRANCHが未定義
@@ -32,12 +33,19 @@ if (isSandbox) {
   nameSuffix = branchName.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
+// 共有スライド用インフラを作成（S3 + CloudFront）
+const sharedSlides = new SharedSlidesConstruct(agentCoreStack, 'SharedSlides', {
+  nameSuffix,
+});
+
 // Marp Agentを作成（Cognito認証統合）
 const { runtime } = createMarpAgent({
   stack: agentCoreStack,
   userPool: backend.auth.resources.userPool,
   userPoolClient: backend.auth.resources.userPoolClient,
   nameSuffix,
+  sharedSlidesBucket: sharedSlides.bucket,
+  sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
 });
 
 // フロントエンドにランタイム情報を渡す（DEFAULTエンドポイントを使用）
@@ -45,5 +53,6 @@ backend.addOutput({
   custom: {
     agentRuntimeArn: runtime.agentRuntimeArn,
     environment: isSandbox ? 'sandbox' : nameSuffix,
+    sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
   },
 });

@@ -3,7 +3,10 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
-import { exportPdf, exportPdfMock, exportPptx, exportPptxMock } from './hooks/useAgentCore';
+import { ShareConfirmModal } from './components/ShareConfirmModal';
+import { ShareResultModal } from './components/ShareResultModal';
+import { exportPdf, exportPdfMock, exportPptx, exportPptxMock, shareSlide, shareSlideMock } from './hooks/useAgentCore';
+import type { ShareResult } from './hooks/useAgentCore';
 
 // モック使用フラグ（ローカル開発用：認証スキップ＆モックAPI）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
@@ -82,6 +85,12 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const chatInputRef = useRef<HTMLInputElement>(null);
   // セッションID（画面更新まで同じIDを使用して会話履歴を保持）
   const [sessionId] = useState(() => crypto.randomUUID());
+
+  // スライド共有関連
+  const [isSharing, setIsSharing] = useState(false);
+  const [showShareConfirm, setShowShareConfirm] = useState(false);
+  const [shareResult, setShareResult] = useState<ShareResult | null>(null);
+  const [pendingShareTheme, setPendingShareTheme] = useState<string>('gradient');
 
   const handleMarkdownGenerated = (newMarkdown: string) => {
     setMarkdown(newMarkdown);
@@ -179,6 +188,32 @@ function MainApp({ signOut }: { signOut?: () => void }) {
     }
   };
 
+  // スライド共有リクエスト（確認モーダルを表示）
+  const handleShareRequest = (theme: string) => {
+    setPendingShareTheme(theme);
+    setShowShareConfirm(true);
+  };
+
+  // スライド共有実行
+  const handleShareConfirm = async () => {
+    if (!markdown) return;
+
+    setIsSharing(true);
+
+    try {
+      const shareFn = useMock ? shareSlideMock : shareSlide;
+      const result = await shareFn(markdown, pendingShareTheme);
+      setShowShareConfirm(false);
+      setShareResult(result);
+    } catch (error) {
+      console.error('Share error:', error);
+      setShowShareConfirm(false);
+      alert(`スライド共有に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* ヘッダー */}
@@ -245,11 +280,27 @@ function MainApp({ signOut }: { signOut?: () => void }) {
             markdown={markdown}
             onDownloadPdf={handleDownloadPdf}
             onDownloadPptx={handleDownloadPptx}
+            onShareSlide={handleShareRequest}
             isDownloading={isDownloading}
+            isSharing={isSharing}
             onRequestEdit={handleRequestEdit}
           />
         </div>
       </main>
+
+      {/* スライド共有モーダル */}
+      <ShareConfirmModal
+        isOpen={showShareConfirm}
+        onConfirm={handleShareConfirm}
+        onCancel={() => setShowShareConfirm(false)}
+        isSharing={isSharing}
+      />
+      <ShareResultModal
+        isOpen={!!shareResult}
+        url={shareResult?.url || ''}
+        expiresAt={shareResult?.expiresAt || 0}
+        onClose={() => setShareResult(null)}
+      />
     </div>
   );
 }

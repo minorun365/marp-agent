@@ -3,6 +3,7 @@ import * as url from 'url';
 import * as cdk from 'aws-cdk-lib';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
 import { ContainerImageBuild } from 'deploy-time-build';
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
@@ -17,9 +18,11 @@ interface MarpAgentProps {
   userPool?: IUserPool;
   userPoolClient?: IUserPoolClient;
   nameSuffix?: string;
+  sharedSlidesBucket?: s3.IBucket;
+  sharedSlidesDistributionDomain?: string;
 }
 
-export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }: MarpAgentProps) {
+export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, sharedSlidesBucket, sharedSlidesDistributionDomain }: MarpAgentProps) {
   // 環境判定: sandbox（ローカル）vs 本番（Amplify Console）
   const isSandbox = !process.env.AWS_BRANCH;
 
@@ -75,6 +78,9 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
       TAVILY_API_KEY: process.env.TAVILY_API_KEY || '',
       TAVILY_API_KEY2: process.env.TAVILY_API_KEY2 || '',
       TAVILY_API_KEY3: process.env.TAVILY_API_KEY3 || '',
+      // 共有スライド用S3/CloudFront設定
+      SHARED_SLIDES_BUCKET: sharedSlidesBucket?.bucketName || '',
+      CLOUDFRONT_DOMAIN: sharedSlidesDistributionDomain || '',
       // Observability（OTEL）設定
       AGENT_OBSERVABILITY_ENABLED: 'true',
       OTEL_PYTHON_DISTRO: 'aws_distro',
@@ -99,6 +105,14 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix }:
       'arn:aws:bedrock:*:*:inference-profile/*',
     ],
   }));
+
+  // 共有スライド用S3への書き込み権限を付与
+  if (sharedSlidesBucket) {
+    runtime.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['s3:PutObject'],
+      resources: [`${sharedSlidesBucket.bucketArn}/*`],
+    }));
+  }
 
   // エンドポイントはDEFAULTを使用（runtime.addEndpoint不要）
 

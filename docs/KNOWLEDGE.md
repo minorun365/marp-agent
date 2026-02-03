@@ -1721,6 +1721,93 @@ if (useMock) {
 
 ---
 
+## スライド共有機能（S3 + CloudFront）
+
+### 公開URL方式の比較
+
+| 方式 | メリット | デメリット |
+|------|---------|-----------|
+| S3署名付きURL | インフラがシンプル | URLが長い（500-1000文字）、Lambda経由では有効期限に制限あり |
+| CloudFront + S3 OAC | URLが短い、キャッシュで高速 | インフラが増える（CloudFront） |
+| リダイレクト方式 | URLが最短 | 毎回Lambda呼び出しが発生 |
+
+### S3署名付きURLの有効期限について
+
+| 生成方法 | 最大有効期限 |
+|---------|-------------|
+| AWS CLI / SDK | 7日間 |
+| AWSコンソール | 12時間 |
+| Lambda実行ロール（一時認証情報）| セッション有効期限に依存（1-12時間） |
+
+**ポイント**: Lambda/AgentCoreから署名付きURLを生成する場合でも、SDKを使えば7日間有効にできる。
+
+参考: [AWS re:Post - S3 Presigned URL Limitations](https://repost.aws/questions/QUxaEYVXbVREamltPSmKRotg/s3-presignedurl-limitations)
+
+### Amplify Gen2でのカスタムリソース追加
+
+Amplify Gen2では `defineStorage` でS3をネイティブに作成できるが、CloudFrontとの連携が必要な場合はカスタムCDKリソースを使う方が柔軟。
+
+```typescript
+// amplify/backend.ts
+import { SharedSlidesConstruct } from './storage/resource';
+
+// カスタムスタックを作成
+const sharedSlidesStack = backend.createStack('SharedSlidesStack');
+const sharedSlides = new SharedSlidesConstruct(sharedSlidesStack, 'SharedSlides', {
+  nameSuffix,
+});
+
+// フロントエンドに出力
+backend.addOutput({
+  custom: {
+    sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
+  },
+});
+```
+
+参考: [Amplify Gen2 Custom Resources](https://docs.amplify.aws/react/build-a-backend/add-aws-services/custom-resources/)
+
+### CloudFront OAC（Origin Access Control）
+
+S3バケットを直接公開せず、CloudFront経由でのみアクセスを許可する設定。
+
+```typescript
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+
+const distribution = new cloudfront.Distribution(this, 'Distribution', {
+  defaultBehavior: {
+    // OAC経由でS3にアクセス（バケットポリシー自動設定）
+    origin: origins.S3BucketOrigin.withOriginAccessControl(bucket),
+    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+  },
+});
+```
+
+### OGP対応（Twitterサムネイル表示）
+
+共有URLをTwitterでシェアした際にサムネイル画像を表示するには、OGPメタタグとサムネイル画像が必要。
+
+#### サムネイル生成（Marp CLI）
+
+```bash
+# 1枚目のスライドをPNG画像として出力
+marp slide.md --image png -o slide.png
+# → slide.001.png が生成される
+```
+
+#### OGPメタタグ
+
+```html
+<meta property="og:title" content="スライドタイトル">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://xxx.cloudfront.net/slides/{id}/index.html">
+<meta property="og:image" content="https://xxx.cloudfront.net/slides/{id}/thumbnail.png">
+<meta name="twitter:card" content="summary_large_image">
+```
+
+---
+
 ## 参考リンク
 
 - [Marp公式](https://marp.app/)
