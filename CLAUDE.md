@@ -35,6 +35,18 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 - コミットメッセージは **1行の日本語でシンプルに**
 - `Co-Authored-By: Claude` などの **AI協働の痕跡は入れない**
 
+## Git ワークツリー構成
+
+kagブランチは別のワークツリーで管理されている（同じ階層の `../marp-agent-kag`）。
+
+kagに変更を反映する際は、`git switch kag` ではなく **kagのワークツリーで直接作業** する：
+
+```bash
+cd ../marp-agent-kag
+git cherry-pick <commit-hash>
+git push origin kag
+```
+
 ## リリース管理（セマンティックバージョニング）
 
 mainブランチへの機能追加デプロイ後、リリースを作成する。
