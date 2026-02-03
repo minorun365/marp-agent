@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { invokeAgent, invokeAgentMock } from '../hooks/useAgentCore';
 
-type ModelType = 'claude' | 'kimi';
+type ModelType = 'claude' | 'kimi' | 'claude5';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -576,7 +576,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             <div className="relative flex items-center pl-3 sm:pl-4">
               {/* PC: モデル名表示、スマホ: 矢印のみ */}
               <span className={`hidden sm:inline text-xs ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>
-                {modelType === 'claude' ? 'Claude' : 'Kimi'}
+                {modelType === 'claude' ? 'Claude' : modelType === 'kimi' ? 'Kimi' : 'Claude 5'}
               </span>
               <span className={`text-xl sm:ml-1 mr-2 ${messages.some(m => m.role === 'user') ? 'text-gray-300' : 'text-gray-600'}`}>▾</span>
               {/* 透明なselectを上に重ねてタップ領域を確保 */}
@@ -588,6 +588,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 title={messages.some(m => m.role === 'user') ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
               >
                 <option value="claude">標準（Claude Sonnet 4.5）</option>
+                <option value="claude5">宇宙最速（Claude Sonnet 5）</option>
                 <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
               </select>
             </div>

@@ -98,8 +98,12 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Claude Sonnet 4.5（推奨）
+# Claude Sonnet 4.5（推奨・デフォルト）
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+# Claude Sonnet 5（2026年リリース予定）
+# 注意: 未リリース。リリース前はエラーになるが、フロントエンドでユーザーに通知
+model = "us.anthropic.claude-sonnet-5-20260203-v1:0"
 
 # Claude Haiku 4.5（高速・低コスト）
 model = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -111,11 +115,12 @@ model = "moonshot.kimi-k2-thinking"
 
 ### モデル別の設定差異
 
-| モデル | クロスリージョン推論 | cache_prompt | cache_tools |
-|--------|-------------------|--------------|-------------|
-| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
-| Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
-| Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 |
+| モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
+|--------|-------------------|--------------|-------------|------|
+| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 推奨・デフォルト |
+| Claude Sonnet 5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 2026年リリース予定 |
+| Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 高速・低コスト |
+| Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 | Moonshot AI |
 
 **Kimi K2 Thinking使用時の注意**:
 - BedrockModelの`cache_prompt`と`cache_tools`を指定しないこと
