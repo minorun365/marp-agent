@@ -429,6 +429,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
           const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
 
           // 疑似ストリーミングでエラーメッセージを表示
+          // finallyブロックとの競合を避けるため、isStreamingのチェックを緩和
           const streamErrorMessage = async () => {
             // ステータスメッセージを削除し、空のアシスタントメッセージを追加
             setMessages(prev => {
@@ -436,12 +437,12 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
               return [...filtered, { role: 'assistant' as const, content: '', isStreaming: true }];
             });
 
-            // 1文字ずつ表示
+            // 1文字ずつ表示（isStreamingチェックを削除してfinallyブロックとの競合を防ぐ）
             for (const char of displayMessage) {
               await new Promise(resolve => setTimeout(resolve, 30));
               setMessages(prev =>
                 prev.map((msg, idx) =>
-                  idx === prev.length - 1 && msg.role === 'assistant' && msg.isStreaming
+                  idx === prev.length - 1 && msg.role === 'assistant'
                     ? { ...msg, content: msg.content + char }
                     : msg
                 )
@@ -451,7 +452,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
             // ストリーミング完了
             setMessages(prev =>
               prev.map((msg, idx) =>
-                idx === prev.length - 1 && msg.isStreaming
+                idx === prev.length - 1 && msg.role === 'assistant'
                   ? { ...msg, isStreaming: false }
                   : msg
               )
