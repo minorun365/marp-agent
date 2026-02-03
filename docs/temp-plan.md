@@ -2,7 +2,7 @@
 
 > **対象Issue**: (新規 - Sonnet 5リリース対応)
 > **作成日**: 2026-02-03
-> **ステータス**: 実装完了・テスト中
+> **ステータス**: ✅ 実装完了
 
 ---
 
@@ -42,16 +42,23 @@ elif model_type == "claude5":
 ### 2. フロントエンド: `src/components/Chat.tsx`
 
 - 型定義: `ModelType = 'claude' | 'kimi' | 'claude5';`
-- モデル名表示: claude5 → 「Claude 5」
-- セレクター選択肢追加: 「Claude 5（Preview）」
+- モデル名表示: claude5 → 「宇宙最速」
+- セレクター選択肢追加: 「宇宙最速（Claude Sonnet 5）」
+
+### 3. フロントエンド: `src/hooks/useAgentCore.ts`
+
+- 型定義: `ModelType = 'claude' | 'kimi' | 'claude5';`
+
+### 4. エラーハンドリング: `src/components/Chat.tsx`
+
+Claude 5がBedrockで未リリースの場合、`model identifier is invalid` エラーを検出してユーザーフレンドリーなメッセージを疑似ストリーミング表示:
+
+```typescript
+ERROR_MODEL_NOT_AVAILABLE: 'Claude Sonnet 5はまだリリースされていないようです。Amazon Bedrockへのモデル追加をお待ちください！（ブラウザでページ更新すると、別のモデルを選んで新規チャットができます）',
+```
 
 ---
 
-## 工数見積もり
+## 実装完了日
 
-| 作業 | 工数 |
-|------|------|
-| バックエンド修正 | 5分 |
-| フロントエンド修正 | 10分 |
-| ローカルテスト | 15分 |
-| **合計** | **約30分** |
+2026-02-03

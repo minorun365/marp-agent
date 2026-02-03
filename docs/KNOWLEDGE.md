@@ -230,7 +230,7 @@ const [modelType, setModelType] = useState<ModelType>('claude');
     className="text-xs text-gray-400 bg-transparent appearance-none"
   >
     <option value="claude">標準（Claude Sonnet 4.5）</option>
-    <option value="claude5">Claude 5（Preview）</option>
+    <option value="claude5">宇宙最速（Claude Sonnet 5）</option>
     <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
   </select>
   <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
@@ -262,6 +262,7 @@ title={hasUserMessage ? '会話中はモデルを変更できません' : '使�
   className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
 >
   <option value="claude">Claude</option>
+  <option value="claude5">宇宙最速</option>
   <option value="kimi">Kimi</option>
 </select>
 <span className="ml-2 sm:ml-1">▾</span>
@@ -284,8 +285,10 @@ body: JSON.stringify({
 def _get_model_config(model_type: str = "claude") -> dict:
     if model_type == "kimi":
         return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None}
+    elif model_type == "claude5":
+        return {"model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0", "cache_prompt": "default"}
     else:
-        return {"model_id": f"{prefix}.anthropic.claude-sonnet-4-5-...", "cache_prompt": "default"}
+        return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default"}
 
 @app.entrypoint
 async def invoke(payload, context=None):
@@ -303,6 +306,7 @@ async def invoke(payload, context=None):
 |---------|---------|
 | `amplify/agent/runtime/agent.py` | `_get_model_config()` に新モデルの設定を追加 |
 | `src/components/Chat.tsx` | `ModelType` 型に追加、セレクター選択肢を追加 |
+| `src/hooks/useAgentCore.ts` | `ModelType` 型に追加 |
 
 **バックエンド修正例**:
 ```python
@@ -320,8 +324,34 @@ def _get_model_config(model_type: str = "claude") -> dict:
 
 **未リリースモデルの先行対応**:
 - リリース前でもモデルIDを設定しておける
-- Bedrockがモデルを認識できないとエラーになる
-- フロントエンドでエラー時にユーザーフレンドリーなメッセージを表示
+- Bedrockがモデルを認識できないと `ValidationException: The provided model identifier is invalid` エラーになる
+- フロントエンドの `onError` コールバックでエラーメッセージを判定し、ユーザーフレンドリーなメッセージを疑似ストリーミング表示
+
+```typescript
+// Chat.tsx - onErrorコールバック内
+onError: (error) => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
+  const displayMessage = isModelNotAvailable
+    ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE  // 「Claude Sonnet 5はまだリリースされていないようです...」
+    : MESSAGES.ERROR;
+
+  // 疑似ストリーミングでエラーメッセージを表示
+  const streamErrorMessage = async () => {
+    setMessages(prev => [...prev.filter(msg => !msg.isStatus),
+      { role: 'assistant', content: '', isStreaming: true }]);
+    for (const char of displayMessage) {
+      await new Promise(resolve => setTimeout(resolve, 30));
+      setMessages(prev => prev.map((msg, idx) =>
+        idx === prev.length - 1 && msg.isStreaming
+          ? { ...msg, content: msg.content + char } : msg
+      ));
+    }
+    // ...
+  };
+  streamErrorMessage();
+}
+```
 
 ### Agent作成
 ```python
