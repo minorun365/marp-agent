@@ -1,5 +1,7 @@
 # プロジェクト固有ルール
 
+> **開発手順は `docs/DEVELOPMENT.md` を参照** - サンドボックス起動、デプロイ、環境変数の設定方法など
+
 ## AWS Amplify 環境変数の更新
 
 **重要**: AWS CLI で Amplify のブランチ環境変数を更新する際、`--environment-variables` パラメータは**上書き**であり**マージではない**。

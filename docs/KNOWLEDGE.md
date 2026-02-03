@@ -588,6 +588,48 @@ export TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) && npx ampx sand
 
 **identifier指定**: `npm run sandbox -- --identifier todo10`
 
+### sandboxのブランチ名自動設定
+
+git worktreeで複数ブランチを並行開発する際、サンドボックスの識別子を手動で指定するのを忘れがち。`npm run sandbox` で自動的にブランチ名を取得して識別子に設定する。
+
+#### package.json スクリプト
+
+```json
+{
+  "scripts": {
+    "sandbox": "export $(grep -v '^#' .env | xargs) && BRANCH=$(git branch --show-current | tr '/' '-') && npx ampx sandbox --identifier \"sb-${BRANCH}\""
+  }
+}
+```
+
+| 部分 | 説明 |
+|------|------|
+| `git branch --show-current` | 現在のブランチ名を取得 |
+| `tr '/' '-'` | `feature/xxx` → `feature-xxx` に変換（識別子にスラッシュは使えない） |
+| `--identifier "sb-${BRANCH}"` | **`sb-`（sandbox）プレフィックス** + ブランチ名で識別子を設定 |
+
+#### 本番環境とのバッティング回避
+
+| 環境 | 命名規則 | 例 |
+|------|----------|-----|
+| **本番 Amplify** | ブランチ名そのまま | `main`, `kag`, `feature-xxx` |
+| **サンドボックス** | `sb-` プレフィックス付き | `sb-main`, `sb-kag`, `sb-feature-xxx` |
+
+これでCloudFormationスタック名やリソース名が衝突しない。
+
+#### 使用例
+
+```bash
+# main ブランチで実行 → sb-main で起動
+npm run sandbox
+
+# feature/new-ui ブランチで実行 → sb-feature-new-ui で起動
+npm run sandbox
+
+# 追加の引数も渡せる
+npm run sandbox -- --no-open
+```
+
 ### identifierとRuntime名の連携（二重管理にならない）
 
 「`--identifier` と `RUNTIME_SUFFIX` を同じ値で毎回揃える必要があるのでは？」という懸念があるが、**二重管理にならない**。
