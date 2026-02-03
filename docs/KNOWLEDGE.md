@@ -1,7 +1,5 @@
 # ナレッジベース
 
-> **注意**: ナレッジ管理は **mainブランチのみ** で行います。kagブランチのナレッジファイルはmainブランチを参照してください。
-
 開発中に得られた知見・調査結果をここに蓄積していく。
 
 ---
@@ -62,7 +60,7 @@ from bedrock_agentcore import BedrockAgentCoreApp
 from strands import Agent
 
 app = BedrockAgentCoreApp()
-agent = Agent(model="us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+agent = Agent(model=_get_model_id())
 
 @app.entrypoint
 async def invoke(payload):
@@ -97,12 +95,206 @@ tavily-python
 - Python で実装
 - Bedrock モデルと統合
 
+### 利用可能なモデル（Bedrock）
+
+```python
+# Claude Sonnet 4.5（推奨）
+model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+# Claude Haiku 4.5（高速・低コスト）
+model = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+# Kimi K2 Thinking（Moonshot AI）
+# 注意: クロスリージョン推論なし、cache_prompt/cache_tools非対応
+model = "moonshot.kimi-k2-thinking"
+```
+
+### モデル別の設定差異
+
+| モデル | クロスリージョン推論 | cache_prompt | cache_tools |
+|--------|-------------------|--------------|-------------|
+| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
+| Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 |
+| Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 |
+
+**Kimi K2 Thinking使用時の注意**:
+- BedrockModelの`cache_prompt`と`cache_tools`を指定しないこと
+- 指定すると `AccessDeniedException: You invoked an unsupported model or your request did not allow prompt caching` が発生する
+
+```python
+# NG: Kimi K2では使用不可
+agent = Agent(
+    model=BedrockModel(
+        model_id="moonshot.kimi-k2-thinking",
+        cache_prompt="default",  # エラーになる
+        cache_tools="default",   # エラーになる
+    ),
+)
+
+# OK: キャッシュオプションなし
+agent = Agent(
+    model=BedrockModel(
+        model_id="moonshot.kimi-k2-thinking",
+    ),
+)
+```
+
+### Kimi K2 トラブルシューティング
+
+#### Web検索後にスライドが生成されない
+
+**症状**: Web検索を実行すると「Web検索完了」と表示された後、スライドが生成されずに終了する。「〜検索しておきます」というテキストは表示される。
+
+**原因**: Kimi K2がWeb検索ツール実行後に、空のメッセージで`end_turn`している。既存のフォールバック条件（`not has_any_output`）では、検索前のテキスト出力があるためフォールバックが発動しない。
+
+**解決策**: `has_any_output`ではなく`web_search_executed`フラグで判定
+
+```python
+web_search_executed = False
+
+# Web検索ツール実行時にフラグを立てる
+if tool_name == "web_search":
+    web_search_executed = True
+
+# フォールバック条件を変更
+# 旧: if not has_any_output and not markdown_to_send and _last_search_result:
+# 新:
+if web_search_executed and not markdown_to_send and _last_search_result:
+    # 検索結果を表示してユーザーに次のアクションを促す
+    yield {"type": "text", "data": f"Web検索結果:\n\n{_last_search_result[:500]}...\n\n---\nスライドを作成しますか？"}
+```
+
+#### ツール引数のJSON内マークダウンが抽出できない
+
+**症状**: 「お願いします」と言ってスライド生成を依頼すると、何も応答せずに終了する。ログを見ると`reasoningText`内にツール呼び出しがJSON引数ごと埋め込まれている。
+
+**原因**: `extract_marp_markdown_from_text`関数が直接的なマークダウン（`---\nmarp: true`）のみを抽出していたが、Kimi K2は`{"markdown": "---\\nmarp: true\\n..."}`のようなJSON引数内にマークダウンを埋め込むことがある。エスケープされた改行（`\\n`）が正規表現パターンにマッチしない。
+
+**ログの特徴**:
+```json
+"reasoningText": {
+  "text": "...スライドを作成します。 <|tool_call_argument_begin|> {\"markdown\": \"---\\nmarp: true\\ntheme: gradient\\n...\"} <|tool_call_end|>"
+}
+"finish_reason": "end_turn"
+```
+
+**解決策**: JSON引数からもマークダウンを抽出できるようにフォールバック関数を拡張
+
+```python
+def extract_marp_markdown_from_text(text: str) -> str | None:
+    # ケース1: JSON引数内のマークダウンを抽出
+    json_arg_pattern = r'<\|tool_call_argument_begin\|>\s*(\{[\s\S]*?\})\s*<\|tool_call_end\|>'
+    json_match = re.search(json_arg_pattern, text)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(1))
+            if "markdown" in data and "marp: true" in data["markdown"]:
+                return data["markdown"]
+        except json.JSONDecodeError:
+            pass
+
+    # ケース2: 直接的なマークダウンを抽出（既存の処理）
+    # ...
+```
+
+#### その他の既知問題
+
+| 問題 | 原因 | 対応状況 |
+|------|------|---------|
+| ツール実行後に応答が表示されない | `reasoning`イベントを処理していない | ✅ 対応済み |
+| ツール名が破損してツールが実行されない | 内部トークンがツール名に混入 | ✅ リトライロジックで対応 |
+| ツール呼び出しがreasoningText内に埋め込まれる | tool_useイベントに変換されない | ✅ 検出してリトライ |
+| テキストストリームへのマークダウン混入 | ツールを呼ばずに直接出力 | ✅ バッファリングで抽出 |
+| ツール引数のJSON内マークダウンが抽出できない | エスケープされた改行がパターンにマッチしない | ✅ JSON引数からの抽出に対応 |
+| フロントマター区切り（---）なしのマークダウン | Kimi K2が---を省略して出力 | ✅ パターン緩和で対応 |
+
+### フロントエンドからのモデル切り替え
+
+リクエストごとにモデルを動的に切り替える実装パターン：
+
+#### フロントエンド（Chat.tsx）
+```typescript
+type ModelType = 'claude' | 'kimi';
+const [modelType, setModelType] = useState<ModelType>('claude');
+
+// 入力欄の左端にセレクター配置（矢印は別要素で表示）
+<div className="relative flex items-center">
+  <select
+    value={modelType}
+    onChange={(e) => setModelType(e.target.value as ModelType)}
+    className="text-xs text-gray-400 bg-transparent appearance-none"
+  >
+    <option value="claude">Claude</option>
+    <option value="kimi">Kimi</option>
+  </select>
+  <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
+</div>
+
+// APIコールにmodelTypeを渡す
+await invokeAgent(prompt, markdown, callbacks, sessionId, modelType);
+```
+
+**ポイント**: `<option>`に▾を入れるとドロップダウンメニューにも表示されてしまうので、別の`<span>`で表示し、`pointer-events-none`でクリック透過させる。
+
+**会話中のモデル切り替え無効化**: モデルを変えると別のAgentになり会話履歴が引き継がれないため、ユーザーが発言したらセレクターを無効化する。
+
+```typescript
+// ユーザー発言があるかで判定（初期メッセージは除外）
+const hasUserMessage = messages.some(m => m.role === 'user');
+
+disabled={isLoading || hasUserMessage}
+className={hasUserMessage ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 cursor-pointer'}
+title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
+```
+
+**注意**: `messages.length > 0` だと初期メッセージ（アシスタントの挨拶）も含まれてしまうため、`messages.some(m => m.role === 'user')` でユーザー発言の有無を判定する。
+
+**スマホ対応（矢印のみ表示）**: スマホではモデル名が幅を取りすぎるので、矢印だけ表示してタップでドロップダウンを開く。
+
+```typescript
+<select
+  className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
+>
+  <option value="claude">Claude</option>
+  <option value="kimi">Kimi</option>
+</select>
+<span className="ml-2 sm:ml-1">▾</span>
+```
+
+- スマホ（sm未満）: `w-0` でテキスト非表示、矢印のみ
+- PC（sm以上）: `sm:w-auto` で通常表示
+
+#### API（useAgentCore.ts）
+```typescript
+body: JSON.stringify({
+  prompt,
+  markdown: currentMarkdown,
+  model_type: modelType,  // リクエストに含める
+}),
+```
+
+#### バックエンド（agent.py）
+```python
+def _get_model_config(model_type: str = "claude") -> dict:
+    if model_type == "kimi":
+        return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None}
+    else:
+        return {"model_id": f"{prefix}.anthropic.claude-sonnet-4-5-...", "cache_prompt": "default"}
+
+@app.entrypoint
+async def invoke(payload, context=None):
+    model_type = payload.get("model_type", "claude")
+    agent = get_or_create_agent(session_id, model_type)
+```
+
+**セッション管理の注意**: モデル切り替え時に新しいAgentを作成するため、キャッシュキーは `session_id:model_type` の形式で管理する。
+
 ### Agent作成
 ```python
 from strands import Agent
 
 agent = Agent(
-    model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    model=_get_model_id(),
     system_prompt="あなたはアシスタントです",
 )
 ```
@@ -123,6 +315,33 @@ async for event in agent.stream_async(prompt):
 
 Strands Agentは同じインスタンスを使い続けると会話履歴を自動的に保持する。複数ユーザー/セッション対応のため、セッションIDごとにAgentインスタンスを管理する方式が有効。
 
+#### AgentCore Runtimeのスティッキーセッション機能（重要）
+
+AgentCore Runtimeは**HTTPヘッダーでセッションIDを渡す**ことで、同じセッションIDのリクエストを**同じコンテナにルーティング**する（スティッキーセッション）。これにより、メモリ内のAgentインスタンスが保持され、会話履歴が維持される。
+
+**⚠️ 注意**: リクエストボディに`session_id`を入れても**スティッキーセッションは機能しない**。必ずHTTPヘッダーで渡すこと。
+
+#### フロントエンド実装
+
+```typescript
+// App.tsx - 画面読み込み時にセッションIDを生成
+const [sessionId] = useState(() => crypto.randomUUID());
+
+// HTTPヘッダーでセッションIDを渡す（スティッキーセッション用）
+const response = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    // ★ このヘッダーが重要！ボディに入れてもスティッキーセッションは効かない
+    'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId,
+  },
+  body: JSON.stringify({ prompt, markdown }),
+});
+```
+
+#### バックエンド実装
+
 ```python
 # セッションごとのAgentインスタンスを管理
 _agent_sessions: dict[str, Agent] = {}
@@ -138,18 +357,21 @@ def get_or_create_agent(session_id: str | None) -> Agent:
     agent = Agent(model=MODEL_ID, system_prompt=PROMPT, tools=TOOLS)
     _agent_sessions[session_id] = agent
     return agent
+
+@app.entrypoint
+async def invoke(payload, context=None):
+    # セッションIDはHTTPヘッダー経由でcontextから取得
+    session_id = getattr(context, 'session_id', None) if context else None
+    agent = get_or_create_agent(session_id)
+    # ...
 ```
 
-フロントエンド側でセッションIDを生成し、リクエストに含める：
-```typescript
-// App.tsx - 画面読み込み時にセッションIDを生成
-const [sessionId] = useState(() => crypto.randomUUID());
+#### セッションの有効期限
 
-// リクエストボディにsession_idを含める
-body: JSON.stringify({ prompt, markdown, session_id: sessionId })
-```
+- **非アクティブタイムアウト**: 15分（15分間リクエストがないとコンテナ終了）
+- **最大継続時間**: 8時間（どれだけアクティブでも8時間でコンテナ終了）
 
-**注意**: この方式はメモリ内でセッションを管理するため、コンテナ再起動で履歴が消える。永続化が必要な場合はStrands Agentの`FileSessionManager`や`S3SessionManager`を使用する。
+**注意**: コンテナ再起動でセッション（メモリ内のAgent）は消える。永続化が必要な場合はDynamoDB等を検討。
 
 ### SSEレスポンス形式（AgentCore経由）
 
@@ -292,7 +514,7 @@ runtime.addToRolePolicy(new iam.PolicyStatement({
 }));
 ```
 
-**重要**: クロスリージョン推論（`us.anthropic.claude-*`形式のモデルID）を使用する場合、`inference-profile/*` リソースへの権限も必要。`foundation-model/*` だけでは `AccessDeniedException` が発生する。
+**重要**: クロスリージョン推論（`us.`/`jp.`等のプレフィックス付きモデルID）を使用する場合、`inference-profile/*` リソースへの権限も必要。`foundation-model/*` だけでは `AccessDeniedException` が発生する。
 
 ### Amplify Gen2との統合
 ```typescript
@@ -332,6 +554,107 @@ const userPoolClient = backend.auth.resources.userPoolClient;
 - Mac ARM64 でビルドできるなら `deploy-time-build` は不要
 - Amplify の toolkit-lib 更新後は hotswap も使える
 
+#### sandbox起動時の環境変数読み込み
+
+`backend.ts` に `import 'dotenv/config'` を追加しても、Amplify sandbox の内部実行環境では `.env` が正しく読み込まれないことがある。
+
+**原因（推測）**: Amplify sandbox が TypeScript をトランスパイル・実行する際のカレントディレクトリが、`dotenv` が期待するプロジェクトルートと異なる可能性がある。
+
+**確実な解決策**: シェル環境変数として明示的に設定してから起動する。
+
+```bash
+export TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) && npx ampx sandbox
+```
+
+**package.json スクリプト化（推奨）**:
+
+```json
+{
+  "scripts": {
+    "sandbox": "export $(grep -v '^#' .env | xargs) && npx ampx sandbox"
+  }
+}
+```
+
+これで `npm run sandbox` だけで環境変数付きで起動できる。
+
+| 部分 | 説明 |
+|------|------|
+| `grep -v '^#' .env` | .env からコメント行を除外 |
+| `xargs` | 各行を `KEY=value` 形式でスペース区切りに |
+| `export $(...)` | 全部まとめてexport |
+
+**メリット**: `.env` に変数を追加しても package.json の変更不要。
+
+**identifier指定**: `npm run sandbox -- --identifier todo10`
+
+### sandboxのブランチ名自動設定
+
+git worktreeで複数ブランチを並行開発する際、サンドボックスの識別子を手動で指定するのを忘れがち。`npm run sandbox` で自動的にブランチ名を取得して識別子に設定する。
+
+#### package.json スクリプト
+
+```json
+{
+  "scripts": {
+    "sandbox": "export $(grep -v '^#' .env | xargs) && BRANCH=$(git branch --show-current | tr '/' '-') && npx ampx sandbox --identifier \"sb-${BRANCH}\""
+  }
+}
+```
+
+| 部分 | 説明 |
+|------|------|
+| `git branch --show-current` | 現在のブランチ名を取得 |
+| `tr '/' '-'` | `feature/xxx` → `feature-xxx` に変換（識別子にスラッシュは使えない） |
+| `--identifier "sb-${BRANCH}"` | **`sb-`（sandbox）プレフィックス** + ブランチ名で識別子を設定 |
+
+#### 本番環境とのバッティング回避
+
+| 環境 | 命名規則 | 例 |
+|------|----------|-----|
+| **本番 Amplify** | ブランチ名そのまま | `main`, `kag`, `feature-xxx` |
+| **サンドボックス** | `sb-` プレフィックス付き | `sb-main`, `sb-kag`, `sb-feature-xxx` |
+
+これでCloudFormationスタック名やリソース名が衝突しない。
+
+#### 使用例
+
+```bash
+# main ブランチで実行 → sb-main で起動
+npm run sandbox
+
+# feature/new-ui ブランチで実行 → sb-feature-new-ui で起動
+npm run sandbox
+
+# 追加の引数も渡せる
+npm run sandbox -- --no-open
+```
+
+### identifierとRuntime名の連携（二重管理にならない）
+
+「`--identifier` と `RUNTIME_SUFFIX` を同じ値で毎回揃える必要があるのでは？」という懸念があるが、**二重管理にならない**。
+
+AmplifyはCDKコンテキストに `amplify-backend-name` として identifier を設定しているため、backend.ts から直接取得できる：
+
+```typescript
+// amplify/backend.ts
+const backendName = agentCoreStack.node.tryGetContext('amplify-backend-name') as string;
+// Runtime名に使えない文字をサニタイズ（本番と同様）
+nameSuffix = (backendName || 'dev').replace(/[^a-zA-Z0-9_]/g, '_');
+```
+
+| やること | 管理場所 |
+|---------|---------|
+| 環境変数（APIキー等） | `.env` → `npm run sandbox` で自動読込 |
+| identifier | `--identifier` → CDKコンテキストで自動取得 |
+
+**参考**: [aws-amplify/amplify-backend - CDKContextKey.ts](https://github.com/aws-amplify/amplify-backend/blob/main/packages/platform-core/src/cdk_context_key.ts)
+
+**なぜシェル環境変数は動くか**:
+1. シェルで `export` した値は子プロセス（amplify sandbox）に自動継承される
+2. `dotenv/config` は既存の `process.env` を上書きしない
+3. よってシェル環境変数が優先される
+
 #### sandbox環境でDockerイメージがキャッシュされる問題
 
 **症状**: Dockerfileに新しいファイル（例: `border.css`）を追加しても、sandbox環境で反映されない
@@ -347,6 +670,61 @@ npx ampx sandbox delete --yes
 # 再起動（Dockerイメージが再ビルドされる）
 npx ampx sandbox
 ```
+
+#### sandbox環境で環境変数が反映されない問題
+
+**症状**: CloudFormationには環境変数（例: `TAVILY_API_KEY`）が正しく設定されているのに、コンテナ内では空文字になる
+
+**デバッグ方法**: コンテナ内の環境変数を確認するコードを追加
+```python
+# 一時的なデバッグコード
+debug_info = f"[DEBUG] TAVILY_API_KEY in env: {'TAVILY_API_KEY' in os.environ}, value: {os.environ.get('TAVILY_API_KEY', 'NOT_SET')[:15] if os.environ.get('TAVILY_API_KEY') else 'EMPTY'}"
+```
+
+**原因**: AgentCore Hotswapは**環境変数の変更を反映しない**。最初のデプロイ時に空だった値がそのまま使われる。
+
+**解決策**: sandboxを完全に削除して再起動（上記と同じ）
+
+**注意**: `.env`ファイルと`dotenv/config`が正しく設定されていても、sandbox起動前に環境変数をエクスポートしていないと最初のデプロイで空になる可能性がある。
+
+```bash
+# 確実な方法: 環境変数を明示的にエクスポートしてからsandbox起動
+export TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) && npx ampx sandbox
+```
+
+#### AgentCore Runtime重複エラー
+
+**症状**:
+```
+Resource of type 'AWS::BedrockAgentCore::Runtime' with identifier 'marp_agent_dev' already exists.
+```
+
+**原因**: 前回のsandboxで作成されたAgentCore Runtimeが削除されずに残っている
+
+**解決策**: CLIでRuntimeを削除してからsandbox再起動
+
+```bash
+# 1. Runtime一覧を確認
+aws bedrock-agentcore-control list-agent-runtimes --region us-east-1
+
+# 2. 該当するRuntimeを削除
+aws bedrock-agentcore-control delete-agent-runtime \
+  --agent-runtime-id {runtimeId} \
+  --region us-east-1
+
+# 3. 削除完了を確認（DELETINGからDELETED）
+aws bedrock-agentcore-control list-agent-runtimes --region us-east-1 \
+  --query "agentRuntimes[?agentRuntimeName=='marp_agent_dev']"
+
+# 4. sandbox起動
+npx ampx sandbox
+```
+
+**代替策**: 別の識別子でsandbox起動
+```bash
+npx ampx sandbox --identifier kimi
+```
+→ `marp_agent_kimi` として新規作成される
 
 #### Amplify で Hotswap を先行利用する方法（Workaround）
 
@@ -620,7 +998,7 @@ return {
   slides: Array.from(svgs).map((svg, index) => {
     // SVGのwidth/height属性を100%に変更してレスポンシブ対応
     svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '100%');
+    svg.removeAttribute('height');
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     return {
       index,
@@ -635,6 +1013,22 @@ return {
 - `width`と`height`を`100%`に設定 → 親要素にフィット
 - `preserveAspectRatio="xMidYMid meet"` → アスペクト比を維持しつつ収まるように
 - CSSの`!important`よりもSVG属性の直接変更が確実
+
+### フォーム要素の折り返し防止
+
+モデルセレクターなどを追加すると、スマホ表示でボタンが狭くなりテキストが折り返されることがある。
+
+```tsx
+<button className="whitespace-nowrap px-4 sm:px-6 py-2">
+  送信
+</button>
+```
+
+**ポイント**:
+- `whitespace-nowrap` → テキストの折り返しを防止
+- `px-4 sm:px-6` → スマホではパディングを小さく
+
+**注意**: `shrink-0`を使うとボタンが縮まなくなり、画面からはみ出す可能性があるので使用しない。
 
 ### Tailwind CSS との競合
 
@@ -675,6 +1069,21 @@ Tailwind CSS v4のPreflight（CSSリセット）が`list-style: none`を適用�
 }
 ```
 
+### Marp記法の注意点
+
+#### `==ハイライト==` 記法は使用禁止
+Marpの `==テキスト==` ハイライト記法は、日本語のカギカッコと組み合わせるとレンダリングが壊れる。
+
+```markdown
+<!-- NG: 正しく表示されない -->
+==「重要」==
+
+<!-- OK: 太字を使う -->
+**「重要」**
+```
+
+システムプロンプトで禁止指示済み。
+
 ---
 
 ## フロントエンド構成
@@ -701,6 +1110,8 @@ src/
 
 ※ `--pptx-editable`（編集可能PPTX）はLibreOffice依存のため未対応
 
+**iOS Safari対応**: ドロップダウンメニューはCSS `:hover` ではなく `useState` によるクリック/タップベースで実装。iOS Safariでは `:hover` がタップで正しく動作しないため、`onClick` でメニューを開閉し、`touchstart` イベントで外側タップ時に閉じる処理を実装。
+
 ### ストリーミングUI実装パターン
 ```typescript
 // メッセージを逐次更新（イミュータブル更新が必須）
@@ -714,6 +1125,30 @@ setMessages(prev =>
 ```
 
 **注意**: シャローコピー（`[...prev]`）してオブジェクトを直接変更すると、React StrictModeで2回実行され文字がダブる。必ず `map` + スプレッド構文でイミュータブルに更新する。
+
+### useMemoの依存配列バグ
+
+派生値（derived value）を使った `useMemo` では、派生値自体を依存配列に含める必要がある。
+
+```typescript
+// 派生値を生成
+const markdownWithTheme = useMemo(() => {
+  // markdownにテーマ指定を注入
+  return injectTheme(markdown, selectedTheme);
+}, [markdown, selectedTheme]);
+
+// NG: 元の値だけ依存配列に入れると、selectedTheme変更で再計算されない
+const slides = useMemo(() => {
+  return renderSlides(markdownWithTheme);
+}, [markdown]);  // ❌ markdownWithThemeの変更を検知できない
+
+// OK: 派生値を依存配列に
+const slides = useMemo(() => {
+  return renderSlides(markdownWithTheme);
+}, [markdownWithTheme]);  // ✅ selectedTheme変更 → markdownWithTheme変更 → slides再計算
+```
+
+**症状**: 状態を変えても UI が更新されない場合、`useMemo` の依存配列を疑う。
 
 ### ステータスメッセージ後のテキスト表示
 
@@ -808,6 +1243,37 @@ onText: (text) => {
 ```
 
 **用途**: Xシェア機能のツイートリンクなど、外部サイトへのリンクを新しいタブで開く場合に使用。
+
+### TypeScript型インポートエラー（Vite + esbuild）
+
+**症状**:
+```
+Uncaught SyntaxError: The requested module '/src/hooks/useAgentCore.ts'
+does not provide an export named 'ModelType'
+```
+
+**原因**: Vite + esbuild + TypeScriptの型エクスポートの相性問題
+- `export type ModelType = ...` は型のみのエクスポートで、コンパイル後のJSには残らない
+- esbuildは型のみのエクスポートを適切に処理しないことがある
+- `isolatedModules`モード（Viteのデフォルト）で問題が起きやすい
+
+**解決策**:
+
+1. **型をローカルで定義**（シンプル、2-3箇所でしか使わない場合に推奨）
+   ```typescript
+   // Chat.tsx 内で直接定義
+   type ModelType = 'claude' | 'kimi';
+   ```
+
+2. **`import type` を使う**（多くのファイルで使う場合）
+   ```typescript
+   import type { ModelType } from '../hooks/useAgentCore';
+   import { invokeAgent } from '../hooks/useAgentCore';
+   ```
+
+**判断基準**:
+- 2-3箇所でしか使わない → ローカル定義
+- 多くのファイルで使う、頻繁に変更される → `import type` で一元管理
 
 ### タブ切り替え時の状態保持
 ```tsx
@@ -1077,6 +1543,44 @@ CloudWatch Console → **Bedrock AgentCore GenAI Observability** → Agents View
 
 ---
 
+## Amplify ビルドスキップ（Diff-based Deploy）
+
+### 概要
+
+ドキュメントのみの変更でフロントエンドのビルド・デプロイを避けるための設定。
+
+### 設定済み環境変数
+
+| ブランチ | 環境変数 |
+|----------|----------|
+| main | `AMPLIFY_DIFF_DEPLOY=true` |
+| kag | `AMPLIFY_DIFF_DEPLOY=true` |
+
+### 動作
+
+- `src/` や `amplify/` に変更がない場合、フロントエンドビルドがスキップされる
+- `docs/` のみの変更はスキップ対象
+
+### 手動スキップ
+
+コミットメッセージに `[skip-cd]` を追加することでも可能：
+
+```bash
+git commit -m "ドキュメント更新 [skip-cd]"
+```
+
+**注意**: `[skip ci]` や `[ci skip]` は Amplify では無効。`[skip-cd]` のみ。
+
+### 設定コマンド（参考）
+
+```bash
+# 既存の環境変数を確認してからマージして更新すること
+aws amplify update-branch --app-id d3i0gx3tizcqc1 --branch-name main \
+  --environment-variables AMPLIFY_DIFF_DEPLOY=true --region us-east-1
+```
+
+---
+
 ## deploy-time-build（本番環境ビルド）
 
 ### 概要
@@ -1098,6 +1602,59 @@ const artifact = isSandbox
       },
     });
 ```
+
+### ⚠️ コンテナイメージのタグ指定に関する重要な注意
+
+**`tag: 'latest'` を指定すると、コード変更時にAgentCoreランタイムが更新されない問題が発生する。**
+
+#### 問題の仕組み
+
+1. コードをプッシュ → ECRに新イメージがプッシュ（タグ: `latest`）
+2. CDKがCloudFormationテンプレートを生成
+3. CloudFormation: 「タグは同じ `latest` だから変更なし」と判断
+4. **AgentCoreランタイムが更新されない**
+
+#### NG: 固定タグを使用
+
+```typescript
+containerImageBuild = new ContainerImageBuild(stack, 'ImageBuild', {
+  directory: path.join(__dirname, 'runtime'),
+  platform: Platform.LINUX_ARM64,
+  tag: 'latest',  // ❌ CloudFormationが変更を検知できない
+});
+agentRuntimeArtifact = agentcore.AgentRuntimeArtifact.fromEcrRepository(
+  containerImageBuild.repository,
+  'latest'  // ❌ ハードコード
+);
+```
+
+#### OK: タグを省略してassetHashを使用
+
+```typescript
+containerImageBuild = new ContainerImageBuild(stack, 'ImageBuild', {
+  directory: path.join(__dirname, 'runtime'),
+  platform: Platform.LINUX_ARM64,
+  // tag を省略 → assetHashベースのタグが自動生成される
+});
+// 古いイメージを自動削除（直近5件を保持）
+containerImageBuild.repository.addLifecycleRule({
+  description: 'Keep last 5 images',
+  maxImageCount: 5,
+  rulePriority: 1,
+});
+agentRuntimeArtifact = agentcore.AgentRuntimeArtifact.fromEcrRepository(
+  containerImageBuild.repository,
+  containerImageBuild.imageTag,  // ✅ 動的なタグ
+);
+```
+
+#### 比較表
+
+| 項目 | `tag: 'latest'` | タグ省略（推奨） |
+|------|-----------------|-----------------|
+| デプロイ時の更新 | ❌ 反映されないことがある | ✅ 常に反映される |
+| ECRイメージ数 | 1つのみ | 蓄積（要Lifecycle Policy） |
+| ロールバック | ❌ 不可 | ✅ 可能 |
 
 ### 参考
 
@@ -1202,6 +1759,93 @@ if (useMock) {
 if (useMock) {
   return <MainApp signOut={() => {}} />;
 }
+```
+
+---
+
+## スライド共有機能（S3 + CloudFront）
+
+### 公開URL方式の比較
+
+| 方式 | メリット | デメリット |
+|------|---------|-----------|
+| S3署名付きURL | インフラがシンプル | URLが長い（500-1000文字）、Lambda経由では有効期限に制限あり |
+| CloudFront + S3 OAC | URLが短い、キャッシュで高速 | インフラが増える（CloudFront） |
+| リダイレクト方式 | URLが最短 | 毎回Lambda呼び出しが発生 |
+
+### S3署名付きURLの有効期限について
+
+| 生成方法 | 最大有効期限 |
+|---------|-------------|
+| AWS CLI / SDK | 7日間 |
+| AWSコンソール | 12時間 |
+| Lambda実行ロール（一時認証情報）| セッション有効期限に依存（1-12時間） |
+
+**ポイント**: Lambda/AgentCoreから署名付きURLを生成する場合でも、SDKを使えば7日間有効にできる。
+
+参考: [AWS re:Post - S3 Presigned URL Limitations](https://repost.aws/questions/QUxaEYVXbVREamltPSmKRotg/s3-presignedurl-limitations)
+
+### Amplify Gen2でのカスタムリソース追加
+
+Amplify Gen2では `defineStorage` でS3をネイティブに作成できるが、CloudFrontとの連携が必要な場合はカスタムCDKリソースを使う方が柔軟。
+
+```typescript
+// amplify/backend.ts
+import { SharedSlidesConstruct } from './storage/resource';
+
+// カスタムスタックを作成
+const sharedSlidesStack = backend.createStack('SharedSlidesStack');
+const sharedSlides = new SharedSlidesConstruct(sharedSlidesStack, 'SharedSlides', {
+  nameSuffix,
+});
+
+// フロントエンドに出力
+backend.addOutput({
+  custom: {
+    sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
+  },
+});
+```
+
+参考: [Amplify Gen2 Custom Resources](https://docs.amplify.aws/react/build-a-backend/add-aws-services/custom-resources/)
+
+### CloudFront OAC（Origin Access Control）
+
+S3バケットを直接公開せず、CloudFront経由でのみアクセスを許可する設定。
+
+```typescript
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+
+const distribution = new cloudfront.Distribution(this, 'Distribution', {
+  defaultBehavior: {
+    // OAC経由でS3にアクセス（バケットポリシー自動設定）
+    origin: origins.S3BucketOrigin.withOriginAccessControl(bucket),
+    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+  },
+});
+```
+
+### OGP対応（Twitterサムネイル表示）
+
+共有URLをTwitterでシェアした際にサムネイル画像を表示するには、OGPメタタグとサムネイル画像が必要。
+
+#### サムネイル生成（Marp CLI）
+
+```bash
+# 1枚目のスライドをPNG画像として出力
+marp slide.md --image png -o slide.png
+# → slide.001.png が生成される
+```
+
+#### OGPメタタグ
+
+```html
+<meta property="og:title" content="スライドタイトル">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://xxx.cloudfront.net/slides/{id}/index.html">
+<meta property="og:image" content="https://xxx.cloudfront.net/slides/{id}/thumbnail.png">
+<meta name="twitter:card" content="summary_large_image">
 ```
 
 ---
