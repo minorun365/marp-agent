@@ -47,6 +47,7 @@ const MESSAGES = {
   EMPTY_STATE_TITLE: 'スライドを作成しましょう',
   EMPTY_STATE_EXAMPLE: '例: 「AWS入門の5枚スライドを作って」',
   ERROR: 'エラーが発生しました。もう一度お試しください。',
+  ERROR_MODEL_NOT_AVAILABLE: 'Claude Sonnet 5はまだリリースされていないようです。Amazon Bedrockへのモデル追加をお待ちください！',
 
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',
@@ -446,10 +447,13 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       );
     } catch (error) {
       console.error('Error:', error);
+      // モデルが未リリースの場合は専用メッセージを表示
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
       setMessages(prev =>
         prev.map((msg, idx) =>
           idx === prev.length - 1 && msg.role === 'assistant' && !msg.isStatus
-            ? { ...msg, content: MESSAGES.ERROR, isStreaming: false }
+            ? { ...msg, content: isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR, isStreaming: false }
             : msg
         )
       );
