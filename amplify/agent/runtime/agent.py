@@ -355,6 +355,17 @@ def extract_markdown(text: str) -> str | None:
     return None
 
 
+def remove_think_tags(text: str) -> str:
+    """<think>...</think>タグを除去する（Kimi K2 Thinking対策）
+
+    Kimi K2 Thinkingモデルはテキストストリームに<think>タグで思考過程を出力することがある。
+    これをチャット欄に表示しないよう除去する。
+    """
+    import re
+    # <think>...</think> タグとその中身を除去（複数行対応）
+    return re.sub(r'<think>[\s\S]*?</think>', '', text)
+
+
 def extract_marp_markdown_from_text(text: str) -> str | None:
     """テキストからMarpマークダウンを抽出（フォールバック用）
 
@@ -740,6 +751,8 @@ async def invoke(payload, context=None):
         # Kimi K2の場合、dataイベントを蓄積してマークダウン検出に使用
         kimi_text_buffer = "" if model_type == "kimi" else None
         kimi_skip_text = False  # マークダウン検出後はテキスト送信をスキップ
+        kimi_in_think_tag = False  # <think>タグ内かどうか（Kimi K2 Thinking対策）
+        kimi_pending_text = ""  # <think>タグ検出用のペンディングバッファ
 
         stream = agent.stream_async(user_message)
 
@@ -751,14 +764,51 @@ async def invoke(payload, context=None):
             if "data" in event:
                 chunk = event["data"]
                 if model_type == "kimi":
-                    # Kimi K2: テキストを蓄積してマークダウン開始を検出
+                    # Kimi K2: テキストを蓄積してマークダウン検出に使用
                     kimi_text_buffer += chunk
+
+                    # マークダウン検出（テキスト送信をスキップ）
                     if not kimi_skip_text and "marp: true" in kimi_text_buffer.lower():
                         kimi_skip_text = True
                         print(f"[INFO] Kimi K2: Marp markdown detected in text stream, skipping text output")
+
                     if not kimi_skip_text:
-                        has_any_output = True
-                        yield {"type": "text", "data": chunk}
+                        # <think>タグのフィルタリング処理
+                        kimi_pending_text += chunk
+
+                        # <think>タグ開始の検出
+                        while "<think>" in kimi_pending_text:
+                            before, _, after = kimi_pending_text.partition("<think>")
+                            # <think>より前のテキストを出力
+                            if before:
+                                has_any_output = True
+                                yield {"type": "text", "data": before}
+                            kimi_in_think_tag = True
+                            kimi_pending_text = after
+                            print(f"[INFO] Kimi K2: <think> tag detected, entering think mode")
+
+                        # </think>タグ終了の検出
+                        while "</think>" in kimi_pending_text:
+                            before, _, after = kimi_pending_text.partition("</think>")
+                            kimi_in_think_tag = False
+                            kimi_pending_text = after
+                            print(f"[INFO] Kimi K2: </think> tag detected, exiting think mode")
+
+                        # タグ内でなく、タグの断片でもなければテキストを出力
+                        if not kimi_in_think_tag:
+                            # <think または </think の途中の可能性があるため、末尾を保留
+                            safe_end = len(kimi_pending_text)
+                            if "<" in kimi_pending_text:
+                                last_lt = kimi_pending_text.rfind("<")
+                                # 末尾7文字以内に < があれば保留（<think> は7文字）
+                                if len(kimi_pending_text) - last_lt <= 7:
+                                    safe_end = last_lt
+                            if safe_end > 0:
+                                to_send = kimi_pending_text[:safe_end]
+                                kimi_pending_text = kimi_pending_text[safe_end:]
+                                if to_send:
+                                    has_any_output = True
+                                    yield {"type": "text", "data": to_send}
                 else:
                     # Claude: そのままテキスト送信
                     has_any_output = True
@@ -816,6 +866,14 @@ async def invoke(payload, context=None):
                         if hasattr(content, 'text') and content.text:
                             has_any_output = True
                             yield {"type": "text", "data": content.text}
+
+        # Kimi K2: ストリーム終了後、ペンディングバッファの残りを出力
+        if model_type == "kimi" and kimi_pending_text and not kimi_skip_text and not kimi_in_think_tag:
+            # <think>タグを除去してから出力
+            clean_text = remove_think_tags(kimi_pending_text)
+            if clean_text:
+                has_any_output = True
+                yield {"type": "text", "data": clean_text}
 
         # Kimi K2: テキストストリームからマークダウンを抽出（フォールバック）
         if model_type == "kimi" and kimi_text_buffer and not fallback_markdown:
