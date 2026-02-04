@@ -3,6 +3,8 @@ import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { createMarpAgent } from './agent/resource';
 import { SharedSlidesConstruct } from './storage/resource';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as cr from 'aws-cdk-lib/custom-resources';
 
 // 環境判定
 // - Sandbox: AWS_BRANCHが未定義
@@ -37,8 +39,10 @@ if (isSandbox) {
 }
 
 // 共有スライド用インフラを作成（S3 + CloudFront）
+// S3バケット名はアンダースコア不可のため、ハイフンに変換
+const nameSuffixForS3 = nameSuffix.replace(/_/g, '-').toLowerCase();
 const sharedSlides = new SharedSlidesConstruct(agentCoreStack, 'SharedSlides', {
-  nameSuffix,
+  nameSuffix: nameSuffixForS3,
 });
 
 // Marp Agentを作成（Cognito認証統合）
@@ -61,3 +65,51 @@ backend.addOutput({
     sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
   },
 });
+
+// Sandbox環境のみ: テストユーザーを自動作成
+if (isSandbox) {
+  const testUserEmail = process.env.TEST_USER_EMAIL;
+  const testUserPassword = process.env.TEST_USER_PASSWORD;
+
+  if (testUserEmail && testUserPassword) {
+    const userPool = backend.auth.resources.userPool;
+
+    // テストユーザーを作成（CfnUserPoolUser）
+    const testUser = new cognito.CfnUserPoolUser(agentCoreStack, 'TestUser', {
+      userPoolId: userPool.userPoolId,
+      username: testUserEmail,
+      userAttributes: [
+        { name: 'email', value: testUserEmail },
+        { name: 'email_verified', value: 'true' },
+      ],
+      messageAction: 'SUPPRESS', // ウェルカムメールを抑制
+    });
+
+    // パスワードを恒久化（AwsCustomResource）
+    // CfnUserPoolUserでは一時パスワードしか設定できないため、
+    // adminSetUserPassword APIで恒久パスワードを設定
+    const setPassword = new cr.AwsCustomResource(agentCoreStack, 'TestUserSetPassword', {
+      onCreate: {
+        service: 'CognitoIdentityServiceProvider',
+        action: 'adminSetUserPassword',
+        parameters: {
+          UserPoolId: userPool.userPoolId,
+          Username: testUserEmail,
+          Password: testUserPassword,
+          Permanent: true,
+        },
+        physicalResourceId: cr.PhysicalResourceId.of(`TestUserPassword-${testUserEmail}`),
+      },
+      policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
+        resources: [userPool.userPoolArn],
+      }),
+    });
+
+    // ユーザー作成後にパスワード設定
+    setPassword.node.addDependency(testUser);
+
+    console.log(`[INFO] テストユーザー作成: ${testUserEmail}`);
+  } else {
+    console.log('[WARN] TEST_USER_EMAIL / TEST_USER_PASSWORD が未設定のためテストユーザーは作成されません');
+  }
+}

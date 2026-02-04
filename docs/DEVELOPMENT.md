@@ -7,6 +7,9 @@
 ## クイックスタート
 
 ```bash
+# AWS認証（サンドボックス起動前に必要）
+aws sso login --profile sandbox
+
 # フロントエンドのローカル開発サーバー起動
 npm run dev
 
@@ -44,6 +47,14 @@ VITE_USE_MOCK=true npm run dev
 
 ## サンドボックス（Amplify sandbox）
 
+### 前提条件
+
+サンドボックス起動前に AWS SSO でログインしておく：
+
+```bash
+aws sso login --profile sandbox
+```
+
 ### 起動コマンド
 
 ```bash
@@ -57,6 +68,7 @@ npm run sandbox
 1. `.env` から環境変数を読み込み
 2. 現在のブランチ名を取得
 3. `sb-{ブランチ名}` を識別子としてサンドボックス起動
+4. **テストユーザーを自動作成**（環境変数 `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` 設定時）
 
 ```bash
 # 実際に実行されるコマンド
@@ -106,6 +118,10 @@ VITE_USE_MOCK=false
 TAVILY_API_KEY=tvly-xxxxx
 TAVILY_API_KEY2=tvly-xxxxx  # フォールバック用
 TAVILY_API_KEY3=tvly-xxxxx  # フォールバック用
+
+# テストユーザー（sandbox環境で自動作成）
+TEST_USER_EMAIL=test@example.com
+TEST_USER_PASSWORD=TestPass123!
 ```
 
 ### サンドボックスでの読み込み
@@ -165,6 +181,32 @@ aws amplify list-jobs --app-id d3i0gx3tizcqc1 --branch-name main --region us-eas
 ```bash
 git commit -m "ドキュメント更新 [skip-cd]"
 ```
+
+---
+
+## テストユーザー（Sandbox専用）
+
+### 自動作成の仕組み
+
+サンドボックス起動時に、`.env` の環境変数が設定されていれば検証用ユーザーが自動作成される。
+
+| 環境変数 | 説明 | 例 |
+|----------|------|-----|
+| `TEST_USER_EMAIL` | ログイン用メールアドレス | `test@example.com` |
+| `TEST_USER_PASSWORD` | パスワード（8文字以上、大文字・小文字・数字・記号含む） | `TestPass123!` |
+
+### 技術的な実装
+
+- CDK `CfnUserPoolUser` でユーザー作成
+- CDK `AwsCustomResource` + `adminSetUserPassword` API で恒久パスワード設定
+- `email_verified: true` で確認済みメールとして登録
+- `messageAction: SUPPRESS` でウェルカムメールを抑制
+
+### 注意事項
+
+- **本番環境（Amplify Console）では作成されない**（`isSandbox` 判定）
+- サンドボックス削除時にユーザーも自動削除される
+- 既存ユーザーがいる場合、スタック更新時にエラーになる可能性あり（サンドボックス再作成で解消）
 
 ---
 
