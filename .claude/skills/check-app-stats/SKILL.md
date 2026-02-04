@@ -17,6 +17,7 @@ allowed-tools: Bash(aws:*)
 set -e
 
 REGION="us-east-1"
+PROFILE="sandbox"
 OUTPUT_DIR="/tmp/marp-stats"
 mkdir -p "$OUTPUT_DIR"
 
@@ -28,29 +29,29 @@ echo "📊 Marp Agent 利用状況を取得中..."
 echo "🔍 リソースIDを取得中..."
 
 # Cognito User Pool ID取得（marp-main, marp-kagで検索）
-POOL_MAIN=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION \
+POOL_MAIN=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION --profile $PROFILE \
   --query "UserPools[?contains(Name, 'marp-main')].Id" --output text)
-POOL_KAG=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION \
+POOL_KAG=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION --profile $PROFILE \
   --query "UserPools[?contains(Name, 'marp-kag')].Id" --output text)
 
 # AgentCore ロググループ名取得（main/kag/dev）
 LOG_MAIN=$(aws logs describe-log-groups \
   --log-group-name-prefix /aws/bedrock-agentcore/runtimes/marp_agent_main \
-  --region $REGION --query "logGroups[0].logGroupName" --output text)
+  --region $REGION --profile $PROFILE --query "logGroups[0].logGroupName" --output text)
 LOG_KAG=$(aws logs describe-log-groups \
   --log-group-name-prefix /aws/bedrock-agentcore/runtimes/marp_agent_kag \
-  --region $REGION --query "logGroups[0].logGroupName" --output text)
+  --region $REGION --profile $PROFILE --query "logGroups[0].logGroupName" --output text)
 LOG_DEV=$(aws logs describe-log-groups \
   --log-group-name-prefix /aws/bedrock-agentcore/runtimes/marp_agent_dev \
-  --region $REGION --query "logGroups[0].logGroupName" --output text 2>/dev/null || echo "None")
+  --region $REGION --profile $PROFILE --query "logGroups[0].logGroupName" --output text 2>/dev/null || echo "None")
 
 # ========================================
 # 2. Cognitoユーザー数取得（前回値との比較用キャッシュ付き）
 # ========================================
 echo "👥 Cognitoユーザー数を取得中..."
-USERS_MAIN=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_MAIN" --region $REGION \
+USERS_MAIN=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_MAIN" --region $REGION --profile $PROFILE \
   --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
-USERS_KAG=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_KAG" --region $REGION \
+USERS_KAG=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_KAG" --region $REGION --profile $PROFILE \
   --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
 
 # 前回値を読み込み（キャッシュファイルがあれば）
@@ -78,6 +79,7 @@ echo "{\"main\": $USERS_MAIN, \"kag\": $USERS_KAG, \"date\": \"$TODAY\"}" > "$CA
 echo "📈 CloudWatch Logsクエリを並列開始..."
 START_7D=$(date -v-7d +%s)
 START_24H=$(date -v-24H +%s)
+START_28D=$(date -v-28d +%s)  # 週次トレンド用（4週間）
 END_NOW=$(date +%s)
 
 # OTELログからsession.idをparseしてユニークカウント（UTCで集計）
@@ -88,13 +90,13 @@ Q_DAILY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_7D --end-time $END_NOW \
   --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-  --region $REGION --query 'queryId' --output text)
+  --region $REGION --profile $PROFILE --query 'queryId' --output text)
 
 Q_DAILY_KAG=$(aws logs start-query \
   --log-group-name "$LOG_KAG" \
   --start-time $START_7D --end-time $END_NOW \
   --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-  --region $REGION --query 'queryId' --output text)
+  --region $REGION --profile $PROFILE --query 'queryId' --output text)
 
 Q_DAILY_DEV=""
 if [ "$LOG_DEV" != "None" ]; then
@@ -102,7 +104,7 @@ if [ "$LOG_DEV" != "None" ]; then
     --log-group-name "$LOG_DEV" \
     --start-time $START_7D --end-time $END_NOW \
     --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-    --region $REGION --query 'queryId' --output text)
+    --region $REGION --profile $PROFILE --query 'queryId' --output text)
 fi
 
 # 時間別クエリ開始（main/kag/dev並列）
@@ -110,13 +112,13 @@ Q_HOURLY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_24H --end-time $END_NOW \
   --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
-  --region $REGION --query 'queryId' --output text)
+  --region $REGION --profile $PROFILE --query 'queryId' --output text)
 
 Q_HOURLY_KAG=$(aws logs start-query \
   --log-group-name "$LOG_KAG" \
   --start-time $START_24H --end-time $END_NOW \
   --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
-  --region $REGION --query 'queryId' --output text)
+  --region $REGION --profile $PROFILE --query 'queryId' --output text)
 
 Q_HOURLY_DEV=""
 if [ "$LOG_DEV" != "None" ]; then
@@ -124,8 +126,21 @@ if [ "$LOG_DEV" != "None" ]; then
     --log-group-name "$LOG_DEV" \
     --start-time $START_24H --end-time $END_NOW \
     --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
-    --region $REGION --query 'queryId' --output text)
+    --region $REGION --profile $PROFILE --query 'queryId' --output text)
 fi
+
+# 週次クエリ開始（過去4週間、main/kag並列）
+Q_WEEKLY_MAIN=$(aws logs start-query \
+  --log-group-name "$LOG_MAIN" \
+  --start-time $START_28D --end-time $END_NOW \
+  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+  --region $REGION --profile $PROFILE --query 'queryId' --output text)
+
+Q_WEEKLY_KAG=$(aws logs start-query \
+  --log-group-name "$LOG_KAG" \
+  --start-time $START_28D --end-time $END_NOW \
+  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+  --region $REGION --profile $PROFILE --query 'queryId' --output text)
 
 # ========================================
 # 4. Bedrockコスト取得（クエリ待機中に並列実行）
@@ -138,7 +153,7 @@ aws ce get-cost-and-usage \
   --granularity DAILY \
   --metrics "UnblendedCost" \
   --group-by Type=DIMENSION,Key=SERVICE \
-  --region $REGION \
+  --region $REGION --profile $PROFILE \
   --output json > "$OUTPUT_DIR/cost.json"
 
 # Claude Sonnet 4.5の使用タイプ別コスト（キャッシュ効果分析用）
@@ -153,8 +168,17 @@ aws ce get-cost-and-usage \
     }
   }' \
   --group-by Type=DIMENSION,Key=USAGE_TYPE \
-  --region $REGION \
+  --region $REGION --profile $PROFILE \
   --output json > "$OUTPUT_DIR/sonnet_usage.json"
+
+# 週次コスト取得（過去4週間）
+aws ce get-cost-and-usage \
+  --time-period Start=$(date -v-28d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+  --granularity DAILY \
+  --metrics "UnblendedCost" \
+  --group-by Type=DIMENSION,Key=SERVICE \
+  --region $REGION --profile $PROFILE \
+  --output json > "$OUTPUT_DIR/weekly_cost.json"
 
 # ========================================
 # 5. クエリ結果取得（10秒待機後）
@@ -163,17 +187,19 @@ echo "⏳ クエリ完了を待機中..."
 sleep 10
 
 echo "📥 クエリ結果を取得中..."
-aws logs get-query-results --query-id "$Q_DAILY_MAIN" --region $REGION > "$OUTPUT_DIR/daily_main.json"
-aws logs get-query-results --query-id "$Q_DAILY_KAG" --region $REGION > "$OUTPUT_DIR/daily_kag.json"
-aws logs get-query-results --query-id "$Q_HOURLY_MAIN" --region $REGION > "$OUTPUT_DIR/hourly_main.json"
-aws logs get-query-results --query-id "$Q_HOURLY_KAG" --region $REGION > "$OUTPUT_DIR/hourly_kag.json"
+aws logs get-query-results --query-id "$Q_DAILY_MAIN" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/daily_main.json"
+aws logs get-query-results --query-id "$Q_DAILY_KAG" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/daily_kag.json"
+aws logs get-query-results --query-id "$Q_HOURLY_MAIN" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/hourly_main.json"
+aws logs get-query-results --query-id "$Q_HOURLY_KAG" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/hourly_kag.json"
 if [ -n "$Q_DAILY_DEV" ]; then
-  aws logs get-query-results --query-id "$Q_DAILY_DEV" --region $REGION > "$OUTPUT_DIR/daily_dev.json"
-  aws logs get-query-results --query-id "$Q_HOURLY_DEV" --region $REGION > "$OUTPUT_DIR/hourly_dev.json"
+  aws logs get-query-results --query-id "$Q_DAILY_DEV" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/daily_dev.json"
+  aws logs get-query-results --query-id "$Q_HOURLY_DEV" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/hourly_dev.json"
 else
   echo '{"results":[]}' > "$OUTPUT_DIR/daily_dev.json"
   echo '{"results":[]}' > "$OUTPUT_DIR/hourly_dev.json"
 fi
+aws logs get-query-results --query-id "$Q_WEEKLY_MAIN" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/weekly_main.json"
+aws logs get-query-results --query-id "$Q_WEEKLY_KAG" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/weekly_kag.json"
 
 # ========================================
 # 6. 結果出力
@@ -538,6 +564,65 @@ else
   echo "  セッション数が0のため計算できません"
 fi
 echo ""
+
+# ========================================
+# 週次トレンド（v0.1リリース以降）
+# ========================================
+echo "📅 週次トレンド（リリース以降）"
+echo ""
+
+# jqで日次データに週番号を付けてファイルに保存
+jq -r '.results[] |
+  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
+  (.[] | select(.field == "sessions") | .value) as $sessions |
+  "\($date)|\($sessions)"
+' "$OUTPUT_DIR/weekly_main.json" 2>/dev/null | while read line; do
+  DATE=$(echo "$line" | cut -d'|' -f1)
+  SESSIONS=$(echo "$line" | cut -d'|' -f2)
+  WEEK=$(date -j -f "%Y-%m-%d" "$DATE" "+%Y-W%W" 2>/dev/null)
+  echo "$WEEK|main|$SESSIONS"
+done > "$OUTPUT_DIR/weekly_sessions.tmp"
+
+jq -r '.results[] |
+  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
+  (.[] | select(.field == "sessions") | .value) as $sessions |
+  "\($date)|\($sessions)"
+' "$OUTPUT_DIR/weekly_kag.json" 2>/dev/null | while read line; do
+  DATE=$(echo "$line" | cut -d'|' -f1)
+  SESSIONS=$(echo "$line" | cut -d'|' -f2)
+  WEEK=$(date -j -f "%Y-%m-%d" "$DATE" "+%Y-W%W" 2>/dev/null)
+  echo "$WEEK|kag|$SESSIONS"
+done >> "$OUTPUT_DIR/weekly_sessions.tmp"
+
+jq -r '
+  .ResultsByTime[] |
+  .TimePeriod.Start as $date |
+  ([.Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0) as $cost |
+  "\($date)|\($cost)"
+' "$OUTPUT_DIR/weekly_cost.json" 2>/dev/null | while read line; do
+  DATE=$(echo "$line" | cut -d'|' -f1)
+  COST=$(echo "$line" | cut -d'|' -f2)
+  WEEK=$(date -j -f "%Y-%m-%d" "$DATE" "+%Y-W%W" 2>/dev/null)
+  echo "$WEEK|cost|$COST"
+done >> "$OUTPUT_DIR/weekly_sessions.tmp"
+
+echo "  週        | main | kag  | 合計 |  コスト"
+echo "  ----------|------|------|------|--------"
+
+# 週ごとに集計して表示
+cat "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f1 | sort -u | while read WEEK; do
+  if [ -n "$WEEK" ]; then
+    W_MAIN=$(grep "^$WEEK|main|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | awk '{s+=$1}END{print s+0}')
+    W_KAG=$(grep "^$WEEK|kag|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | awk '{s+=$1}END{print s+0}')
+    W_COST=$(grep "^$WEEK|cost|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | awk '{s+=$1}END{printf "%.0f", s}')
+    W_TOTAL=$((W_MAIN + W_KAG))
+    printf "  %-9s | %4d | %4d | %4d | \$%s\n" "$WEEK" "$W_MAIN" "$W_KAG" "$W_TOTAL" "$W_COST"
+  fi
+done
+
+rm -f "$OUTPUT_DIR/weekly_sessions.tmp"
+echo ""
+
 echo "✅ 完了！"
 ```
 
@@ -545,13 +630,15 @@ echo "✅ 完了！"
 
 スクリプト実行後、以下の情報が出力される：
 
-1. **Cognitoユーザー数**: 環境ごとのユーザー数（main/kag）
-2. **日次セッション数**: 過去7日間の日別回数（main/kag/dev別）
-3. **時間別セッション数**: 直近24時間の全時間帯（ASCIIバーグラフ・JST表示、main/kag/dev）
-4. **Bedrockコスト（日別）**: 過去7日間の日別コスト
-5. **モデル別コスト内訳**: Claude Sonnet 4.5 / Kimi K2 / その他の内訳
-6. **Claude Sonnet 4.5 キャッシュ効果**: Input/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額
-7. **Bedrockコスト（環境別内訳）**: セッション数で按分した推定コスト（週間・月間、main/kag/dev）
+1. **直近12時間のセッション数**: 時間帯別の表形式（main/kag/dev）
+2. **Cognitoユーザー数**: 環境ごとのユーザー数（main/kag）
+3. **日次セッション数**: 過去7日間の日別回数（main/kag/dev別）
+4. **時間別セッション数**: 直近24時間の全時間帯（ASCIIバーグラフ・JST表示、main/kag/dev）
+5. **Bedrockコスト（日別）**: 過去7日間の日別コスト
+6. **モデル別コスト内訳**: Claude Sonnet 4.5 / Kimi K2 / その他の内訳
+7. **Claude Sonnet 4.5 キャッシュ効果**: Input/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額
+8. **Bedrockコスト（環境別内訳）**: セッション数で按分した推定コスト（週間・月間、main/kag/dev）
+9. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間）
 
 ## 技術詳細
 
@@ -565,7 +652,7 @@ CloudWatch Logs Insightsで `datefloor(@timestamp + 9h, ...)` を使うと挙動
 
 ## 注意事項
 
-- AWS認証が切れている場合は `aws login` を先に実行すること
+- AWS認証が切れている場合は `aws sso login --profile sandbox` を先に実行すること
 - CloudWatch Logsクエリは非同期のため10秒待機している（必要に応じて調整）
 
 ## 回答時の表示ルール
