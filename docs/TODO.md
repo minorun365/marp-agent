@@ -10,33 +10,34 @@
 
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
-| #35 | 環境構築時に検証用ユーザーを最初から作っておきたい | 1-2h | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
-| #50 | Sonnet 5モードを足しておきたい | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #46 | Haikuモードも足したい | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #49 | KimiがWeb検索結果をチャットメッセージで返さないようにしたい | 小 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #43 | Tavily APIキーをさらに追加する必要がある | 10分 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #41 | スライドデザイン選択UIのデザイン改善 | 23分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #35 | 環境構築時に検証用ユーザーを最初から作っておきたい | 1-2h | ✅ 完了 | 🔴 重要 | ✅ | ✅ | ➖ | ➖ |
+| #43 | Tavily APIキーをさらに追加する必要がある | 10分 | ✅ 完了 | | ✅ | ✅ | ➖ | ➖ |
+| #50 | Sonnet 5モードを足しておきたい | 20分 | ✅ 完了 | | ✅ | ✅ | ➖ | ➖ |
+| #46 | Haikuモードも足したい | 20分 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #41 | スライドデザイン選択UIのデザイン改善 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #53 | モデル選択プルダウンの文字パディング改善 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #30 | スライドタイトルをAIが再設定するよう改善 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #28 | 表のセル内パディング調整 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #19 | ツイートおすすめメッセージのストリーミング対応 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #14 | 環境識別子リネーム（dev→sandbox） | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #37 | Sandboxのhotswap問題をまとめる | 1-2h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #32 | deploy-time-build: Repositoryを自前で渡す方式に修正 | 1.5h | ⬜ 未着手 | | ⬜ | ➖ | ➖ | ➖ |
-| #33 | TavilyのExtractに対応 | 2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #39 | 画面のどこかに最後のリリースの情報を表示したい | 3h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #27 | 既存テーマにデザインバリエーション追加（タイトル・仕切りなど） | 1-2日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #37 | Sandboxのhotswap問題をまとめる | 1-2h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #44 | output_slideツール未使用時のUI対応 | 1-2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #54 | 公開スライドのURLをXでツイートする機能 | 1.5h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #49 | KimiがWeb検索結果をチャットメッセージで返さないようにしたい | 2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #33 | TavilyのExtractに対応 | 2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #45 | Langfuseでトレースしたい | 2.5h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #39 | 画面のどこかに最後のリリースの情報を表示したい | 3h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #6 | Tavilyレートリミット枯渇通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #7 | エラー監視・通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #27 | 既存テーマにデザインバリエーション追加（タイトル・仕切りなど） | 1-2日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #48 | GPTを実装してみる | 2日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #52 | Nova PremierとWeb Groundingを実装する | 2-3日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #16 | スライド編集（マークダウンエディタ） | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #51 | 編集可能PPTXでダウンロードさせたい | 3-4日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #22 | 参考資料などをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #23 | コードベースのリアーキテクチャ | 1週間 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #16 | スライド編集（マークダウンエディタ） | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #9 | スライド共有機能 | 1週間 | ✅ 完了 | | ✅ | ✅ | ➖ | ➖ |
-| #45 | Langfuseでトレースしたい | 中 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #48 | GPTを実装してみる | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #51 | 編集可能PPTXでダウンロードさせたい | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #52 | NBAプレミアムとウェブブラウンディングを実装する | 大 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #23 | コードベースのリアーキテクチャ | 1-2週間 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 
 ---
 
@@ -44,32 +45,72 @@
 
 > **並び順**: 上記タスク管理表と同じ順番（①重要度が高い順 → ②実装が簡単な順）で記載しています。
 
-### #35 環境構築時に検証用ユーザーを最初から作っておきたい 🔴重要
+### #35 環境構築時に検証用ユーザーを最初から作っておきたい 🔴重要 ✅完了
 
 **概要**: 環境構築時に検証用ユーザーを自動作成しておきたい。
 
-**現状**: 手動でCognitoユーザーを作成する必要がある。
+**実装済み**: `amplify/backend.ts:65-110` でCDKによるテストユーザー自動作成機能を実装。
 
-**修正方法**:
-- CDKでCognito User Poolにテストユーザーを自動作成する仕組みを追加
-- または、sandbox起動時にAWS CLIでユーザー作成するスクリプトを用意
-
-**工数**: 1-2時間
+**実装内容**:
+- `.env` の `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` でテストユーザーを自動作成
+- `CfnUserPoolUser` でユーザー作成
+- `AwsCustomResource` + `adminSetUserPassword` APIで恒久パスワード設定
+- 初回ログイン時のパスワード変更が不要（PERMANENT状態）
 
 ---
 
-### #43 Tavily APIキーをさらに追加する必要がある
+### #43 Tavily APIキーをさらに追加する必要がある ✅完了
 
 **概要**: Tavily APIキーの追加が必要。
 
-**現状**: 既存のAPIキーでレートリミットに達することがある。
+**実装済み**: `amplify/agent/runtime/agent.py:47-51` で複数キーのフォールバック対応を実装。
 
-**修正方法**:
-- 新しいTavily APIキーを取得
-- 環境変数（TAVILY_API_KEY_1, TAVILY_API_KEY_2, ...）に追加
-- agent.pyのローテーションリストに追加
+**実装内容**:
+- 環境変数 `TAVILY_API_KEY`, `TAVILY_API_KEY2`, `TAVILY_API_KEY3` で最大3キー対応
+- agent.py:69-94 でレートリミット時に次のキーで自動リトライ
+- 全キー枯渇時はユーザーへのエラーメッセージを表示
 
-**工数**: 10分
+---
+
+### #50 Sonnet 5モードを足しておきたい ✅完了
+
+**概要**: Claude Sonnet 5（最新モデル）を選択できるようにしたい。
+
+**実装済み**: フロントエンド・バックエンド両方で`claude5`として実装完了。
+
+**実装内容**:
+- ✅ フロントエンド: `ModelType`に`claude5`定義済み（Chat.tsx:5行目）
+- ✅ バックエンド: `_get_model_config()`に`claude5`設定済み（agent.py:29-36行目）
+- ✅ UI: プルダウンに「宇宙最速（Claude Sonnet 5）」として表示
+- ✅ エラーハンドリング: 未リリース時のメッセージ実装済み（Chat.tsx:50行目）
+
+**残作業**: Bedrockでのモデルリリース待ち（コード変更不要）
+
+---
+
+### #46 Haikuモードも足したい
+
+**概要**: Claude Haiku（軽量・高速モデル）を選択できるようにしたい。
+
+**修正箇所**:
+
+1. **フロントエンド（Chat.tsx）**:
+   - Line 5: `type ModelType = 'claude' | 'kimi' | 'claude5' | 'haiku';`
+   - Line 636: 表示名に`'haiku' ? 'Haiku'`を追加
+   - Line 640-650: `<option value="haiku">高速軽量（Claude Haiku）</option>`を追加
+
+2. **バックエンド（agent.py）**:
+   - Line 29-36の後に追加:
+   ```python
+   elif model_type == "haiku":
+       return {
+           "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+           "cache_prompt": "default",
+           "cache_tools": "default",
+       }
+   ```
+
+**工数**: 20分（実装8分 + テスト12分）
 
 ---
 
@@ -96,7 +137,25 @@ className="text-sm bg-white border border-gray-200 rounded-md px-3 py-2 hover:bg
 | ホバー | なし | 背景色とボーダー変化 |
 | フォーカス | なし | ブランドカラーのリング |
 
-**工数**: 23分（実装5分 + テスト18分）
+**工数**: 30分（実装5分 + テスト25分）
+
+---
+
+### #53 モデル選択プルダウンの文字パディング改善
+
+**概要**: モデル選択のプルダウン内の選択肢の文字の両端のパディングが少なくて見た目がしょぼい問題を改善。
+
+**修正箇所**: `src/components/Chat.tsx` 632-651行目
+
+**変更内容**:
+| Tailwindクラス | 変更前 | 変更後 | 効果 |
+|---|---|---|---|
+| 左右パディング | `pl-3 sm:pl-4` | `px-3 sm:px-4` | 右パディングを追加 |
+| 上下パディング | なし | `py-2` | 垂直方向の余白を確保 |
+| テキスト→矢印の左マージン | `sm:ml-1` | `sm:ml-2` | 間隔を広げて可読性向上 |
+| 矢印→次要素の右マージン | `mr-2` | `mr-3` | 区切り線との間隔を広げる |
+
+**工数**: 30分（実装5分 + テスト25分）
 
 ---
 
@@ -191,18 +250,6 @@ section table tr:nth-child(even) td {
 
 ---
 
-### #37 Sandboxのhotswap問題をまとめる
-
-**概要**: Sandboxのhotswap問題についてドキュメントをまとめる。
-
-**修正方法**:
-- `~/.claude/rules/amplify-cdk.md` にhotswap問題をまとめる
-- CDK toolkit-libのバージョン情報やworkaroundを記載
-
-**工数**: 1-2時間
-
----
-
 ### #32 deploy-time-build: Repositoryを自前で渡す方式に修正
 
 **概要**: 現在の型アサーション `(containerImageBuild.repository as ecr.Repository)` を排除し、型安全にする。
@@ -253,6 +300,136 @@ if (!isSandbox) {
 
 ---
 
+### #37 Sandboxのhotswap問題をまとめる
+
+**概要**: Sandboxのhotswap問題についてドキュメントをまとめる。
+
+**修正方法**:
+- `~/.claude/rules/amplify-cdk.md` にhotswap問題をまとめる
+- CDK toolkit-libのバージョン情報やworkaroundを記載
+
+**工数**: 1-2時間
+
+---
+
+### #44 output_slideツール未使用時のUI対応
+
+**概要**: Kimi K2 Thinkingがoutput_slideツールを呼ばずにマークダウンを直接テキスト出力した場合、「スライドを作成中...」ステータスが表示されない問題。
+
+**発生日時**: 2026-02-02 JST 10:30頃（sandbox環境）
+
+**ログ調査結果**:
+- セッションID: `f98f0662-f01d-4041-96a4-bde4c2648906`
+- web_searchツール: 4回呼び出し ✅
+- output_slideツール: **0回**（呼ばれなかった）❌
+- finish_reason: `end_turn`
+- バックエンドのフォールバック機構によりスライド自体は表示された
+
+**根本原因**:
+システムプロンプトで「output_slideツールを使用すること」と指示しているが、複数回のweb_search後にKimiが指示に従わず直接マークダウンを出力した。
+
+**フロントエンドへの影響**:
+- `onToolUse('output_slide')` イベントが発火しない
+- 「スライドを作成中...」ステータスが表示されない
+- 豆知識ローテーションが開始されない
+
+**対処案**:
+
+| 案 | 内容 | 難易度 | 効果 |
+|----|------|--------|------|
+| **A** | システムプロンプト強化（より強い指示） | 低 | △ 確実ではない |
+| **B** | フロントエンドでマークダウン検出時もステータス表示 | 中 | ◎ 確実 |
+| **C** | バックエンドでマークダウンテキスト検出→output_slide相当の処理追加 | 中 | ◎ 確実 |
+
+**推奨**: 案A + 案B の組み合わせ
+
+**案Bの実装方針**:
+`useAgentCore.ts` の `onText` ハンドラ内で `---\nmarp: true` を検出した場合、`onToolUse('output_slide')` 相当のコールバックを発火させる。
+
+**関連ファイル**:
+- フロントエンド: `src/components/Chat.tsx:321` (onToolUse処理)
+- フロントエンド: `src/hooks/useAgentCore.ts:138` (イベント振り分け)
+- バックエンド: `amplify/agent/runtime/agent.py:208-210` (プロンプト指示)
+- バックエンド: `amplify/agent/runtime/agent.py:580-585` (フォールバック処理)
+
+**工数**: 1-2時間
+
+---
+
+### #54 公開スライドのURLをXでツイートする機能
+
+**概要**: 公開したスライドのURLをXでツイートできる機能を追加したい。
+
+**現状**: スライドを公開後、共有URLは表示されるがワンクリックでツイートはできない。
+
+**修正箇所**:
+
+1. **ShareResultModal.tsx** - Xシェアボタン追加
+   ```typescript
+   // Props追加
+   interface ShareResultModalProps {
+     isOpen: boolean;
+     url: string;
+     expiresAt: number;
+     onClose: () => void;
+     onShare?: () => void;  // 追加
+   }
+
+   // ボタン追加
+   const handleShareToX = () => {
+     const tweetText = `#パワポ作るマン でスライドを公開しました！\n${url}`;
+     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+     window.open(twitterUrl, '_blank', 'width=600,height=400');
+   };
+   ```
+
+2. **App.tsx** - コールバック追加
+   ```typescript
+   <ShareResultModal
+     onShare={() => {
+       const tweetText = `#パワポ作るマン でスライドを公開しました！\n${shareResult?.url}`;
+       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+       window.open(twitterUrl, '_blank', 'width=600,height=400');
+     }}
+     ...
+   />
+   ```
+
+**工数**: 1.5時間（実装30分 + テスト1時間）
+
+---
+
+### #49 KimiがWeb検索結果をチャットメッセージで返さないようにしたい
+
+**概要**: Kimi K2がWeb検索後にその結果をチャットメッセージとしてそのまま出力してしまう問題。
+
+**修正方法**: システムプロンプトに以下を追加（`amplify/agent/runtime/agent.py`）
+
+```markdown
+## Web検索結果の取り扱い
+web_searchツールで取得した検索結果は、あなたがスライド生成の参考情報として使用するためです。以下のルールを厳密に守ってください：
+
+1. **検索結果をチャットメッセージとして出力しない**
+   - 検索結果の要約や引用をユーザーのメッセージに含めてはいけません
+   - 例：「Web検索の結果、〇〇という情報が得られました」という返答は禁止
+
+2. **検索結果は内部処理のみ**
+   - 検索結果を使用してスライドを生成する際の参考資料として使う
+   - スライド作成に直接役立つ情報のみをマークダウンに反映させる
+
+3. **検索完了後の動作**
+   - web_searchツール実行直後は、ユーザーへのテキスト返答をせず、すぐにスライド生成を開始する
+   - output_slideツール実行までの間にテキストを出力しない
+
+4. **参考文献の表記**
+   - スライド内に情報源を含める必要がある場合は、参考文献スライドにURL形式で記載
+   - 検索結果そのものをテキストとして表示しない
+```
+
+**工数**: 2時間（実装15分 + テスト1.5時間 + ドキュメント15分）
+
+---
+
 ### #33 TavilyのExtractに対応
 
 **概要**: Tavily APIのExtract機能（URLからコンテンツ抽出）を使えるようにしたい。
@@ -294,6 +471,56 @@ def tavily_extract(urls: list[str], query: str = "") -> str:
 - `get_or_create_agent()` の `tools` リストに追加
 
 **工数**: 2時間
+
+---
+
+### #45 Langfuseでトレースしたい
+
+**概要**: Langfuseを使ってAIエージェントの実行をトレースしたい。
+
+**現状**: Strands AgentsのOTELトレースは有効だが、Langfuseとの連携はない。
+
+**推奨方法**: OpenTelemetry経由（最小限の変更）
+
+**実装手順**:
+
+1. **環境変数を追加**（Amplify）
+   ```
+   LANGFUSE_PUBLIC_KEY=pk-lf-xxx
+   LANGFUSE_SECRET_KEY=sk-lf-xxx
+   LANGFUSE_BASE_URL=https://cloud.langfuse.com
+   ```
+
+2. **resource.ts修正**（84-89行目）
+   ```typescript
+   environmentVariables: {
+     AGENT_OBSERVABILITY_ENABLED: 'true',
+     OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
+     OTEL_EXPORTER_OTLP_ENDPOINT: process.env.LANGFUSE_BASE_URL
+       ? `${process.env.LANGFUSE_BASE_URL}/api/public/otel`
+       : '',
+     OTEL_EXPORTER_OTLP_HEADERS: process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY
+       ? `Authorization=Basic ${Buffer.from(`${process.env.LANGFUSE_PUBLIC_KEY}:${process.env.LANGFUSE_SECRET_KEY}`).toString('base64')}`
+       : '',
+   }
+   ```
+
+3. **agent.py修正**
+   ```python
+   from strands.telemetry import StrandsTelemetry
+
+   _telemetry_enabled = os.environ.get('AGENT_OBSERVABILITY_ENABLED', '').lower() == 'true'
+   if _telemetry_enabled:
+       strands_telemetry = StrandsTelemetry().setup_otlp_exporter()
+   ```
+
+**注意**: AWS X-RayとLangfuseは併用不可
+
+**参照リンク**:
+- [Langfuse × Strands Agents](https://langfuse.com/integrations/frameworks/strands-agents)
+- [Amazon Bedrock AgentCore Observability with Langfuse](https://aws.amazon.com/blogs/machine-learning/amazon-bedrock-agentcore-observability-with-langfuse/)
+
+**工数**: 2.5時間
 
 ---
 
@@ -351,73 +578,6 @@ function VersionBadge() {
 
 ---
 
-### #27 既存テーマにデザインバリエーション追加（タイトル・仕切りなど）
-
-**概要**: タイトルスライド・セクション区切り・引用など、デザインバリエーションを使えるようにする。
-
-**追加するクラス**:
-- `title` - タイトルスライド（グラデーション背景 + 中央配置）
-- `crosshead` - セクション区切り（グレー背景 + 左ボーダー）
-- `quote` - 引用（左ボーダー + イタリック）
-- `image` - 画像中心
-- `invert` - ダークモード
-- `highlight` - ハイライト背景
-
-**修正ファイル**:
-| ファイル | 変更内容 |
-|---------|---------|
-| `src/themes/*.css` | クラス定義を追加 |
-| `amplify/agent/runtime/*.css` | 同じ内容を追加 |
-| `amplify/agent/runtime/agent.py` | SYSTEM_PROMPT にクラス使用ガイド追加 |
-
-**工数**: 1-2日
-
----
-
-### #44 output_slideツール未使用時のUI対応
-
-**概要**: Kimi K2 Thinkingがoutput_slideツールを呼ばずにマークダウンを直接テキスト出力した場合、「スライドを作成中...」ステータスが表示されない問題。
-
-**発生日時**: 2026-02-02 JST 10:30頃（sandbox環境）
-
-**ログ調査結果**:
-- セッションID: `f98f0662-f01d-4041-96a4-bde4c2648906`
-- web_searchツール: 4回呼び出し ✅
-- output_slideツール: **0回**（呼ばれなかった）❌
-- finish_reason: `end_turn`
-- バックエンドのフォールバック機構によりスライド自体は表示された
-
-**根本原因**:
-システムプロンプトで「output_slideツールを使用すること」と指示しているが、複数回のweb_search後にKimiが指示に従わず直接マークダウンを出力した。
-
-**フロントエンドへの影響**:
-- `onToolUse('output_slide')` イベントが発火しない
-- 「スライドを作成中...」ステータスが表示されない
-- 豆知識ローテーションが開始されない
-
-**対処案**:
-
-| 案 | 内容 | 難易度 | 効果 |
-|----|------|--------|------|
-| **A** | システムプロンプト強化（より強い指示） | 低 | △ 確実ではない |
-| **B** | フロントエンドでマークダウン検出時もステータス表示 | 中 | ◎ 確実 |
-| **C** | バックエンドでマークダウンテキスト検出→output_slide相当の処理追加 | 中 | ◎ 確実 |
-
-**推奨**: 案A + 案B の組み合わせ
-
-**案Bの実装方針**:
-`useAgentCore.ts` の `onText` ハンドラ内で `---\nmarp: true` を検出した場合、`onToolUse('output_slide')` 相当のコールバックを発火させる。
-
-**関連ファイル**:
-- フロントエンド: `src/components/Chat.tsx:321` (onToolUse処理)
-- フロントエンド: `src/hooks/useAgentCore.ts:138` (イベント振り分け)
-- バックエンド: `amplify/agent/runtime/agent.py:208-210` (プロンプト指示)
-- バックエンド: `amplify/agent/runtime/agent.py:580-585` (フォールバック処理)
-
-**工数**: 1-2時間
-
----
-
 ### #6 Tavilyレートリミット枯渇通知
 
 **現状**: 全キー枯渇時のユーザー通知あり。管理者への通知がない。
@@ -443,6 +603,171 @@ function VersionBadge() {
 3. メール通知設定
 
 **工数**: 3-4時間
+
+---
+
+### #27 既存テーマにデザインバリエーション追加（タイトル・仕切りなど）
+
+**概要**: タイトルスライド・セクション区切り・引用など、デザインバリエーションを使えるようにする。
+
+**追加するクラス**:
+- `title` - タイトルスライド（グラデーション背景 + 中央配置）
+- `crosshead` - セクション区切り（グレー背景 + 左ボーダー）
+- `quote` - 引用（左ボーダー + イタリック）
+- `image` - 画像中心
+- `invert` - ダークモード
+- `highlight` - ハイライト背景
+
+**修正ファイル**:
+| ファイル | 変更内容 |
+|---------|---------|
+| `src/themes/*.css` | クラス定義を追加 |
+| `amplify/agent/runtime/*.css` | 同じ内容を追加 |
+| `amplify/agent/runtime/agent.py` | SYSTEM_PROMPT にクラス使用ガイド追加 |
+
+**工数**: 1-2日
+
+---
+
+### #48 GPTを実装してみる
+
+**概要**: OpenAI GPTモデルを選択肢として追加したい。
+
+**Strands AgentsのOpenAIサポート**: ✅ 完全サポート
+
+**インストール**:
+```bash
+pip install 'strands-agents[openai]'
+```
+
+**実装例**:
+```python
+from strands.models.openai import OpenAIModel
+
+openai_model = OpenAIModel(
+    client_args={"api_key": openai_api_key},
+    model_id="gpt-4o",
+    params={
+        "max_tokens": 4000,
+        "temperature": 0.7,
+    }
+)
+
+agent = Agent(model=openai_model, tools=[...])
+```
+
+**追加作業**:
+- Secrets ManagerにOpenAI APIキー登録
+- Lambda実行ロールにSecrets Manager読み取り権限追加
+- フロントエンドにモデル選択オプション追加
+
+**参照**: [Strands Agents - OpenAI Provider](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/model-providers/openai/)
+
+**工数**: 2日（最小構成1日 + UI対応1日）
+
+---
+
+### #52 Nova PremierとWeb Groundingを実装する
+
+**概要**: Amazon Nova Premier（Bedrockの最新モデル）とWeb Grounding（組み込みWeb検索機能）を選択肢として追加したい。
+
+**モデルID**: `us.amazon.nova-premier-v1:0`
+
+**利用可能リージョン**: us-east-1, us-east-2, us-west-2
+
+**Nova Premierの特徴**:
+| 項目 | 詳細 |
+|------|------|
+| コンテキスト長 | 100万トークン |
+| 入力タイプ | テキスト、画像、動画 |
+| 得意分野 | 複雑なタスク、超長文処理 |
+
+**Web Grounding機能**:
+- APIリクエスト時に `nova_grounding` システムツールを有効化
+- モデルが検索の必要性を自動判断
+- 引用付きで応答を生成（引用元URLの表示が必須）
+
+**実装方法（Bedrock Converse API直接呼び出し）**:
+```python
+response = bedrock.converse(
+    modelId="us.amazon.nova-premier-v1:0",
+    messages=[{"role": "user", "content": [{"text": prompt}]}],
+    toolConfig={
+        "tools": [{"systemTool": {"name": "nova_grounding"}}]
+    }
+)
+```
+
+**IAM権限追加が必要**:
+```json
+{
+  "Effect": "Allow",
+  "Action": ["bedrock:InvokeTool"],
+  "Resource": ["arn:aws:bedrock::{ACCOUNT_ID}:system-tool/amazon.nova_grounding"]
+}
+```
+
+**現実的な判断**:
+- 現在のTavily検索（`web_search`ツール）で十分な検索機能を提供済み
+- Nova Premierの超長文処理は、スライド生成アプリでは不要（通常数百〜数千トークン）
+- Claudeの対話品質・コード生成能力の方が現在のユースケースに適合
+- **結論**: 現時点では移行メリットが少ない。検証目的での導入を検討
+
+**参照リンク**:
+- [Amazon Nova Premier](https://aws.amazon.com/blogs/aws/amazon-nova-premier-our-most-capable-model-for-complex-tasks-and-teacher-for-model-distillation/)
+- [Web Grounding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/web-grounding.html)
+
+**工数**: 2-3日（Strands依存を削除し、Boto3直接呼び出しに変更する場合）
+
+---
+
+### #16 スライド編集（マークダウンエディタ）
+
+**推奨ライブラリ**: @uiw/react-codemirror（YAML frontmatter対応、モバイル優秀）
+
+```bash
+npm install @uiw/react-codemirror @codemirror/lang-markdown @codemirror/lang-yaml
+```
+
+**工数**: 3-5日
+
+---
+
+### #51 編集可能PPTXでダウンロードさせたい
+
+**概要**: 現在のPPTXは画像ベースだが、編集可能なPPTXとして出力したい。
+
+**現状の問題**: Marp CLIが生成するPPTXは「レンダリングされた画像」であり、テキスト編集は不可。
+
+**推奨アプローチ**: python-pptx + マークダウンパーサー（Marko）で新規実装
+
+**アーキテクチャ**:
+```
+マークダウン入力
+  ↓
+[Markoパーサー] → AST（抽象構文木）
+  ↓
+[Marpディレクティブ抽出] → スライド設定
+  ↓
+[スライド構造化] → スライド配列
+  ↓
+[python-pptxレンダラー] → PPTX出力
+```
+
+**段階的実装計画**:
+
+| フェーズ | 内容 | 工数 |
+|---------|------|------|
+| **フェーズ1（MVP）** | スライド分割、見出し、箇条書き、テキスト書式 | 2-3日 |
+| フェーズ2（コア機能） | Marpディレクティブ、画像、表、コードブロック | 3-4日 |
+| フェーズ3（高度機能） | スピーカーノート、背景、クラス適用、カスタムテーマ | 2-3日 |
+
+**参照リンク**:
+- [python-pptx Documentation](https://python-pptx.readthedocs.io/)
+- [md2pptx GitHub](https://github.com/MartinPacker/md2pptx)（参考ライブラリ）
+- [Marko PyPI](https://pypi.org/project/marko/)
+
+**工数**: 3-4日（MVP）〜 10-13日（完全版）
 
 ---
 
@@ -488,26 +813,26 @@ function VersionBadge() {
 
 #### 現状分析
 
-##### Chat.tsx（615行）
+##### Chat.tsx（674行）
 
 | 項目 | 内容 |
 |------|------|
 | **主な責務** | メッセージ管理、フォーム入力、AIエージェント呼び出し、ストリーミングイベントハンドリング、UI状態管理、豆知識ローテーション |
 | **問題点** | ①責務の過多 ②複雑な条件分岐（onText内のメッセージインデックス検索） ③タイマー管理の複雑さ（tipTimeout/tipIntervalの二重管理） ④ステータス表示ロジックの分散 ⑤テスト困難性 |
 
-##### useAgentCore.ts（411行）
+##### useAgentCore.ts（508行）
 
 | 項目 | 内容 |
 |------|------|
 | **主な責務** | AgentCore REST API呼び出し、SSEストリーミング処理、イベントタイプ振り分け、PDF/PPTX生成、モック実装 |
 | **問題点** | ①**PDF/PPTX生成が90%同じコード**（約80行×2のコピペ） ②SSEストリーミング処理の重複 ③関心の分離がない（認証、ストリーミング、イベント振り分けが混在） |
 
-##### agent.py（553行）
+##### agent.py（878行）
 
 | 項目 | 内容 |
 |------|------|
-| **主な責務** | エントリーポイント（invoke 190行）、ツール定義（3つ計125行）、セッション管理、Kimi K2対応（リトライ・フォールバック計60行）、PDF/PPTX生成 |
-| **問題点** | ①**巨大なinvoke関数（190行）** ②PDF/PPTX生成の重複（90%同じ） ③グローバル変数の悪用（`_generated_markdown`等） ④Kimi K2専用ロジックが散乱 |
+| **主な責務** | エントリーポイント（invoke 250行）、ツール定義（3つ計125行）、セッション管理、Kimi K2対応（リトライ・フォールバック・thinkタグフィルタリング計100行）、PDF/PPTX生成、スライド共有 |
+| **問題点** | ①**巨大なinvoke関数（250行）** ②PDF/PPTX生成の重複（90%同じ） ③グローバル変数の悪用（`_generated_markdown`等） ④Kimi K2専用ロジックが散乱 |
 
 ##### CSS重複
 
@@ -616,113 +941,4 @@ shared/themes/
 | フェーズ1-2（高ROI） | 10.5h | 14h |
 | すべて（テスト含む） | 18.5h | 27h |
 
-**工数**: 1週間（フェーズ1-2）〜 2週間（全体）
-
----
-
-### #16 スライド編集（マークダウンエディタ）
-
-**推奨ライブラリ**: @uiw/react-codemirror（YAML frontmatter対応、モバイル優秀）
-
-```bash
-npm install @uiw/react-codemirror @codemirror/lang-markdown @codemirror/lang-yaml
-```
-
-**工数**: 3-5日
-
----
-
-### #9 スライド共有機能 ✅完了
-
-**概要**: スライドを他の人と共有できるようにする。
-
-**実装内容**:
-- S3 + CloudFront（OAC）でHTML共有
-- 7日間で自動削除（S3 Lifecycle Rule）
-- OGP対応（Twitterサムネイル表示）
-- 確認モーダル + 結果モーダル
-
-**詳細**: `docs/PLAN_SHARE_FEATURE.md` 参照
-
----
-
-### #45 Langfuseでトレースしたい
-
-**概要**: Langfuseを使ってAIエージェントの実行をトレースしたい。
-
-**現状**: Strands AgentsのOTELトレースは有効だが、Langfuseとの連携はない。
-
-**修正方法**:
-- Langfuse Python SDKをインストール
-- Strands AgentsのCallbackハンドラまたはOTELエクスポーターでLangfuseに送信
-
-**工数**: 中
-
----
-
-### #46 Haikuモードも足したい
-
-**概要**: Claude Haiku（軽量・高速モデル）を選択できるようにしたい。
-
-**修正方法**:
-- フロントエンドのモデル選択UIにHaikuを追加
-- バックエンドのモデル設定にHaikuモデルIDを追加
-
-**工数**: 小
-
----
-
-### #48 GPTを実装してみる
-
-**概要**: OpenAI GPTモデルを選択肢として追加したい。
-
-**修正方法**:
-- OpenAI APIキーを環境変数に追加
-- バックエンドでOpenAI対応のエージェント実装
-- フロントエンドのモデル選択UIにGPTを追加
-
-**工数**: 大
-
----
-
-### #49 KimiがWeb検索結果をチャットメッセージで返さないようにしたい
-
-**概要**: Kimi K2がWeb検索後にその結果をチャットメッセージとしてそのまま出力してしまう問題。
-
-**修正方法**:
-- システムプロンプトでWeb検索結果の出力を抑制する指示を追加
-- または、Kimi専用のポストプロセッサでフィルタリング
-
-**工数**: 小
-
----
-
-### #50 Sonnet 5モードを足しておきたい
-
-**概要**: Claude Sonnet 5（最新モデル）を選択できるようにしたい。
-
-**修正方法**:
-- フロントエンドのモデル選択UIにSonnet 5を追加
-- バックエンドのモデル設定にSonnet 5モデルIDを追加
-
-**工数**: 小
-
----
-
-### #51 編集可能PPTXでダウンロードさせたい
-
-**概要**: 現在のPPTXは画像ベースだが、編集可能なPPTXとして出力したい。
-
-**修正方法**:
-- marp-cli以外のライブラリ（python-pptx等）を使って編集可能なPPTXを生成
-- または、マークダウンからPPTX構造を直接生成
-
-**工数**: 大
-
----
-
-### #52 NBAプレミアムとウェブブラウンディングを実装する
-
-**概要**: NBAプレミアム機能とWebブラウジング機能を実装したい。
-
-**工数**: 大
+**工数**: 1-2週間
