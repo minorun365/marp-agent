@@ -1,6 +1,65 @@
-# プロジェクト固有ルール
+# CLAUDE.md
 
-> **開発手順は `docs/DEVELOPMENT.md` を参照** - サンドボックス起動、デプロイ、環境変数の設定方法など
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## プロジェクト概要
+
+「パワポ作るマン」- AIがMarp形式でスライドを自動生成するWebアプリ。AWS AmplifyとBedrock AgentCoreでフルサーバーレス構築。
+
+## 開発コマンド
+
+```bash
+# AWS認証（サンドボックス起動前に必要）
+aws sso login --profile sandbox
+
+# フロントエンド起動（ローカル開発）
+npm run dev
+
+# サンドボックス起動（バックエンド込み、ブランチ名が識別子になる）
+npm run sandbox
+
+# 認証スキップでUIのみ確認
+VITE_USE_MOCK=true npm run dev
+
+# リント
+npm run lint
+
+# ビルド
+npm run build
+
+# テスト
+npm run test
+```
+
+## アーキテクチャ
+
+```
+[ブラウザ] ←→ [React + Tailwind] ←SSE→ [AgentCore Runtime]
+                                              │
+                                              ├── Strands Agent (Python)
+                                              ├── Claude Sonnet 4.5 / Kimi K2
+                                              └── Marp CLI (PDF/PPTX変換)
+```
+
+### ディレクトリ構成
+
+| パス | 内容 |
+|------|------|
+| `src/` | Reactフロントエンド |
+| `src/hooks/useAgentCore.ts` | AgentCore API呼び出し（SSE処理） |
+| `src/components/` | UIコンポーネント（Chat, SlidePreview等） |
+| `amplify/` | バックエンド定義（CDK） |
+| `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |
+| `amplify/agent/resource.ts` | AgentCore Runtime定義 |
+| `amplify/agent/runtime/` | Pythonエージェント＋Dockerfile |
+| `amplify/storage/resource.ts` | 共有スライド用S3+CloudFront |
+
+### 主要な技術スタック
+
+- **フロントエンド**: React 19 + Vite + Tailwind CSS v4
+- **バックエンド**: Bedrock AgentCore + Strands Agents (Python)
+- **認証**: Cognito（Amplify UI React）
+- **IaC**: AWS CDK（Amplify経由）
 
 ## AWS Amplify 環境変数の更新
 
