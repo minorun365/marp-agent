@@ -49,7 +49,7 @@ tavily-python
 # Claude Sonnet 4.5（推奨・デフォルト）
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
-# Claude Opus 4.6
+# Claude Opus 4.6（日付なしのフォーマット）
 model = "us.anthropic.claude-opus-4-6-v1:0"
 
 # Claude Haiku 4.5（高速・低コスト）
