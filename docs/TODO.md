@@ -33,7 +33,6 @@
 | #51 | 編集可能PPTXでダウンロードさせたい | 3-4日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #22 | 参考資料などをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #23 | コードベースのリアーキテクチャ | 1-2週間 | ✅ 完了 | | ✅ | ✅ | ➖ | ➖ |
 
 ---
 
@@ -712,46 +711,3 @@ npm install @uiw/react-codemirror @codemirror/lang-markdown @codemirror/lang-yam
 | 画像 | OCR | Bedrock Multimodal |
 
 **工数**: 5-7日
-
----
-
-### #23 コードベースのリアーキテクチャ ✅
-
-**完了日**: 2026-02-06
-**リリース**: [v1.4.0](https://github.com/minorun365/marp-agent/releases/tag/v1.4.0)
-
-#### 実施内容
-
-| 対象 | Before | After | 削減率 |
-|------|--------|-------|--------|
-| agent.py | 883行 | 256行 | 70% |
-| Chat.tsx | 674行 | 326行 | 52% |
-
-#### 分割後の構成
-
-**バックエンド**:
-```
-amplify/agent/runtime/
-├── agent.py           # エントリーポイント
-├── config.py          # モデル設定・システムプロンプト
-├── tools/             # web_search, output_slide, generate_tweet
-├── handlers/          # kimi_adapter
-├── exports/           # slide_exporter
-├── sharing/           # s3_uploader
-└── session/           # manager
-```
-
-**フロントエンド**:
-```
-src/components/Chat/
-├── index.tsx          # メインコンポーネント
-├── ChatInput.tsx      # 入力フォーム
-├── MessageList.tsx    # メッセージ一覧
-├── MessageBubble.tsx  # メッセージ吹き出し
-├── StatusMessage.tsx  # ステータス表示
-├── hooks/             # useTipRotation, useStreamingText
-├── constants.ts       # TIPS, MESSAGES定数
-└── types.ts           # 型定義
-```
-
-**詳細**: [docs/REARCHITECTURE_PROGRESS.md](./REARCHITECTURE_PROGRESS.md)
