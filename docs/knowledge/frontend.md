@@ -317,3 +317,31 @@ does not provide an export named 'ModelType'
 - `px-4 sm:px-6` → スマホではパディングを小さく
 
 **注意**: `shrink-0`を使うとボタンが縮まなくなり、画面からはみ出す可能性があるので使用しない。
+
+### useStreamingText の isStreaming チェック競合
+
+`streamText` 関数でエラーメッセージをストリーミング表示する際、`isStreaming` をチェックしていると、`invokeAgent` 後の同期的な `setMessages` で `isStreaming: false` に設定されてしまい、ストリーミングが止まる。
+
+```typescript
+// NG: isStreamingチェックがあると、外部で先にfalseにされた場合に追加されなくなる
+setMessages(prev =>
+  prev.map((msg, idx) =>
+    idx === prev.length - 1 && msg.role === 'assistant' && msg.isStreaming
+      ? { ...msg, content: msg.content + char }
+      : msg
+  )
+);
+
+// OK: isStreamingチェックを削除
+setMessages(prev =>
+  prev.map((msg, idx) =>
+    idx === prev.length - 1 && msg.role === 'assistant'
+      ? { ...msg, content: msg.content + char }
+      : msg
+  )
+);
+```
+
+**症状**: エラー発生時にDevToolsコンソールにはエラーが表示されるが、画面には何も表示されない。
+
+**原因**: `onError` コールバック内の `streamText()` は非同期で実行されるが、`invokeAgent` 後の処理が先に実行されて `isStreaming: false` に設定される。
