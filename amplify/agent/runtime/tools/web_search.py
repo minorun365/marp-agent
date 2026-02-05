@@ -41,6 +41,7 @@ def web_search(query: str) -> str:
     if not tavily_clients:
         return "Web検索機能は現在利用できません（APIキー未設定）"
 
+    # 複数APIキーで順番に試行（無料枠の月5000リクエスト制限対策）
     for client in tavily_clients:
         try:
             results = client.search(
@@ -48,10 +49,10 @@ def web_search(query: str) -> str:
                 max_results=5,
                 search_depth="advanced",
             )
-            # レスポンス内にエラーメッセージが含まれていないかチェック
+            # レスポンス内に利用制限エラーが含まれていたら次のキーで再試行
             results_str = str(results).lower()
             if "usage limit" in results_str or "exceeds your plan" in results_str:
-                continue  # 次のキーで再試行
+                continue
             # 検索結果をテキストに整形
             formatted_results = []
             for result in results.get("results", []):
@@ -63,9 +64,10 @@ def web_search(query: str) -> str:
             _last_search_result = search_result  # フォールバック用に保存
             return search_result
         except Exception as e:
+            # rate limit系のエラーなら次のキーで再試行、それ以外は即座にエラー返却
             error_str = str(e).lower()
             if "rate limit" in error_str or "429" in error_str or "quota" in error_str or "usage limit" in error_str:
-                continue  # 次のキーで再試行
+                continue
             return f"検索エラー: {str(e)}"
 
     # 全キー枯渇
