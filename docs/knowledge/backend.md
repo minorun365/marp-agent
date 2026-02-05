@@ -50,7 +50,7 @@ tavily-python
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 # Claude Opus 4.6（日付なしのフォーマット）
-model = "us.anthropic.claude-opus-4-6-v1:0"
+model = "us.anthropic.claude-opus-4-6-v1"
 
 # Claude Haiku 4.5（高速・低コスト）
 model = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -234,7 +234,7 @@ def _get_model_config(model_type: str = "claude") -> dict:
     if model_type == "kimi":
         return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None}
     elif model_type == "opus":
-        return {"model_id": "us.anthropic.claude-opus-4-6-v1:0", "cache_prompt": "default"}
+        return {"model_id": "us.anthropic.claude-opus-4-6-v1", "cache_prompt": "default"}
     else:
         return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default"}
 
@@ -262,7 +262,7 @@ def _get_model_config(model_type: str = "claude") -> dict:
     if model_type == "opus":
         # Claude Opus 4.6
         return {
-            "model_id": "us.anthropic.claude-opus-4-6-v1:0",
+            "model_id": "us.anthropic.claude-opus-4-6-v1",
             "cache_prompt": "default",
             "cache_tools": "default",
         }

@@ -19,7 +19,7 @@ def get_model_config(model_type: str = "claude") -> dict:
     elif model_type == "opus":
         # Claude Opus 4.6（リリース前はエラー返却）
         return {
-            "model_id": "us.anthropic.claude-opus-4-6-v1:0",
+            "model_id": "us.anthropic.claude-opus-4-6-v1",
             "cache_prompt": "default",
             "cache_tools": "default",
         }
