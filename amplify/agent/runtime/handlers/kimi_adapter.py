@@ -70,16 +70,15 @@ def extract_marp_markdown_from_text(text: str) -> str | None:
         except json.JSONDecodeError as e:
             print(f"[WARN] Failed to parse JSON from tool argument: {e}")
 
-    # ケース2: 直接的なマークダウンを抽出（既存の処理）
+    # ケース2: テキスト内に直接出力されたマークダウンを抽出
     text_lower = text.lower()
     if "marp: true" in text_lower:
-        # パターンA: ---で始まるフロントマター形式（改行は\nまたは\r\n）
+        # パターンA: 正規のフロントマター形式 "---\nmarp: true\n..."
         pattern_with_frontmatter = r'(---\s*[\r\n]+marp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
         match = re.search(pattern_with_frontmatter, text, re.IGNORECASE)
 
         if not match:
-            # パターンB: ---がない場合、marp: trueから始まる部分を抽出
-            # （Kimi K2がフロントマター記号なしで出力した場合の対応）
+            # パターンB: フロントマター区切り(---)なしで出力された場合
             pattern_without_frontmatter = r'(marp:\s*true[\s\S]*?)(?:<\|tool_call|$)'
             match = re.search(pattern_without_frontmatter, text, re.IGNORECASE)
             if match:
