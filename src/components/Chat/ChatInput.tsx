@@ -21,7 +21,7 @@ export function ChatInput({
   inputRef,
   onSubmit,
 }: ChatInputProps) {
-  const modelLabel = modelType === 'claude' ? 'Claude' : modelType === 'kimi' ? 'Kimi' : 'Claude 5';
+  const modelLabel = modelType === 'claude' ? 'Sonnet' : modelType === 'kimi' ? 'Kimi' : 'Opus';
 
   return (
     <form onSubmit={onSubmit} className="border-t px-6 py-4">
@@ -43,7 +43,7 @@ export function ChatInput({
               title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
             >
               <option value="claude">標準（Claude Sonnet 4.5）</option>
-              <option value="claude5">宇宙最速（Claude Sonnet 5）</option>
+              <option value="opus">宇宙最速（Claude Opus 4.6）</option>
               <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
             </select>
           </div>

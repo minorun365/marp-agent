@@ -49,9 +49,8 @@ tavily-python
 # Claude Sonnet 4.5（推奨・デフォルト）
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
-# Claude Sonnet 5（2026年リリース予定）
-# 注意: 未リリース。リリース前はエラーになるが、フロントエンドでユーザーに通知
-model = "us.anthropic.claude-sonnet-5-20260203-v1:0"
+# Claude Opus 4.6
+model = "us.anthropic.claude-opus-4-6-v1:0"
 
 # Claude Haiku 4.5（高速・低コスト）
 model = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -66,7 +65,7 @@ model = "moonshot.kimi-k2-thinking"
 | モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
 |--------|-------------------|--------------|-------------|------|
 | Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 推奨・デフォルト |
-| Claude Sonnet 5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 2026年リリース予定 |
+| Claude Opus 4.6 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | |
 | Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 高速・低コスト |
 | Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 | Moonshot AI |
 
@@ -168,7 +167,7 @@ def extract_marp_markdown_from_text(text: str) -> str | None:
 
 #### フロントエンド（Chat.tsx）
 ```typescript
-type ModelType = 'claude' | 'kimi' | 'claude5';
+type ModelType = 'claude' | 'kimi' | 'opus';
 const [modelType, setModelType] = useState<ModelType>('claude');
 
 // 入力欄の左端にセレクター配置（矢印は別要素で表示）
@@ -179,7 +178,7 @@ const [modelType, setModelType] = useState<ModelType>('claude');
     className="text-xs text-gray-400 bg-transparent appearance-none"
   >
     <option value="claude">標準（Claude Sonnet 4.5）</option>
-    <option value="claude5">宇宙最速（Claude Sonnet 5）</option>
+    <option value="opus">宇宙最速（Claude Opus 4.6）</option>
     <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
   </select>
   <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
@@ -211,7 +210,7 @@ title={hasUserMessage ? '会話中はモデルを変更できません' : '使�
   className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
 >
   <option value="claude">Claude</option>
-  <option value="claude5">宇宙最速</option>
+  <option value="opus">宇宙最速</option>
   <option value="kimi">Kimi</option>
 </select>
 <span className="ml-2 sm:ml-1">▾</span>
@@ -234,8 +233,8 @@ body: JSON.stringify({
 def _get_model_config(model_type: str = "claude") -> dict:
     if model_type == "kimi":
         return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None}
-    elif model_type == "claude5":
-        return {"model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0", "cache_prompt": "default"}
+    elif model_type == "opus":
+        return {"model_id": "us.anthropic.claude-opus-4-6-v1:0", "cache_prompt": "default"}
     else:
         return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default"}
 
@@ -260,11 +259,10 @@ async def invoke(payload, context=None):
 **バックエンド修正例**:
 ```python
 def _get_model_config(model_type: str = "claude") -> dict:
-    if model_type == "claude5":
-        # Claude Sonnet 5（2026年リリース予定）
-        # リリース前はエラーになるが、フロントエンドでユーザーに通知
+    if model_type == "opus":
+        # Claude Opus 4.6
         return {
-            "model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0",
+            "model_id": "us.anthropic.claude-opus-4-6-v1:0",
             "cache_prompt": "default",
             "cache_tools": "default",
         }
@@ -282,7 +280,7 @@ onError: (error) => {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
   const displayMessage = isModelNotAvailable
-    ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE  // 「Claude Sonnet 5はまだリリースされていないようです...」
+    ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE  // 「Claude Opus 4.6はまだリリースされていないようです...」
     : MESSAGES.ERROR;
 
   // 疑似ストリーミングでエラーメッセージを表示
