@@ -16,7 +16,7 @@ export interface AgentCoreCallbacks {
   onComplete: () => void;
 }
 
-export type ModelType = 'claude' | 'kimi' | 'claude5';
+export type ModelType = 'claude' | 'kimi' | 'opus';
 
 /**
  * AgentCore APIのベースURL・認証情報を取得
