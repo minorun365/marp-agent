@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "copy-themes": "cp src/themes/*.css amplify/agent/runtime/",
+    "test": "vitest run",
     "sandbox": "npm run copy-themes && export $(grep -v '^#' .env | xargs) && BRANCH=$(git branch --show-current | tr '/' '-') && npx ampx sandbox --identifier \"sb-${BRANCH}\""
   },
   "dependencies": {

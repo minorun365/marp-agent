@@ -11,7 +11,8 @@ for _key_name in ["TAVILY_API_KEY", "TAVILY_API_KEY2", "TAVILY_API_KEY3"]:
     if _key:
         tavily_clients.append(TavilyClient(api_key=_key))
 
-# Web検索結果用のグローバル変数（フォールバック用）
+# Web検索結果用のグローバル変数
+# NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
 _last_search_result: str | None = None
 
 
@@ -36,8 +37,6 @@ def web_search(query: str) -> str:
     Returns:
         検索結果のテキスト
     """
-    global _last_search_result
-
     if not tavily_clients:
         return "Web検索機能は現在利用できません（APIキー未設定）"
 
@@ -61,6 +60,7 @@ def web_search(query: str) -> str:
                 url = result.get("url", "")
                 formatted_results.append(f"**{title}**\n{content}\nURL: {url}")
             search_result = "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
+            global _last_search_result
             _last_search_result = search_result  # フォールバック用に保存
             return search_result
         except Exception as e:

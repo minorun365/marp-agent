@@ -27,8 +27,11 @@ npm run lint
 # ビルド
 npm run build
 
-# テスト
+# テスト（フロントエンド）
 npm run test
+
+# テスト（バックエンド）
+python -m pytest tests/
 ```
 
 ## アーキテクチャ
@@ -50,7 +53,7 @@ npm run test
 | `src/hooks/streaming/` | SSE処理（sseParser） |
 | `src/hooks/mock/` | モックモード用（mockClient） |
 | `src/components/Chat/` | チャットUI（index, ChatInput, MessageList, MessageBubble, StatusMessage） |
-| `src/components/Chat/hooks/` | Chat専用フック（useTipRotation, useStreamingText） |
+| `src/components/Chat/hooks/` | Chat専用フック（useChatMessages, useTipRotation, useStreamingText） |
 | `src/components/` | その他UIコンポーネント（SlidePreview, ShareConfirmModal等） |
 | `amplify/` | バックエンド定義（CDK） |
 | `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |
