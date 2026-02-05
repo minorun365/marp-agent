@@ -187,3 +187,6 @@ src/components/Chat/
 ### 2026-02-06
 - ブランチ `refactor/kag-rearchitecture` 作成
 - 進捗ドキュメント作成
+- フェーズ0〜2 完了
+- mainとの差分確認完了（kag固有の差分のみ）
+- docs/SPEC.md にkagとmainの差分を文書化
