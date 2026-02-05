@@ -20,7 +20,6 @@
 | #32 | deploy-time-build: Repositoryを自前で渡す方式に修正 | 1.5h | ⬜ 未着手 | | ⬜ | ➖ | ➖ | ➖ |
 | #37 | Sandboxのhotswap問題をまとめる | 1-2h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #44 | output_slideツール未使用時のUI対応 | 1-2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #54 | 公開スライドのURLをXでツイートする機能 | 1.5h | ✅ 完了 | | ✅ | ✅ | ➖ | ➖ |
 | #49 | KimiがWeb検索結果をチャットメッセージで返さないようにしたい | 2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #33 | TavilyのExtractに対応 | 2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #45 | Langfuseでトレースしたい | 2.5h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
@@ -307,49 +306,6 @@ if (!isSandbox) {
 - バックエンド: `amplify/agent/runtime/agent.py:580-585` (フォールバック処理)
 
 **工数**: 1-2時間
-
----
-
-### #54 公開スライドのURLをXでツイートする機能 ✅ 実装完了
-
-**概要**: 公開したスライドのURLをXでツイートできる機能を追加したい。
-
-**現状**: ~~スライドを公開後、共有URLは表示されるがワンクリックでツイートはできない。~~ → 実装済み
-
-**修正箇所**:
-
-1. **ShareResultModal.tsx** - Xシェアボタン追加
-   ```typescript
-   // Props追加
-   interface ShareResultModalProps {
-     isOpen: boolean;
-     url: string;
-     expiresAt: number;
-     onClose: () => void;
-     onShare?: () => void;  // 追加
-   }
-
-   // ボタン追加
-   const handleShareToX = () => {
-     const tweetText = `#パワポ作るマン でスライドを公開しました！\n${url}`;
-     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-     window.open(twitterUrl, '_blank', 'width=600,height=400');
-   };
-   ```
-
-2. **App.tsx** - コールバック追加
-   ```typescript
-   <ShareResultModal
-     onShare={() => {
-       const tweetText = `#パワポ作るマン でスライドを公開しました！\n${shareResult?.url}`;
-       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-       window.open(twitterUrl, '_blank', 'width=600,height=400');
-     }}
-     ...
-   />
-   ```
-
-**工数**: 1.5時間（実装30分 + テスト1時間）
 
 ---
 
