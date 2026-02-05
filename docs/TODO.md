@@ -48,7 +48,7 @@
 **修正箇所**:
 
 1. **フロントエンド（Chat.tsx）**:
-   - Line 5: `type ModelType = 'claude' | 'kimi' | 'claude5' | 'haiku';`
+   - Line 5: `type ModelType = 'claude' | 'kimi' | 'opus' | 'haiku';`
    - Line 636: 表示名に`'haiku' ? 'Haiku'`を追加
    - Line 640-650: `<option value="haiku">高速軽量（Claude Haiku）</option>`を追加
 

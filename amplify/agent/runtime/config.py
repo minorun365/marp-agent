@@ -21,11 +21,10 @@ def get_model_config(model_type: str = "claude") -> dict:
             "cache_prompt": None,
             "cache_tools": None,
         }
-    elif model_type == "claude5":
-        # Claude Sonnet 5（2026年リリース予定）
-        # リリース前はエラーになるが、フロントエンドでユーザーに通知
+    elif model_type == "opus":
+        # Claude Opus 4.6（リリース前はエラー返却）
         return {
-            "model_id": "us.anthropic.claude-sonnet-5-20260203-v1:0",
+            "model_id": "us.anthropic.claude-opus-4-6-v1:0",
             "cache_prompt": "default",
             "cache_tools": "default",
         }
