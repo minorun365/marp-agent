@@ -141,16 +141,18 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
       const invoke = useMock ? invokeAgentMock : invokeAgent;
 
       await invoke(userMessage, currentMarkdown, {
+        // テキストストリーム受信時の処理
+        // ステータス表示後に新規メッセージを作るか、既存メッセージに追記するかを判定
         onText: (text) => {
-          setStatus(''); // テキストが来たらステータスを消す
+          setStatus('');
           setMessages(prev => {
-            // テキストが来たら進行中のWeb検索ステータスを完了にする
+            // 進行中のWeb検索ステータスを完了にする
             const msgs = prev.map(msg =>
               msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)
                 ? { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED }
                 : msg
             );
-            // 最後のステータスメッセージと最後の非ステータスアシスタントメッセージのインデックスを探す
+            // 最後のステータスとテキストメッセージの位置を探す
             let lastStatusIdx = -1;
             let lastTextAssistantIdx = -1;
             for (let i = msgs.length - 1; i >= 0; i--) {
@@ -161,17 +163,17 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
                 lastTextAssistantIdx = i;
               }
             }
-            // ステータスがあり、その後にテキストメッセージがない場合は新しいメッセージを追加
+            // ステータスの後にテキストがない → 新規メッセージ追加
             if (lastStatusIdx !== -1 && (lastTextAssistantIdx === -1 || lastTextAssistantIdx < lastStatusIdx)) {
               return [...msgs, { role: 'assistant', content: text, isStreaming: true }];
             }
-            // そうでなければ、最後の非ステータスアシスタントメッセージにテキストを追加
+            // 既存のテキストメッセージがある → 追記
             if (lastTextAssistantIdx !== -1) {
               return msgs.map((msg, idx) =>
                 idx === lastTextAssistantIdx ? { ...msg, content: msg.content + text } : msg
               );
             }
-            // どちらもなければ新しいメッセージを追加
+            // どちらもない → 新規メッセージ追加
             return [...msgs, { role: 'assistant', content: text, isStreaming: true }];
           });
         },
