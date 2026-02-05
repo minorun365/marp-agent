@@ -1,4 +1,4 @@
-# Logs
+# ログファイル
 logs
 *.log
 npm-debug.log*
@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# エディタ設定
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,10 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# amplify
+# Amplify
 .amplify
 amplify_outputs*
 amplifyconfiguration*
+
+# CSSテーマ（ビルド時にsrc/themes/からコピー）
+amplify/agent/runtime/*.css
 
 # Python
 .venv
@@ -34,14 +37,14 @@ __pycache__
 *.pyc
 uv.lock
 
-# Environment variables
+# 環境変数
 .env
 .env.local
 .env.*.local
 
-# Test screenshots
+# テストスクリーンショット
 tests/screenshots/*
 !tests/screenshots/.gitkeep
 
-# Playwright MCP temp files
+# Playwright MCP一時ファイル
 .playwright-mcp/
