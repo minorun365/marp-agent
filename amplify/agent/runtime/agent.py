@@ -542,11 +542,16 @@ def extract_slide_title(markdown: str) -> str | None:
 
 
 def inject_ogp_tags(html: str, title: str, image_url: str, page_url: str) -> str:
-    """HTMLにOGPメタタグを挿入"""
+    """HTMLにOGPメタタグを挿入（既存のOGP/Twitterタグは削除して置換）"""
     import html as html_escape
+    import re
 
     # タイトルをHTMLエスケープ
     safe_title = html_escape.escape(title)
+
+    # Marp CLIが生成する既存のOGP/Twitterタグを削除（重複防止）
+    html = re.sub(r'<meta\s+property="og:[^"]*"[^>]*>\s*', '', html)
+    html = re.sub(r'<meta\s+name="twitter:[^"]*"[^>]*>\s*', '', html)
 
     ogp_tags = f'''
     <meta property="og:title" content="{safe_title}">
