@@ -46,14 +46,23 @@ npm run test
 | パス | 内容 |
 |------|------|
 | `src/` | Reactフロントエンド |
-| `src/hooks/` | API呼び出し・SSE処理（agentCoreClient, exportClient, sseParser） |
-| `src/components/Chat/` | チャットUI（分割済み: index, ChatInput, MessageList等） |
-| `src/components/` | その他UIコンポーネント（SlidePreview等） |
+| `src/hooks/api/` | API呼び出し（agentCoreClient, exportClient） |
+| `src/hooks/streaming/` | SSE処理（sseParser） |
+| `src/hooks/mock/` | モックモード用（mockClient） |
+| `src/components/Chat/` | チャットUI（index, ChatInput, MessageList, MessageBubble, StatusMessage） |
+| `src/components/Chat/hooks/` | Chat専用フック（useTipRotation, useStreamingText） |
+| `src/components/` | その他UIコンポーネント（SlidePreview, ShareConfirmModal等） |
 | `amplify/` | バックエンド定義（CDK） |
 | `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |
 | `amplify/agent/resource.ts` | AgentCore Runtime定義 |
-| `amplify/agent/runtime/` | Pythonエージェント（分割済み: config, tools/, handlers/, exports/, sharing/, session/） |
+| `amplify/agent/runtime/` | Pythonエージェント本体 |
+| `amplify/agent/runtime/tools/` | ツール定義（output_slide, web_search, generate_tweet） |
+| `amplify/agent/runtime/exports/` | PDF/PPTX変換（slide_exporter） |
+| `amplify/agent/runtime/handlers/` | モデル固有処理（kimi_adapter） |
+| `amplify/agent/runtime/session/` | セッション管理（manager） |
+| `amplify/agent/runtime/sharing/` | 共有機能（s3_uploader） |
 | `amplify/storage/resource.ts` | 共有スライド用S3+CloudFront |
+| `docs/knowledge/` | 詳細なナレッジベース（下記参照） |
 
 ### 主要な技術スタック
 
@@ -61,6 +70,20 @@ npm run test
 - **バックエンド**: Bedrock AgentCore + Strands Agents (Python)
 - **認証**: Cognito（Amplify UI React）
 - **IaC**: AWS CDK（Amplify経由）
+
+## ナレッジベース
+
+詳細な技術情報は `docs/knowledge/` に分割して蓄積。トラブルシューティングや実装パターンはこちらを参照。
+
+| ファイル | 内容 |
+|----------|------|
+| [setup.md](docs/knowledge/setup.md) | 使用ライブラリ、Python環境管理（uv） |
+| [backend.md](docs/knowledge/backend.md) | AgentCore SDK、Strands Agents、セッション管理、Observability |
+| [cdk.md](docs/knowledge/cdk.md) | AgentCore CDK、Hotswap、deploy-time-build |
+| [marp.md](docs/knowledge/marp.md) | Marp CLI、テーマ、Marp Core |
+| [frontend.md](docs/knowledge/frontend.md) | React、Tailwind CSS、フロントエンド構成 |
+| [amplify.md](docs/knowledge/amplify.md) | Amplify Gen2、Cognito認証、ビルド設定 |
+| [features.md](docs/knowledge/features.md) | API接続、シェア機能、共有機能、ローカル開発 |
 
 ## AWS Amplify 環境変数の更新
 
