@@ -121,7 +121,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
     };
 
     sendShareRequest();
-  }, [sharePromptTrigger, modelType, currentMarkdown, sessionId, isLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharePromptTrigger, modelType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
