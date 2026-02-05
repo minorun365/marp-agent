@@ -457,19 +457,19 @@ web_searchツールがエラーを返した場合：
 代わりに `output_slide` ツールを使ってマークダウンを出力し、フロントエンドでは `tool_use` イベントを検知してステータス表示する方式が有効。
 
 ```python
-from contextvars import ContextVar
-
-# 並行リクエストでも安全なコンテキスト変数（globalではなくContextVarを使用）
-_generated_markdown: ContextVar[str | None] = ContextVar('generated_markdown', default=None)
+# スライド出力用のグローバル変数
+# NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
+_generated_markdown: str | None = None
 
 @tool
 def output_slide(markdown: str) -> str:
     """生成したスライドのマークダウンを出力します。"""
-    _generated_markdown.set(markdown)
+    global _generated_markdown
+    _generated_markdown = markdown
     return "スライドを出力しました。"
 ```
 
-**注意**: `global`変数は並行リクエストで値が上書きされるため、`contextvars.ContextVar`を使用。output_slide, web_search, generate_tweet の全ツールで同様のパターンを適用。
+**注意**: Strands Agentsはツールを別スレッドで実行するため、`contextvars.ContextVar`で値をセットしてもメインスレッドから参照できない。そのためグローバル変数を使用する。AgentCore Runtimeはリクエストごとに独立コンテナで動作するため、並行性の問題はない。output_slide, web_search, generate_tweet の全ツールで同様のパターンを適用。
 
 **注意**: イベントのペイロードは `content` または `data` フィールドに格納される。両方に対応するコードが必要：
 
