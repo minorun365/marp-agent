@@ -11,6 +11,8 @@ interface ChatInputProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
+const MAX_INPUT_LENGTH = 2000;
+
 export function ChatInput({
   input,
   setInput,
@@ -22,6 +24,7 @@ export function ChatInput({
   onSubmit,
 }: ChatInputProps) {
   const modelLabel = modelType === 'claude' ? 'Sonnet' : modelType === 'kimi' ? 'Kimi' : 'Opus';
+  const isNearLimit = input.length > MAX_INPUT_LENGTH * 0.9;
 
   return (
     <form onSubmit={onSubmit} className="border-t px-6 py-4">
@@ -52,19 +55,27 @@ export function ChatInput({
             ref={inputRef}
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value.slice(0, MAX_INPUT_LENGTH))}
+            maxLength={MAX_INPUT_LENGTH}
             placeholder="例：AgentCoreの入門資料"
             className="flex-1 bg-transparent px-3 py-2 focus:outline-none placeholder:text-gray-400"
             disabled={isLoading}
           />
         </div>
-        <button
-          type="submit"
-          disabled={isLoading || !input.trim()}
-          className="btn-kag text-white px-4 sm:px-6 py-2 rounded-lg whitespace-nowrap"
-        >
-          送信
-        </button>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            className="btn-kag text-white px-4 sm:px-6 py-2 rounded-lg whitespace-nowrap"
+          >
+            送信
+          </button>
+          {isNearLimit && (
+            <span className={`text-[10px] ${input.length >= MAX_INPUT_LENGTH ? 'text-red-500' : 'text-gray-400'}`}>
+              {input.length}/{MAX_INPUT_LENGTH}
+            </span>
+          )}
+        </div>
       </div>
     </form>
   );

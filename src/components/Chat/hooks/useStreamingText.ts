@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { Message } from '../types';
+import { createMessage } from '../types';
 
 interface UseStreamingTextReturn {
   streamText: (
@@ -33,7 +34,7 @@ export function useStreamingText(): UseStreamingTextReturn {
         if (options?.filterPredicate) {
           filtered = prev.filter(msg => !options.filterPredicate!(msg));
         }
-        return [...filtered, { role: 'assistant', content: '', isStreaming: true }];
+        return [...filtered, createMessage({ role: 'assistant', content: '', isStreaming: true })];
       });
     }
 

@@ -43,12 +43,12 @@ export function MessageList({ messages, status }: MessageListProps) {
 
           // ステータスメッセージの場合
           if (message.isStatus) {
-            return <StatusMessage key={index} message={message} index={index} />;
+            return <StatusMessage key={message.id} message={message} index={index} />;
           }
 
           return (
             <MessageBubble
-              key={index}
+              key={message.id}
               message={message}
               showStatus={!!showStatus}
               status={status}

@@ -88,24 +88,26 @@ function MainApp({ signOut }: { signOut?: () => void }) {
     }, 100);
   };
 
-  const handleDownloadPdf = async (theme: string) => {
+  const handleExport = async (format: 'pdf' | 'pptx', theme: string) => {
     if (!markdown) return;
+
+    const exportFns = {
+      pdf: useMock ? exportPdfMock : exportPdf,
+      pptx: useMock ? exportPptxMock : exportPptx,
+    };
 
     setIsDownloading(true);
     try {
-      const exportFn = useMock ? exportPdfMock : exportPdf;
-      const blob = await exportFn(markdown, theme);
+      const blob = await exportFns[format](markdown, theme);
 
-      // 新しいタブでPDFを開く
       const url = URL.createObjectURL(blob);
       const newWindow = window.open(url, '_blank');
 
       // ポップアップブロック検出
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        // ブロックされた場合はダウンロードリンクで代替
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'slide.pdf';
+        a.download = `slide.${format}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -124,45 +126,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
       }
     } catch (error) {
       console.error('Download error:', error);
-      alert(`ダウンロードに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const handleDownloadPptx = async (theme: string) => {
-    if (!markdown) return;
-
-    setIsDownloading(true);
-    try {
-      const exportFn = useMock ? exportPptxMock : exportPptx;
-      const blob = await exportFn(markdown, theme);
-
-      const url = URL.createObjectURL(blob);
-      const newWindow = window.open(url, '_blank');
-
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'slide.pptx';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        alert('ポップアップがブロックされたため、直接ダウンロードしました。');
-      }
-
-      if (useMock) {
-        alert('モックモード: マークダウンファイルをダウンロードしました。');
-      }
-
-      setActiveTab('chat');
-      if (!hasShownSharePrompt) {
-        setSharePromptTrigger(prev => prev + 1);
-        setHasShownSharePrompt(true);
-      }
-    } catch (error) {
-      console.error('Download error:', error);
-      alert(`PPTXダウンロードに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      alert(`${format.toUpperCase()}ダウンロードに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
     } finally {
       setIsDownloading(false);
     }
@@ -258,11 +222,10 @@ function MainApp({ signOut }: { signOut?: () => void }) {
         <div className={`h-full ${activeTab === 'preview' ? '' : 'hidden'}`}>
           <SlidePreview
             markdown={markdown}
-            onDownloadPdf={handleDownloadPdf}
-            onDownloadPptx={handleDownloadPptx}
+            onDownloadPdf={(theme) => handleExport('pdf', theme)}
+            onDownloadPptx={(theme) => handleExport('pptx', theme)}
             onShareSlide={handleShareRequest}
             isDownloading={isDownloading}
-            isSharing={isSharing}
             onRequestEdit={handleRequestEdit}
           />
         </div>

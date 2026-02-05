@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Message } from './types';
 
@@ -7,7 +8,7 @@ interface MessageBubbleProps {
   status?: string;
 }
 
-export function MessageBubble({ message, showStatus, status }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message, showStatus, status }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
@@ -43,4 +44,4 @@ export function MessageBubble({ message, showStatus, status }: MessageBubbleProp
       </div>
     </div>
   );
-}
+});

@@ -23,12 +23,10 @@ interface SlidePreviewProps {
   onDownloadPptx: (theme: string) => void;
   onShareSlide: (theme: string) => void;
   isDownloading: boolean;
-  isSharing: boolean;
   onRequestEdit?: () => void;
 }
 
-export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, onShareSlide, isDownloading, isSharing: _isSharing, onRequestEdit }: SlidePreviewProps) {
-  void _isSharing; // propsとして受け取るが、このコンポーネントでは使用しない
+export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, onShareSlide, isDownloading, onRequestEdit }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
