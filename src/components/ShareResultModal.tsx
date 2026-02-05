@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ShareResultModalProps {
   isOpen: boolean;
@@ -9,6 +9,11 @@ interface ShareResultModalProps {
 
 export function ShareResultModal({ isOpen, url, expiresAt, onClose }: ShareResultModalProps) {
   const [copied, setCopied] = useState(false);
+
+  // URL変更時にコピー状態をリセット
+  useEffect(() => {
+    setCopied(false);
+  }, [url]);
 
   if (!isOpen) return null;
 
