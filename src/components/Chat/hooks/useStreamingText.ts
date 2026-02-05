@@ -38,11 +38,12 @@ export function useStreamingText(): UseStreamingTextReturn {
     }
 
     // 1文字ずつ表示
+    // 注意: isStreamingチェックを削除（finallyブロックで先にfalseにされるため）
     for (const char of text) {
       await new Promise(resolve => setTimeout(resolve, delay));
       setMessages(prev =>
         prev.map((msg, idx) =>
-          idx === prev.length - 1 && msg.role === 'assistant' && msg.isStreaming
+          idx === prev.length - 1 && msg.role === 'assistant'
             ? { ...msg, content: msg.content + char }
             : msg
         )
@@ -52,7 +53,7 @@ export function useStreamingText(): UseStreamingTextReturn {
     // ストリーミング完了
     setMessages(prev =>
       prev.map((msg, idx) =>
-        idx === prev.length - 1 && msg.role === 'assistant' && msg.isStreaming
+        idx === prev.length - 1 && msg.role === 'assistant'
           ? { ...msg, isStreaming: false }
           : msg
       )
