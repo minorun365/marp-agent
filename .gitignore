@@ -23,10 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# amplify
+# Amplify
 .amplify
 amplify_outputs*
 amplifyconfiguration*
+
+# CSSテーマ（ビルド時にsrc/themes/からコピー）
+amplify/agent/runtime/*.css
 
 # Python
 .venv
