@@ -24,8 +24,15 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # エージェントコードと全テーマをコピー
-COPY agent.py ./
+COPY agent.py config.py ./
 COPY *.css ./
+
+# サブモジュールをコピー
+COPY tools/ ./tools/
+COPY handlers/ ./handlers/
+COPY exports/ ./exports/
+COPY sharing/ ./sharing/
+COPY session/ ./session/
 
 EXPOSE 8080
 
