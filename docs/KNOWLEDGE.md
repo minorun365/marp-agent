@@ -1171,9 +1171,21 @@ Marpの `==テキスト==` ハイライト記法は、日本語のカギカッ�
 src/
 ├── App.tsx              # メイン（タブ切り替え、状態管理）
 ├── components/
-│   ├── Chat.tsx         # チャットUI（ストリーミング対応）
+│   ├── Chat/            # チャットUI（分割済み）
+│   │   ├── index.tsx    # メインコンポーネント
+│   │   ├── ChatInput.tsx
+│   │   ├── MessageList.tsx
+│   │   ├── MessageBubble.tsx
+│   │   ├── StatusMessage.tsx
+│   │   ├── constants.ts # TIPS, MESSAGES定数
+│   │   ├── types.ts     # 型定義
+│   │   └── hooks/       # useTipRotation, useStreamingText
 │   └── SlidePreview.tsx # スライドプレビュー
-└── hooks/               # カスタムフック（今後追加）
+└── hooks/
+    ├── useAgentCore.ts  # re-export
+    ├── api/             # agentCoreClient, exportClient
+    ├── streaming/       # sseParser
+    └── mock/            # mockClient
 ```
 
 ### 状態管理

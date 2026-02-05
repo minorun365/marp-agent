@@ -46,12 +46,13 @@ npm run test
 | パス | 内容 |
 |------|------|
 | `src/` | Reactフロントエンド |
-| `src/hooks/useAgentCore.ts` | AgentCore API呼び出し（SSE処理） |
-| `src/components/` | UIコンポーネント（Chat, SlidePreview等） |
+| `src/hooks/` | API呼び出し・SSE処理（agentCoreClient, exportClient, sseParser） |
+| `src/components/Chat/` | チャットUI（分割済み: index, ChatInput, MessageList等） |
+| `src/components/` | その他UIコンポーネント（SlidePreview等） |
 | `amplify/` | バックエンド定義（CDK） |
 | `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |
 | `amplify/agent/resource.ts` | AgentCore Runtime定義 |
-| `amplify/agent/runtime/` | Pythonエージェント＋Dockerfile |
+| `amplify/agent/runtime/` | Pythonエージェント（分割済み: config, tools/, handlers/, exports/, sharing/, session/） |
 | `amplify/storage/resource.ts` | 共有スライド用S3+CloudFront |
 
 ### 主要な技術スタック
