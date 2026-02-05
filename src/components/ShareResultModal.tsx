@@ -22,6 +22,12 @@ export function ShareResultModal({ isOpen, url, expiresAt, onClose }: ShareResul
     }
   };
 
+  const handleShareToX = () => {
+    const tweetText = `#パワポ作るマン でスライドを作りました！みんなも試してみてね👍\n${url}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+    window.open(twitterUrl, '_blank', 'width=600,height=400');
+  };
+
   // 有効期限を日本時間で表示
   const expiresDate = new Date(expiresAt * 1000).toLocaleDateString('ja-JP', {
     year: 'numeric',
@@ -59,13 +65,21 @@ export function ShareResultModal({ isOpen, url, expiresAt, onClose }: ShareResul
           {expiresDate}まで有効（7日間）
         </p>
 
-        {/* 閉じるボタン */}
-        <button
-          onClick={onClose}
-          className="w-full btn-kag text-white py-2 rounded-lg"
-        >
-          閉じる
-        </button>
+        {/* アクションボタン */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 border border-gray-300 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            閉じる
+          </button>
+          <button
+            onClick={handleShareToX}
+            className="flex-1 btn-kag text-white py-2 rounded-lg"
+          >
+            Xでシェア
+          </button>
+        </div>
       </div>
     </div>
   );
