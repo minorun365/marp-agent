@@ -457,13 +457,19 @@ web_searchツールがエラーを返した場合：
 代わりに `output_slide` ツールを使ってマークダウンを出力し、フロントエンドでは `tool_use` イベントを検知してステータス表示する方式が有効。
 
 ```python
+from contextvars import ContextVar
+
+# 並行リクエストでも安全なコンテキスト変数（globalではなくContextVarを使用）
+_generated_markdown: ContextVar[str | None] = ContextVar('generated_markdown', default=None)
+
 @tool
 def output_slide(markdown: str) -> str:
     """生成したスライドのマークダウンを出力します。"""
-    global _generated_markdown
-    _generated_markdown = markdown
+    _generated_markdown.set(markdown)
     return "スライドを出力しました。"
 ```
+
+**注意**: `global`変数は並行リクエストで値が上書きされるため、`contextvars.ContextVar`を使用。output_slide, web_search, generate_tweet の全ツールで同様のパターンを適用。
 
 **注意**: イベントのペイロードは `content` または `data` フィールドに格納される。両方に対応するコードが必要：
 

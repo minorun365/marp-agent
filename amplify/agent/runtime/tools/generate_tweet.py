@@ -4,6 +4,7 @@ import urllib.parse
 from strands import tool
 
 # ツイートURL用のグローバル変数
+# NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
 _generated_tweet_url: str | None = None
 
 
@@ -28,9 +29,9 @@ def generate_tweet_url(tweet_text: str) -> str:
     Returns:
         生成完了メッセージ
     """
-    global _generated_tweet_url
     # 日本語をURLエンコード
     encoded_text = urllib.parse.quote(tweet_text, safe='')
     # Twitter Web Intent（compose/postではtextパラメータが無視される）
+    global _generated_tweet_url
     _generated_tweet_url = f"https://twitter.com/intent/tweet?text={encoded_text}"
     return "ツイートURLを生成しました。"

@@ -9,6 +9,7 @@
 - TypeScript
 - Vite
 - Tailwind CSS v4（ゼロコンフィグ、@theme でカスタムカラー定義）
+- Vitest + React Testing Library（テスト）
 
 ### AWS Amplify
 - @aws-amplify/backend

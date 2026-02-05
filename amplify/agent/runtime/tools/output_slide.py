@@ -2,7 +2,8 @@
 
 from strands import tool
 
-# スライド出力用のグローバル変数（invokeで参照）
+# スライド出力用のグローバル変数
+# NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
 _generated_markdown: str | None = None
 
 

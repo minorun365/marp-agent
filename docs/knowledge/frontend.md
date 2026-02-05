@@ -62,7 +62,7 @@ src/
 │   │   ├── StatusMessage.tsx
 │   │   ├── constants.ts # TIPS, MESSAGES定数
 │   │   ├── types.ts     # 型定義
-│   │   └── hooks/       # useTipRotation, useStreamingText
+│   │   └── hooks/       # useChatMessages, useTipRotation, useStreamingText
 │   └── SlidePreview.tsx # スライドプレビュー
 └── hooks/
     ├── useAgentCore.ts  # re-export
@@ -71,15 +71,26 @@ src/
     └── mock/            # mockClient
 ```
 
+### Chatコンポーネントの設計
+
+Chat/index.tsx はUIレンダリングのみの薄いコンポーネント（約40行）。
+ロジックは `useChatMessages` カスタムフックに集約：
+
+- **useChatMessages.ts**: メッセージ管理、API呼び出し、ストリーミング処理
+- **types.ts**: `Message`型（`id`フィールド付き）と `createMessage()` ヘルパー
+  - IDはインクリメンタルカウンターで自動採番、React keyに使用
+- **MessageBubble.tsx**: `React.memo`でメモ化し、変更のないメッセージの再レンダリングを防止
+- **ChatInput.tsx**: `MAX_INPUT_LENGTH = 2000` の文字数制限付き（90%超で残り文字数を表示）
+
 ### 状態管理
 - `markdown`: 生成されたMarpマークダウン
 - `activeTab`: 現在のタブ（chat / preview）
 - `isDownloading`: PDF/PPTX生成中フラグ
 
 ### ダウンロード機能
-プレビュー画面のヘッダーにドロップダウンメニューでダウンロード形式を選択：
-- **PDF形式**: `exportPdf()` → バックエンド `action: 'export_pdf'` → Marp CLI `--pdf`
-- **PPTX形式**: `exportPptx()` → バックエンド `action: 'export_pptx'` → Marp CLI `--pptx`
+プレビュー画面のヘッダーにドロップダウンメニューでダウンロード形式を選択。
+App.tsxの `handleExport(format: 'pdf' | 'pptx', theme: string)` で両形式を統一処理：
+- バックエンドに `action: 'export_pdf'` または `'export_pptx'` を送信 → Marp CLI で変換
 
 ※ `--pptx-editable`（編集可能PPTX）はLibreOffice依存のため未対応
 
