@@ -1240,6 +1240,46 @@ const slides = useMemo(() => {
 
 **症状**: 状態を変えても UI が更新されない場合、`useMemo` の依存配列を疑う。
 
+### useEffectの依存配列による無限ループ
+
+useEffect内で変更する状態を依存配列に含めると、無限ループが発生する。
+
+```typescript
+// ❌ 無限ループ: isLoadingを依存配列に含めている
+useEffect(() => {
+  if (!trigger || isLoading) return;
+
+  const sendRequest = async () => {
+    setIsLoading(true);  // これで依存配列が変化 → useEffect再発火
+    await doSomething();
+    setIsLoading(false); // またisLoadingが変化 → 条件を満たして再実行
+  };
+
+  sendRequest();
+}, [trigger, isLoading]);  // ❌ isLoadingが依存配列にある
+
+// ✅ 正しい実装: 内部で変更する状態は依存配列から除外
+useEffect(() => {
+  if (!trigger || isLoading) return;
+
+  const sendRequest = async () => {
+    setIsLoading(true);
+    await doSomething();
+    setIsLoading(false);
+  };
+
+  sendRequest();
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [trigger]);  // ✅ triggerの変化時のみ発火
+```
+
+**症状**: 特定のアクション後にAPIリクエストが無限に送信される。
+
+**対策**:
+- useEffect内で `setState` する状態は依存配列に含めない
+- リファクタリング時は元のコードの依存配列を正確に維持する
+- ESLintの警告は必要に応じて `eslint-disable-next-line` で抑制
+
 ### ステータスメッセージ後のテキスト表示
 
 ツール使用後にLLMが追加のテキスト（エラー報告など）を返す場合、ステータスメッセージの後に新しいメッセージとして追加する処理が必要：
