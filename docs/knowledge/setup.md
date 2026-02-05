@@ -16,7 +16,7 @@
 - @aws-amplify/ui-react
 
 ### エージェント・インフラ
-- strands-agents（Python >=3.10）
+- strands-agents（Python >=3.13）
 - bedrock-agentcore（AgentCore SDK）
 - @marp-team/marp-cli
 - @aws-cdk/aws-bedrock-agentcore-alpha
