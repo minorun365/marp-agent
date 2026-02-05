@@ -33,7 +33,7 @@
 | #51 | 編集可能PPTXでダウンロードさせたい | 3-4日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #22 | 参考資料などをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #23 | コードベースのリアーキテクチャ | 1-2週間 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #23 | コードベースのリアーキテクチャ | 1-2週間 | ✅ 完了 | | ✅ | ✅ | ➖ | ➖ |
 
 ---
 
@@ -715,370 +715,43 @@ npm install @uiw/react-codemirror @codemirror/lang-markdown @codemirror/lang-yam
 
 ---
 
-### #23 コードベースのリアーキテクチャ
+### #23 コードベースのリアーキテクチャ ✅
 
-**概要**: 肥大化したファイルの分割・重複解消・テスト追加。最新のベストプラクティスを反映した段階的改善計画。
+**完了日**: 2026-02-06
+**リリース**: [v1.4.0](https://github.com/minorun365/marp-agent/releases/tag/v1.4.0)
 
-**最終更新**: 2026-02-04（AWS MCPサーバー・context7・Strands Agents公式ドキュメント調査を反映）
+#### 実施内容
 
----
+| 対象 | Before | After | 削減率 |
+|------|--------|-------|--------|
+| agent.py | 883行 | 256行 | 70% |
+| Chat.tsx | 674行 | 326行 | 52% |
 
-#### 現状分析
+#### 分割後の構成
 
-##### Chat.tsx（674行）
-
-| 項目 | 内容 |
-|------|------|
-| **主な責務** | メッセージ管理、フォーム入力、AIエージェント呼び出し、ストリーミングイベントハンドリング、UI状態管理、豆知識ローテーション |
-| **問題点** | ①責務の過多 ②複雑な条件分岐（onText内のメッセージインデックス検索） ③タイマー管理の複雑さ（tipTimeout/tipIntervalの二重管理） ④ステータス表示ロジックの分散 ⑤テスト困難性 |
-
-##### useAgentCore.ts（508行）
-
-| 項目 | 内容 |
-|------|------|
-| **主な責務** | AgentCore REST API呼び出し、SSEストリーミング処理、イベントタイプ振り分け、PDF/PPTX生成、モック実装 |
-| **問題点** | ①**PDF/PPTX生成が90%同じコード**（約80行×2のコピペ） ②SSEストリーミング処理の重複 ③関心の分離がない（認証、ストリーミング、イベント振り分けが混在） |
-
-##### agent.py（878行）
-
-| 項目 | 内容 |
-|------|------|
-| **主な責務** | エントリーポイント（invoke 250行）、ツール定義（3つ計125行）、セッション管理、Kimi K2対応（リトライ・フォールバック・thinkタグフィルタリング計100行）、PDF/PPTX生成、スライド共有 |
-| **問題点** | ①**巨大なinvoke関数（250行）** ②PDF/PPTX生成の重複（90%同じ） ③グローバル変数の悪用（`_generated_markdown`等） ④Kimi K2専用ロジックが散乱 |
-
-##### CSS重複
-
-| ディレクトリ | ファイル数 | 行数 |
-|-------------|-----------|------|
-| `src/themes/` | 3テーマ | 298行 |
-| `amplify/agent/runtime/` | 3テーマ | 298行 |
-
-**問題**: 完全に同じ内容が2箇所に存在。メンテナンス時に両方を修正する必要がある。
-
-##### CDKインフラ
-
-| 項目 | 内容 |
-|------|------|
-| **問題点** | ①型アサーション`(containerImageBuild.repository as ecr.Repository)`の使用 ②環境変数でランタイム設定（CDKベストプラクティス違反） ③Observability設定がハードコード |
-
----
-
-#### リアーキテクチャ案（2026-02版・最新ベストプラクティス反映）
-
-##### 設計原則（CDK Best Practices + Strands Agents公式ガイド準拠）
-
-| 原則 | 適用方法 |
-|------|---------|
-| **L2コンストラクト優先** | Runtimeはagentcore-alphaのL2を使用（現状維持） |
-| **プロパティで設定** | 環境変数ではなくPropsオブジェクトで設定を渡す |
-| **Constructでモデル化** | 論理単位をConstructに分割、Stackはデプロイ単位 |
-| **ツールは別モジュール** | Strands公式推奨のモジュール分割パターンを採用 |
-| **クラスベースツール** | 状態を持つツールはクラスで実装（DBコネクション等） |
-
----
-
-##### フェーズ0: 即時改善（工数: 1-2時間）⭐最優先
-
-**CSS重複排除**（シンボリックリンク方式）
-
-```bash
-# 実装手順
-cd amplify/agent/runtime
-rm gradient.css border.css beam.css
-ln -s ../../../src/themes/gradient.css .
-ln -s ../../../src/themes/border.css .
-ln -s ../../../src/themes/beam.css .
-```
-
-**メリット**:
-- 即座に重複解消
-- Dockerビルド時にリンク先が解決される
-- メンテナンスコストゼロ
-
----
-
-##### フェーズ1: バックエンド分割（工数: 6-8時間）⭐高ROI
-
-**Strands Agents公式パターン準拠のツール分割**
-
+**バックエンド**:
 ```
 amplify/agent/runtime/
-├── agent.py                 # エントリーポイント（~80行）
-│   └── invoke()             # AgentCore entrypoint
-├── agent_factory.py         # Agent生成ファクトリ（~60行）
-│   └── create_agent()       # モデル/ツール初期化
-├── models/
-│   ├── __init__.py
-│   └── config.py            # モデル設定（~50行）
-│       └── get_model_config()
-├── tools/                   # @tool デコレータで分割
-│   ├── __init__.py          # TOOL_REGISTRY
-│   ├── web_search.py        # Tavily検索（~80行）
-│   ├── output_slide.py      # スライド出力（~40行）
-│   └── generate_tweet_url.py # ツイートURL生成（~30行）
-├── handlers/
-│   ├── __init__.py
-│   ├── streaming.py         # ストリーミング処理（~100行）
-│   │   └── StreamingHandler (class)
-│   └── kimi_adapter.py      # Kimi K2専用処理（~120行）
-│       └── KimiModelAdapter (class)
-├── exports/
-│   ├── __init__.py
-│   └── slide_exporter.py    # PDF/PPTX統合生成（~80行）
-│       └── SlideExporter (class)
-├── session/
-│   ├── __init__.py
-│   └── manager.py           # セッション管理（~50行）
-│       └── SessionManager (class)
-└── tests/                   # pytestテスト
-    ├── conftest.py          # フィクスチャ
-    ├── test_tools.py        # ツール単体テスト
-    ├── test_streaming.py    # ストリーミングテスト
-    └── test_kimi_adapter.py # Kimi対応テスト
+├── agent.py           # エントリーポイント
+├── config.py          # モデル設定・システムプロンプト
+├── tools/             # web_search, output_slide, generate_tweet
+├── handlers/          # kimi_adapter
+├── exports/           # slide_exporter
+├── sharing/           # s3_uploader
+└── session/           # manager
 ```
 
-**Strands公式パターンの適用例**（tools/web_search.py）:
-
-```python
-from strands import tool
-from tavily import TavilyClient
-import os
-
-# クラスベースツール: 複数APIキーのフォールバック管理
-class TavilySearchTool:
-    def __init__(self):
-        self.api_keys = [
-            os.environ.get("TAVILY_API_KEY"),
-            os.environ.get("TAVILY_API_KEY2"),
-            os.environ.get("TAVILY_API_KEY3"),
-        ]
-        self.api_keys = [k for k in self.api_keys if k]
-        self.current_key_index = 0
-
-    @tool
-    def web_search(self, query: str, max_results: int = 5) -> str:
-        """Web検索を実行してスライド作成に必要な情報を取得します。
-
-        Args:
-            query: 検索クエリ
-            max_results: 最大結果数（デフォルト5）
-        """
-        # フォールバック付き検索実装
-        ...
-
-# グローバルインスタンス
-_tavily_tool = TavilySearchTool()
-web_search = _tavily_tool.web_search
-```
-
-**メリット**:
-- invoke関数が250行→50行に縮小
-- 各モジュールが単体テスト可能
-- Kimi K2対応が`KimiModelAdapter`クラスに封じ込め
-- Strands公式パターンでメンテナンス性向上
-
----
-
-##### フェーズ2: フロントエンド分割（工数: 4-6時間）
-
-**useAgentCore.ts の関心分離**
-
-```
-src/hooks/
-├── useAgentCore.ts          # 統合フック（~100行）
-│   └── useAgentCore()       # 公開API
-├── api/
-│   ├── agentCoreClient.ts   # REST API呼び出し（~80行）
-│   │   ├── invokeAgent()
-│   │   └── exportSlide()    # PDF/PPTX統合（重複解消）
-│   └── mockClient.ts        # モック実装（~60行）
-├── streaming/
-│   ├── sseParser.ts         # SSEパース（~50行）
-│   └── eventDispatcher.ts   # イベント振り分け（~60行）
-└── __tests__/               # Vitestテスト
-    ├── agentCoreClient.test.ts
-    ├── sseParser.test.ts
-    └── eventDispatcher.test.ts
-```
-
-**Chat.tsx の分割**
-
+**フロントエンド**:
 ```
 src/components/Chat/
-├── index.tsx                # エントリポイント（re-export）
-├── ChatContainer.tsx        # ロジック（~150行）
-├── ChatView.tsx             # UIのみ（~200行）
-├── hooks/
-│   ├── useMessages.ts       # メッセージ状態（~50行）
-│   ├── useAgentStatus.ts    # ステータス管理（~40行）
-│   ├── useTipRotation.ts    # 豆知識ローテーション（~30行）
-│   └── useChatHandlers.ts   # イベントハンドラ（~80行）
-├── constants.ts             # MESSAGES, TIPS定数
-└── __tests__/
-    ├── useMessages.test.ts
-    └── useTipRotation.test.ts
+├── index.tsx          # メインコンポーネント
+├── ChatInput.tsx      # 入力フォーム
+├── MessageList.tsx    # メッセージ一覧
+├── MessageBubble.tsx  # メッセージ吹き出し
+├── StatusMessage.tsx  # ステータス表示
+├── hooks/             # useTipRotation, useStreamingText
+├── constants.ts       # TIPS, MESSAGES定数
+└── types.ts           # 型定義
 ```
 
----
-
-##### フェーズ3: CDKインフラ改善（工数: 2-3時間）
-
-**CDK Best Practices準拠の改善**
-
-```typescript
-// amplify/agent/resource.ts - Before
-(containerImageBuild.repository as ecr.Repository).addLifecycleRule(...)
-
-// After: 自前でECRリポジトリを作成
-const repository = new ecr.Repository(stack, 'MarpAgentRepository', {
-  repositoryName: `marp-agent-${nameSuffix}`,
-  removalPolicy: cdk.RemovalPolicy.DESTROY,
-  emptyOnDelete: true,
-  imageScanOnPush: true,
-});
-
-repository.addLifecycleRule({
-  description: 'Keep last 5 images',
-  maxImageCount: 5,
-  rulePriority: 1,
-});
-```
-
-**Propsパターンの導入**:
-
-```typescript
-// amplify/agent/types.ts
-interface MarpAgentConfig {
-  readonly tavilyApiKeys: string[];
-  readonly observabilityEnabled: boolean;
-  readonly sharedSlidesBucket?: s3.IBucket;
-  readonly cloudfrontDomain?: string;
-}
-
-// amplify/agent/resource.ts
-export function createMarpAgent(props: MarpAgentProps & { config: MarpAgentConfig }) {
-  // 環境変数ではなくpropsから設定を取得
-}
-```
-
----
-
-##### フェーズ4: テスト追加（工数: 5-7時間）
-
-**テストフレームワーク構成**
-
-| レイヤー | フレームワーク | 対象 |
-|---------|--------------|------|
-| フロントエンド | Vitest + React Testing Library | hooks, コンポーネント |
-| バックエンド | pytest + pytest-asyncio | ツール, ストリーミング |
-| E2E | Playwright | 主要フロー |
-
-**Vitest設定（vitest.config.ts）更新**:
-
-```typescript
-import { defineConfig } from 'vitest/config'
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
-      include: ['src/hooks/**', 'src/components/**'],
-    },
-  },
-})
-```
-
-**pytest設定（amplify/agent/runtime/pytest.ini）**:
-
-```ini
-[pytest]
-asyncio_mode = auto
-testpaths = tests
-python_files = test_*.py
-addopts = -v --tb=short
-```
-
-**テスト優先順位**:
-
-| 優先度 | 対象 | テスト内容 | 工数 |
-|--------|------|-----------|------|
-| 1 | tools/ | 各ツールの単体テスト | 1.5h |
-| 2 | handlers/kimi_adapter.py | thinkタグフィルタリング、リトライ | 1.5h |
-| 3 | api/agentCoreClient.ts | SSEパース、エラーハンドリング | 1.5h |
-| 4 | hooks/useMessages.ts | 状態管理ロジック | 1h |
-| 5 | E2E | ログイン→生成→ダウンロードフロー | 1.5h |
-
----
-
-##### フェーズ5: Observability強化（工数: 2-3時間）
-
-**AgentCore Observability + Langfuse連携**
-
-現在の設定:
-```typescript
-environmentVariables: {
-  AGENT_OBSERVABILITY_ENABLED: 'true',
-  OTEL_PYTHON_DISTRO: 'aws_distro',
-  OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
-  OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
-}
-```
-
-**Langfuse追加設定（オプション）**:
-
-```typescript
-// 環境変数に追加
-OTEL_EXPORTER_OTLP_ENDPOINT: process.env.LANGFUSE_BASE_URL
-  ? `${process.env.LANGFUSE_BASE_URL}/api/public/otel`
-  : '',
-OTEL_EXPORTER_OTLP_HEADERS: process.env.LANGFUSE_PUBLIC_KEY
-  ? `Authorization=Basic ${Buffer.from(`${process.env.LANGFUSE_PUBLIC_KEY}:${process.env.LANGFUSE_SECRET_KEY}`).toString('base64')}`
-  : '',
-```
-
-**CloudWatch Transaction Search設定**:
-```bash
-# 初回のみ: Transaction Searchを有効化
-aws xray update-trace-segment-destination --destination CloudWatchLogs
-```
-
----
-
-#### 実施ロードマップ
-
-| フェーズ | タスク | 工数 | 優先度 | 依存関係 |
-|---------|--------|------|--------|----------|
-| **0** | CSS重複排除（シンボリックリンク） | 1h | ⭐⭐⭐ | なし |
-| **1** | agent.py分割（Strands公式パターン） | 6-8h | ⭐⭐⭐ | なし |
-| **2** | useAgentCore.ts分割 | 4-5h | ⭐⭐⭐ | なし |
-| **2** | Chat.tsx分割 | 4-6h | ⭐⭐ | フェーズ2並行可 |
-| **3** | CDK型安全化（#32統合） | 2-3h | ⭐⭐ | なし |
-| **4** | テスト追加（pytest + Vitest） | 5-7h | ⭐⭐ | フェーズ1-2完了後 |
-| **5** | Observability強化 | 2-3h | ⭐ | フェーズ1完了後 |
-
----
-
-#### 工数合計
-
-| 範囲 | 最小 | 最大 |
-|------|------|------|
-| フェーズ0-1（最優先） | 7h | 9h |
-| フェーズ0-3（高ROI） | 17h | 23h |
-| すべて（テスト・Observability含む） | 24h | 33h |
-
-**推定期間**: 1.5-2.5週間
-
----
-
-#### 参考ドキュメント
-
-- [Strands Agents - Creating Custom Tools](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/tools/custom-tools/)
-- [AWS CDK Best Practices](https://docs.aws.amazon.com/cdk/v2/guide/best-practices.html)
-- [AgentCore Observability Quickstart](https://aws.github.io/bedrock-agentcore-starter-toolkit/user-guide/observability/quickstart.md)
-- [Vitest Guide](https://vitest.dev/guide/)
-- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+**詳細**: [docs/REARCHITECTURE_PROGRESS.md](./REARCHITECTURE_PROGRESS.md)
