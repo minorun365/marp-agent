@@ -11,7 +11,8 @@
 ### 1. `src/hooks/streaming/sseParser.ts`
 - `SSEIdleTimeoutError` カスタムエラークラスを追加（exportする）
 - `readSSEStream` に第4引数 `idleTimeoutMs?: number` を追加
-- `reader.read()` を `Promise.race` でタイムアウト検知（各ループイテレーションごと）
+- `reader.read()` を `Promise.race` でタイムアウト検知（**初回イベント受信前のみ**）
+- `firstEventReceived` フラグで初回イベント受信後はタイムアウトを解除（スライド生成等の長時間処理に影響しない）
 - `idleTimeoutMs` が未指定の場合は既存動作と完全一致（エクスポートAPIに影響なし）
 
 ### 2. `src/hooks/api/agentCoreClient.ts`
