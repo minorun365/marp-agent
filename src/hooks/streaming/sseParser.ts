@@ -19,7 +19,8 @@ export async function readSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onEvent: (event: Record<string, unknown>) => void | 'stop',
   onDone?: () => void,
-  idleTimeoutMs?: number
+  idleTimeoutMs?: number,
+  ongoingIdleTimeoutMs?: number
 ): Promise<void> {
   const decoder = new TextDecoder();
   let buffer = '';
@@ -28,10 +29,12 @@ export async function readSSEStream(
   while (true) {
     let readResult: ReadableStreamReadResult<Uint8Array>;
 
-    // 初回イベント受信前のみタイムアウトを適用（スライド生成等の長時間処理には影響しない）
-    if (idleTimeoutMs && !firstEventReceived) {
+    // 初回イベント受信前: idleTimeoutMs（スロットリング検知）
+    // 初回イベント受信後: ongoingIdleTimeoutMs（推論ハング検知）
+    const currentTimeout = firstEventReceived ? ongoingIdleTimeoutMs : idleTimeoutMs;
+    if (currentTimeout) {
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new SSEIdleTimeoutError(idleTimeoutMs)), idleTimeoutMs);
+        setTimeout(() => reject(new SSEIdleTimeoutError(currentTimeout)), currentTimeout);
       });
       readResult = await Promise.race([reader.read(), timeoutPromise]);
     } else {
