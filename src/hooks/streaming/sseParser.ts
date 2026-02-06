@@ -3,18 +3,40 @@
  */
 
 /**
+ * SSEストリームのアイドルタイムアウトエラー
+ */
+export class SSEIdleTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`SSE idle timeout: no data received for ${timeoutMs}ms`);
+    this.name = 'SSEIdleTimeoutError';
+  }
+}
+
+/**
  * SSEレスポンスを読み取り、各イベントに対してコールバックを実行
  */
 export async function readSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onEvent: (event: Record<string, unknown>) => void | 'stop',
-  onDone?: () => void
+  onDone?: () => void,
+  idleTimeoutMs?: number
 ): Promise<void> {
   const decoder = new TextDecoder();
   let buffer = '';
 
   while (true) {
-    const { done, value } = await reader.read();
+    let readResult: ReadableStreamReadResult<Uint8Array>;
+
+    if (idleTimeoutMs) {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new SSEIdleTimeoutError(idleTimeoutMs)), idleTimeoutMs);
+      });
+      readResult = await Promise.race([reader.read(), timeoutPromise]);
+    } else {
+      readResult = await reader.read();
+    }
+
+    const { done, value } = readResult;
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });

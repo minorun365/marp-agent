@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { readSSEStream, base64ToBlob } from './sseParser';
+import { readSSEStream, base64ToBlob, SSEIdleTimeoutError } from './sseParser';
 
 /**
  * TextEncoderでUint8Arrayに変換するヘルパー
@@ -107,6 +107,43 @@ describe('readSSEStream', () => {
     await readSSEStream(reader, vi.fn(), onDone);
 
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('readSSEStream - idle timeout', () => {
+  function createHangingMockReader(): ReadableStreamDefaultReader<Uint8Array> {
+    return {
+      read: vi.fn(() => new Promise(() => {})),
+      cancel: vi.fn(),
+      releaseLock: vi.fn(),
+      closed: Promise.resolve(undefined),
+    } as unknown as ReadableStreamDefaultReader<Uint8Array>;
+  }
+
+  it('指定時間データが来なければSSEIdleTimeoutErrorをthrowする', async () => {
+    const reader = createHangingMockReader();
+
+    await expect(
+      readSSEStream(reader, vi.fn(), undefined, 100)
+    ).rejects.toThrow(SSEIdleTimeoutError);
+  });
+
+  it('idleTimeoutMsがundefinedのときはタイムアウトしない', async () => {
+    const reader = createMockReader([
+      'data: {"ok":true}\n\n',
+    ]);
+    const onEvent = vi.fn();
+
+    await readSSEStream(reader, onEvent, undefined, undefined);
+
+    expect(onEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('SSEIdleTimeoutErrorのプロパティが正しい', () => {
+    const error = new SSEIdleTimeoutError(10000);
+    expect(error.name).toBe('SSEIdleTimeoutError');
+    expect(error.message).toContain('10000');
+    expect(error).toBeInstanceOf(Error);
   });
 });
 

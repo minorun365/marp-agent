@@ -6,6 +6,9 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import outputs from '../../../amplify_outputs.json';
 import { readSSEStream } from '../streaming/sseParser';
 
+/** SSEストリームのアイドルタイムアウト（ミリ秒） */
+const SSE_IDLE_TIMEOUT_MS = 10_000;
+
 export interface AgentCoreCallbacks {
   onText: (text: string) => void;
   onStatus: (status: string) => void;
@@ -16,7 +19,7 @@ export interface AgentCoreCallbacks {
   onComplete: () => void;
 }
 
-export type ModelType = 'claude' | 'kimi' | 'opus';
+export type ModelType = 'sonnet' | 'kimi' | 'opus' | 'haiku';
 
 /**
  * AgentCore APIのベースURL・認証情報を取得
@@ -92,7 +95,7 @@ export async function invokeAgent(
   currentMarkdown: string,
   callbacks: AgentCoreCallbacks,
   sessionId?: string,
-  modelType: ModelType = 'claude'
+  modelType: ModelType = 'sonnet'
 ): Promise<void> {
   try {
     const { url, accessToken } = await getAgentCoreConfig();
@@ -124,7 +127,8 @@ export async function invokeAgent(
     await readSSEStream(
       reader,
       (event) => handleEvent(event as Parameters<typeof handleEvent>[0], callbacks),
-      () => callbacks.onComplete()
+      () => callbacks.onComplete(),
+      SSE_IDLE_TIMEOUT_MS
     );
   } catch (error) {
     callbacks.onError(error instanceof Error ? error : new Error(String(error)));

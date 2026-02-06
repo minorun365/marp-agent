@@ -21,6 +21,7 @@ export const MESSAGES = {
   EMPTY_STATE_EXAMPLE: '例: 「AWS入門の5枚スライドを作って」',
   ERROR: 'エラーが発生しました。もう一度お試しください。',
   ERROR_MODEL_NOT_AVAILABLE: 'Claude Opus 4.6はまだリリースされていないようです。Amazon Bedrockへのモデル追加をお待ちください！（ブラウザでページ更新すると、別のモデルを選んで新規チャットができます）',
+  ERROR_MODEL_THROTTLED: 'モデルの負荷が高いようです。しばらく時間を置いてからリトライするか、他のモデルをお試しください。',
 
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',

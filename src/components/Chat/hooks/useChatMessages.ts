@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { invokeAgent, invokeAgentMock } from '../../../hooks/useAgentCore';
+import { SSEIdleTimeoutError } from '../../../hooks/streaming/sseParser';
 import { MESSAGES, getWebSearchStatus, getShareMessage, useMock } from '../constants';
 import type { ModelType, Message } from '../types';
 import { createMessage } from '../types';
@@ -25,7 +26,7 @@ export function useChatMessages({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
-  const [modelType, setModelType] = useState<ModelType>('claude');
+  const [modelType, setModelType] = useState<ModelType>('sonnet');
   const initializedRef = useRef(false);
 
   const { startTipRotation, stopTipRotation } = useTipRotation();
@@ -237,8 +238,13 @@ export function useChatMessages({
         onError: (error) => {
           console.error('Agent error:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
+          const isIdleTimeout = error instanceof SSEIdleTimeoutError;
           const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
-          const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
+          const displayMessage = isIdleTimeout
+            ? MESSAGES.ERROR_MODEL_THROTTLED
+            : isModelNotAvailable
+              ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE
+              : MESSAGES.ERROR;
 
           streamText(displayMessage, setMessages, {
             filterPredicate: (msg) => !!msg.isStatus,
@@ -268,8 +274,13 @@ export function useChatMessages({
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const isIdleTimeout = error instanceof SSEIdleTimeoutError;
       const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
-      const displayMessage = isModelNotAvailable ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE : MESSAGES.ERROR;
+      const displayMessage = isIdleTimeout
+        ? MESSAGES.ERROR_MODEL_THROTTLED
+        : isModelNotAvailable
+          ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE
+          : MESSAGES.ERROR;
 
       setMessages(prev => {
         const filtered = prev.filter(msg => !msg.isStatus);
