@@ -171,6 +171,21 @@ aws ce get-cost-and-usage \
   --region $REGION --profile $PROFILE \
   --output json > "$OUTPUT_DIR/sonnet_usage.json"
 
+# Claude Opus 4.6の使用タイプ別コスト（キャッシュ効果分析用）
+aws ce get-cost-and-usage \
+  --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+  --granularity DAILY \
+  --metrics "UnblendedCost" \
+  --filter '{
+    "Dimensions": {
+      "Key": "SERVICE",
+      "Values": ["Claude Opus 4.6 (Amazon Bedrock Edition)"]
+    }
+  }' \
+  --group-by Type=DIMENSION,Key=USAGE_TYPE \
+  --region $REGION --profile $PROFILE \
+  --output json > "$OUTPUT_DIR/opus_usage.json"
+
 # 週次コスト取得（過去4週間）
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-28d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
@@ -482,88 +497,162 @@ echo "  週間合計: \$$TOTAL_COST"
 echo ""
 
 # ========================================
-# モデル別コスト内訳
+# 環境別 x モデル別コスト（表形式）
 # ========================================
-echo "🤖 モデル別コスト内訳（過去7日間）"
+echo "💰 Bedrockコスト内訳（過去7日間・セッション比率で環境按分）"
+echo ""
 
-# Claude Sonnet 4.5
+# モデル別コスト取得
 CLAUDE_SONNET_COST=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.5")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
 
-# Kimi K2
+CLAUDE_OPUS_COST=$(jq -r '
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Opus")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost.json")
+
 KIMI_COST=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Kimi")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
 
-# その他のBedrock
 OTHER_BEDROCK_COST=$(jq -r '
-  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.5") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.5") | not) and (.Keys[0] | contains("Claude Opus") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
 
-printf "  Claude Sonnet 4.5: \$%.2f\n" $CLAUDE_SONNET_COST
-printf "  Kimi K2:           \$%.2f （クレジット適用で実質\$0）\n" $KIMI_COST
-printf "  その他Bedrock:     \$%.2f\n" $OTHER_BEDROCK_COST
+# セッション比率で環境別に按分
+TOTAL_INV=$((TOTAL_MAIN + TOTAL_KAG + TOTAL_DEV))
+if [ "$TOTAL_INV" -gt 0 ]; then
+  # 比率計算（小数）
+  MAIN_RATIO=$(echo "scale=6; $TOTAL_MAIN / $TOTAL_INV" | bc)
+  KAG_RATIO=$(echo "scale=6; $TOTAL_KAG / $TOTAL_INV" | bc)
+  DEV_RATIO=$(echo "scale=6; $TOTAL_DEV / $TOTAL_INV" | bc)
+  MAIN_PCT=$((TOTAL_MAIN * 100 / TOTAL_INV))
+  KAG_PCT=$((TOTAL_KAG * 100 / TOTAL_INV))
+  DEV_PCT=$((TOTAL_DEV * 100 / TOTAL_INV))
+
+  # 各モデルの環境別コスト計算
+  S_MAIN=$(printf "%.2f" $(echo "$CLAUDE_SONNET_COST * $MAIN_RATIO" | bc -l))
+  S_KAG=$(printf "%.2f" $(echo "$CLAUDE_SONNET_COST * $KAG_RATIO" | bc -l))
+  S_DEV=$(printf "%.2f" $(echo "$CLAUDE_SONNET_COST * $DEV_RATIO" | bc -l))
+  S_TOTAL=$(printf "%.2f" $CLAUDE_SONNET_COST)
+
+  O_MAIN=$(printf "%.2f" $(echo "$CLAUDE_OPUS_COST * $MAIN_RATIO" | bc -l))
+  O_KAG=$(printf "%.2f" $(echo "$CLAUDE_OPUS_COST * $KAG_RATIO" | bc -l))
+  O_DEV=$(printf "%.2f" $(echo "$CLAUDE_OPUS_COST * $DEV_RATIO" | bc -l))
+  O_TOTAL=$(printf "%.2f" $CLAUDE_OPUS_COST)
+
+  K_MAIN=$(printf "%.2f" $(echo "$KIMI_COST * $MAIN_RATIO" | bc -l))
+  K_KAG=$(printf "%.2f" $(echo "$KIMI_COST * $KAG_RATIO" | bc -l))
+  K_DEV=$(printf "%.2f" $(echo "$KIMI_COST * $DEV_RATIO" | bc -l))
+  K_TOTAL=$(printf "%.2f" $KIMI_COST)
+
+  OT_MAIN=$(printf "%.2f" $(echo "$OTHER_BEDROCK_COST * $MAIN_RATIO" | bc -l))
+  OT_KAG=$(printf "%.2f" $(echo "$OTHER_BEDROCK_COST * $KAG_RATIO" | bc -l))
+  OT_DEV=$(printf "%.2f" $(echo "$OTHER_BEDROCK_COST * $DEV_RATIO" | bc -l))
+  OT_TOTAL=$(printf "%.2f" $OTHER_BEDROCK_COST)
+
+  # 環境別合計
+  ENV_MAIN=$(printf "%.2f" $(echo "$TOTAL_COST * $MAIN_RATIO" | bc -l))
+  ENV_KAG=$(printf "%.2f" $(echo "$TOTAL_COST * $KAG_RATIO" | bc -l))
+  ENV_DEV=$(printf "%.2f" $(echo "$TOTAL_COST * $DEV_RATIO" | bc -l))
+  ENV_TOTAL=$(printf "%.2f" $(echo "$TOTAL_COST" | bc -l))
+
+  # 月間推定
+  M_MAIN=$(printf "%.0f" $(echo "$ENV_MAIN * 4" | bc -l))
+  M_KAG=$(printf "%.0f" $(echo "$ENV_KAG * 4" | bc -l))
+  M_DEV=$(printf "%.0f" $(echo "$ENV_DEV * 4" | bc -l))
+  M_TOTAL=$(printf "%.0f" $(echo "$ENV_TOTAL * 4" | bc -l))
+
+  echo "  セッション比率: main=$MAIN_PCT% kag=$KAG_PCT% dev=$DEV_PCT%"
+  echo ""
+  printf "  %-16s | %8s | %8s | %8s | %8s\n" "モデル" "main" "kag" "dev" "合計"
+  printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
+  printf "  %-16s | %8s | %8s | %8s | %8s\n" "Sonnet 4.5" "\$$S_MAIN" "\$$S_KAG" "\$$S_DEV" "\$$S_TOTAL"
+  printf "  %-16s | %8s | %8s | %8s | %8s\n" "Opus 4.6" "\$$O_MAIN" "\$$O_KAG" "\$$O_DEV" "\$$O_TOTAL"
+  printf "  %-16s | %8s | %8s | %8s | %8s\n" "Kimi K2" "\$$K_MAIN" "\$$K_KAG" "\$$K_DEV" "\$$K_TOTAL"
+  printf "  %-16s | %8s | %8s | %8s | %8s\n" "その他" "\$$OT_MAIN" "\$$OT_KAG" "\$$OT_DEV" "\$$OT_TOTAL"
+  printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
+  printf "  %-16s | %8s | %8s | %8s | %8s\n" "週間合計" "\$$ENV_MAIN" "\$$ENV_KAG" "\$$ENV_DEV" "\$$ENV_TOTAL"
+  printf "  %-16s | %7s | %7s | %7s | %7s\n" "月間推定" "\$$M_MAIN" "\$$M_KAG" "\$$M_DEV" "\$$M_TOTAL"
+  echo ""
+  echo "  ※ Kimi K2はクレジット適用で実質\$0"
+else
+  printf "  %-16s | %8s\n" "モデル" "合計"
+  printf "  %-16s-|----------\n" "----------------"
+  printf "  %-16s | %8s\n" "Sonnet 4.5" "\$$(printf '%.2f' $CLAUDE_SONNET_COST)"
+  printf "  %-16s | %8s\n" "Opus 4.6" "\$$(printf '%.2f' $CLAUDE_OPUS_COST)"
+  printf "  %-16s | %8s\n" "Kimi K2" "\$$(printf '%.2f' $KIMI_COST)"
+  printf "  %-16s | %8s\n" "その他" "\$$(printf '%.2f' $OTHER_BEDROCK_COST)"
+  printf "  %-16s-|----------\n" "----------------"
+  printf "  %-16s | %8s\n" "週間合計" "\$$(printf '%.2f' $TOTAL_COST)"
+  echo ""
+  echo "  ※ セッション数が0のため環境別按分なし"
+fi
 echo ""
 
 # ========================================
-# Claude Sonnet 4.5 キャッシュ効果
+# Claudeモデル キャッシュ効果
 # ========================================
+
+# --- Sonnet 4.5 ---
 echo "📊 Claude Sonnet 4.5 キャッシュ効果"
 
-# 使用タイプ別コスト集計
-INPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
-OUTPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
-CACHE_READ_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
-CACHE_WRITE_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+S_INPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+S_OUTPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+S_CACHE_READ_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+S_CACHE_WRITE_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
 
-printf "  通常Input:   \$%.2f\n" $INPUT_COST
-printf "  Output:      \$%.2f\n" $OUTPUT_COST
-printf "  CacheRead:   \$%.2f\n" $CACHE_READ_COST
-printf "  CacheWrite:  \$%.2f\n" $CACHE_WRITE_COST
+printf "  通常Input:   \$%.2f\n" $S_INPUT_COST
+printf "  Output:      \$%.2f\n" $S_OUTPUT_COST
+printf "  CacheRead:   \$%.2f\n" $S_CACHE_READ_COST
+printf "  CacheWrite:  \$%.2f\n" $S_CACHE_WRITE_COST
 
-# キャッシュヒット率計算（コストからトークン数を逆算）
-# Input: $3/1M, CacheRead: $0.30/1M
-if (( $(echo "$INPUT_COST > 0 || $CACHE_READ_COST > 0" | bc -l) )); then
-  INPUT_TOKENS=$(echo "scale=0; $INPUT_COST / 0.000003" | bc)
-  CACHE_READ_TOKENS=$(echo "scale=0; $CACHE_READ_COST / 0.0000003" | bc)
-  TOTAL_INPUT_TOKENS=$(echo "$INPUT_TOKENS + $CACHE_READ_TOKENS" | bc)
-  if [ "$TOTAL_INPUT_TOKENS" != "0" ]; then
-    CACHE_HIT_RATE=$(echo "scale=1; $CACHE_READ_TOKENS * 100 / $TOTAL_INPUT_TOKENS" | bc)
-    echo ""
-    echo "  📈 キャッシュヒット率: ${CACHE_HIT_RATE}%"
-
-    # 節約額計算
-    WOULD_HAVE_COST=$(echo "scale=2; $CACHE_READ_TOKENS * 0.000003" | bc)
-    SAVINGS=$(echo "scale=2; $WOULD_HAVE_COST - $CACHE_READ_COST" | bc)
-    NET_SAVINGS=$(echo "scale=2; $SAVINGS - $CACHE_WRITE_COST" | bc)
-    printf "  💰 キャッシュ節約額: \$%.2f（CacheWrite考慮後: \$%.2f）\n" $SAVINGS $NET_SAVINGS
+# Sonnet キャッシュヒット率計算（Input: $3/1M, CacheRead: $0.30/1M）
+if (( $(echo "$S_INPUT_COST > 0 || $S_CACHE_READ_COST > 0" | bc -l) )); then
+  S_INPUT_TOKENS=$(echo "scale=0; $S_INPUT_COST / 0.000003" | bc)
+  S_CACHE_READ_TOKENS=$(echo "scale=0; $S_CACHE_READ_COST / 0.0000003" | bc)
+  S_TOTAL_INPUT_TOKENS=$(echo "$S_INPUT_TOKENS + $S_CACHE_READ_TOKENS" | bc)
+  if [ "$S_TOTAL_INPUT_TOKENS" != "0" ]; then
+    S_CACHE_HIT_RATE=$(echo "scale=1; $S_CACHE_READ_TOKENS * 100 / $S_TOTAL_INPUT_TOKENS" | bc)
+    echo "  📈 キャッシュヒット率: ${S_CACHE_HIT_RATE}%"
+    S_WOULD_HAVE_COST=$(echo "scale=2; $S_CACHE_READ_TOKENS * 0.000003" | bc)
+    S_SAVINGS=$(echo "scale=2; $S_WOULD_HAVE_COST - $S_CACHE_READ_COST" | bc)
+    S_NET_SAVINGS=$(echo "scale=2; $S_SAVINGS - $S_CACHE_WRITE_COST" | bc)
+    printf "  💰 キャッシュ節約額: \$%.2f（CacheWrite考慮後: \$%.2f）\n" $S_SAVINGS $S_NET_SAVINGS
   fi
 fi
 echo ""
 
-echo "💵 Bedrockコスト（環境別内訳・推定）"
-TOTAL_INV=$((TOTAL_MAIN + TOTAL_KAG + TOTAL_DEV))
-if [ "$TOTAL_INV" -gt 0 ]; then
-  MAIN_PCT=$((TOTAL_MAIN * 100 / TOTAL_INV))
-  KAG_PCT=$((TOTAL_KAG * 100 / TOTAL_INV))
-  DEV_PCT=$((TOTAL_DEV * 100 / TOTAL_INV))
-  MAIN_COST=$(printf "%.2f" $(echo "$TOTAL_COST * $TOTAL_MAIN / $TOTAL_INV" | bc -l))
-  KAG_COST=$(printf "%.2f" $(echo "$TOTAL_COST * $TOTAL_KAG / $TOTAL_INV" | bc -l))
-  DEV_COST=$(printf "%.2f" $(echo "$TOTAL_COST * $TOTAL_DEV / $TOTAL_INV" | bc -l))
-  MAIN_MONTHLY=$(printf "%.0f" $(echo "$MAIN_COST * 4" | bc -l))
-  KAG_MONTHLY=$(printf "%.0f" $(echo "$KAG_COST * 4" | bc -l))
-  DEV_MONTHLY=$(printf "%.0f" $(echo "$DEV_COST * 4" | bc -l))
-  TOTAL_WEEKLY=$(printf "%.2f" $(echo "$TOTAL_COST" | bc -l))
-  TOTAL_MONTHLY=$(printf "%.0f" $(echo "$TOTAL_COST * 4" | bc -l))
-  echo "  main: 週間 \$$MAIN_COST → 月間推定 \$$MAIN_MONTHLY ($MAIN_PCT%)"
-  echo "  kag:  週間 \$$KAG_COST → 月間推定 \$$KAG_MONTHLY ($KAG_PCT%)"
-  echo "  dev:  週間 \$$DEV_COST → 月間推定 \$$DEV_MONTHLY ($DEV_PCT%)"
-  echo "  合計: 週間 \$$TOTAL_WEEKLY → 月間推定 \$$TOTAL_MONTHLY"
-else
-  echo "  セッション数が0のため計算できません"
+# --- Opus 4.6 ---
+O_INPUT_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
+O_OUTPUT_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
+O_CACHE_READ_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
+O_CACHE_WRITE_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
+O_TOTAL2=$(echo "$O_INPUT_COST2 + $O_OUTPUT_COST2 + $O_CACHE_READ_COST2 + $O_CACHE_WRITE_COST2" | bc)
+
+if (( $(echo "$O_TOTAL2 > 0" | bc -l) )); then
+  echo "📊 Claude Opus 4.6 キャッシュ効果"
+  printf "  通常Input:   \$%.2f\n" $O_INPUT_COST2
+  printf "  Output:      \$%.2f\n" $O_OUTPUT_COST2
+  printf "  CacheRead:   \$%.2f\n" $O_CACHE_READ_COST2
+  printf "  CacheWrite:  \$%.2f\n" $O_CACHE_WRITE_COST2
+
+  # Opus キャッシュヒット率計算（Input: $15/1M, CacheRead: $1.50/1M）
+  if (( $(echo "$O_INPUT_COST2 > 0 || $O_CACHE_READ_COST2 > 0" | bc -l) )); then
+    O_INPUT_TOKENS=$(echo "scale=0; $O_INPUT_COST2 / 0.000015" | bc)
+    O_CACHE_READ_TOKENS=$(echo "scale=0; $O_CACHE_READ_COST2 / 0.0000015" | bc)
+    O_TOTAL_INPUT_TOKENS=$(echo "$O_INPUT_TOKENS + $O_CACHE_READ_TOKENS" | bc)
+    if [ "$O_TOTAL_INPUT_TOKENS" != "0" ]; then
+      O_CACHE_HIT_RATE=$(echo "scale=1; $O_CACHE_READ_TOKENS * 100 / $O_TOTAL_INPUT_TOKENS" | bc)
+      echo "  📈 キャッシュヒット率: ${O_CACHE_HIT_RATE}%"
+      O_WOULD_HAVE_COST=$(echo "scale=2; $O_CACHE_READ_TOKENS * 0.000015" | bc)
+      O_SAVINGS=$(echo "scale=2; $O_WOULD_HAVE_COST - $O_CACHE_READ_COST2" | bc)
+      O_NET_SAVINGS=$(echo "scale=2; $O_SAVINGS - $O_CACHE_WRITE_COST2" | bc)
+      printf "  💰 キャッシュ節約額: \$%.2f（CacheWrite考慮後: \$%.2f）\n" $O_SAVINGS $O_NET_SAVINGS
+    fi
+  fi
+  echo ""
 fi
-echo ""
 
 # ========================================
 # 週次トレンド（v0.1リリース以降）
@@ -612,9 +701,12 @@ echo "  ----------|------|------|------|--------"
 # 週ごとに集計して表示
 cat "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f1 | sort -u | while read WEEK; do
   if [ -n "$WEEK" ]; then
-    W_MAIN=$(grep "^$WEEK|main|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | awk '{s+=$1}END{print s+0}')
-    W_KAG=$(grep "^$WEEK|kag|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | awk '{s+=$1}END{print s+0}')
-    W_COST=$(grep "^$WEEK|cost|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | awk '{s+=$1}END{printf "%.0f", s}')
+    W_MAIN=$(grep "^$WEEK|main|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | tr '\n' '+' | sed 's/+$/\n/' | bc 2>/dev/null || echo 0)
+    W_MAIN=${W_MAIN:-0}
+    W_KAG=$(grep "^$WEEK|kag|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | tr '\n' '+' | sed 's/+$/\n/' | bc 2>/dev/null || echo 0)
+    W_KAG=${W_KAG:-0}
+    W_COST=$(grep "^$WEEK|cost|" "$OUTPUT_DIR/weekly_sessions.tmp" | cut -d'|' -f3 | tr '\n' '+' | sed 's/+$/\n/' | bc 2>/dev/null || echo 0)
+    W_COST=$(printf "%.0f" ${W_COST:-0})
     W_TOTAL=$((W_MAIN + W_KAG))
     printf "  %-9s | %4d | %4d | %4d | \$%s\n" "$WEEK" "$W_MAIN" "$W_KAG" "$W_TOTAL" "$W_COST"
   fi
@@ -635,10 +727,9 @@ echo "✅ 完了！"
 3. **日次セッション数**: 過去7日間の日別回数（main/kag/dev別）
 4. **時間別セッション数**: 直近24時間の全時間帯（ASCIIバーグラフ・JST表示、main/kag/dev）
 5. **Bedrockコスト（日別）**: 過去7日間の日別コスト
-6. **モデル別コスト内訳**: Claude Sonnet 4.5 / Kimi K2 / その他の内訳
-7. **Claude Sonnet 4.5 キャッシュ効果**: Input/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額
-8. **Bedrockコスト（環境別内訳）**: セッション数で按分した推定コスト（週間・月間、main/kag/dev）
-9. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間）
+6. **Bedrockコスト内訳（環境別 x モデル別）**: セッション比率で按分した環境別・モデル別コスト表（週間・月間推定付き）
+7. **Claudeモデル キャッシュ効果**: Sonnet 4.5 / Opus 4.6 各モデルのInput/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額
+8. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間）
 
 ## 技術詳細
 
