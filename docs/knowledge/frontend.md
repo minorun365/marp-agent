@@ -358,11 +358,11 @@ setMessages(prev =>
 
 ### SSEアイドルタイムアウト（モデルスロットリング対応）
 
-SSEストリームで10秒間データが来ない場合、モデルのレート制限（`ModelThrottledException`）等を検出してエラーメッセージを表示する。
+SSEストリームで**初回イベント受信前に**10秒間データが来ない場合、モデルのレート制限（`ModelThrottledException`）等を検出してエラーメッセージを表示する。初回イベント受信後はタイムアウトを解除するため、スライド生成等の長時間処理には影響しない。
 
 #### 実装箇所
 
-1. **`sseParser.ts`**: `SSEIdleTimeoutError` クラスを定義。`readSSEStream` に `idleTimeoutMs` 引数を追加し、`Promise.race` で `reader.read()` のタイムアウトを検知
+1. **`sseParser.ts`**: `SSEIdleTimeoutError` クラスを定義。`readSSEStream` に `idleTimeoutMs` 引数を追加し、`Promise.race` で `reader.read()` のタイムアウトを検知。`firstEventReceived` フラグで初回イベント受信後はタイムアウト無効化
 2. **`agentCoreClient.ts`**: `SSE_IDLE_TIMEOUT_MS = 10_000`（10秒）を定数定義し、`readSSEStream` に渡す
 3. **`useChatMessages.ts`**: `onError` コールバックとcatch節の両方で `error instanceof SSEIdleTimeoutError` を判定し、`MESSAGES.ERROR_MODEL_THROTTLED` を表示
 
@@ -374,6 +374,8 @@ SSEストリームで10秒間データが来ない場合、モデルのレート
 // 3. その他 → ERROR（汎用）
 ```
 
-#### 背景
+#### 設計判断: なぜ初回イベントのみか
 
-Opusモデルで日次トークン制限に達した場合、バックエンドのStrands Agentが内部で4回リトライするため、フロントエンドにはSSEイベントが一切来ない状態が続く。タイムアウトがないと「考え中...」が永遠に表示される。
+- **スロットリング時**: SSE接続は200で確立されるが、バックエンド内でBedrock APIがスロットリングされ、最初のSSEイベントすら来ない → タイムアウトで検知
+- **スライド生成時**: 最初にtext/tool_useイベントを受信済み → その後Marp CLIで30秒+かかってもタイムアウトしない
+- HTTPレスポンス自体は200のため、429をHTTPレベルで検知する方式は使えない
