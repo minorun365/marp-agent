@@ -32,6 +32,28 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 - **アプリレベルの環境変数**（`aws amplify get-app`）はブランチ更新で消えない
 - **ブランチレベルの環境変数**（`aws amplify get-branch`）は上書きされる
 
+## E2Eテスト手順
+
+コード変更後のE2Eテストは以下の手順で実施する。Chrome DevTools MCPを使用してブラウザ操作を自動化する。
+
+### 手順
+
+1. **SSOセッション確認**: `aws sts get-caller-identity --profile sandbox`
+2. **サンドボックス起動**: `npm run sandbox` にprofileオプション `--profile sandbox` を追加してバックグラウンド実行
+3. **フロントエンド起動**: `npm run dev`（別プロセスでバックグラウンド実行）
+4. **Chrome DevTools MCPで確認**:
+   - `localhost:5173` にアクセス
+   - ログインページの表示確認
+   - テスト用ユーザーでログイン（`.env`のTEST_USER_EMAIL/TEST_USER_PASSWORD使用）
+   - モデルセレクターの表示・選択肢確認
+   - スライド生成の動作確認（必要に応じて）
+5. **テスト完了後**: 起動したプロセスを停止
+
+### 注意事項
+
+- サンドボックスのデプロイには3-5分かかる（Hotswap時は30秒程度）
+- `npm run sandbox` は `--profile sandbox` が必要（package.jsonのスクリプトには含まれていない）
+
 ## Git コミットルール
 
 - コミットメッセージは **1行の日本語でシンプルに**

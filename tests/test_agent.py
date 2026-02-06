@@ -54,7 +54,6 @@ async def test_chat_with_search():
 
     print(f"プロンプト: {prompt}\n")
     print("レスポンス:")
-
     full_response = ""
     stream = agent.stream_async(prompt)
 

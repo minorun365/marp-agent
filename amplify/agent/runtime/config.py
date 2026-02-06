@@ -10,7 +10,7 @@ MAX_RETRY_COUNT = 5  # ツール名破損時の最大リトライ回数
 DEFAULT_THEME = os.environ.get("MARP_THEME", "kag")
 
 
-def get_model_config(model_type: str = "claude") -> dict:
+def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
     if model_type == "kimi":
         # Kimi K2 Thinking（Moonshot AI）
@@ -25,6 +25,13 @@ def get_model_config(model_type: str = "claude") -> dict:
         # Claude Opus 4.6（リリース前はエラー返却）
         return {
             "model_id": "us.anthropic.claude-opus-4-6-v1",
+            "cache_prompt": "default",
+            "cache_tools": "default",
+        }
+    elif model_type == "haiku":
+        # Claude Haiku 4.5（高速・低コスト）
+        return {
+            "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
             "cache_prompt": "default",
             "cache_tools": "default",
         }

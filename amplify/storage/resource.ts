@@ -4,10 +4,6 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Construct } from 'constructs';
 
-interface SharedSlidesConstructProps {
-  nameSuffix: string;
-}
-
 /**
  * 共有スライド用のインフラ構成
  * - S3: HTMLファイル保存（7日後自動削除）
@@ -17,16 +13,14 @@ export class SharedSlidesConstruct extends Construct {
   public readonly bucket: s3.Bucket;
   public readonly distribution: cloudfront.Distribution;
 
-  constructor(scope: Construct, id: string, props: SharedSlidesConstructProps) {
+  constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    const { nameSuffix } = props;
-
     // S3バケット
+    // - バケット名はCFnが自動生成（グローバル一意性を保証、フォーク先でも衝突しない）
     // - パブリックアクセスブロック有効（CloudFront経由のみアクセス可能）
     // - 7日後に自動削除（Lifecycle Rule）
     this.bucket = new s3.Bucket(this, 'Bucket', {
-      bucketName: `marp-shared-slides-${nameSuffix}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
