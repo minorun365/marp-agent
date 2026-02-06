@@ -285,14 +285,13 @@ does not provide an export named 'ModelType'
 
 1. **型をローカルで定義**（シンプル、2-3箇所でしか使わない場合に推奨）
    ```typescript
-   // Chat.tsx 内で直接定義
-   type ModelType = 'claude' | 'kimi';
+   // types.ts 内で直接定義
+   type ModelType = 'sonnet' | 'kimi' | 'opus' | 'haiku';
    ```
 
 2. **`import type` を使う**（多くのファイルで使う場合）
    ```typescript
-   import type { ModelType } from '../hooks/useAgentCore';
-   import { invokeAgent } from '../hooks/useAgentCore';
+   import type { ModelType } from './types';
    ```
 
 **判断基準**:
@@ -356,3 +355,25 @@ setMessages(prev =>
 **症状**: エラー発生時にDevToolsコンソールにはエラーが表示されるが、画面には何も表示されない。
 
 **原因**: `onError` コールバック内の `streamText()` は非同期で実行されるが、`invokeAgent` 後の処理が先に実行されて `isStreaming: false` に設定される。
+
+### SSEアイドルタイムアウト（モデルスロットリング対応）
+
+SSEストリームで10秒間データが来ない場合、モデルのレート制限（`ModelThrottledException`）等を検出してエラーメッセージを表示する。
+
+#### 実装箇所
+
+1. **`sseParser.ts`**: `SSEIdleTimeoutError` クラスを定義。`readSSEStream` に `idleTimeoutMs` 引数を追加し、`Promise.race` で `reader.read()` のタイムアウトを検知
+2. **`agentCoreClient.ts`**: `SSE_IDLE_TIMEOUT_MS = 10_000`（10秒）を定数定義し、`readSSEStream` に渡す
+3. **`useChatMessages.ts`**: `onError` コールバックとcatch節の両方で `error instanceof SSEIdleTimeoutError` を判定し、`MESSAGES.ERROR_MODEL_THROTTLED` を表示
+
+#### エラーメッセージの優先順位
+
+```typescript
+// 1. SSEアイドルタイムアウト → ERROR_MODEL_THROTTLED
+// 2. モデルID不正 → ERROR_MODEL_NOT_AVAILABLE
+// 3. その他 → ERROR（汎用）
+```
+
+#### 背景
+
+Opusモデルで日次トークン制限に達した場合、バックエンドのStrands Agentが内部で4回リトライするため、フロントエンドにはSSEイベントが一切来ない状態が続く。タイムアウトがないと「考え中...」が永遠に表示される。
