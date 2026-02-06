@@ -4,21 +4,21 @@
 
 本番環境でOpusモデル使用時に `ModelThrottledException` (日次トークン制限) が発生すると、バックエンドのStrands Agentが内部で4回リトライし全て失敗。その間SSEストリームにイベントが来ないため、フロントエンドでは「考え中...」が永遠に表示され続ける。
 
-**対応**: SSEストリームで10秒間データが来なかった場合、ユーザーに分かりやすいエラーメッセージを表示してloading状態を終了する。
+**対応**: SSEストリームに2段階のアイドルタイムアウトを設定し、ユーザーに分かりやすいエラーメッセージを表示してloading状態を終了する。
 
 ## 変更ファイル (4ファイル + テスト)
 
 ### 1. `src/hooks/streaming/sseParser.ts`
 - `SSEIdleTimeoutError` カスタムエラークラスを追加（exportする）
-- `readSSEStream` に第4引数 `idleTimeoutMs?: number` を追加
-- `reader.read()` を `Promise.race` でタイムアウト検知（**初回イベント受信前のみ**）
-- `firstEventReceived` フラグで初回イベント受信後はタイムアウトを解除（スライド生成等の長時間処理に影響しない）
-- `idleTimeoutMs` が未指定の場合は既存動作と完全一致（エクスポートAPIに影響なし）
+- `readSSEStream` に第4引数 `idleTimeoutMs?: number`（初回用）と第5引数 `ongoingIdleTimeoutMs?: number`（イベント間用）を追加
+- `reader.read()` を `Promise.race` でタイムアウト検知
+- `firstEventReceived` フラグで適用するタイムアウト値を切り替え（初回: `idleTimeoutMs`、以降: `ongoingIdleTimeoutMs`）
+- 両引数が未指定の場合は既存動作と完全一致（エクスポートAPIに影響なし）
 
 ### 2. `src/hooks/api/agentCoreClient.ts`
-- 定数 `SSE_IDLE_TIMEOUT_MS = 10_000` を追加
-- `SSEIdleTimeoutError` をimport
-- `readSSEStream` 呼び出しに第4引数としてタイムアウト値を渡す
+- 定数 `SSE_IDLE_TIMEOUT_MS = 10_000`（初回イベント受信前、スロットリング検知）を追加
+- 定数 `SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000`（イベント間、推論ハング検知）を追加
+- `readSSEStream` 呼び出しに第4・第5引数としてタイムアウト値を渡す
 
 ### 3. `src/components/Chat/constants.ts`
 - `MESSAGES` に `ERROR_MODEL_THROTTLED` を追加
@@ -43,6 +43,7 @@
 
 ✅ **実装完了** (2026-02-06)
 
-- 全5ファイルの変更をコミット済み (`94fcd15`)
+- 初回タイムアウト: 全5ファイルの変更をコミット済み (`94fcd15`)
+- イベント間タイムアウト: 2ファイルの変更を追加コミット済み (`75264db`)
 - ユニットテスト12件すべてパス（タイムアウト関連3件を新規追加）
 - ビルド成功確認済み

@@ -356,14 +356,19 @@ setMessages(prev =>
 
 **原因**: `onError` コールバック内の `streamText()` は非同期で実行されるが、`invokeAgent` 後の処理が先に実行されて `isStreaming: false` に設定される。
 
-### SSEアイドルタイムアウト（モデルスロットリング対応）
+### SSEアイドルタイムアウト（2段構成）
 
-SSEストリームで**初回イベント受信前に**10秒間データが来ない場合、モデルのレート制限（`ModelThrottledException`）等を検出してエラーメッセージを表示する。初回イベント受信後はタイムアウトを解除するため、スライド生成等の長時間処理には影響しない。
+SSEストリームに2段階のアイドルタイムアウトを設定し、スロットリングや推論ハングを検知してエラーメッセージを表示する。
+
+| フェーズ | タイムアウト | 用途 |
+|---------|------------|------|
+| 初回イベント受信前 | 10秒（`SSE_IDLE_TIMEOUT_MS`） | スロットリング検知（`ModelThrottledException`等） |
+| イベント間（初回受信後） | 60秒（`SSE_ONGOING_IDLE_TIMEOUT_MS`） | 推論ハング検知（Opusの長時間無応答等） |
 
 #### 実装箇所
 
-1. **`sseParser.ts`**: `SSEIdleTimeoutError` クラスを定義。`readSSEStream` に `idleTimeoutMs` 引数を追加し、`Promise.race` で `reader.read()` のタイムアウトを検知。`firstEventReceived` フラグで初回イベント受信後はタイムアウト無効化
-2. **`agentCoreClient.ts`**: `SSE_IDLE_TIMEOUT_MS = 10_000`（10秒）を定数定義し、`readSSEStream` に渡す
+1. **`sseParser.ts`**: `SSEIdleTimeoutError` クラスを定義。`readSSEStream` に `idleTimeoutMs`（初回用）と `ongoingIdleTimeoutMs`（イベント間用）の2つのタイムアウト引数を持つ。`firstEventReceived` フラグで適用するタイムアウト値を切り替え
+2. **`agentCoreClient.ts`**: `SSE_IDLE_TIMEOUT_MS = 10_000`（10秒）と `SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000`（60秒）を定数定義し、`readSSEStream` に渡す
 3. **`useChatMessages.ts`**: `onError` コールバックとcatch節の両方で `error instanceof SSEIdleTimeoutError` を判定し、`MESSAGES.ERROR_MODEL_THROTTLED` を表示
 
 #### エラーメッセージの優先順位
@@ -374,8 +379,8 @@ SSEストリームで**初回イベント受信前に**10秒間データが来�
 // 3. その他 → ERROR（汎用）
 ```
 
-#### 設計判断: なぜ初回イベントのみか
+#### 設計判断
 
-- **スロットリング時**: SSE接続は200で確立されるが、バックエンド内でBedrock APIがスロットリングされ、最初のSSEイベントすら来ない → タイムアウトで検知
-- **スライド生成時**: 最初にtext/tool_useイベントを受信済み → その後Marp CLIで30秒+かかってもタイムアウトしない
+- **初回タイムアウト（10秒）**: SSE接続は200で確立されるが、バックエンド内でBedrock APIがスロットリングされ、最初のSSEイベントすら来ない → 短いタイムアウトで素早く検知
+- **イベント間タイムアウト（60秒）**: Opusなど推論が重いモデルで応答がハングするケースに対応。通常のストリーミングでは頻繁にチャンクが来るため、60秒無音は異常と判断
 - HTTPレスポンス自体は200のため、429をHTTPレベルで検知する方式は使えない
