@@ -23,7 +23,7 @@ export function ChatInput({
   inputRef,
   onSubmit,
 }: ChatInputProps) {
-  const modelLabel = modelType === 'claude' ? 'Sonnet' : modelType === 'kimi' ? 'Kimi' : 'Opus';
+  const modelLabel = modelType === 'sonnet' ? 'Sonnet' : modelType === 'opus' ? 'Opus' : modelType === 'haiku' ? 'Haiku' : 'Kimi';
   const isNearLimit = input.length > MAX_INPUT_LENGTH * 0.9;
 
   return (
@@ -45,8 +45,9 @@ export function ChatInput({
               className="absolute inset-0 opacity-0 cursor-pointer"
               title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
             >
-              <option value="claude">標準（Claude Sonnet 4.5）</option>
-              <option value="opus">宇宙最速（Claude Opus 4.6）</option>
+              <option value="sonnet">バランス（Claude Sonnet 4.5）</option>
+              <option value="opus">最高性能（Claude Opus 4.6）</option>
+              <option value="haiku">高速（Claude Haiku 4.5）</option>
               <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
             </select>
           </div>

@@ -15,7 +15,7 @@ export async function invokeAgentMock(
   _currentMarkdown: string,
   callbacks: AgentCoreCallbacks,
   _sessionId?: string,
-  _modelType: ModelType = 'claude'
+  _modelType: ModelType = 'sonnet'
 ): Promise<void> {
   // 思考過程をストリーミング
   const thinkingText = `${prompt}についてスライドを作成しますね。\n\n構成を考えています...`;
