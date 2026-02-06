@@ -3,10 +3,12 @@ import asyncio
 import sys
 from pathlib import Path
 
-# agent.pyをインポートできるようにパスを追加
+# ランタイムディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent / "amplify" / "agent" / "runtime"))
 
-from agent import agent, extract_markdown, web_search
+from session import get_or_create_agent
+from handlers import extract_markdown
+from tools import web_search
 
 
 def test_web_search():
@@ -29,6 +31,7 @@ async def test_chat():
     print(f"プロンプト: {prompt}\n")
     print("レスポンス:")
 
+    agent = get_or_create_agent(session_id=None, model_type="sonnet")
     full_response = ""
     stream = agent.stream_async(prompt)
 
@@ -54,6 +57,8 @@ async def test_chat_with_search():
 
     print(f"プロンプト: {prompt}\n")
     print("レスポンス:")
+
+    agent = get_or_create_agent(session_id=None, model_type="sonnet")
     full_response = ""
     stream = agent.stream_async(prompt)
 
