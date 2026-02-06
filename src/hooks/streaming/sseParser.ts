@@ -23,11 +23,13 @@ export async function readSSEStream(
 ): Promise<void> {
   const decoder = new TextDecoder();
   let buffer = '';
+  let firstEventReceived = false;
 
   while (true) {
     let readResult: ReadableStreamReadResult<Uint8Array>;
 
-    if (idleTimeoutMs) {
+    // 初回イベント受信前のみタイムアウトを適用（スライド生成等の長時間処理には影響しない）
+    if (idleTimeoutMs && !firstEventReceived) {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new SSEIdleTimeoutError(idleTimeoutMs)), idleTimeoutMs);
       });
@@ -45,6 +47,7 @@ export async function readSSEStream(
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
+        firstEventReceived = true;
         const data = line.slice(6);
         if (data === '[DONE]') {
           onDone?.();

@@ -36,11 +36,7 @@ if (isSandbox) {
 }
 
 // 共有スライド用インフラを作成（S3 + CloudFront）
-// S3バケット名はアンダースコア不可のため、ハイフンに変換
-const nameSuffixForS3 = nameSuffix.replace(/_/g, '-').toLowerCase();
-const sharedSlides = new SharedSlidesConstruct(agentCoreStack, 'SharedSlides', {
-  nameSuffix: nameSuffixForS3,
-});
+const sharedSlides = new SharedSlidesConstruct(agentCoreStack, 'SharedSlides');
 
 // Marp Agentを作成（Cognito認証統合）
 const { runtime } = createMarpAgent({

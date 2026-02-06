@@ -165,10 +165,10 @@ def extract_marp_markdown_from_text(text: str) -> str | None:
 
 リクエストごとにモデルを動的に切り替える実装パターン：
 
-#### フロントエンド（Chat.tsx）
+#### フロントエンド（ChatInput.tsx）
 ```typescript
-type ModelType = 'claude' | 'kimi' | 'opus';
-const [modelType, setModelType] = useState<ModelType>('claude');
+type ModelType = 'sonnet' | 'kimi' | 'opus' | 'haiku';
+const [modelType, setModelType] = useState<ModelType>('sonnet');
 
 // 入力欄の左端にセレクター配置（矢印は別要素で表示）
 <div className="relative flex items-center">
@@ -177,8 +177,9 @@ const [modelType, setModelType] = useState<ModelType>('claude');
     onChange={(e) => setModelType(e.target.value as ModelType)}
     className="text-xs text-gray-400 bg-transparent appearance-none"
   >
-    <option value="claude">標準（Claude Sonnet 4.5）</option>
-    <option value="opus">宇宙最速（Claude Opus 4.6）</option>
+    <option value="sonnet">バランス（Claude Sonnet 4.5）</option>
+    <option value="opus">最高性能（Claude Opus 4.6）</option>
+    <option value="haiku">高速（Claude Haiku 4.5）</option>
     <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
   </select>
   <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
@@ -209,8 +210,9 @@ title={hasUserMessage ? '会話中はモデルを変更できません' : '使�
 <select
   className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
 >
-  <option value="claude">Claude</option>
-  <option value="opus">宇宙最速</option>
+  <option value="sonnet">Sonnet</option>
+  <option value="opus">Opus</option>
+  <option value="haiku">Haiku</option>
   <option value="kimi">Kimi</option>
 </select>
 <span className="ml-2 sm:ml-1">▾</span>
@@ -219,7 +221,7 @@ title={hasUserMessage ? '会話中はモデルを変更できません' : '使�
 - スマホ（sm未満）: `w-0` でテキスト非表示、矢印のみ
 - PC（sm以上）: `sm:w-auto` で通常表示
 
-#### API（useAgentCore.ts）
+#### API（agentCoreClient.ts）
 ```typescript
 body: JSON.stringify({
   prompt,
@@ -228,19 +230,21 @@ body: JSON.stringify({
 }),
 ```
 
-#### バックエンド（agent.py）
+#### バックエンド（config.py）
 ```python
-def _get_model_config(model_type: str = "claude") -> dict:
+def get_model_config(model_type: str = "sonnet") -> dict:
     if model_type == "kimi":
-        return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None}
+        return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None, "cache_tools": None}
     elif model_type == "opus":
-        return {"model_id": "us.anthropic.claude-opus-4-6-v1", "cache_prompt": "default"}
+        return {"model_id": "us.anthropic.claude-opus-4-6-v1", "cache_prompt": "default", "cache_tools": "default"}
+    elif model_type == "haiku":
+        return {"model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0", "cache_prompt": "default", "cache_tools": "default"}
     else:
-        return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default"}
+        return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default", "cache_tools": "default"}
 
 @app.entrypoint
 async def invoke(payload, context=None):
-    model_type = payload.get("model_type", "claude")
+    model_type = payload.get("model_type", "sonnet")
     agent = get_or_create_agent(session_id, model_type)
 ```
 
@@ -252,22 +256,11 @@ async def invoke(payload, context=None):
 
 | ファイル | 修正内容 |
 |---------|---------|
-| `amplify/agent/runtime/agent.py` | `_get_model_config()` に新モデルの設定を追加 |
-| `src/components/Chat.tsx` | `ModelType` 型に追加、セレクター選択肢を追加 |
-| `src/hooks/useAgentCore.ts` | `ModelType` 型に追加 |
-
-**バックエンド修正例**:
-```python
-def _get_model_config(model_type: str = "claude") -> dict:
-    if model_type == "opus":
-        # Claude Opus 4.6
-        return {
-            "model_id": "us.anthropic.claude-opus-4-6-v1",
-            "cache_prompt": "default",
-            "cache_tools": "default",
-        }
-    # ...
-```
+| `src/components/Chat/types.ts` | `ModelType` 型に追加 |
+| `src/components/Chat/ChatInput.tsx` | セレクターの選択肢・ラベルを追加 |
+| `src/hooks/api/agentCoreClient.ts` | `ModelType` 型に追加 |
+| `src/hooks/mock/mockClient.ts` | デフォルト値の確認 |
+| `amplify/agent/runtime/config.py` | `get_model_config()` に新モデルの設定を追加 |
 
 **未リリースモデルの先行対応**:
 - リリース前でもモデルIDを設定しておける
@@ -275,7 +268,7 @@ def _get_model_config(model_type: str = "claude") -> dict:
 - フロントエンドの `onError` コールバックでエラーメッセージを判定し、ユーザーフレンドリーなメッセージを疑似ストリーミング表示
 
 ```typescript
-// Chat.tsx - onErrorコールバック内
+// useChatMessages.ts - onErrorコールバック内
 onError: (error) => {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const isModelNotAvailable = errorMessage.includes('model identifier is invalid');

@@ -139,6 +139,34 @@ describe('readSSEStream - idle timeout', () => {
     expect(onEvent).toHaveBeenCalledTimes(1);
   });
 
+  it('初回イベント受信後はタイムアウトしない', async () => {
+    let callCount = 0;
+    const reader = {
+      read: vi.fn(async () => {
+        callCount++;
+        if (callCount === 1) {
+          // 初回: すぐにイベントを返す
+          return { done: false, value: encode('data: {"type":"text"}\n\n') };
+        }
+        if (callCount === 2) {
+          // 2回目: 200ms待ってから返す（タイムアウト100msを超えるが、初回受信済みなので問題なし）
+          await new Promise(resolve => setTimeout(resolve, 200));
+          return { done: false, value: encode('data: {"type":"done"}\n\n') };
+        }
+        return { done: true, value: undefined };
+      }),
+      cancel: vi.fn(),
+      releaseLock: vi.fn(),
+      closed: Promise.resolve(undefined),
+    } as unknown as ReadableStreamDefaultReader<Uint8Array>;
+
+    const onEvent = vi.fn();
+    // タイムアウト100msだが、初回イベント後は無効化されるので200ms待ちでもOK
+    await readSSEStream(reader, onEvent, undefined, 100);
+
+    expect(onEvent).toHaveBeenCalledTimes(2);
+  });
+
   it('SSEIdleTimeoutErrorのプロパティが正しい', () => {
     const error = new SSEIdleTimeoutError(10000);
     expect(error.name).toBe('SSEIdleTimeoutError');

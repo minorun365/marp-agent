@@ -31,7 +31,7 @@ async def test_chat():
     print(f"プロンプト: {prompt}\n")
     print("レスポンス:")
 
-    agent = get_or_create_agent(session_id=None, model_type="claude")
+    agent = get_or_create_agent(session_id=None, model_type="sonnet")
     full_response = ""
     stream = agent.stream_async(prompt)
 
@@ -58,7 +58,7 @@ async def test_chat_with_search():
     print(f"プロンプト: {prompt}\n")
     print("レスポンス:")
 
-    agent = get_or_create_agent(session_id=None, model_type="claude")
+    agent = get_or_create_agent(session_id=None, model_type="sonnet")
     full_response = ""
     stream = agent.stream_async(prompt)
 
