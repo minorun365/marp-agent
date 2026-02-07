@@ -3,10 +3,10 @@
 
 def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
-    if model_type == "kimi":
-        # Kimi K2.5（Moonshot AI）
+    if model_type == "deepseek":
+        # DeepSeek V3.2
         return {
-            "model_id": "moonshotai.kimi-k2.5",
+            "model_id": "deepseek.v3.2",
             "cache_prompt": None,
             "cache_tools": None,
         }
