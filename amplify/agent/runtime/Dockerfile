@@ -29,7 +29,6 @@ COPY *.css ./
 
 # サブモジュールをコピー
 COPY tools/ ./tools/
-COPY handlers/ ./handlers/
 COPY exports/ ./exports/
 COPY sharing/ ./sharing/
 COPY session/ ./session/
