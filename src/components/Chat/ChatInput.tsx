@@ -23,7 +23,7 @@ export function ChatInput({
   inputRef,
   onSubmit,
 }: ChatInputProps) {
-  const modelLabel = modelType === 'sonnet' ? 'Sonnet' : modelType === 'opus' ? 'Opus' : modelType === 'haiku' ? 'Haiku' : 'Kimi';
+  const modelLabel = modelType === 'sonnet' ? 'Sonnet' : modelType === 'opus' ? 'Opus' : modelType === 'haiku' ? 'Haiku' : modelType === 'kimi25' ? 'Kimi 2.5' : 'Kimi';
   const isNearLimit = input.length > MAX_INPUT_LENGTH * 0.9;
 
   return (
@@ -48,6 +48,7 @@ export function ChatInput({
               <option value="sonnet">バランス（Claude Sonnet 4.5）</option>
               <option value="opus">最高性能（Claude Opus 4.6）</option>
               <option value="haiku">高速（Claude Haiku 4.5）</option>
+              <option value="kimi25">サステナブル（Kimi K2.5）</option>
               <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
             </select>
           </div>

@@ -21,7 +21,7 @@ export interface AgentCoreCallbacks {
   onComplete: () => void;
 }
 
-export type ModelType = 'sonnet' | 'kimi' | 'opus' | 'haiku';
+export type ModelType = 'sonnet' | 'kimi' | 'kimi25' | 'opus' | 'haiku';
 
 /**
  * AgentCore APIのベースURL・認証情報を取得
