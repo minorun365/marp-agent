@@ -362,13 +362,13 @@ SSEストリームに2段階のアイドルタイムアウトを設定し、ス�
 
 | フェーズ | タイムアウト | 用途 |
 |---------|------------|------|
-| 初回イベント受信前 | 10秒（`SSE_IDLE_TIMEOUT_MS`） | スロットリング検知（`ModelThrottledException`等） |
+| 初回イベント受信前 | 20秒（`SSE_IDLE_TIMEOUT_MS`） | スロットリング検知（`ModelThrottledException`等） |
 | イベント間（初回受信後） | 60秒（`SSE_ONGOING_IDLE_TIMEOUT_MS`） | 推論ハング検知（Opusの長時間無応答等） |
 
 #### 実装箇所
 
 1. **`sseParser.ts`**: `SSEIdleTimeoutError` クラスを定義。`readSSEStream` に `idleTimeoutMs`（初回用）と `ongoingIdleTimeoutMs`（イベント間用）の2つのタイムアウト引数を持つ。`firstEventReceived` フラグで適用するタイムアウト値を切り替え
-2. **`agentCoreClient.ts`**: `SSE_IDLE_TIMEOUT_MS = 10_000`（10秒）と `SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000`（60秒）を定数定義し、`readSSEStream` に渡す
+2. **`agentCoreClient.ts`**: `SSE_IDLE_TIMEOUT_MS = 20_000`（20秒）と `SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000`（60秒）を定数定義し、`readSSEStream` に渡す
 3. **`useChatMessages.ts`**: `onError` コールバックとcatch節の両方で `error instanceof SSEIdleTimeoutError` を判定し、`MESSAGES.ERROR_MODEL_THROTTLED` を表示
 
 #### エラーメッセージの優先順位
