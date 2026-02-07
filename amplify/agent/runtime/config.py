@@ -1,9 +1,5 @@
 """モデル設定・定数・システムプロンプト"""
 
-# Kimi K2のツール名破損検出用
-VALID_TOOL_NAMES = {"web_search", "output_slide", "generate_tweet_url"}
-MAX_RETRY_COUNT = 5  # ツール名破損時の最大リトライ回数
-
 
 def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
