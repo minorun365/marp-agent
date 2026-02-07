@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 
-def _run_marp_cli(markdown: str, output_format: str, theme: str = 'gradient') -> Path:
+def _run_marp_cli(markdown: str, output_format: str, theme: str = 'border') -> Path:
     """Marp CLIを実行して出力ファイルのパスを返す（共通処理）
 
     Args:
@@ -58,25 +58,25 @@ def _run_marp_cli(markdown: str, output_format: str, theme: str = 'gradient') ->
     return output_path
 
 
-def generate_pdf(markdown: str, theme: str = 'gradient') -> bytes:
+def generate_pdf(markdown: str, theme: str = 'border') -> bytes:
     """Marp CLIでPDFを生成"""
     output_path = _run_marp_cli(markdown, "pdf", theme)
     return output_path.read_bytes()
 
 
-def generate_pptx(markdown: str, theme: str = 'gradient') -> bytes:
+def generate_pptx(markdown: str, theme: str = 'border') -> bytes:
     """Marp CLIでPPTXを生成"""
     output_path = _run_marp_cli(markdown, "pptx", theme)
     return output_path.read_bytes()
 
 
-def generate_standalone_html(markdown: str, theme: str = 'gradient') -> str:
+def generate_standalone_html(markdown: str, theme: str = 'border') -> str:
     """Marp CLIでスタンドアロンHTMLを生成（共有用）"""
     output_path = _run_marp_cli(markdown, "html", theme)
     return output_path.read_text(encoding="utf-8")
 
 
-def generate_thumbnail(markdown: str, theme: str = 'gradient') -> bytes:
+def generate_thumbnail(markdown: str, theme: str = 'border') -> bytes:
     """Marp CLIで1枚目のスライドをPNG画像として生成（OGP用サムネイル）"""
     output_path = _run_marp_cli(markdown, "png", theme)
 

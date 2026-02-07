@@ -72,7 +72,7 @@ paginate: true
 /**
  * PDF生成モック
  */
-export async function exportPdfMock(markdown: string, _theme: string = 'gradient'): Promise<Blob> {
+export async function exportPdfMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
   await sleep(1000);
   return new Blob([markdown], { type: 'text/markdown' });
 }
@@ -80,7 +80,7 @@ export async function exportPdfMock(markdown: string, _theme: string = 'gradient
 /**
  * PPTX生成モック
  */
-export async function exportPptxMock(markdown: string, _theme: string = 'gradient'): Promise<Blob> {
+export async function exportPptxMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
   await sleep(1000);
   return new Blob([markdown], { type: 'text/markdown' });
 }
@@ -88,7 +88,7 @@ export async function exportPptxMock(markdown: string, _theme: string = 'gradien
 /**
  * スライド共有モック
  */
-export async function shareSlideMock(_markdown: string, _theme: string = 'gradient'): Promise<ShareResult> {
+export async function shareSlideMock(_markdown: string, _theme: string = 'border'): Promise<ShareResult> {
   await sleep(1000);
   const mockSlideId = crypto.randomUUID();
   return {

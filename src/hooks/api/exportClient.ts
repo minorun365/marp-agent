@@ -19,7 +19,7 @@ const MIME_TYPES: Record<ExportFormat, string> = {
 export async function exportSlide(
   markdown: string,
   format: ExportFormat,
-  theme: string = 'gradient'
+  theme: string = 'border'
 ): Promise<Blob> {
   const { url, accessToken } = await getAgentCoreConfig();
 
@@ -65,11 +65,11 @@ export async function exportSlide(
 }
 
 // 後方互換性のための関数
-export async function exportPdf(markdown: string, theme: string = 'gradient'): Promise<Blob> {
+export async function exportPdf(markdown: string, theme: string = 'border'): Promise<Blob> {
   return exportSlide(markdown, 'pdf', theme);
 }
 
-export async function exportPptx(markdown: string, theme: string = 'gradient'): Promise<Blob> {
+export async function exportPptx(markdown: string, theme: string = 'border'): Promise<Blob> {
   return exportSlide(markdown, 'pptx', theme);
 }
 
@@ -84,7 +84,7 @@ export interface ShareResult {
 /**
  * スライドを共有（S3にアップロードして公開URLを取得）
  */
-export async function shareSlide(markdown: string, theme: string = 'gradient'): Promise<ShareResult> {
+export async function shareSlide(markdown: string, theme: string = 'border'): Promise<ShareResult> {
   const { url, accessToken } = await getAgentCoreConfig();
 
   const response = await fetch(url, {
