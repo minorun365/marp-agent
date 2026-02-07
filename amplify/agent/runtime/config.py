@@ -12,7 +12,16 @@ DEFAULT_THEME = os.environ.get("MARP_THEME", "kag")
 
 def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
-    if model_type == "kimi":
+    if model_type == "kimi25":
+        # Kimi K2.5（Moonshot AI）
+        # - クロスリージョン推論なし
+        # - cache_prompt/cache_tools非対応
+        return {
+            "model_id": "moonshotai.kimi-k2.5",
+            "cache_prompt": None,
+            "cache_tools": None,
+        }
+    elif model_type == "kimi":
         # Kimi K2 Thinking（Moonshot AI）
         # - クロスリージョン推論なし
         # - cache_prompt/cache_tools非対応
