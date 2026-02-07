@@ -24,9 +24,9 @@ export function MessageList({ messages, status }: MessageListProps) {
     <div className="flex-1 overflow-y-auto px-6 py-4">
       <div className="max-w-3xl mx-auto space-y-4">
         {/* 一時的なお知らせバナー（不要になったら削除） */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-yellow-700 text-sm">
+        {/* <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-yellow-700 text-sm">
           ⚠️ 現在、Claude Opus 4.6モデルは人気のため応答に時間がかかる場合があります。お急ぎの方は別のモデルをお試しください！
-        </div>
+        </div> */}
 
         {/* 空状態 */}
         {messages.length === 0 && (
