@@ -25,7 +25,7 @@ allowed-tools: Bash(git:*)
 | **Claude Code設定** | スキル、サブエージェント | `.claude/skills/`, `.claude/agents/` |
 
 **同期しないもの:**
-- `docs/TODO.md` - ブランチ別に管理
+- `docs/todo.md` - ブランチ別に管理
 - 環境固有の設定（resource.ts の環境変数など）
 
 ## 手順

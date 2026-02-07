@@ -1,6 +1,6 @@
 ---
 name: sync-issues
-description: GitHubのissueとdocs/TODO.mdを双方向同期する。新規issueをTODOに追加し、完了したTODOのissueをクローズする。
+description: GitHubのissueとdocs/todo.mdを双方向同期する。新規issueをTODOに追加し、完了したTODOのissueをクローズする。
 allowed-tools: Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue close:*), Read
 ---
 
@@ -27,7 +27,7 @@ gh issue list --state closed --limit 20
 
 ```bash
 # TODO.mdを読み込み
-cat docs/TODO.md
+cat docs/todo.md
 ```
 
 ### 2. 差分を特定
@@ -61,7 +61,7 @@ gh issue close <issue番号> --comment "実装が完了しました 🎉"
 ### 5. 変更を確認
 
 ```bash
-git diff docs/TODO.md
+git diff docs/todo.md
 ```
 
 ## 新規issue追加時のテンプレート
