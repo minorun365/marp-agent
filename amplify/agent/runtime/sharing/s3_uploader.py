@@ -54,7 +54,7 @@ def _inject_ogp_tags(html: str, title: str, image_url: str, page_url: str) -> st
     return html.replace('</head>', f'{ogp_tags}</head>')
 
 
-def share_slide(markdown: str, theme: str = 'gradient') -> dict:
+def share_slide(markdown: str, theme: str = 'border') -> dict:
     """スライドをHTML化してS3に保存し、公開URLを返す（OGP対応）"""
     bucket_name = os.environ.get('SHARED_SLIDES_BUCKET')
     cloudfront_domain = os.environ.get('CLOUDFRONT_DOMAIN')

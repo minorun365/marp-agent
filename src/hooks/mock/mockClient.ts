@@ -88,7 +88,7 @@ export async function exportPptxMock(markdown: string, _theme: string = 'kag'): 
 /**
  * スライド共有モック
  */
-export async function shareSlideMock(_markdown: string, _theme: string = 'gradient'): Promise<ShareResult> {
+export async function shareSlideMock(_markdown: string, _theme: string = 'border'): Promise<ShareResult> {
   await sleep(1000);
   const mockSlideId = crypto.randomUUID();
   return {

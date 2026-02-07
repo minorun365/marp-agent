@@ -84,7 +84,7 @@ export interface ShareResult {
 /**
  * スライドを共有（S3にアップロードして公開URLを取得）
  */
-export async function shareSlide(markdown: string, theme: string = 'gradient'): Promise<ShareResult> {
+export async function shareSlide(markdown: string, theme: string = 'border'): Promise<ShareResult> {
   const { url, accessToken } = await getAgentCoreConfig();
 
   const response = await fetch(url, {
