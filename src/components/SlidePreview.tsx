@@ -143,7 +143,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, onShareS
           <select
             value={selectedTheme}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTheme(e.target.value as ThemeId)}
-            className="text-sm border rounded px-2 py-1"
+            className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer hover:text-gray-700 transition-colors appearance-none pr-4 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%3E%3Cpath%20d%3D%22M0%200l5%206%205-6z%22%20fill%3D%22%239ca3af%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[right_center] bg-no-repeat"
           >
             {THEMES.map(theme => (
               <option key={theme.id} value={theme.id}>{theme.name}</option>

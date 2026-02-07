@@ -243,6 +243,6 @@ aws bedrock-agentcore-control delete-agent-runtime --agent-runtime-id {runtimeId
 
 ## 関連ドキュメント
 
-- `docs/KNOWLEDGE.md` - 技術的な知見・調査結果
-- `docs/SPEC.md` - 機能仕様
-- `docs/TODO.md` - タスク管理
+- `docs/knowledge/` - 技術的な知見・調査結果
+- `docs/spec.md` - 機能仕様
+- `docs/todo.md` - タスク管理
