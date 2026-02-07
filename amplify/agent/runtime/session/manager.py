@@ -13,7 +13,6 @@ _agent_sessions: dict[str, Agent] = {}
 def _create_bedrock_model(model_type: str = "sonnet") -> BedrockModel:
     """モデル設定に基づいてBedrockModelを作成"""
     config = get_model_config(model_type)
-    # cache_prompt/cache_toolsがNoneの場合は引数に含めない（Kimi K2対応）
     if config["cache_prompt"] is None:
         return BedrockModel(model_id=config["model_id"])
     else:

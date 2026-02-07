@@ -9,15 +9,13 @@ def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
     if model_type == "kimi":
         # Kimi K2.5（Moonshot AI）
-        # - クロスリージョン推論なし
-        # - cache_prompt/cache_tools非対応
         return {
             "model_id": "moonshotai.kimi-k2.5",
             "cache_prompt": None,
             "cache_tools": None,
         }
     elif model_type == "opus":
-        # Claude Opus 4.6（リリース前はエラー返却）
+        # Claude Opus 4.6
         return {
             "model_id": "us.anthropic.claude-opus-4-6-v1",
             "cache_prompt": "default",

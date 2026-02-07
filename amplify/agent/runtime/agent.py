@@ -80,39 +80,47 @@ async def invoke(payload, context=None):
 
     reset_generated_markdown()
     web_search_executed = False
+    stream_error = False
 
-    stream = agent.stream_async(user_message)
+    try:
+        stream = agent.stream_async(user_message)
 
-    async for event in stream:
-        if "data" in event:
-            chunk = event["data"]
-            yield {"type": "text", "data": chunk}
+        async for event in stream:
+            if "data" in event:
+                chunk = event["data"]
+                yield {"type": "text", "data": chunk}
 
-        elif "current_tool_use" in event:
-            tool_info = event["current_tool_use"]
-            tool_name = tool_info.get("name", "unknown")
-            tool_input = tool_info.get("input", {})
+            elif "current_tool_use" in event:
+                tool_info = event["current_tool_use"]
+                tool_name = tool_info.get("name", "unknown")
+                tool_input = tool_info.get("input", {})
 
-            # 文字列の場合はJSONパースを試みる
-            if isinstance(tool_input, str):
-                try:
-                    tool_input = json.loads(tool_input)
-                except json.JSONDecodeError:
-                    pass
+                # 文字列の場合はJSONパースを試みる
+                if isinstance(tool_input, str):
+                    try:
+                        tool_input = json.loads(tool_input)
+                    except json.JSONDecodeError:
+                        pass
 
-            if tool_name == "web_search":
-                web_search_executed = True
-                if isinstance(tool_input, dict) and "query" in tool_input:
-                    yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
-            else:
-                yield {"type": "tool_use", "data": tool_name}
+                if tool_name == "web_search":
+                    web_search_executed = True
+                    if isinstance(tool_input, dict) and "query" in tool_input:
+                        yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+                else:
+                    yield {"type": "tool_use", "data": tool_name}
 
-        elif "result" in event:
-            result = event["result"]
-            if hasattr(result, 'message') and result.message:
-                for content in getattr(result.message, 'content', []):
-                    if hasattr(content, 'text') and content.text:
-                        yield {"type": "text", "data": content.text}
+            elif "result" in event:
+                result = event["result"]
+                if hasattr(result, 'message') and result.message:
+                    for content in getattr(result.message, 'content', []):
+                        if hasattr(content, 'text') and content.text:
+                            yield {"type": "text", "data": content.text}
+
+    except Exception as e:
+        stream_error = True
+        print(f"[ERROR] Stream failed (model_type={model_type}): {e}")
+        if model_type == "kimi":
+            yield {"type": "error", "message": "Kimiモデルでエラーが発生しました。Claudeモデルでお試しください。"}
 
     # マークダウン出力
     generated_markdown = get_generated_markdown()
