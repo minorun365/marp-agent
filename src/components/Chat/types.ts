@@ -1,4 +1,4 @@
-export type ModelType = 'sonnet' | 'kimi' | 'kimi25' | 'opus' | 'haiku';
+export type ModelType = 'sonnet' | 'kimi' | 'opus' | 'haiku';
 
 export interface Message {
   id: string;
