@@ -35,7 +35,7 @@ async def invoke(payload, context=None):
     current_markdown = payload.get("markdown", "")
     model_type = payload.get("model_type", "sonnet")
     session_id = getattr(context, 'session_id', None) if context else None
-    theme = payload.get("theme", "gradient")
+    theme = payload.get("theme", "border")
 
     # PDF出力
     if action == "export_pdf" and current_markdown:

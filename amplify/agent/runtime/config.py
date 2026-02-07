@@ -47,7 +47,7 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、プロフェッシ�
 - フロントマターには以下を含める：
   ---
   marp: true
-  theme: gradient
+  theme: border
   size: 16:9
   paginate: true
   ---

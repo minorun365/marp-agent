@@ -90,7 +90,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const [isSharing, setIsSharing] = useState(false);
   const [showShareConfirm, setShowShareConfirm] = useState(false);
   const [shareResult, setShareResult] = useState<ShareResult | null>(null);
-  const [pendingShareTheme, setPendingShareTheme] = useState<string>('gradient');
+  const [pendingShareTheme, setPendingShareTheme] = useState<string>('border');
 
   const handleMarkdownGenerated = (newMarkdown: string) => {
     setMarkdown(newMarkdown);
