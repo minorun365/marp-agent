@@ -7,7 +7,7 @@ import outputs from '../../../amplify_outputs.json';
 import { readSSEStream } from '../streaming/sseParser';
 
 /** SSEストリームのアイドルタイムアウト（ミリ秒）- 初回イベント受信前（スロットリング検知） */
-const SSE_IDLE_TIMEOUT_MS = 10_000;
+const SSE_IDLE_TIMEOUT_MS = 20_000;
 /** SSEストリームのアイドルタイムアウト（ミリ秒）- イベント間（推論ハング検知） */
 const SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000;
 
