@@ -21,7 +21,7 @@ export interface AgentCoreCallbacks {
   onComplete: () => void;
 }
 
-export type ModelType = 'sonnet' | 'opus' | 'haiku' | 'deepseek';
+export type ModelType = 'sonnet' | 'opus';
 
 /**
  * AgentCore APIのベースURL・認証情報を取得
