@@ -46,150 +46,52 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Claude Sonnet 4.5（推奨・デフォルト）
+# Claude Sonnet 4.5（現在の唯一の選択肢）
 model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-
-# Claude Opus 4.6（日付なしのフォーマット）
-model = "us.anthropic.claude-opus-4-6-v1"
-
-# Claude Haiku 4.5（高速・低コスト）
-model = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-
-# Kimi K2 Thinking（Moonshot AI）
-# 注意: クロスリージョン推論なし、cache_prompt/cache_tools非対応
-model = "moonshot.kimi-k2-thinking"
 ```
 
 ### モデル別の設定差異
 
 | モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
 |--------|-------------------|--------------|-------------|------|
-| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 推奨・デフォルト |
-| Claude Opus 4.6 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | |
-| Claude Haiku 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 高速・低コスト |
-| Kimi K2 Thinking | ❌ なし | ❌ 非対応 | ❌ 非対応 | Moonshot AI |
+| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 現在の唯一の選択肢 |
 
-**Kimi K2 Thinking使用時の注意**:
-- BedrockModelの`cache_prompt`と`cache_tools`を指定しないこと
-- 指定すると `AccessDeniedException: You invoked an unsupported model or your request did not allow prompt caching` が発生する
-
-```python
-# NG: Kimi K2では使用不可
-agent = Agent(
-    model=BedrockModel(
-        model_id="moonshot.kimi-k2-thinking",
-        cache_prompt="default",  # エラーになる
-        cache_tools="default",   # エラーになる
-    ),
-)
-
-# OK: キャッシュオプションなし
-agent = Agent(
-    model=BedrockModel(
-        model_id="moonshot.kimi-k2-thinking",
-    ),
-)
-```
-
-### Kimi K2 トラブルシューティング
-
-#### Web検索後にスライドが生成されない
-
-**症状**: Web検索を実行すると「Web検索完了」と表示された後、スライドが生成されずに終了する。「〜検索しておきます」というテキストは表示される。
-
-**原因**: Kimi K2がWeb検索ツール実行後に、空のメッセージで`end_turn`している。既存のフォールバック条件（`not has_any_output`）では、検索前のテキスト出力があるためフォールバックが発動しない。
-
-**解決策**: `has_any_output`ではなく`web_search_executed`フラグで判定
-
-```python
-web_search_executed = False
-
-# Web検索ツール実行時にフラグを立てる
-if tool_name == "web_search":
-    web_search_executed = True
-
-# フォールバック条件を変更
-# 旧: if not has_any_output and not markdown_to_send and _last_search_result:
-# 新:
-if web_search_executed and not markdown_to_send and _last_search_result:
-    # 検索結果を表示してユーザーに次のアクションを促す
-    yield {"type": "text", "data": f"Web検索結果:\n\n{_last_search_result[:500]}...\n\n---\nスライドを作成しますか？"}
-```
-
-#### ツール引数のJSON内マークダウンが抽出できない
-
-**症状**: 「お願いします」と言ってスライド生成を依頼すると、何も応答せずに終了する。ログを見ると`reasoningText`内にツール呼び出しがJSON引数ごと埋め込まれている。
-
-**原因**: `extract_marp_markdown_from_text`関数が直接的なマークダウン（`---\nmarp: true`）のみを抽出していたが、Kimi K2は`{"markdown": "---\\nmarp: true\\n..."}`のようなJSON引数内にマークダウンを埋め込むことがある。エスケープされた改行（`\\n`）が正規表現パターンにマッチしない。
-
-**ログの特徴**:
-```json
-"reasoningText": {
-  "text": "...スライドを作成します。 <|tool_call_argument_begin|> {\"markdown\": \"---\\nmarp: true\\ntheme: gradient\\n...\"} <|tool_call_end|>"
-}
-"finish_reason": "end_turn"
-```
-
-**解決策**: JSON引数からもマークダウンを抽出できるようにフォールバック関数を拡張
-
-```python
-def extract_marp_markdown_from_text(text: str) -> str | None:
-    # ケース1: JSON引数内のマークダウンを抽出
-    json_arg_pattern = r'<\|tool_call_argument_begin\|>\s*(\{[\s\S]*?\})\s*<\|tool_call_end\|>'
-    json_match = re.search(json_arg_pattern, text)
-    if json_match:
-        try:
-            data = json.loads(json_match.group(1))
-            if "markdown" in data and "marp: true" in data["markdown"]:
-                return data["markdown"]
-        except json.JSONDecodeError:
-            pass
-
-    # ケース2: 直接的なマークダウンを抽出（既存の処理）
-    # ...
-```
-
-#### その他の既知問題
-
-| 問題 | 原因 | 対応状況 |
-|------|------|---------|
-| ツール実行後に応答が表示されない | `reasoning`イベントを処理していない | ✅ 対応済み |
-| ツール名が破損してツールが実行されない | 内部トークンがツール名に混入 | ✅ リトライロジックで対応 |
-| ツール呼び出しがreasoningText内に埋め込まれる | tool_useイベントに変換されない | ✅ 検出してリトライ |
-| テキストストリームへのマークダウン混入 | ツールを呼ばずに直接出力 | ✅ バッファリングで抽出 |
-| ツール引数のJSON内マークダウンが抽出できない | エスケープされた改行がパターンにマッチしない | ✅ JSON引数からの抽出に対応 |
-| フロントマター区切り（---）なしのマークダウン | Kimi K2が---を省略して出力 | ✅ パターン緩和で対応 |
-| `<think></think>`タグがチャットに表示される | テキストストリームに思考過程が混入 | ✅ リアルタイムフィルタリングで対応 |
+過去に対応していたモデル（Opus, Haiku, Kimi K2）は削除済み。フロントエンドの `MODEL_OPTIONS` を増やすだけで再追加可能。
 
 ### フロントエンドからのモデル切り替え
 
 リクエストごとにモデルを動的に切り替える実装パターン：
 
-#### フロントエンド（ChatInput.tsx）
-```typescript
-type ModelType = 'sonnet' | 'kimi' | 'opus' | 'haiku';
-const [modelType, setModelType] = useState<ModelType>('sonnet');
+#### フロントエンド（types.ts / ChatInput.tsx）
 
-// 入力欄の左端にセレクター配置（矢印は別要素で表示）
-<div className="relative flex items-center">
-  <select
-    value={modelType}
-    onChange={(e) => setModelType(e.target.value as ModelType)}
-    className="text-xs text-gray-400 bg-transparent appearance-none"
-  >
-    <option value="sonnet">バランス（Claude Sonnet 4.5）</option>
-    <option value="opus">最高性能（Claude Opus 4.6）</option>
-    <option value="haiku">高速（Claude Haiku 4.5）</option>
-    <option value="kimi">サステナブル（Kimi K2 Thinking）</option>
-  </select>
-  <span className="pointer-events-none text-gray-400 text-xl ml-1">▾</span>
-</div>
+モデル選択肢は `types.ts` の `MODEL_OPTIONS` で一元管理。選択肢が1つだけの場合、セレクターUIは自動的に非表示になる。
+
+```typescript
+// types.ts - モデル選択肢の定義（ここを増減するだけでUIが自動対応）
+export type ModelType = 'sonnet' | 'opus';
+
+export const MODEL_OPTIONS: ModelOption[] = [
+  { value: 'sonnet', label: '標準（Claude Sonnet 4.5）' },
+  // { value: 'opus', label: '高品質（Claude Opus 4.6）' },  // コメント外すだけで復活
+];
+
+// ChatInput.tsx - MODEL_OPTIONSの数でセレクター表示を制御
+const showModelSelector = MODEL_OPTIONS.length > 1;
+
+{showModelSelector && (
+  <>
+    <select value={modelType} onChange={(e) => setModelType(e.target.value as ModelType)}>
+      {MODEL_OPTIONS.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+    <div className="w-px h-5 bg-gray-200 mx-1" />
+  </>
+)}
 
 // APIコールにmodelTypeを渡す
 await invokeAgent(prompt, markdown, callbacks, sessionId, modelType);
 ```
-
-**ポイント**: `<option>`に▾を入れるとドロップダウンメニューにも表示されてしまうので、別の`<span>`で表示し、`pointer-events-none`でクリック透過させる。
 
 **会話中のモデル切り替え無効化**: モデルを変えると別のAgentになり会話履歴が引き継がれないため、ユーザーが発言したらセレクターを無効化する。
 
@@ -198,28 +100,10 @@ await invokeAgent(prompt, markdown, callbacks, sessionId, modelType);
 const hasUserMessage = messages.some(m => m.role === 'user');
 
 disabled={isLoading || hasUserMessage}
-className={hasUserMessage ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 cursor-pointer'}
 title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
 ```
 
 **注意**: `messages.length > 0` だと初期メッセージ（アシスタントの挨拶）も含まれてしまうため、`messages.some(m => m.role === 'user')` でユーザー発言の有無を判定する。
-
-**スマホ対応（矢印のみ表示）**: スマホではモデル名が幅を取りすぎるので、矢印だけ表示してタップでドロップダウンを開く。
-
-```typescript
-<select
-  className="w-0 sm:w-auto sm:pl-3 sm:pr-1 ..."
->
-  <option value="sonnet">Sonnet</option>
-  <option value="opus">Opus</option>
-  <option value="haiku">Haiku</option>
-  <option value="kimi">Kimi</option>
-</select>
-<span className="ml-2 sm:ml-1">▾</span>
-```
-
-- スマホ（sm未満）: `w-0` でテキスト非表示、矢印のみ
-- PC（sm以上）: `sm:w-auto` で通常表示
 
 #### API（agentCoreClient.ts）
 ```typescript
@@ -233,14 +117,8 @@ body: JSON.stringify({
 #### バックエンド（config.py）
 ```python
 def get_model_config(model_type: str = "sonnet") -> dict:
-    if model_type == "kimi":
-        return {"model_id": "moonshot.kimi-k2-thinking", "cache_prompt": None, "cache_tools": None}
-    elif model_type == "opus":
-        return {"model_id": "us.anthropic.claude-opus-4-6-v1", "cache_prompt": "default", "cache_tools": "default"}
-    elif model_type == "haiku":
-        return {"model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0", "cache_prompt": "default", "cache_tools": "default"}
-    else:
-        return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default", "cache_tools": "default"}
+    # 現在はSonnetのみ。MODEL_OPTIONS追加時にここも拡張する
+    return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default", "cache_tools": "default"}
 
 @app.entrypoint
 async def invoke(payload, context=None):
@@ -248,19 +126,16 @@ async def invoke(payload, context=None):
     agent = get_or_create_agent(session_id, model_type)
 ```
 
-**セッション管理の注意**: モデル切り替え時に新しいAgentを作成するため、キャッシュキーは `session_id:model_type` の形式で管理する。
-
 ### 新モデル追加時のチェックリスト
 
 新しいモデルを追加する際は、以下のファイルを更新する：
 
 | ファイル | 修正内容 |
 |---------|---------|
-| `src/components/Chat/types.ts` | `ModelType` 型に追加 |
-| `src/components/Chat/ChatInput.tsx` | セレクターの選択肢・ラベルを追加 |
-| `src/hooks/api/agentCoreClient.ts` | `ModelType` 型に追加 |
-| `src/hooks/mock/mockClient.ts` | デフォルト値の確認 |
+| `src/components/Chat/types.ts` | `ModelType` 型と `MODEL_OPTIONS` に追加（型定義の一元管理場所） |
 | `amplify/agent/runtime/config.py` | `get_model_config()` に新モデルの設定を追加 |
+
+※ `agentCoreClient.ts` は `types.ts` から `export type { ModelType }` で再エクスポートしているため、`types.ts` のみ変更すればOK。`ChatInput.tsx` は `MODEL_OPTIONS` をループ描画しているため、選択肢の追加は不要。
 
 **未リリースモデルの先行対応**:
 - リリース前でもモデルIDを設定しておける
@@ -273,7 +148,7 @@ onError: (error) => {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
   const displayMessage = isModelNotAvailable
-    ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE  // 「Claude Opus 4.6はまだリリースされていないようです...」
+    ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE  // 「選択されたモデルは現在利用できません...」
     : MESSAGES.ERROR;
 
   // 疑似ストリーミングでエラーメッセージを表示
