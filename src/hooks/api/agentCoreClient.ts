@@ -5,6 +5,7 @@
 import { fetchAuthSession } from 'aws-amplify/auth';
 import outputs from '../../../amplify_outputs.json';
 import { readSSEStream } from '../streaming/sseParser';
+import type { ModelType } from '../../components/Chat/types';
 
 /** SSEストリームのアイドルタイムアウト（ミリ秒）- 初回イベント受信前（スロットリング検知） */
 const SSE_IDLE_TIMEOUT_MS = 10_000;
@@ -21,7 +22,7 @@ export interface AgentCoreCallbacks {
   onComplete: () => void;
 }
 
-export type ModelType = 'sonnet' | 'opus';
+export type { ModelType } from '../../components/Chat/types';
 
 /**
  * AgentCore APIのベースURL・認証情報を取得
