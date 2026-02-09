@@ -1,4 +1,5 @@
 import type { ModelType } from './types';
+import { MODEL_OPTIONS } from './types';
 
 interface ChatInputProps {
   input: string;
@@ -23,33 +24,40 @@ export function ChatInput({
   inputRef,
   onSubmit,
 }: ChatInputProps) {
-  const modelLabel = modelType === 'sonnet' ? 'Sonnet' : 'Opus';
+  const showModelSelector = MODEL_OPTIONS.length > 1;
+  const currentModel = MODEL_OPTIONS.find(m => m.value === modelType);
+  const modelLabel = currentModel?.label.split('（')[0] ?? modelType;
   const isNearLimit = input.length > MAX_INPUT_LENGTH * 0.9;
 
   return (
     <form onSubmit={onSubmit} className="border-t px-6 py-4">
       <div className="max-w-3xl mx-auto flex gap-2">
-        {/* 入力欄（左端にモデルセレクター内蔵） */}
+        {/* 入力欄（モデルが複数ある場合のみ左端にセレクター表示） */}
         <div className="flex-1 flex items-center border border-gray-200 rounded-lg bg-gray-50 focus-within:ring-2 focus-within:ring-[#5ba4d9] focus-within:border-transparent">
-          <div className="relative flex items-center pl-3 sm:pl-4">
-            {/* PC: モデル名表示、スマホ: 矢印のみ */}
-            <span className={`hidden sm:inline text-xs ${hasUserMessage ? 'text-gray-300' : 'text-gray-600'}`}>
-              {modelLabel}
-            </span>
-            <span className={`text-xl sm:ml-1 mr-2 ${hasUserMessage ? 'text-gray-300' : 'text-gray-600'}`}>▾</span>
-            {/* 透明なselectを上に重ねてタップ領域を確保 */}
-            <select
-              value={modelType}
-              onChange={(e) => setModelType(e.target.value as ModelType)}
-              disabled={isLoading || hasUserMessage}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
-            >
-              <option value="sonnet">標準（Claude Sonnet 4.5）</option>
-              <option value="opus">高品質（Claude Opus 4.6）</option>
-            </select>
-          </div>
-          <div className="w-px h-5 bg-gray-200 mx-1" />
+          {showModelSelector && (
+            <>
+              <div className="relative flex items-center pl-3 sm:pl-4">
+                {/* PC: モデル名表示、スマホ: 矢印のみ */}
+                <span className={`hidden sm:inline text-xs ${hasUserMessage ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {modelLabel}
+                </span>
+                <span className={`text-xl sm:ml-1 mr-2 ${hasUserMessage ? 'text-gray-300' : 'text-gray-600'}`}>▾</span>
+                {/* 透明なselectを上に重ねてタップ領域を確保 */}
+                <select
+                  value={modelType}
+                  onChange={(e) => setModelType(e.target.value as ModelType)}
+                  disabled={isLoading || hasUserMessage}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
+                >
+                  {MODEL_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-px h-5 bg-gray-200 mx-1" />
+            </>
+          )}
           <input
             ref={inputRef}
             type="text"
