@@ -52,8 +52,8 @@ python -m pytest tests/
 | `src/hooks/api/` | API呼び出し（agentCoreClient, exportClient） |
 | `src/hooks/streaming/` | SSE処理（sseParser） |
 | `src/hooks/mock/` | モックモード用（mockClient） |
-| `src/components/Chat/` | チャットUI（index, ChatInput, MessageList, MessageBubble, StatusMessage, constants, types） |
-| `src/components/Chat/hooks/` | Chat専用フック（useChatMessages, useTipRotation, useStreamingText） |
+| `src/components/Chat/` | チャットUI（index, ChatInput, ChatInput.test, MessageList, MessageBubble, StatusMessage, constants, types） |
+| `src/components/Chat/hooks/` | Chat専用フック（useChatMessages, useStreamingText, useTipRotation） |
 | `src/components/` | その他UIコンポーネント（SlidePreview, ShareConfirmModal, ShareResultModal） |
 | `amplify/` | バックエンド定義（CDK） |
 | `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |

@@ -14,7 +14,7 @@
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search, output_slide, generate_tweet_url |
 | インフラ | リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
-| インフラ | モデル | Claude Sonnet 4.5 / Kimi K2 Thinking（UI選択可能） |
+| インフラ | モデル | Claude Sonnet 4.5 |
 | 認証 | スコープ | 誰でもサインアップ可能（本番時） |
 
 ---
