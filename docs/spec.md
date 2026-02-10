@@ -168,7 +168,7 @@ paginate: true
 
 | ツール名 | 説明 |
 |---------|------|
-| `web_search` | Tavily APIを使用したWeb検索。複数APIキーのフォールバック対応（レートリミット時に自動で次のキーに切替） |
+| `web_search` | Tavily APIを使用したWeb検索（`search_depth="basic"`, `max_results=3`）。複数APIキーのフォールバック対応（レートリミット時に自動で次のキーに切替） |
 | `output_slide` | 生成したMarpマークダウンを出力するツール。テキストで直接出力せずこのツール経由で出力 |
 | `generate_tweet_url` | ツイート投稿用のURLを生成。ハッシュタグ `#パワポ作るマン` を含む100文字以内のツイート |
 
