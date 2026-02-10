@@ -14,6 +14,12 @@
 | [amplify.md](./amplify.md) | Amplify Gen2、Cognito認証、ビルド設定 |
 | [features.md](./features.md) | API接続、シェア機能、共有機能、ローカル開発 |
 
+## 関連ドキュメント（docs直下）
+
+| ファイル | 内容 |
+|----------|------|
+| [temporary-cost-reduction.md](../temporary-cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
+
 ## 参考リンク
 
 - [Marp公式](https://marp.app/)
