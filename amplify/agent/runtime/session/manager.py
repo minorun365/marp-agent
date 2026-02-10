@@ -1,6 +1,7 @@
 """セッション管理（Agent作成・キャッシュ）"""
 
 from strands import Agent
+from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands.models import BedrockModel
 
 from config import get_model_config, SYSTEM_PROMPT
@@ -8,6 +9,9 @@ from tools import web_search, output_slide, generate_tweet_url
 
 # セッションごとのAgentインスタンスを管理（会話履歴保持用）
 _agent_sessions: dict[str, Agent] = {}
+
+# 会話履歴のトリミング設定（古いメッセージを自動削除してトークンコスト削減）
+_conversation_manager = SlidingWindowConversationManager(window_size=10)
 
 
 def _create_bedrock_model(model_type: str = "sonnet") -> BedrockModel:
@@ -34,6 +38,7 @@ def get_or_create_agent(session_id: str | None, model_type: str = "sonnet") -> A
             model=_create_bedrock_model(model_type),
             system_prompt=SYSTEM_PROMPT,
             tools=[web_search, output_slide, generate_tweet_url],
+            conversation_manager=_conversation_manager,
         )
 
     # 既存のセッションがあればそのAgentを返す
@@ -45,6 +50,7 @@ def get_or_create_agent(session_id: str | None, model_type: str = "sonnet") -> A
         model=_create_bedrock_model(model_type),
         system_prompt=SYSTEM_PROMPT,
         tools=[web_search, output_slide, generate_tweet_url],
+        conversation_manager=_conversation_manager,
     )
     _agent_sessions[cache_key] = agent
     return agent

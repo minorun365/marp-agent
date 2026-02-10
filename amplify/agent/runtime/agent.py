@@ -70,12 +70,13 @@ async def invoke(payload, context=None):
             yield {"type": "error", "message": str(e)}
         return
 
-    # 現在のスライドがある場合はユーザーメッセージに付加
-    if current_markdown:
-        user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
-
     # セッションIDとモデルタイプに対応するAgentを取得
     agent = get_or_create_agent(session_id, model_type)
+
+    # 既存セッション（Agent履歴にスライド内容が残っている）ではMarkdown付加をスキップ
+    # 新規セッションまたは履歴がない場合のみ、フロントからのMarkdownをメッセージに結合
+    if current_markdown and not agent.messages:
+        user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
 
     reset_generated_markdown()
     web_search_executed = False
@@ -114,6 +115,20 @@ async def invoke(payload, context=None):
                     for content in getattr(result.message, 'content', []):
                         if hasattr(content, 'text') and content.text:
                             yield {"type": "text", "data": content.text}
+
+                # トークンメトリクスをログ出力（CloudWatch Log Insightsで集計用）
+                if hasattr(result, 'metrics') and hasattr(result.metrics, 'accumulated_usage'):
+                    usage = result.metrics.accumulated_usage
+                    print(json.dumps({
+                        "type": "METRICS",
+                        "version": "cost_opt_v1",
+                        "session_id": session_id,
+                        "model_type": model_type,
+                        "input_tokens": usage.get("inputTokens", 0),
+                        "output_tokens": usage.get("outputTokens", 0),
+                        "cache_read_tokens": usage.get("cacheReadInputTokens", 0),
+                        "cache_write_tokens": usage.get("cacheWriteInputTokens", 0),
+                    }))
 
     except Exception as e:
         stream_error = True
