@@ -11,7 +11,7 @@ from tools import web_search, output_slide, generate_tweet_url
 _agent_sessions: dict[str, Agent] = {}
 
 # 会話履歴のトリミング設定（古いメッセージを自動削除してトークンコスト削減）
-_conversation_manager = SlidingWindowConversationManager(window_size=10)
+_conversation_manager = SlidingWindowConversationManager(window_size=6)
 
 
 def _create_bedrock_model(model_type: str = "sonnet") -> BedrockModel:
