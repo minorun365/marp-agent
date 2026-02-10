@@ -116,20 +116,6 @@ async def invoke(payload, context=None):
                         if hasattr(content, 'text') and content.text:
                             yield {"type": "text", "data": content.text}
 
-                # トークンメトリクスをログ出力（CloudWatch Log Insightsで集計用）
-                if hasattr(result, 'metrics') and hasattr(result.metrics, 'accumulated_usage'):
-                    usage = result.metrics.accumulated_usage
-                    print(json.dumps({
-                        "type": "METRICS",
-                        "version": "cost_opt_v2",
-                        "session_id": session_id,
-                        "model_type": model_type,
-                        "input_tokens": usage.get("inputTokens", 0),
-                        "output_tokens": usage.get("outputTokens", 0),
-                        "cache_read_tokens": usage.get("cacheReadInputTokens", 0),
-                        "cache_write_tokens": usage.get("cacheWriteInputTokens", 0),
-                    }))
-
     except Exception as e:
         stream_error = True
         print(f"[ERROR] Stream failed (model_type={model_type}): {e}")
