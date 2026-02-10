@@ -46,17 +46,21 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Claude Sonnet 4.5（現在の唯一の選択肢）
-model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+# Claude Sonnet 4.5（デフォルト）
+"us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+# Claude Opus 4.6（バックエンドに設定あり、フロントでコメントアウト中）
+"us.anthropic.claude-opus-4-6-v1"
 ```
 
 ### モデル別の設定差異
 
 | モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
 |--------|-------------------|--------------|-------------|------|
-| Claude Sonnet 4.5 | ✅ `us.`/`jp.` | ✅ 対応 | ✅ 対応 | 現在の唯一の選択肢 |
+| Claude Sonnet 4.5 | ✅ `us.` | ✅ 対応 | ✅ 対応 | デフォルト |
+| Claude Opus 4.6 | ✅ `us.` | ✅ 対応 | ✅ 対応 | フロントでコメントアウト中 |
 
-過去に対応していたモデル（Opus, Haiku, Kimi K2）は削除済み。フロントエンドの `MODEL_OPTIONS` を増やすだけで再追加可能。
+過去に対応していたモデル（Haiku, Kimi K2）は削除済み。Opusはバックエンド（`config.py`）に設定が残っており、フロントエンド（`types.ts`）の `MODEL_OPTIONS` のコメントアウトを外すだけで再有効化可能。
 
 ### フロントエンドからのモデル切り替え
 
@@ -342,7 +346,7 @@ def output_slide(markdown: str) -> str:
     return "スライドを出力しました。"
 ```
 
-**注意**: Strands Agentsはツールを別スレッドで実行するため、`contextvars.ContextVar`で値をセットしてもメインスレッドから参照できない。そのためグローバル変数を使用する。AgentCore Runtimeはリクエストごとに独立コンテナで動作するため、並行性の問題はない。output_slide, web_search, generate_tweet の全ツールで同様のパターンを適用。
+**注意**: Strands Agentsはツールを別スレッドで実行するため、`contextvars.ContextVar`で値をセットしてもメインスレッドから参照できない。そのためグローバル変数を使用する。AgentCore Runtimeはリクエストごとに独立コンテナで動作するため、並行性の問題はない。output_slide, web_search, generate_tweet_url の全ツールで同様のパターンを適用。
 
 **注意**: イベントのペイロードは `content` または `data` フィールドに格納される。両方に対応するコードが必要：
 
@@ -377,11 +381,11 @@ agent = Agent(
     model=model,
     system_prompt=SYSTEM_PROMPT,
     tools=tools,
-    conversation_manager=SlidingWindowConversationManager(window_size=10),
+    conversation_manager=SlidingWindowConversationManager(window_size=6),
 )
 ```
 
-- `window_size=10` で古いメッセージを自動削除
+- `window_size=6` で古いメッセージを自動削除（初期値10から調整。ログ分析の詳細は `docs/temporary-cost-reduction.md` 参照）
 - 実測で100K超リクエスト（全体の10%）が50K以下に抑制
 - フロントエンドが修正リクエスト時に最新Markdown全文を毎回送信するため、古い履歴が消えても会話は成立
 
