@@ -424,6 +424,53 @@ filter @message like /strands.event_loop.input.tokens/
 
 EMFデータはJSON内のネスト構造（`Sum`, `Max`, `Min`, `Count`）で格納される。Python等でパースする際は `parsed['strands.event_loop.input.tokens']['Sum']` で取得。
 
+### Web検索サブエージェント化の検証結果（断念）
+
+Web検索結果のトークン削減のため、DeepSeek V3.2サブエージェントでの処理を検証したが、**品質低下が許容範囲を超えるため断念**。
+
+#### 検証した2つのアプローチ
+
+| アプローチ | プロンプト | 結果 |
+|-----------|---------- |------|
+| 要約パターン | 「箇条書き3〜5項目に要約」 | 情報量75%減、スライドの深みが失われる |
+| ノイズ除去パターン | 「広告・ナビ等の不要部分のみ除去、重要情報は原文保持」 | 情報量は維持されるが、全体的な品質低下 |
+
+#### 技術的には動作する
+
+```python
+# サブエージェントの基本パターン
+from strands import Agent, tool
+from strands.models import BedrockModel
+
+def _create_search_agent() -> Agent:
+    # 並列呼び出し対応のため毎回新規作成（シングルトンだとConcurrent invocationsエラー）
+    return Agent(
+        model=BedrockModel(model_id="deepseek.v3.2"),
+        system_prompt="検索結果を整理する指示...",
+        tools=[web_search],
+        callback_handler=None,  # 親Agentへのイベント伝播を遮断
+    )
+
+@tool
+def search_and_summarize(query: str) -> str:
+    agent = _create_search_agent()
+    result = agent(f"「{query}」について検索してください。")
+    return str(result)
+```
+
+#### 判明した制約
+
+| 制約 | 詳細 |
+|------|------|
+| **品質低下は不可避** | プロンプトをどう工夫しても、サブエージェントを経由するだけで全体的な品質が低下する |
+| **イベント非伝播** | サブAgent内部のツール呼び出しイベントは親Agentのcallback_handlerに伝播しない（Strands仕様） |
+| **並列呼び出し** | 同じAgentインスタンスの並列呼び出しは`Concurrent invocations not supported`エラー。毎回新規作成で回避 |
+| **フロント通知** | `search_and_summarize`のquery引数を`web_search`としてフロントに送信する互換性マッピングが必要 |
+
+#### 結論
+
+サブエージェント化によるトークン削減は、スライド生成のような品質が重要なユースケースには不向き。コスト削減は履歴トリミング（施策2）やキャッシュ最適化（施策4）など、情報を加工しない手法で対応するのが適切。
+
 ### cache_writeの値 = System Prompt + Tools定義のサイズ
 
 新規セッション開始時の `cache_write` 値がSystem Prompt + ツール定義のトークン数に相当。この値を追跡することでプロンプト圧縮の効果を定量的に計測できる。
