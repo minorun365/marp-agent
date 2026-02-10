@@ -4,12 +4,12 @@ import os
 from strands import tool
 from tavily import TavilyClient
 
-# Tavilyクライアント初期化（複数キーでフォールバック対応）
-tavily_clients: list[TavilyClient] = []
-for _key_name in ["TAVILY_API_KEY", "TAVILY_API_KEY2", "TAVILY_API_KEY3"]:
-    _key = os.environ.get(_key_name, "")
-    if _key:
-        tavily_clients.append(TavilyClient(api_key=_key))
+# Tavilyクライアント初期化（カンマ区切りで複数キー対応、枯渇時は自動フォールバック）
+tavily_clients: list[TavilyClient] = [
+    TavilyClient(api_key=key.strip())
+    for key in os.environ.get("TAVILY_API_KEYS", "").split(",")
+    if key.strip()
+]
 
 # Web検索結果用のグローバル変数
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
