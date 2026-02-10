@@ -8,6 +8,8 @@ allowed-tools: Bash(aws:*)
 
 各Amplify環境（main/kag）のCognitoユーザー数とBedrock AgentCoreランタイムのセッション数を調査する。Bedrockコストについてはdev環境も含めて集計する。
 
+mainとkagは別AWSアカウントで運用されているため、それぞれのプロファイルで個別にデータ取得する。
+
 ## 実行方法
 
 **重要**: 以下のBashスクリプトを**そのまま1回で実行**すること。すべてのデータ取得を並列化し、1回の承認で完了する。
@@ -17,42 +19,68 @@ allowed-tools: Bash(aws:*)
 set -e
 
 REGION="us-east-1"
-PROFILE="sandbox"
+PROFILE_MAIN="sandbox"
+PROFILE_KAG="kag-sandbox"
 OUTPUT_DIR="/tmp/marp-stats"
 mkdir -p "$OUTPUT_DIR"
 
 echo "📊 Marp Agent 利用状況を取得中..."
+
+# kag-sandbox SSOセッション確認
+KAG_AVAILABLE=true
+aws sts get-caller-identity --profile $PROFILE_KAG > /dev/null 2>&1 || KAG_AVAILABLE=false
+if [ "$KAG_AVAILABLE" = false ]; then
+  echo "⚠️  kag-sandbox のSSOセッションが無効です。kagのデータはスキップします。"
+fi
 
 # ========================================
 # 1. リソースID取得
 # ========================================
 echo "🔍 リソースIDを取得中..."
 
-# Cognito User Pool ID取得（marp-main, marp-kagで検索）
-POOL_MAIN=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION --profile $PROFILE \
+# Cognito User Pool ID取得
+POOL_MAIN=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION --profile $PROFILE_MAIN \
   --query "UserPools[?contains(Name, 'marp-main')].Id" --output text)
-POOL_KAG=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION --profile $PROFILE \
-  --query "UserPools[?contains(Name, 'marp-kag')].Id" --output text)
 
-# AgentCore ロググループ名取得（main/kag/dev）
+POOL_KAG=""
+if [ "$KAG_AVAILABLE" = true ]; then
+  # kag-sandbox ではプール名が汎用的なため、CloudFormation出力から特定
+  POOL_KAG=$(aws cloudformation describe-stacks \
+    --stack-name $(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE \
+      --region $REGION --profile $PROFILE_KAG \
+      --query "StackSummaries[?contains(StackName, 'dt1uykzxnkuoh') && contains(StackName, 'auth')].StackName" --output text) \
+    --region $REGION --profile $PROFILE_KAG \
+    --query "Stacks[0].Outputs[?contains(OutputKey, 'UserPool') && !contains(OutputKey, 'AppClient')].OutputValue" --output text 2>/dev/null || echo "")
+fi
+
+# AgentCore ロググループ名取得（main/dev は sandbox、kag は kag-sandbox）
 LOG_MAIN=$(aws logs describe-log-groups \
   --log-group-name-prefix /aws/bedrock-agentcore/runtimes/marp_agent_main \
-  --region $REGION --profile $PROFILE --query "logGroups[0].logGroupName" --output text)
-LOG_KAG=$(aws logs describe-log-groups \
-  --log-group-name-prefix /aws/bedrock-agentcore/runtimes/marp_agent_kag \
-  --region $REGION --profile $PROFILE --query "logGroups[0].logGroupName" --output text)
+  --region $REGION --profile $PROFILE_MAIN --query "logGroups[0].logGroupName" --output text)
+
+LOG_KAG="None"
+if [ "$KAG_AVAILABLE" = true ]; then
+  LOG_KAG=$(aws logs describe-log-groups \
+    --log-group-name-prefix /aws/bedrock-agentcore/runtimes/marp_agent \
+    --region $REGION --profile $PROFILE_KAG --query "logGroups[0].logGroupName" --output text 2>/dev/null || echo "None")
+fi
+
 LOG_DEV=$(aws logs describe-log-groups \
   --log-group-name-prefix /aws/bedrock-agentcore/runtimes/marp_agent_dev \
-  --region $REGION --profile $PROFILE --query "logGroups[0].logGroupName" --output text 2>/dev/null || echo "None")
+  --region $REGION --profile $PROFILE_MAIN --query "logGroups[0].logGroupName" --output text 2>/dev/null || echo "None")
 
 # ========================================
 # 2. Cognitoユーザー数取得（前回値との比較用キャッシュ付き）
 # ========================================
 echo "👥 Cognitoユーザー数を取得中..."
-USERS_MAIN=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_MAIN" --region $REGION --profile $PROFILE \
+USERS_MAIN=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_MAIN" --region $REGION --profile $PROFILE_MAIN \
   --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
-USERS_KAG=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_KAG" --region $REGION --profile $PROFILE \
-  --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
+
+USERS_KAG=0
+if [ "$KAG_AVAILABLE" = true ] && [ -n "$POOL_KAG" ]; then
+  USERS_KAG=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_KAG" --region $REGION --profile $PROFILE_KAG \
+    --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
+fi
 
 # 前回値を読み込み（キャッシュファイルがあれば）
 CACHE_FILE="$OUTPUT_DIR/cognito_cache.json"
@@ -85,18 +113,21 @@ END_NOW=$(date +%s)
 # OTELログからsession.idをparseしてユニークカウント（UTCで集計）
 OTEL_QUERY='parse @message /"session\.id":\s*"(?<sid>[^"]+)"/ | filter ispresent(sid)'
 
-# 日次クエリ開始（main/kag並列）
+# 日次クエリ開始（main: sandbox, kag: kag-sandbox）
 Q_DAILY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_7D --end-time $END_NOW \
   --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-  --region $REGION --profile $PROFILE --query 'queryId' --output text)
+  --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 
-Q_DAILY_KAG=$(aws logs start-query \
-  --log-group-name "$LOG_KAG" \
-  --start-time $START_7D --end-time $END_NOW \
-  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-  --region $REGION --profile $PROFILE --query 'queryId' --output text)
+Q_DAILY_KAG=""
+if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
+  Q_DAILY_KAG=$(aws logs start-query \
+    --log-group-name "$LOG_KAG" \
+    --start-time $START_7D --end-time $END_NOW \
+    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+    --region $REGION --profile $PROFILE_KAG --query 'queryId' --output text)
+fi
 
 Q_DAILY_DEV=""
 if [ "$LOG_DEV" != "None" ]; then
@@ -104,7 +135,7 @@ if [ "$LOG_DEV" != "None" ]; then
     --log-group-name "$LOG_DEV" \
     --start-time $START_7D --end-time $END_NOW \
     --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-    --region $REGION --profile $PROFILE --query 'queryId' --output text)
+    --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 fi
 
 # 時間別クエリ開始（main/kag/dev並列）
@@ -112,13 +143,16 @@ Q_HOURLY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_24H --end-time $END_NOW \
   --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
-  --region $REGION --profile $PROFILE --query 'queryId' --output text)
+  --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 
-Q_HOURLY_KAG=$(aws logs start-query \
-  --log-group-name "$LOG_KAG" \
-  --start-time $START_24H --end-time $END_NOW \
-  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
-  --region $REGION --profile $PROFILE --query 'queryId' --output text)
+Q_HOURLY_KAG=""
+if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
+  Q_HOURLY_KAG=$(aws logs start-query \
+    --log-group-name "$LOG_KAG" \
+    --start-time $START_24H --end-time $END_NOW \
+    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
+    --region $REGION --profile $PROFILE_KAG --query 'queryId' --output text)
+fi
 
 Q_HOURLY_DEV=""
 if [ "$LOG_DEV" != "None" ]; then
@@ -126,37 +160,53 @@ if [ "$LOG_DEV" != "None" ]; then
     --log-group-name "$LOG_DEV" \
     --start-time $START_24H --end-time $END_NOW \
     --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
-    --region $REGION --profile $PROFILE --query 'queryId' --output text)
+    --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 fi
 
-# 週次クエリ開始（過去4週間、main/kag並列）
+# 週次クエリ開始（過去4週間）
 Q_WEEKLY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_28D --end-time $END_NOW \
   --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-  --region $REGION --profile $PROFILE --query 'queryId' --output text)
+  --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 
-Q_WEEKLY_KAG=$(aws logs start-query \
-  --log-group-name "$LOG_KAG" \
-  --start-time $START_28D --end-time $END_NOW \
-  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
-  --region $REGION --profile $PROFILE --query 'queryId' --output text)
+Q_WEEKLY_KAG=""
+if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
+  Q_WEEKLY_KAG=$(aws logs start-query \
+    --log-group-name "$LOG_KAG" \
+    --start-time $START_28D --end-time $END_NOW \
+    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+    --region $REGION --profile $PROFILE_KAG --query 'queryId' --output text)
+fi
 
 # ========================================
 # 4. Bedrockコスト取得（クエリ待機中に並列実行）
 # ========================================
 echo "💰 Bedrockコストを取得中..."
 
-# サービス別コスト（Claude/Kimi/Bedrock全体）
+# sandbox アカウント（main+dev）のコスト
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
   --metrics "UnblendedCost" \
   --group-by Type=DIMENSION,Key=SERVICE \
-  --region $REGION --profile $PROFILE \
+  --region $REGION --profile $PROFILE_MAIN \
   --output json > "$OUTPUT_DIR/cost.json"
 
-# Claude Sonnet 4.5の使用タイプ別コスト（キャッシュ効果分析用）
+# kag-sandbox アカウントのコスト
+if [ "$KAG_AVAILABLE" = true ]; then
+  aws ce get-cost-and-usage \
+    --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+    --granularity DAILY \
+    --metrics "UnblendedCost" \
+    --group-by Type=DIMENSION,Key=SERVICE \
+    --region $REGION --profile $PROFILE_KAG \
+    --output json > "$OUTPUT_DIR/cost_kag.json"
+else
+  echo '{"ResultsByTime":[]}' > "$OUTPUT_DIR/cost_kag.json"
+fi
+
+# Claude Sonnet 4.5の使用タイプ別コスト（キャッシュ効果分析用）- sandbox
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
@@ -168,10 +218,29 @@ aws ce get-cost-and-usage \
     }
   }' \
   --group-by Type=DIMENSION,Key=USAGE_TYPE \
-  --region $REGION --profile $PROFILE \
+  --region $REGION --profile $PROFILE_MAIN \
   --output json > "$OUTPUT_DIR/sonnet_usage.json"
 
-# Claude Opus 4.6の使用タイプ別コスト（キャッシュ効果分析用）
+# Claude Sonnet 4.5 - kag-sandbox
+if [ "$KAG_AVAILABLE" = true ]; then
+  aws ce get-cost-and-usage \
+    --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+    --granularity DAILY \
+    --metrics "UnblendedCost" \
+    --filter '{
+      "Dimensions": {
+        "Key": "SERVICE",
+        "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]
+      }
+    }' \
+    --group-by Type=DIMENSION,Key=USAGE_TYPE \
+    --region $REGION --profile $PROFILE_KAG \
+    --output json > "$OUTPUT_DIR/sonnet_usage_kag.json"
+else
+  echo '{"ResultsByTime":[]}' > "$OUTPUT_DIR/sonnet_usage_kag.json"
+fi
+
+# Claude Opus 4.6の使用タイプ別コスト - sandbox
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
@@ -183,17 +252,49 @@ aws ce get-cost-and-usage \
     }
   }' \
   --group-by Type=DIMENSION,Key=USAGE_TYPE \
-  --region $REGION --profile $PROFILE \
+  --region $REGION --profile $PROFILE_MAIN \
   --output json > "$OUTPUT_DIR/opus_usage.json"
 
-# 週次コスト取得（過去4週間）
+# Claude Opus 4.6 - kag-sandbox
+if [ "$KAG_AVAILABLE" = true ]; then
+  aws ce get-cost-and-usage \
+    --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+    --granularity DAILY \
+    --metrics "UnblendedCost" \
+    --filter '{
+      "Dimensions": {
+        "Key": "SERVICE",
+        "Values": ["Claude Opus 4.6 (Amazon Bedrock Edition)"]
+      }
+    }' \
+    --group-by Type=DIMENSION,Key=USAGE_TYPE \
+    --region $REGION --profile $PROFILE_KAG \
+    --output json > "$OUTPUT_DIR/opus_usage_kag.json"
+else
+  echo '{"ResultsByTime":[]}' > "$OUTPUT_DIR/opus_usage_kag.json"
+fi
+
+# 週次コスト取得（過去4週間）- sandbox
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-28d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
   --metrics "UnblendedCost" \
   --group-by Type=DIMENSION,Key=SERVICE \
-  --region $REGION --profile $PROFILE \
+  --region $REGION --profile $PROFILE_MAIN \
   --output json > "$OUTPUT_DIR/weekly_cost.json"
+
+# 週次コスト - kag-sandbox
+if [ "$KAG_AVAILABLE" = true ]; then
+  aws ce get-cost-and-usage \
+    --time-period Start=$(date -v-28d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
+    --granularity DAILY \
+    --metrics "UnblendedCost" \
+    --group-by Type=DIMENSION,Key=SERVICE \
+    --region $REGION --profile $PROFILE_KAG \
+    --output json > "$OUTPUT_DIR/weekly_cost_kag.json"
+else
+  echo '{"ResultsByTime":[]}' > "$OUTPUT_DIR/weekly_cost_kag.json"
+fi
 
 # ========================================
 # 5. クエリ結果取得（10秒待機後）
@@ -202,19 +303,31 @@ echo "⏳ クエリ完了を待機中..."
 sleep 10
 
 echo "📥 クエリ結果を取得中..."
-aws logs get-query-results --query-id "$Q_DAILY_MAIN" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/daily_main.json"
-aws logs get-query-results --query-id "$Q_DAILY_KAG" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/daily_kag.json"
-aws logs get-query-results --query-id "$Q_HOURLY_MAIN" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/hourly_main.json"
-aws logs get-query-results --query-id "$Q_HOURLY_KAG" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/hourly_kag.json"
+aws logs get-query-results --query-id "$Q_DAILY_MAIN" --region $REGION --profile $PROFILE_MAIN > "$OUTPUT_DIR/daily_main.json"
+aws logs get-query-results --query-id "$Q_HOURLY_MAIN" --region $REGION --profile $PROFILE_MAIN > "$OUTPUT_DIR/hourly_main.json"
+
+if [ -n "$Q_DAILY_KAG" ]; then
+  aws logs get-query-results --query-id "$Q_DAILY_KAG" --region $REGION --profile $PROFILE_KAG > "$OUTPUT_DIR/daily_kag.json"
+  aws logs get-query-results --query-id "$Q_HOURLY_KAG" --region $REGION --profile $PROFILE_KAG > "$OUTPUT_DIR/hourly_kag.json"
+else
+  echo '{"results":[]}' > "$OUTPUT_DIR/daily_kag.json"
+  echo '{"results":[]}' > "$OUTPUT_DIR/hourly_kag.json"
+fi
+
 if [ -n "$Q_DAILY_DEV" ]; then
-  aws logs get-query-results --query-id "$Q_DAILY_DEV" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/daily_dev.json"
-  aws logs get-query-results --query-id "$Q_HOURLY_DEV" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/hourly_dev.json"
+  aws logs get-query-results --query-id "$Q_DAILY_DEV" --region $REGION --profile $PROFILE_MAIN > "$OUTPUT_DIR/daily_dev.json"
+  aws logs get-query-results --query-id "$Q_HOURLY_DEV" --region $REGION --profile $PROFILE_MAIN > "$OUTPUT_DIR/hourly_dev.json"
 else
   echo '{"results":[]}' > "$OUTPUT_DIR/daily_dev.json"
   echo '{"results":[]}' > "$OUTPUT_DIR/hourly_dev.json"
 fi
-aws logs get-query-results --query-id "$Q_WEEKLY_MAIN" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/weekly_main.json"
-aws logs get-query-results --query-id "$Q_WEEKLY_KAG" --region $REGION --profile $PROFILE > "$OUTPUT_DIR/weekly_kag.json"
+
+aws logs get-query-results --query-id "$Q_WEEKLY_MAIN" --region $REGION --profile $PROFILE_MAIN > "$OUTPUT_DIR/weekly_main.json"
+if [ -n "$Q_WEEKLY_KAG" ]; then
+  aws logs get-query-results --query-id "$Q_WEEKLY_KAG" --region $REGION --profile $PROFILE_KAG > "$OUTPUT_DIR/weekly_kag.json"
+else
+  echo '{"results":[]}' > "$OUTPUT_DIR/weekly_kag.json"
+fi
 
 # ========================================
 # 6. 結果出力
@@ -335,14 +448,6 @@ else
   fi
 fi
 echo ""
-
-# UTC→JST変換関数（日付用：+9時間で日付が変わる場合を考慮）
-utc_to_jst_date() {
-  local utc_date="$1"
-  # UTCの日付に9時間加算（日本時間では15:00以降が翌日扱い）
-  # ただしCloudWatch Logsのdatefloorは00:00基準なので、そのままでOK
-  echo "$utc_date"
-}
 
 echo "📈 日次セッション数（過去7日間）"
 echo "[main]"
@@ -482,6 +587,7 @@ done
 echo ""
 
 echo "💰 Bedrockコスト（過去7日間・日別）"
+echo "[sandbox (main+dev)]"
 jq -r '
   .ResultsByTime[] |
   .TimePeriod.Start as $date |
@@ -490,117 +596,155 @@ jq -r '
   "  \($date): $\(. | . * 100 | floor / 100)"
 ' "$OUTPUT_DIR/cost.json"
 
-TOTAL_COST=$(jq -r '
+TOTAL_COST_SANDBOX=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
+echo "  小計: \$$TOTAL_COST_SANDBOX"
+echo ""
+
+TOTAL_COST_KAG=0
+if [ "$KAG_AVAILABLE" = true ]; then
+  echo "[kag]"
+  jq -r '
+    .ResultsByTime[] |
+    .TimePeriod.Start as $date |
+    [.Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] |
+    add // 0 |
+    "  \($date): $\(. | . * 100 | floor / 100)"
+  ' "$OUTPUT_DIR/cost_kag.json"
+  TOTAL_COST_KAG=$(jq -r '
+    [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+  ' "$OUTPUT_DIR/cost_kag.json")
+  echo "  小計: \$$TOTAL_COST_KAG"
+  echo ""
+fi
+
+TOTAL_COST=$(echo "$TOTAL_COST_SANDBOX + $TOTAL_COST_KAG" | bc)
 echo "  週間合計: \$$TOTAL_COST"
 echo ""
 
 # ========================================
-# 環境別 x モデル別コスト（表形式）
+# 環境別 x モデル別コスト（実コスト）
 # ========================================
-echo "💰 Bedrockコスト内訳（過去7日間・セッション比率で環境按分）"
+echo "💰 Bedrockコスト内訳（過去7日間・アカウント別実コスト）"
 echo ""
 
-# モデル別コスト取得
-CLAUDE_SONNET_COST=$(jq -r '
+# sandbox アカウントのモデル別コスト
+SONNET_COST_SANDBOX=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.5")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
-
-CLAUDE_OPUS_COST=$(jq -r '
+OPUS_COST_SANDBOX=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Opus")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
-
-KIMI_COST=$(jq -r '
+KIMI_COST_SANDBOX=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Kimi")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
-
-OTHER_BEDROCK_COST=$(jq -r '
+OTHER_COST_SANDBOX=$(jq -r '
   [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.5") | not) and (.Keys[0] | contains("Claude Opus") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
 
-# セッション比率で環境別に按分
-TOTAL_INV=$((TOTAL_MAIN + TOTAL_KAG + TOTAL_DEV))
-if [ "$TOTAL_INV" -gt 0 ]; then
-  # 比率計算（小数）
-  MAIN_RATIO=$(echo "scale=6; $TOTAL_MAIN / $TOTAL_INV" | bc)
-  KAG_RATIO=$(echo "scale=6; $TOTAL_KAG / $TOTAL_INV" | bc)
-  DEV_RATIO=$(echo "scale=6; $TOTAL_DEV / $TOTAL_INV" | bc)
-  MAIN_PCT=$((TOTAL_MAIN * 100 / TOTAL_INV))
-  KAG_PCT=$((TOTAL_KAG * 100 / TOTAL_INV))
-  DEV_PCT=$((TOTAL_DEV * 100 / TOTAL_INV))
+# kag-sandbox アカウントのモデル別コスト
+SONNET_COST_KAG_REAL=$(jq -r '
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.5")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost_kag.json")
+OPUS_COST_KAG_REAL=$(jq -r '
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Opus")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost_kag.json")
+KIMI_COST_KAG_REAL=$(jq -r '
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Kimi")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost_kag.json")
+OTHER_COST_KAG_REAL=$(jq -r '
+  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.5") | not) and (.Keys[0] | contains("Claude Opus") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+' "$OUTPUT_DIR/cost_kag.json")
 
-  # 各モデルの環境別コスト計算
-  S_MAIN=$(printf "%.2f" $(echo "$CLAUDE_SONNET_COST * $MAIN_RATIO" | bc -l))
-  S_KAG=$(printf "%.2f" $(echo "$CLAUDE_SONNET_COST * $KAG_RATIO" | bc -l))
-  S_DEV=$(printf "%.2f" $(echo "$CLAUDE_SONNET_COST * $DEV_RATIO" | bc -l))
-  S_TOTAL=$(printf "%.2f" $CLAUDE_SONNET_COST)
+# sandbox 内の main/dev 比率（dev がある場合のみ分割）
+SANDBOX_SESSIONS=$((TOTAL_MAIN + TOTAL_DEV))
+if [ "$SANDBOX_SESSIONS" -gt 0 ] && [ "$TOTAL_DEV" -gt 0 ]; then
+  MAIN_RATIO=$(echo "scale=6; $TOTAL_MAIN / $SANDBOX_SESSIONS" | bc)
+  DEV_RATIO=$(echo "scale=6; $TOTAL_DEV / $SANDBOX_SESSIONS" | bc)
 
-  O_MAIN=$(printf "%.2f" $(echo "$CLAUDE_OPUS_COST * $MAIN_RATIO" | bc -l))
-  O_KAG=$(printf "%.2f" $(echo "$CLAUDE_OPUS_COST * $KAG_RATIO" | bc -l))
-  O_DEV=$(printf "%.2f" $(echo "$CLAUDE_OPUS_COST * $DEV_RATIO" | bc -l))
-  O_TOTAL=$(printf "%.2f" $CLAUDE_OPUS_COST)
-
-  K_MAIN=$(printf "%.2f" $(echo "$KIMI_COST * $MAIN_RATIO" | bc -l))
-  K_KAG=$(printf "%.2f" $(echo "$KIMI_COST * $KAG_RATIO" | bc -l))
-  K_DEV=$(printf "%.2f" $(echo "$KIMI_COST * $DEV_RATIO" | bc -l))
-  K_TOTAL=$(printf "%.2f" $KIMI_COST)
-
-  OT_MAIN=$(printf "%.2f" $(echo "$OTHER_BEDROCK_COST * $MAIN_RATIO" | bc -l))
-  OT_KAG=$(printf "%.2f" $(echo "$OTHER_BEDROCK_COST * $KAG_RATIO" | bc -l))
-  OT_DEV=$(printf "%.2f" $(echo "$OTHER_BEDROCK_COST * $DEV_RATIO" | bc -l))
-  OT_TOTAL=$(printf "%.2f" $OTHER_BEDROCK_COST)
-
-  # 環境別合計
-  ENV_MAIN=$(printf "%.2f" $(echo "$TOTAL_COST * $MAIN_RATIO" | bc -l))
-  ENV_KAG=$(printf "%.2f" $(echo "$TOTAL_COST * $KAG_RATIO" | bc -l))
-  ENV_DEV=$(printf "%.2f" $(echo "$TOTAL_COST * $DEV_RATIO" | bc -l))
-  ENV_TOTAL=$(printf "%.2f" $(echo "$TOTAL_COST" | bc -l))
-
-  # 月間推定
-  M_MAIN=$(printf "%.0f" $(echo "$ENV_MAIN * 4" | bc -l))
-  M_KAG=$(printf "%.0f" $(echo "$ENV_KAG * 4" | bc -l))
-  M_DEV=$(printf "%.0f" $(echo "$ENV_DEV * 4" | bc -l))
-  M_TOTAL=$(printf "%.0f" $(echo "$ENV_TOTAL * 4" | bc -l))
-
-  echo "  セッション比率: main=$MAIN_PCT% kag=$KAG_PCT% dev=$DEV_PCT%"
-  echo ""
-  printf "  %-16s | %8s | %8s | %8s | %8s\n" "モデル" "main" "kag" "dev" "合計"
-  printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
-  printf "  %-16s | %8s | %8s | %8s | %8s\n" "Sonnet 4.5" "\$$S_MAIN" "\$$S_KAG" "\$$S_DEV" "\$$S_TOTAL"
-  printf "  %-16s | %8s | %8s | %8s | %8s\n" "Opus 4.6" "\$$O_MAIN" "\$$O_KAG" "\$$O_DEV" "\$$O_TOTAL"
-  printf "  %-16s | %8s | %8s | %8s | %8s\n" "Kimi K2" "\$$K_MAIN" "\$$K_KAG" "\$$K_DEV" "\$$K_TOTAL"
-  printf "  %-16s | %8s | %8s | %8s | %8s\n" "その他" "\$$OT_MAIN" "\$$OT_KAG" "\$$OT_DEV" "\$$OT_TOTAL"
-  printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
-  printf "  %-16s | %8s | %8s | %8s | %8s\n" "週間合計" "\$$ENV_MAIN" "\$$ENV_KAG" "\$$ENV_DEV" "\$$ENV_TOTAL"
-  printf "  %-16s | %7s | %7s | %7s | %7s\n" "月間推定" "\$$M_MAIN" "\$$M_KAG" "\$$M_DEV" "\$$M_TOTAL"
-  echo ""
-  echo "  ※ Kimi K2はクレジット適用で実質\$0"
+  S_MAIN=$(printf "%.2f" $(echo "$SONNET_COST_SANDBOX * $MAIN_RATIO" | bc -l))
+  S_DEV=$(printf "%.2f" $(echo "$SONNET_COST_SANDBOX * $DEV_RATIO" | bc -l))
+  O_MAIN=$(printf "%.2f" $(echo "$OPUS_COST_SANDBOX * $MAIN_RATIO" | bc -l))
+  O_DEV=$(printf "%.2f" $(echo "$OPUS_COST_SANDBOX * $DEV_RATIO" | bc -l))
+  K_MAIN=$(printf "%.2f" $(echo "$KIMI_COST_SANDBOX * $MAIN_RATIO" | bc -l))
+  K_DEV=$(printf "%.2f" $(echo "$KIMI_COST_SANDBOX * $DEV_RATIO" | bc -l))
+  OT_MAIN=$(printf "%.2f" $(echo "$OTHER_COST_SANDBOX * $MAIN_RATIO" | bc -l))
+  OT_DEV=$(printf "%.2f" $(echo "$OTHER_COST_SANDBOX * $DEV_RATIO" | bc -l))
+  ENV_MAIN=$(printf "%.2f" $(echo "$TOTAL_COST_SANDBOX * $MAIN_RATIO" | bc -l))
+  ENV_DEV=$(printf "%.2f" $(echo "$TOTAL_COST_SANDBOX * $DEV_RATIO" | bc -l))
 else
-  printf "  %-16s | %8s\n" "モデル" "合計"
-  printf "  %-16s-|----------\n" "----------------"
-  printf "  %-16s | %8s\n" "Sonnet 4.5" "\$$(printf '%.2f' $CLAUDE_SONNET_COST)"
-  printf "  %-16s | %8s\n" "Opus 4.6" "\$$(printf '%.2f' $CLAUDE_OPUS_COST)"
-  printf "  %-16s | %8s\n" "Kimi K2" "\$$(printf '%.2f' $KIMI_COST)"
-  printf "  %-16s | %8s\n" "その他" "\$$(printf '%.2f' $OTHER_BEDROCK_COST)"
-  printf "  %-16s-|----------\n" "----------------"
-  printf "  %-16s | %8s\n" "週間合計" "\$$(printf '%.2f' $TOTAL_COST)"
-  echo ""
-  echo "  ※ セッション数が0のため環境別按分なし"
+  # dev がない場合は sandbox = main
+  S_MAIN=$(printf "%.2f" $SONNET_COST_SANDBOX)
+  S_DEV="0.00"
+  O_MAIN=$(printf "%.2f" $OPUS_COST_SANDBOX)
+  O_DEV="0.00"
+  K_MAIN=$(printf "%.2f" $KIMI_COST_SANDBOX)
+  K_DEV="0.00"
+  OT_MAIN=$(printf "%.2f" $OTHER_COST_SANDBOX)
+  OT_DEV="0.00"
+  ENV_MAIN=$(printf "%.2f" $TOTAL_COST_SANDBOX)
+  ENV_DEV="0.00"
 fi
+
+# kag は実コスト
+S_KAG=$(printf "%.2f" $SONNET_COST_KAG_REAL)
+O_KAG=$(printf "%.2f" $OPUS_COST_KAG_REAL)
+K_KAG=$(printf "%.2f" $KIMI_COST_KAG_REAL)
+OT_KAG=$(printf "%.2f" $OTHER_COST_KAG_REAL)
+ENV_KAG=$(printf "%.2f" $TOTAL_COST_KAG)
+
+# 合計
+S_TOTAL=$(printf "%.2f" $(echo "$SONNET_COST_SANDBOX + $SONNET_COST_KAG_REAL" | bc))
+O_TOTAL=$(printf "%.2f" $(echo "$OPUS_COST_SANDBOX + $OPUS_COST_KAG_REAL" | bc))
+K_TOTAL=$(printf "%.2f" $(echo "$KIMI_COST_SANDBOX + $KIMI_COST_KAG_REAL" | bc))
+OT_TOTAL=$(printf "%.2f" $(echo "$OTHER_COST_SANDBOX + $OTHER_COST_KAG_REAL" | bc))
+ENV_TOTAL=$(printf "%.2f" $(echo "$TOTAL_COST" | bc -l))
+
+# 月間推定
+M_MAIN=$(printf "%.0f" $(echo "$ENV_MAIN * 4" | bc -l))
+M_KAG=$(printf "%.0f" $(echo "$ENV_KAG * 4" | bc -l))
+M_DEV=$(printf "%.0f" $(echo "$ENV_DEV * 4" | bc -l))
+M_TOTAL=$(printf "%.0f" $(echo "$ENV_TOTAL * 4" | bc -l))
+
+echo "  ※ sandbox(main+dev)=実コスト、kag=実コスト（別アカウント）"
+echo ""
+printf "  %-16s | %8s | %8s | %8s | %8s\n" "モデル" "main" "kag" "dev" "合計"
+printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
+printf "  %-16s | %8s | %8s | %8s | %8s\n" "Sonnet 4.5" "\$$S_MAIN" "\$$S_KAG" "\$$S_DEV" "\$$S_TOTAL"
+printf "  %-16s | %8s | %8s | %8s | %8s\n" "Opus 4.6" "\$$O_MAIN" "\$$O_KAG" "\$$O_DEV" "\$$O_TOTAL"
+printf "  %-16s | %8s | %8s | %8s | %8s\n" "Kimi K2" "\$$K_MAIN" "\$$K_KAG" "\$$K_DEV" "\$$K_TOTAL"
+printf "  %-16s | %8s | %8s | %8s | %8s\n" "その他" "\$$OT_MAIN" "\$$OT_KAG" "\$$OT_DEV" "\$$OT_TOTAL"
+printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
+printf "  %-16s | %8s | %8s | %8s | %8s\n" "週間合計" "\$$ENV_MAIN" "\$$ENV_KAG" "\$$ENV_DEV" "\$$ENV_TOTAL"
+printf "  %-16s | %7s | %7s | %7s | %7s\n" "月間推定" "\$$M_MAIN" "\$$M_KAG" "\$$M_DEV" "\$$M_TOTAL"
+echo ""
+echo "  ※ Kimi K2はクレジット適用で実質\$0"
 echo ""
 
 # ========================================
-# Claudeモデル キャッシュ効果
+# Claudeモデル キャッシュ効果（両アカウント合算）
 # ========================================
 
 # --- Sonnet 4.5 ---
 echo "📊 Claude Sonnet 4.5 キャッシュ効果"
 
-S_INPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
-S_OUTPUT_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
-S_CACHE_READ_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
-S_CACHE_WRITE_COST=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")
+S_INPUT_COST=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage_kag.json")" \
+  | bc)
+S_OUTPUT_COST=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage_kag.json")" \
+  | bc)
+S_CACHE_READ_COST=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage_kag.json")" \
+  | bc)
+S_CACHE_WRITE_COST=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage_kag.json")" \
+  | bc)
 
 printf "  通常Input:   \$%.2f\n" $S_INPUT_COST
 printf "  Output:      \$%.2f\n" $S_OUTPUT_COST
@@ -624,10 +768,22 @@ fi
 echo ""
 
 # --- Opus 4.6 ---
-O_INPUT_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
-O_OUTPUT_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
-O_CACHE_READ_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
-O_CACHE_WRITE_COST2=$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")
+O_INPUT_COST2=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage_kag.json")" \
+  | bc)
+O_OUTPUT_COST2=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("OutputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage_kag.json")" \
+  | bc)
+O_CACHE_READ_COST2=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheReadInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage_kag.json")" \
+  | bc)
+O_CACHE_WRITE_COST2=$(echo \
+  "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage.json")" \
+  "+ $(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("CacheWriteInputToken")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/opus_usage_kag.json")" \
+  | bc)
 O_TOTAL2=$(echo "$O_INPUT_COST2 + $O_OUTPUT_COST2 + $O_CACHE_READ_COST2 + $O_CACHE_WRITE_COST2" | bc)
 
 if (( $(echo "$O_TOTAL2 > 0" | bc -l) )); then
@@ -683,12 +839,26 @@ jq -r '.results[] |
   echo "$WEEK|kag|$SESSIONS"
 done >> "$OUTPUT_DIR/weekly_sessions.tmp"
 
+# sandbox アカウントのコスト
 jq -r '
   .ResultsByTime[] |
   .TimePeriod.Start as $date |
   ([.Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0) as $cost |
   "\($date)|\($cost)"
 ' "$OUTPUT_DIR/weekly_cost.json" 2>/dev/null | while read line; do
+  DATE=$(echo "$line" | cut -d'|' -f1)
+  COST=$(echo "$line" | cut -d'|' -f2)
+  WEEK=$(date -j -f "%Y-%m-%d" "$DATE" "+%Y-W%W" 2>/dev/null)
+  echo "$WEEK|cost|$COST"
+done >> "$OUTPUT_DIR/weekly_sessions.tmp"
+
+# kag-sandbox アカウントのコスト
+jq -r '
+  .ResultsByTime[] |
+  .TimePeriod.Start as $date |
+  ([.Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0) as $cost |
+  "\($date)|\($cost)"
+' "$OUTPUT_DIR/weekly_cost_kag.json" 2>/dev/null | while read line; do
   DATE=$(echo "$line" | cut -d'|' -f1)
   COST=$(echo "$line" | cut -d'|' -f2)
   WEEK=$(date -j -f "%Y-%m-%d" "$DATE" "+%Y-W%W" 2>/dev/null)
@@ -726,12 +896,40 @@ echo "✅ 完了！"
 2. **Cognitoユーザー数**: 環境ごとのユーザー数（main/kag）
 3. **日次セッション数**: 過去7日間の日別回数（main/kag/dev別）
 4. **時間別セッション数**: 直近24時間の全時間帯（ASCIIバーグラフ・JST表示、main/kag/dev）
-5. **Bedrockコスト（日別）**: 過去7日間の日別コスト
-6. **Bedrockコスト内訳（環境別 x モデル別）**: セッション比率で按分した環境別・モデル別コスト表（週間・月間推定付き）
-7. **Claudeモデル キャッシュ効果**: Sonnet 4.5 / Opus 4.6 各モデルのInput/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額
-8. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間）
+5. **Bedrockコスト（日別）**: 過去7日間の日別コスト（sandbox/kag別）
+6. **Bedrockコスト内訳（環境別 x モデル別）**: アカウント別実コストによる環境別・モデル別コスト表（週間・月間推定付き）
+7. **Claudeモデル キャッシュ効果**: Sonnet 4.5 / Opus 4.6 各モデルのInput/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額（両アカウント合算）
+8. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間、両アカウント合算）
+
+## アーキテクチャ
+
+```
+sandbox アカウント (715841358122)
+├── Cognito: marp-main プール
+├── AgentCore: marp_agent_main, marp_agent_dev
+└── Bedrock: main + dev のコスト
+
+kag-sandbox アカウント (105778051969)
+├── Cognito: amplifyAuthUserPool（CloudFormation出力で特定）
+├── AgentCore: marp_agent_main（kagリポのmainブランチ）
+└── Bedrock: kag のコスト
+```
 
 ## 技術詳細
+
+### マルチアカウント対応
+
+mainとkagは異なるAWSアカウントで運用されている。スクリプトは `PROFILE_MAIN` と `PROFILE_KAG` の2つのプロファイルを使い分ける。
+
+- **sandbox**: main環境 + dev環境のリソースとコスト
+- **kag-sandbox**: kag環境のリソースとコスト
+
+kag-sandboxのSSOセッションが無効な場合、kagのデータは自動的にスキップされる。
+
+### コスト計算方法
+
+- **kag**: kag-sandboxアカウントの実コスト（推定なし）
+- **main/dev**: sandboxアカウントのコストをセッション比率で按分（devセッションがない場合は全額main）
 
 ### OTELログ形式への対応
 
@@ -741,9 +939,14 @@ AgentCoreのログは `otel-rt-logs` ストリームにOTEL形式で出力され
 
 CloudWatch Logs Insightsで `datefloor(@timestamp + 9h, ...)` を使うと挙動が不安定なため、UTCのまま集計してからスクリプト側でJSTに変換している。
 
+### kag-sandbox の Cognito プール特定
+
+kag-sandboxアカウントではCognitoプール名が汎用的（`amplifyAuthUserPool*`）なため、`marp-kag` のような名前検索ができない。代わりにCloudFormation出力からAmplifyアプリ `dt1uykzxnkuoh` に紐づくプールIDを取得している。
+
 ## 注意事項
 
-- AWS認証が切れている場合は `aws sso login --profile sandbox` を先に実行すること
+- sandbox のSSO認証が切れている場合は `aws sso login --profile sandbox` を先に実行すること
+- kag-sandbox のSSO認証が切れている場合は `aws sso login --profile kag-sandbox` を実行（kagデータなしでも動作可能）
 - CloudWatch Logsクエリは非同期のため10秒待機している（必要に応じて調整）
 
 ## 回答時の表示ルール
