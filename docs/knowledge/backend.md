@@ -297,16 +297,21 @@ elif "result" in event:
 Tavily APIのレートリミット（無料枠超過）を検出してユーザーフレンドリーなメッセージを返す：
 
 ```python
-@tool
-def web_search(query: str) -> str:
+# 複数APIキーで順番に試行（無料枠の月1000クレジット制限対策）
+for client in tavily_clients:
     try:
-        # 検索処理...
+        results = client.search(query=query, max_results=3, search_depth="basic")
+        results_str = str(results).lower()
+        if "usage limit" in results_str or "exceeds your plan" in results_str:
+            continue  # 次のキーで再試行
+        # 検索結果をテキストに整形して返却...
     except Exception as e:
         error_str = str(e).lower()
-        # レートリミット（無料枠超過）を検出
-        if "rate limit" in error_str or "429" in error_str or "quota" in error_str:
-            return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
+        if "rate limit" in error_str or "429" in error_str or "quota" in error_str or "usage limit" in error_str:
+            continue  # 次のキーで再試行
         return f"検索エラー: {str(e)}"
+# 全キー枯渇
+return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
 ```
 
 システムプロンプトにもエラー時の対応ルールを追加：
