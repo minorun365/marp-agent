@@ -22,7 +22,7 @@ export function StatusMessage({ message, index }: StatusMessageProps) {
           {isCompleted ? (
             <span className="text-green-600">&#10003;</span>
           ) : (
-            <span className="animate-spin">&#9696;</span>
+            <span className="inline-block w-4 h-4 border-2 border-blue-300 border-t-transparent rounded-full animate-spin" />
           )}
           {message.statusText}
         </span>
