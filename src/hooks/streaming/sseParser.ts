@@ -3,45 +3,18 @@
  */
 
 /**
- * SSEストリームのアイドルタイムアウトエラー
- */
-export class SSEIdleTimeoutError extends Error {
-  constructor(timeoutMs: number) {
-    super(`SSE idle timeout: no data received for ${timeoutMs}ms`);
-    this.name = 'SSEIdleTimeoutError';
-  }
-}
-
-/**
  * SSEレスポンスを読み取り、各イベントに対してコールバックを実行
  */
 export async function readSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onEvent: (event: Record<string, unknown>) => void | 'stop',
   onDone?: () => void,
-  idleTimeoutMs?: number,
-  ongoingIdleTimeoutMs?: number
 ): Promise<void> {
   const decoder = new TextDecoder();
   let buffer = '';
-  let firstEventReceived = false;
 
   while (true) {
-    let readResult: ReadableStreamReadResult<Uint8Array>;
-
-    // 初回イベント受信前: idleTimeoutMs（スロットリング検知）
-    // 初回イベント受信後: ongoingIdleTimeoutMs（推論ハング検知）
-    const currentTimeout = firstEventReceived ? ongoingIdleTimeoutMs : idleTimeoutMs;
-    if (currentTimeout) {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new SSEIdleTimeoutError(currentTimeout)), currentTimeout);
-      });
-      readResult = await Promise.race([reader.read(), timeoutPromise]);
-    } else {
-      readResult = await reader.read();
-    }
-
-    const { done, value } = readResult;
+    const { done, value } = await reader.read();
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
@@ -50,7 +23,6 @@ export async function readSSEStream(
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
-        firstEventReceived = true;
         const data = line.slice(6);
         if (data === '[DONE]') {
           onDone?.();

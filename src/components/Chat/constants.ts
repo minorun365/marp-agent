@@ -20,7 +20,6 @@ export const MESSAGES = {
   EMPTY_STATE_EXAMPLE: '例: 「AWS入門の5枚スライドを作って」',
   ERROR: 'エラーが発生しました。もう一度お試しください。',
   ERROR_MODEL_NOT_AVAILABLE: '選択されたモデルは現在利用できません。Amazon Bedrockへのモデル追加をお待ちください！',
-  ERROR_MODEL_THROTTLED: 'モデルの負荷が高いようです。しばらく時間を置いてからリトライするか、他のモデルをお試しください。',
 
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',
