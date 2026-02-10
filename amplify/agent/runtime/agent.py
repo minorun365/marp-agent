@@ -121,7 +121,7 @@ async def invoke(payload, context=None):
                     usage = result.metrics.accumulated_usage
                     print(json.dumps({
                         "type": "METRICS",
-                        "version": "cost_opt_v1",
+                        "version": "cost_opt_v2",
                         "session_id": session_id,
                         "model_type": model_type,
                         "input_tokens": usage.get("inputTokens", 0),
