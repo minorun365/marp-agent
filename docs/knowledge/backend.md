@@ -347,6 +347,90 @@ const textValue = event.content || event.data;
 
 ---
 
+## コスト最適化
+
+### トークン消費の構造
+
+1リクエストのトークン消費は以下で構成される（Strands EMFメトリクスで計測可能）:
+
+| 要素 | 概算トークン数 | 備考 |
+|------|--------------|------|
+| System Prompt + ツール定義 | 2,000-3,000 | キャッシュ対象 |
+| Web検索結果 | ~2,000 | 最大の削減ポイント |
+| 会話履歴 | 可変（無制限だと200K超も） | ターンが増えると累積 |
+| ユーザーメッセージ | ~300 | |
+| 出力（スライドMD） | ~1,200 | |
+
+### SlidingWindowConversationManager
+
+Strands Agentsの組み込み機能で会話履歴を自動トリミング。
+
+```python
+from strands.agent.conversation_manager import SlidingWindowConversationManager
+
+agent = Agent(
+    model=model,
+    system_prompt=SYSTEM_PROMPT,
+    tools=tools,
+    conversation_manager=SlidingWindowConversationManager(window_size=10),
+)
+```
+
+- `window_size=10` で古いメッセージを自動削除
+- 実測で100K超リクエスト（全体の10%）が50K以下に抑制
+- フロントエンドが修正リクエスト時に最新Markdown全文を毎回送信するため、古い履歴が消えても会話は成立
+
+### Markdown二重送信の回避
+
+既存セッション（Agent履歴にスライド内容が残っている）ではMarkdown付加をスキップ:
+
+```python
+# 新規セッションまたは履歴がない場合のみフロントからのMarkdownを結合
+if current_markdown and not agent.messages:
+    user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
+```
+
+### System Prompt圧縮のポイント
+
+- Marpフォーマットの詳細サンプルコードを最小限に
+- 重複指示の統合
+- 実測: 3,073 → 2,043トークン（-33.5%）
+
+### CloudWatch Log Insightsでのトークン計測
+
+AgentCoreの `print()` 出力はOTelログストリームに載らない。代わりにStrands Agents組み込みのEMF（Embedded Metric Format）を使用:
+
+```
+# EMFメトリクス名
+strands.event_loop.input.tokens
+strands.event_loop.output.tokens
+strands.event_loop.cache_read.input.tokens
+strands.event_loop.cache_write.input.tokens
+strands.model.time_to_first_token
+```
+
+```sql
+-- CloudWatch Log Insightsクエリ例
+filter @message like /strands.event_loop.input.tokens/
+| fields @timestamp, @message
+| sort @timestamp desc
+| limit 50
+```
+
+EMFデータはJSON内のネスト構造（`Sum`, `Max`, `Min`, `Count`）で格納される。Python等でパースする際は `parsed['strands.event_loop.input.tokens']['Sum']` で取得。
+
+### cache_writeの値 = System Prompt + Tools定義のサイズ
+
+新規セッション開始時の `cache_write` 値がSystem Prompt + ツール定義のトークン数に相当。この値を追跡することでプロンプト圧縮の効果を定量的に計測できる。
+
+| 構成 | cache_write値 |
+|------|-------------|
+| Sonnet（圧縮前） | ~3,073 |
+| Sonnet（圧縮後） | ~2,043 |
+| Opus（圧縮前） | ~6,146 |
+
+---
+
 ## Observability（OTELトレース）
 
 AgentCore Observability でトレースを出力するには、以下の3つすべてが必要。
