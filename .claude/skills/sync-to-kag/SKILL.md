@@ -1,23 +1,31 @@
 ---
 name: sync-to-kag
-description: mainブランチの変更をkagブランチにも適用する。「kagにも反映して」「kag環境にも適用して」と言われたらこのスキルを使う。mainとkagは別環境なのでマージではなくチェリーピックで適用する。
+description: mainリポジトリの変更をkagリポジトリにも適用する。「kagにも反映して」「kag環境にも適用して」と言われたらこのスキルを使う。mainとkagは別リポジトリなのでマージではなくチェリーピックで適用する。
 allowed-tools: Bash(git:*)
 ---
 
-# mainの変更をkagブランチに適用
+# mainの変更をkagリポジトリに適用
 
-ユーザーが「kagブランチにも適用して」「kag環境にも反映して」と言った場合、このスキルに従ってチェリーピックを実行する。
+ユーザーが「kagにも適用して」「kag環境にも反映して」と言った場合、このスキルに従ってチェリーピックを実行する。
+
+## 構成
+
+mainとkagは**完全に別のGitHubリポジトリ**として管理されている：
+
+| 環境 | リポジトリ | ローカルパス | ブランチ |
+|------|-----------|------------|---------|
+| main（本番） | `minorun365/marp-agent` | `../marp-agent` | main |
+| kag | `minorun365/marp-agent-kag` | `../marp-agent-kag` | main |
+
+kagリポジトリには `upstream` リモートとして marp-agent が登録されている。
 
 ## 重要：なぜチェリーピックなのか
 
-- **mainとkagは別環境**（本番環境とkag環境）
-- 両ブランチは独立して開発されており、全てのコミットを共有しているわけではない
+- mainとkagは**別リポジトリ**で独立して開発されている
 - `git merge` するとコンフリクトが大量発生する
 - **必要な変更だけをチェリーピックで適用する**のが正しい方法
 
 ## 同期対象
-
-以下のカテゴリの変更はkagブランチにも同期する：
 
 | カテゴリ | 対象 | 例 |
 |---------|------|-----|
@@ -25,45 +33,40 @@ allowed-tools: Bash(git:*)
 | **Claude Code設定** | スキル、サブエージェント | `.claude/skills/`, `.claude/agents/` |
 
 **同期しないもの:**
-- `docs/todo.md` - ブランチ別に管理
+- `docs/` 配下のドキュメント - kagは差分のみ記載する方針のため、mainのドキュメント変更は反映しない
+- `docs/todo.md` - リポジトリ別に管理
 - 環境固有の設定（resource.ts の環境変数など）
 
 ## 手順
 
-### 1. 適用するコミットを確認
+### 1. mainリポジトリで適用するコミットを確認
 
 ```bash
 git log main --oneline -5
 ```
 
-直近でコミットした内容を確認し、チェリーピック対象のコミットハッシュをメモする。
+直近でコミットした内容を確認し、**コード変更のみ**をチェリーピック対象とする（ドキュメント変更は除外）。
 
-### 2. 未コミットの変更をstash
-
-```bash
-git stash
-```
-
-### 3. kagブランチに切り替えてチェリーピック
+### 2. kagリポジトリに移動してチェリーピック
 
 ```bash
-git checkout kag
-git pull origin kag
+cd ../marp-agent-kag
+git pull origin main
+git fetch upstream
 git cherry-pick <commit-hash>
 ```
 
-### 4. プッシュしてmainに戻る
+### 3. プッシュしてmainリポジトリに戻る
 
 ```bash
-git push origin kag
-git checkout main
-git stash pop
+git push origin main
+cd ../marp-agent
 ```
 
 ## ワンライナー版
 
 ```bash
-git stash && git checkout kag && git pull origin kag && git cherry-pick <commit-hash> && git push origin kag && git checkout main && git stash pop
+cd ../marp-agent-kag && git pull origin main && git fetch upstream && git cherry-pick <commit-hash> && git push origin main && cd ../marp-agent
 ```
 
 ## コンフリクト発生時

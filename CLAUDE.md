@@ -126,7 +126,7 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 ### 手順
 
 1. **SSOセッション確認**: `aws sts get-caller-identity --profile sandbox`
-2. **サンドボックス起動**: `npm run sandbox` にprofileオプション `--profile sandbox` を追加してバックグラウンド実行
+2. **サンドボックス起動**: `npm run sandbox` をバックグラウンド実行（`--profile sandbox` はスクリプトに内蔵済み）
 3. **フロントエンド起動**: `npm run dev`（別プロセスでバックグラウンド実行）
 4. **Chrome DevTools MCPで確認**:
    - `localhost:5173` にアクセス
@@ -139,24 +139,27 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 ### 注意事項
 
 - サンドボックスのデプロイには3-5分かかる（Hotswap時は30秒程度）
-- `npm run sandbox` は `--profile sandbox` が必要（package.jsonのスクリプトには含まれていない）
+- `npm run sandbox` には `--profile sandbox` がスクリプトに内蔵済み（追加不要）
 
 ## Git コミットルール
 
 - コミットメッセージは **1行の日本語でシンプルに**
 - `Co-Authored-By: Claude` などの **AI協働の痕跡は入れない**
 
-## Git ワークツリー構成
+## kag環境（別リポジトリ）
 
-kagブランチは別のワークツリーで管理されている（同じ階層の `../marp-agent-kag`）。
+kagは完全に別のGitHubリポジトリ（`minorun365/marp-agent-kag`）で管理されている（ローカル: `../marp-agent-kag`）。
 
-kagに変更を反映する際は、`git switch kag` ではなく **kagのワークツリーで直接作業** する：
+kagに変更を反映する際は、**kagリポジトリに移動してチェリーピック** する（`/sync-to-kag` スキル参照）：
 
 ```bash
 cd ../marp-agent-kag
+git fetch upstream
 git cherry-pick <commit-hash>
-git push origin kag
+git push origin main
 ```
+
+**注意**: kagのドキュメント（`docs/`）は差分のみ記載する方針。mainのドキュメント変更はチェリーピック対象外。
 
 ## リリース管理（セマンティックバージョニング）
 
