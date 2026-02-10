@@ -45,8 +45,8 @@ def web_search(query: str) -> str:
         try:
             results = client.search(
                 query=query,
-                max_results=5,
-                search_depth="advanced",
+                max_results=3,
+                search_depth="basic",
             )
             # レスポンス内に利用制限エラーが含まれていたら次のキーで再試行
             results_str = str(results).lower()
