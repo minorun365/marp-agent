@@ -356,31 +356,6 @@ setMessages(prev =>
 
 **原因**: `onError` コールバック内の `streamText()` は非同期で実行されるが、`invokeAgent` 後の処理が先に実行されて `isStreaming: false` に設定される。
 
-### SSEアイドルタイムアウト（2段構成）
+### SSEアイドルタイムアウト（削除済み）
 
-SSEストリームに2段階のアイドルタイムアウトを設定し、スロットリングや推論ハングを検知してエラーメッセージを表示する。
-
-| フェーズ | タイムアウト | 用途 |
-|---------|------------|------|
-| 初回イベント受信前 | 10秒（`SSE_IDLE_TIMEOUT_MS`） | スロットリング検知（`ModelThrottledException`等） |
-| イベント間（初回受信後） | 60秒（`SSE_ONGOING_IDLE_TIMEOUT_MS`） | 推論ハング検知（長時間無応答） |
-
-#### 実装箇所
-
-1. **`sseParser.ts`**: `SSEIdleTimeoutError` クラスを定義。`readSSEStream` に `idleTimeoutMs`（初回用）と `ongoingIdleTimeoutMs`（イベント間用）の2つのタイムアウト引数を持つ。`firstEventReceived` フラグで適用するタイムアウト値を切り替え
-2. **`agentCoreClient.ts`**: `SSE_IDLE_TIMEOUT_MS = 10_000`（10秒）と `SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000`（60秒）を定数定義し、`readSSEStream` に渡す
-3. **`useChatMessages.ts`**: `onError` コールバックとcatch節の両方で `error instanceof SSEIdleTimeoutError` を判定し、`MESSAGES.ERROR_MODEL_THROTTLED` を表示
-
-#### エラーメッセージの優先順位
-
-```typescript
-// 1. SSEアイドルタイムアウト → ERROR_MODEL_THROTTLED
-// 2. モデルID不正 → ERROR_MODEL_NOT_AVAILABLE
-// 3. その他 → ERROR（汎用）
-```
-
-#### 設計判断
-
-- **初回タイムアウト（10秒）**: SSE接続は200で確立されるが、バックエンド内でBedrock APIがスロットリングされ、最初のSSEイベントすら来ない → 短いタイムアウトで素早く検知
-- **イベント間タイムアウト（60秒）**: 推論が重いケースで応答がハングする場合に対応。通常のストリーミングでは頻繁にチャンクが来るため、60秒無音は異常と判断
-- HTTPレスポンス自体は200のため、429をHTTPレベルで検知する方式は使えない
+以前はSSEストリームに2段階のアイドルタイムアウト（初回10秒/イベント間60秒）を設定していたが、コスト削減施策デプロイ時にSystem Prompt圧縮によるレスポンス時間変動で誤検知が発生したため、2026年2月に完全削除。現在の `sseParser.ts` はタイムアウトなしのシンプルな実装。
