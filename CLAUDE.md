@@ -59,9 +59,8 @@ python -m pytest tests/
 | `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |
 | `amplify/agent/resource.ts` | AgentCore Runtime定義 |
 | `amplify/agent/runtime/` | Pythonエージェント本体 |
-| `amplify/agent/runtime/tools/` | ツール定義（output_slide, web_search, generate_tweet） |
+| `amplify/agent/runtime/tools/` | ツール定義（output_slide, web_search, generate_tweet_url） |
 | `amplify/agent/runtime/exports/` | PDF/PPTX変換（slide_exporter） |
-| `amplify/agent/runtime/handlers/` | モデル固有処理（kimi_adapter） |
 | `amplify/agent/runtime/session/` | セッション管理（manager） |
 | `amplify/agent/runtime/sharing/` | 共有機能（s3_uploader） |
 | `amplify/storage/resource.ts` | 共有スライド用S3+CloudFront |
