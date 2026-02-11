@@ -26,11 +26,21 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "📊 Marp Agent 利用状況を取得中..."
 
-# kag-sandbox SSOセッション確認
+# SSOセッション確認（切れていたら自動ログイン）
+if ! aws sts get-caller-identity --profile $PROFILE_MAIN > /dev/null 2>&1; then
+  echo "🔑 sandbox のSSOセッションが無効です。ログインします..."
+  aws sso login --profile $PROFILE_MAIN
+fi
+
 KAG_AVAILABLE=true
-aws sts get-caller-identity --profile $PROFILE_KAG > /dev/null 2>&1 || KAG_AVAILABLE=false
-if [ "$KAG_AVAILABLE" = false ]; then
-  echo "⚠️  kag-sandbox のSSOセッションが無効です。kagのデータはスキップします。"
+if ! aws sts get-caller-identity --profile $PROFILE_KAG > /dev/null 2>&1; then
+  echo "🔑 kag-sandbox のSSOセッションが無効です。ログインします..."
+  aws sso login --profile $PROFILE_KAG || true
+  # ログイン後に再確認
+  aws sts get-caller-identity --profile $PROFILE_KAG > /dev/null 2>&1 || KAG_AVAILABLE=false
+  if [ "$KAG_AVAILABLE" = false ]; then
+    echo "⚠️  kag-sandbox のログインに失敗しました。kagのデータはスキップします。"
+  fi
 fi
 
 # ========================================
@@ -924,7 +934,7 @@ mainとkagは異なるAWSアカウントで運用されている。スクリプ�
 - **sandbox**: main環境 + dev環境のリソースとコスト
 - **kag-sandbox**: kag環境のリソースとコスト
 
-kag-sandboxのSSOセッションが無効な場合、kagのデータは自動的にスキップされる。
+SSOセッションが切れている場合、スクリプトが自動的に `aws sso login` を実行する。kag-sandboxのログインに失敗した場合のみ、kagのデータはスキップされる。
 
 ### コスト計算方法
 
@@ -945,8 +955,8 @@ kag-sandboxアカウントではCognitoプール名が汎用的（`amplifyAuthUs
 
 ## 注意事項
 
-- sandbox のSSO認証が切れている場合は `aws sso login --profile sandbox` を先に実行すること
-- kag-sandbox のSSO認証が切れている場合は `aws sso login --profile kag-sandbox` を実行（kagデータなしでも動作可能）
+- SSOセッションが切れている場合はスクリプトが自動的に `aws sso login` を実行する（ブラウザ認証が必要）
+- kag-sandbox のログインに失敗した場合のみ、kagのデータはスキップされる
 - CloudWatch Logsクエリは非同期のため10秒待機している（必要に応じて調整）
 
 ## 回答時の表示ルール
