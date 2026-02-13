@@ -46,10 +46,10 @@ npm install
 プロジェクトルートに `.env` ファイルを作成：
 
 ```
-TAVILY_API_KEY=tvly-xxxxx
+TAVILY_API_KEYS=tvly-xxxxx,tvly-yyyyy,tvly-zzzzz
 ```
 
-※レートリミット対策で複数キーを使う場合は `TAVILY_API_KEY2`, `TAVILY_API_KEY3` も追加可能。
+※カンマ区切りで複数キーを指定すると、レートリミット時に自動フォールバックします。
 
 ### 3. sandbox環境で起動（ローカル開発）
 
@@ -76,7 +76,7 @@ npm run dev
    - Build settings → Build image settings → Custom Build Image
    - `public.ecr.aws/codebuild/amazonlinux-x86_64-standard:5.0`
 3. **環境変数を設定**（Amplify Console → Environment variables）：
-   - `TAVILY_API_KEY` = 取得したAPIキー
+   - `TAVILY_API_KEYS` = 取得したAPIキー（カンマ区切りで複数指定可）
 4. デプロイを実行
 
 ## 参考ブログ
