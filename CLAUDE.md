@@ -88,6 +88,24 @@ python -m pytest tests/
 | [features.md](docs/knowledge/features.md) | API接続、シェア機能、共有機能、ローカル開発 |
 | [temporary-cost-reduction.md](docs/temporary-cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
 
+## CloudWatch Logs 調査
+
+CloudWatch Logs の調査には以下の優先順位で手段を選択する：
+
+### 1. CloudWatch MCP サーバー（推奨）
+
+`awslabs-cloudwatch-mcp-server` の MCP ツールを使う。`mcp__awslabs-cloudwatch-mcp-server__*` で自動承認済み。
+- `describe_log_groups` → `execute_log_insights_query` → `get_logs_insight_query_results` の流れで調査する
+- ログ調査をサブエージェントに委任する場合は `app-test-debug-agent` や `general-purpose` など MCP アクセス可能なエージェントを使う
+
+### 2. Bash フォールバック（MCP が disconnected の場合）
+
+MCP サーバーが利用できない場合のみ、Bash で `aws logs` コマンドを使う。**以下のルールを必ず守ること：**
+
+- **コマンドは必ず `aws` で始める**（先頭にコメント `#` や `sleep` を付けない）
+- **1つの Bash 呼び出しに1つの aws コマンド**（複数コマンドを `&&` や改行で繋げない）
+- 理由: 自動承認パターン `Bash(aws:*)` は、コマンドの**先頭が `aws` で始まる単一行コマンド**にのみマッチする。複数行コマンドやコメント付きコマンドはマッチせず手動承認になる
+
 ## AWS Amplify 環境変数の更新
 
 **重要**: AWS CLI で Amplify のブランチ環境変数を更新する際、`--environment-variables` パラメータは**上書き**であり**マージではない**。

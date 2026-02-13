@@ -1,6 +1,6 @@
 ---
 name: check-app-stats
-description: このアプリの利用統計を確認（Cognitoユーザー数、AgentCore呼び出し回数、Bedrockコスト）。※Tavily APIの残量は /check-tavily-credits を使用
+description: このアプリの利用統計を確認（Cognitoユーザー数、AgentCore呼び出し回数、Bedrockコスト、Tavily API残量）
 allowed-tools: Bash(aws:*)
 ---
 
@@ -110,6 +110,17 @@ DIFF_KAG=$((USERS_KAG - PREV_KAG))
 # 現在の値をキャッシュに保存
 TODAY=$(TZ=Asia/Tokyo date +%Y-%m-%d)
 echo "{\"main\": $USERS_MAIN, \"kag\": $USERS_KAG, \"date\": \"$TODAY\"}" > "$CACHE_FILE"
+
+# kag Cognitoの最近追加ユーザー取得
+if [ "$KAG_AVAILABLE" = true ] && [ -n "$POOL_KAG" ]; then
+  echo "👤 kag Cognitoユーザー一覧を取得中..."
+  aws cognito-idp list-users \
+    --user-pool-id "$POOL_KAG" \
+    --region $REGION --profile $PROFILE_KAG \
+    --output json > "$OUTPUT_DIR/kag_users.json" 2>/dev/null || echo '{"Users":[]}' > "$OUTPUT_DIR/kag_users.json"
+else
+  echo '{"Users":[]}' > "$OUTPUT_DIR/kag_users.json"
+fi
 
 # ========================================
 # 3. CloudWatch Logsクエリを並列開始
@@ -307,6 +318,31 @@ else
 fi
 
 # ========================================
+# 4.5 Tavily API利用量取得
+# ========================================
+echo "🔍 Tavily API利用量を取得中..."
+
+ENV_FILE="$PWD/.env"
+TAVILY_KEYS=""
+if [ -f "$ENV_FILE" ]; then
+  TAVILY_KEYS=$(grep '^TAVILY_API_KEYS=' "$ENV_FILE" | cut -d'=' -f2)
+fi
+
+if [ -n "$TAVILY_KEYS" ]; then
+  echo "$TAVILY_KEYS" | tr ',' '\n' > "$OUTPUT_DIR/tavily_keys.tmp"
+  TAVILY_KEY_COUNT=0
+  while IFS= read -r KEY; do
+    [ -z "$KEY" ] && continue
+    TAVILY_KEY_COUNT=$((TAVILY_KEY_COUNT + 1))
+    curl -s --max-time 5 "https://api.tavily.com/usage" -H "Authorization: Bearer $KEY" \
+      > "$OUTPUT_DIR/tavily_key${TAVILY_KEY_COUNT}.json" 2>/dev/null || echo '{}' > "$OUTPUT_DIR/tavily_key${TAVILY_KEY_COUNT}.json"
+  done < "$OUTPUT_DIR/tavily_keys.tmp"
+  rm -f "$OUTPUT_DIR/tavily_keys.tmp"
+else
+  TAVILY_KEY_COUNT=0
+fi
+
+# ========================================
 # 5. クエリ結果取得（10秒待機後）
 # ========================================
 echo "⏳ クエリ完了を待機中..."
@@ -456,6 +492,19 @@ else
   if [ -z "$PREV_DATE" ]; then
     echo "  （初回記録 - 次回以降増減を表示）"
   fi
+fi
+
+# kag 最近追加されたユーザー
+KAG_USER_COUNT=$(jq '.Users | length' "$OUTPUT_DIR/kag_users.json" 2>/dev/null || echo 0)
+if [ "$KAG_USER_COUNT" -gt 0 ]; then
+  echo ""
+  echo "  [kag 最近追加されたユーザー]"
+  jq -r '
+    .Users | sort_by(.UserCreateDate) | reverse | .[] |
+    (.UserCreateDate | split("T")[0]) as $date |
+    ((.Attributes // [])[] | select(.Name == "email") | .Value) as $email |
+    "  \($date): \($email // "email未設定")"
+  ' "$OUTPUT_DIR/kag_users.json" 2>/dev/null | head -10
 fi
 echo ""
 
@@ -733,6 +782,149 @@ echo "  ※ Kimi K2はクレジット適用で実質\$0"
 echo ""
 
 # ========================================
+# 1セッションあたりのコスト分析
+# ========================================
+echo "💡 1セッションあたりのコスト（過去7日間）"
+echo ""
+echo "  日付       | sandbox  | kag      | 全体"
+echo "  -----------|----------|----------|----------"
+
+# 日別セッション数をmapに格納
+declare -A DAILY_SESSIONS_SANDBOX
+declare -A DAILY_SESSIONS_KAG_MAP
+declare -A DAILY_COST_SANDBOX
+declare -A DAILY_COST_KAG_MAP
+
+# main+devのセッション数をsandboxとして集計
+while IFS= read -r line; do
+  if [ -n "$line" ]; then
+    DATE=$(echo "$line" | cut -d'|' -f1)
+    SESSIONS=$(echo "$line" | cut -d'|' -f2)
+    DAILY_SESSIONS_SANDBOX[$DATE]=$((${DAILY_SESSIONS_SANDBOX[$DATE]:-0} + SESSIONS))
+  fi
+done < <(jq -r '.results[] |
+  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
+  (.[] | select(.field == "sessions") | .value) as $sessions |
+  "\($date)|\($sessions)"
+' "$OUTPUT_DIR/daily_main.json" 2>/dev/null)
+
+# devのセッションも加算
+while IFS= read -r line; do
+  if [ -n "$line" ]; then
+    DATE=$(echo "$line" | cut -d'|' -f1)
+    SESSIONS=$(echo "$line" | cut -d'|' -f2)
+    DAILY_SESSIONS_SANDBOX[$DATE]=$((${DAILY_SESSIONS_SANDBOX[$DATE]:-0} + SESSIONS))
+  fi
+done < <(jq -r '.results[] |
+  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
+  (.[] | select(.field == "sessions") | .value) as $sessions |
+  "\($date)|\($sessions)"
+' "$OUTPUT_DIR/daily_dev.json" 2>/dev/null)
+
+# kagのセッション数
+while IFS= read -r line; do
+  if [ -n "$line" ]; then
+    DATE=$(echo "$line" | cut -d'|' -f1)
+    SESSIONS=$(echo "$line" | cut -d'|' -f2)
+    DAILY_SESSIONS_KAG_MAP[$DATE]=$SESSIONS
+  fi
+done < <(jq -r '.results[] |
+  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
+  (.[] | select(.field == "sessions") | .value) as $sessions |
+  "\($date)|\($sessions)"
+' "$OUTPUT_DIR/daily_kag.json" 2>/dev/null)
+
+# sandboxの日別コスト
+while IFS= read -r line; do
+  if [ -n "$line" ]; then
+    DATE=$(echo "$line" | cut -d'|' -f1)
+    COST=$(echo "$line" | cut -d'|' -f2)
+    DAILY_COST_SANDBOX[$DATE]=$COST
+  fi
+done < <(jq -r '
+  .ResultsByTime[] |
+  .TimePeriod.Start as $date |
+  ([.Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0) as $cost |
+  "\($date)|\($cost)"
+' "$OUTPUT_DIR/cost.json" 2>/dev/null)
+
+# kagの日別コスト
+while IFS= read -r line; do
+  if [ -n "$line" ]; then
+    DATE=$(echo "$line" | cut -d'|' -f1)
+    COST=$(echo "$line" | cut -d'|' -f2)
+    DAILY_COST_KAG_MAP[$DATE]=$COST
+  fi
+done < <(jq -r '
+  .ResultsByTime[] |
+  .TimePeriod.Start as $date |
+  ([.Groups[] | select(.Keys[0] | contains("Claude") or contains("Bedrock")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0) as $cost |
+  "\($date)|\($cost)"
+' "$OUTPUT_DIR/cost_kag.json" 2>/dev/null)
+
+# 日別セッション単価表示
+CPS_SUM_COST_SB=0
+CPS_SUM_COST_KG=0
+CPS_SUM_SESS_SB=0
+CPS_SUM_SESS_KG=0
+
+for DATE in $(jq -r '.ResultsByTime[].TimePeriod.Start' "$OUTPUT_DIR/cost.json" | sort); do
+  S_SB=${DAILY_SESSIONS_SANDBOX[$DATE]:-0}
+  S_KG=${DAILY_SESSIONS_KAG_MAP[$DATE]:-0}
+  C_SB=${DAILY_COST_SANDBOX[$DATE]:-0}
+  C_KG=${DAILY_COST_KAG_MAP[$DATE]:-0}
+  S_ALL=$((S_SB + S_KG))
+  C_ALL=$(echo "$C_SB + $C_KG" | bc)
+
+  if [ "$S_SB" -gt 0 ]; then
+    CPS_SB=$(printf "%.2f" $(echo "scale=4; $C_SB / $S_SB" | bc))
+  else
+    CPS_SB="-"
+  fi
+  if [ "$S_KG" -gt 0 ]; then
+    CPS_KG=$(printf "%.2f" $(echo "scale=4; $C_KG / $S_KG" | bc))
+  else
+    CPS_KG="-"
+  fi
+  if [ "$S_ALL" -gt 0 ]; then
+    CPS_ALL=$(printf "%.2f" $(echo "scale=4; $C_ALL / $S_ALL" | bc))
+  else
+    CPS_ALL="-"
+  fi
+
+  printf "  %s | \$%-6s | \$%-6s | \$%-6s\n" "$DATE" "$CPS_SB" "$CPS_KG" "$CPS_ALL"
+
+  CPS_SUM_COST_SB=$(echo "$CPS_SUM_COST_SB + $C_SB" | bc)
+  CPS_SUM_COST_KG=$(echo "$CPS_SUM_COST_KG + $C_KG" | bc)
+  CPS_SUM_SESS_SB=$((CPS_SUM_SESS_SB + S_SB))
+  CPS_SUM_SESS_KG=$((CPS_SUM_SESS_KG + S_KG))
+done
+
+echo "  -----------|----------|----------|----------"
+
+CPS_SUM_SESS_ALL=$((CPS_SUM_SESS_SB + CPS_SUM_SESS_KG))
+CPS_SUM_COST_ALL=$(echo "$CPS_SUM_COST_SB + $CPS_SUM_COST_KG" | bc)
+if [ "$CPS_SUM_SESS_SB" -gt 0 ]; then
+  AVG_SB=$(printf "%.2f" $(echo "scale=4; $CPS_SUM_COST_SB / $CPS_SUM_SESS_SB" | bc))
+else
+  AVG_SB="-"
+fi
+if [ "$CPS_SUM_SESS_KG" -gt 0 ]; then
+  AVG_KG=$(printf "%.2f" $(echo "scale=4; $CPS_SUM_COST_KG / $CPS_SUM_SESS_KG" | bc))
+else
+  AVG_KG="-"
+fi
+if [ "$CPS_SUM_SESS_ALL" -gt 0 ]; then
+  AVG_ALL=$(printf "%.2f" $(echo "scale=4; $CPS_SUM_COST_ALL / $CPS_SUM_SESS_ALL" | bc))
+else
+  AVG_ALL="-"
+fi
+printf "  平均       | \$%-6s | \$%-6s | \$%-6s\n" "$AVG_SB" "$AVG_KG" "$AVG_ALL"
+echo ""
+echo "  ※ 施策前参考値: \$0.58/回"
+echo ""
+
+# ========================================
 # Claudeモデル キャッシュ効果（両アカウント合算）
 # ========================================
 
@@ -895,6 +1087,72 @@ done
 rm -f "$OUTPUT_DIR/weekly_sessions.tmp"
 echo ""
 
+# ========================================
+# Tavily API 利用状況
+# ========================================
+if [ "$TAVILY_KEY_COUNT" -gt 0 ]; then
+  echo "🔍 Tavily API 利用状況"
+  echo ""
+  echo "  キー  | 使用量 | 上限   | 残り   | 状態"
+  echo "  ------|--------|--------|--------|------"
+
+  TAVILY_TOTAL_USED=0
+  TAVILY_TOTAL_LIMIT=0
+
+  for i in $(seq 1 $TAVILY_KEY_COUNT); do
+    FILE="$OUTPUT_DIR/tavily_key${i}.json"
+    if [ -f "$FILE" ] && [ -s "$FILE" ]; then
+      USED=$(jq -r '.key.usage // 0' "$FILE" 2>/dev/null)
+      LIMIT=$(jq -r '.account.plan_limit // 0' "$FILE" 2>/dev/null)
+      [ "$USED" = "null" ] && USED=0
+      [ "$LIMIT" = "null" ] && LIMIT=1000
+      REMAINING=$((LIMIT - USED))
+      [ $REMAINING -lt 0 ] && REMAINING=0
+
+      if [ $REMAINING -le 0 ]; then
+        STATUS="枯渇"
+      elif [ $REMAINING -le 100 ]; then
+        STATUS="残少"
+      else
+        STATUS="OK"
+      fi
+
+      printf "  KEY%-2d | %6d | %6d | %6d | %s\n" "$i" "$USED" "$LIMIT" "$REMAINING" "$STATUS"
+
+      TAVILY_TOTAL_USED=$((TAVILY_TOTAL_USED + USED))
+      TAVILY_TOTAL_LIMIT=$((TAVILY_TOTAL_LIMIT + LIMIT))
+    fi
+  done
+
+  TAVILY_TOTAL_REMAINING=$((TAVILY_TOTAL_LIMIT - TAVILY_TOTAL_USED))
+  [ $TAVILY_TOTAL_REMAINING -lt 0 ] && TAVILY_TOTAL_REMAINING=0
+  echo "  ------|--------|--------|--------|------"
+  printf "  合計  | %6d | %6d | %6d |\n" "$TAVILY_TOTAL_USED" "$TAVILY_TOTAL_LIMIT" "$TAVILY_TOTAL_REMAINING"
+
+  # 日平均消費の推定（全体セッション数から逆算: セッション≒検索回数）
+  TOTAL_SESSIONS_ALL=$((TOTAL_MAIN + TOTAL_KAG + TOTAL_DEV))
+  if [ "$TOTAL_SESSIONS_ALL" -gt 0 ]; then
+    DAYS_WITH_DATA=$(jq '.ResultsByTime | length' "$OUTPUT_DIR/cost.json")
+    [ "$DAYS_WITH_DATA" -lt 1 ] && DAYS_WITH_DATA=1
+    DAILY_CREDITS=$(echo "scale=0; $TOTAL_SESSIONS_ALL / $DAYS_WITH_DATA" | bc)
+    [ "$DAILY_CREDITS" -lt 1 ] && DAILY_CREDITS=1
+  else
+    DAILY_CREDITS=53  # フォールバック値（最適化後実測値）
+  fi
+
+  if [ $TAVILY_TOTAL_REMAINING -gt 0 ] && [ "$DAILY_CREDITS" -gt 0 ]; then
+    DAYS_LEFT=$((TAVILY_TOTAL_REMAINING / DAILY_CREDITS))
+    EXHAUST_DATE=$(date -v+${DAYS_LEFT}d +%Y-%m-%d)
+    echo ""
+    echo "  日平均消費: ${DAILY_CREDITS}クレジット/日（直近7日間のセッション数ベース）"
+    echo "  枯渇予測: 約${DAYS_LEFT}日後（${EXHAUST_DATE}頃）"
+  elif [ $TAVILY_TOTAL_REMAINING -le 0 ]; then
+    echo ""
+    echo "  ⚠️  全キーが枯渇しています"
+  fi
+  echo ""
+fi
+
 echo "✅ 完了！"
 ```
 
@@ -903,13 +1161,15 @@ echo "✅ 完了！"
 スクリプト実行後、以下の情報が出力される：
 
 1. **直近12時間のセッション数**: 時間帯別の表形式（main/kag/dev）
-2. **Cognitoユーザー数**: 環境ごとのユーザー数（main/kag）
+2. **Cognitoユーザー数**: 環境ごとのユーザー数（main/kag）+ kag最近追加ユーザーのEmail一覧
 3. **日次セッション数**: 過去7日間の日別回数（main/kag/dev別）
 4. **時間別セッション数**: 直近24時間の全時間帯（ASCIIバーグラフ・JST表示、main/kag/dev）
 5. **Bedrockコスト（日別）**: 過去7日間の日別コスト（sandbox/kag別）
 6. **Bedrockコスト内訳（環境別 x モデル別）**: アカウント別実コストによる環境別・モデル別コスト表（週間・月間推定付き）
-7. **Claudeモデル キャッシュ効果**: Sonnet 4.5 / Opus 4.6 各モデルのInput/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額（両アカウント合算）
-8. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間、両アカウント合算）
+7. **1セッションあたりのコスト**: 日別のセッション単価（sandbox/kag/全体）と平均値。コスト削減施策の効果確認用
+8. **Claudeモデル キャッシュ効果**: Sonnet 4.5 / Opus 4.6 各モデルのInput/Output/CacheRead/CacheWriteの内訳、キャッシュヒット率、節約額（両アカウント合算）
+9. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間、両アカウント合算）
+10. **Tavily API 利用状況**: キー別の使用量/上限/残り、日平均消費クレジット、枯渇予測日
 
 ## アーキテクチャ
 
@@ -964,4 +1224,6 @@ kag-sandboxアカウントではCognitoプール名が汎用的（`amplifyAuthUs
 スクリプト実行後、ユーザーへの回答では以下を守ること：
 
 1. **直近12時間のセッション数**: サマリーせず、スクリプト出力の表形式をそのままMarkdownテーブルとして表示する
-2. その他のデータは適宜サマリーしてOK
+2. **1セッションあたりのコスト**: サマリーせず、日別テーブルをそのままMarkdownテーブルとして表示する
+3. **Tavily API 利用状況**: サマリーせず、キー別テーブルと枯渇予測をそのまま表示する
+4. その他のデータは適宜サマリーしてOK
