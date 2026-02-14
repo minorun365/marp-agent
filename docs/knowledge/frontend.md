@@ -89,10 +89,14 @@ Chat/index.tsx はUIレンダリングのみの薄いコンポーネント（約
 
 ### ダウンロード機能
 プレビュー画面のヘッダーにドロップダウンメニューでダウンロード形式を選択。
-App.tsxの `handleExport(format: 'pdf' | 'pptx', theme: string)` で両形式を統一処理：
-- バックエンドに `action: 'export_pdf'` または `'export_pptx'` を送信 → Marp CLI で変換
+App.tsxの `handleExport(format: 'pdf' | 'pptx' | 'pptx_editable', theme: string)` で全形式を統一処理：
+- バックエンドに `action: 'export_pdf'`、`'export_pptx'`、`'export_pptx_editable'` を送信 → Marp CLI で変換
 
-※ `--pptx-editable`（編集可能PPTX）はLibreOffice依存のため未対応
+| 形式 | 説明 | Marp CLIオプション |
+|------|------|-------------------|
+| PDF | PDF形式 | `--pdf` |
+| PPTX（編集不可） | 画像ベースPPTX（再現度100%） | `--pptx` |
+| PPTX（編集可能） | テキスト編集可能PPTX（崩れあり） | `--pptx --pptx-editable`（LibreOffice依存） |
 
 **iOS Safari対応**: ドロップダウンメニューはCSS `:hover` ではなく `useState` によるクリック/タップベースで実装。iOS Safariでは `:hover` がタップで正しく動作しないため、`onClick` でメニューを開閉し、`touchstart` イベントで外側タップ時に閉じる処理を実装。
 
@@ -363,6 +367,49 @@ setMessages(prev =>
 **症状**: エラー発生時にDevToolsコンソールにはエラーが表示されるが、画面には何も表示されない。
 
 **原因**: `onError` コールバック内の `streamText()` は非同期で実行されるが、`invokeAgent` 後の処理が先に実行されて `isStreaming: false` に設定される。
+
+### TIPSローテーション（シャッフルキュー方式）
+
+スライド生成中に表示する豆知識（TIPS）は、シャッフルキュー方式で全メッセージを均等に巡回する。純粋なランダム選択だと少ない回転回数では偏りが出るため、Fisher-Yatesシャッフルで全インデックスを配列に入れ、順番に消費する。配列が空になったら再シャッフル。
+
+```typescript
+// useTipRotation.ts
+const shuffledQueueRef = useRef<number[]>([]);
+
+const getNextTipIndex = useCallback((): number => {
+  if (shuffledQueueRef.current.length === 0) {
+    shuffledQueueRef.current = Array.from({ length: TIPS.length }, (_, i) => i);
+    // Fisher-Yatesシャッフル
+    for (let i = shuffledQueueRef.current.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledQueueRef.current[i], shuffledQueueRef.current[j]] =
+        [shuffledQueueRef.current[j], shuffledQueueRef.current[i]];
+    }
+  }
+  return shuffledQueueRef.current.pop()!;
+}, []);
+```
+
+### finallyブロックのスライドステータス安全弁
+
+`handleSubmit` の `finally` ブロックで、ストリーム切断やバックエンドエラー等で `onMarkdown` が呼ばれなかった場合の安全弁として、スライド生成ステータスを強制完了する：
+
+```typescript
+finally {
+  setIsLoading(false);
+  setStatus('');
+  stopTipRotation();
+  setMessages(prev =>
+    prev.map(msg => {
+      if (msg.isStreaming) return { ...msg, isStreaming: false };
+      if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+        return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
+      }
+      return msg;
+    })
+  );
+}
+```
 
 ### SSEアイドルタイムアウト（削除済み）
 
