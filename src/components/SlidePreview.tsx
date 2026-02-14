@@ -23,12 +23,13 @@ interface SlidePreviewProps {
   onThemeChange: (theme: ThemeId) => void;
   onDownloadPdf: (theme: string) => void;
   onDownloadPptx: (theme: string) => void;
+  onDownloadEditablePptx: (theme: string) => void;
   onShareSlide: (theme: string) => void;
   isDownloading: boolean;
   onRequestEdit?: () => void;
 }
 
-export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloadPdf, onDownloadPptx, onShareSlide, isDownloading, onRequestEdit }: SlidePreviewProps) {
+export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloadPdf, onDownloadPptx, onDownloadEditablePptx, onShareSlide, isDownloading, onRequestEdit }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -186,7 +187,7 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
                   }}
                   className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left rounded-t-lg whitespace-nowrap"
                 >
-                  PDF形式でダウンロード
+                  PDF形式
                 </button>
                 <button
                   onClick={() => {
@@ -195,7 +196,16 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
                   }}
                   className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t whitespace-nowrap"
                 >
-                  PPTX形式でダウンロード
+                  PPTX形式（編集不可、再現度100%）
+                </button>
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onDownloadEditablePptx(selectedTheme);
+                  }}
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t whitespace-nowrap"
+                >
+                  <span>PPTX形式（編集可能、崩れあり）</span>
                 </button>
                 <button
                   onClick={() => {
@@ -205,7 +215,6 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
                   className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 text-left border-t rounded-b-lg flex items-center justify-between whitespace-nowrap"
                 >
                   <span>URLで公開</span>
-                  <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">NEW</span>
                 </button>
               </div>
             )}

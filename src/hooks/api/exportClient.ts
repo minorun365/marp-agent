@@ -6,11 +6,19 @@
 import { getAgentCoreConfig } from './agentCoreClient';
 import { readSSEStream, base64ToBlob } from '../streaming/sseParser';
 
-export type ExportFormat = 'pdf' | 'pptx';
+export type ExportFormat = 'pdf' | 'pptx' | 'pptx_editable';
 
 const MIME_TYPES: Record<ExportFormat, string> = {
   pdf: 'application/pdf',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  pptx_editable: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+
+// バックエンドが返すSSEイベントのtype（pptx_editableもtype:"pptx"を返す）
+const EVENT_TYPES: Record<ExportFormat, string> = {
+  pdf: 'pdf',
+  pptx: 'pptx',
+  pptx_editable: 'pptx',
 };
 
 /**
@@ -48,8 +56,9 @@ export async function exportSlide(
 
   let resultBlob: Blob | null = null;
 
+  const eventType = EVENT_TYPES[format];
   await readSSEStream(reader, (event) => {
-    if (event.type === format && event.data) {
+    if (event.type === eventType && event.data) {
       resultBlob = base64ToBlob(event.data as string, MIME_TYPES[format]);
       return 'stop';
     } else if (event.type === 'error') {
@@ -71,6 +80,10 @@ export async function exportPdf(markdown: string, theme: string = 'border'): Pro
 
 export async function exportPptx(markdown: string, theme: string = 'border'): Promise<Blob> {
   return exportSlide(markdown, 'pptx', theme);
+}
+
+export async function exportEditablePptx(markdown: string, theme: string = 'border'): Promise<Blob> {
+  return exportSlide(markdown, 'pptx_editable', theme);
 }
 
 /**

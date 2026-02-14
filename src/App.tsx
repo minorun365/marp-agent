@@ -6,7 +6,7 @@ import { SlidePreview } from './components/SlidePreview';
 import type { ThemeId } from './components/SlidePreview';
 import { ShareConfirmModal } from './components/ShareConfirmModal';
 import { ShareResultModal } from './components/ShareResultModal';
-import { exportPdf, exportPdfMock, exportPptx, exportPptxMock, shareSlide, shareSlideMock } from './hooks/useAgentCore';
+import { exportPdf, exportPdfMock, exportPptx, exportPptxMock, exportEditablePptx, exportEditablePptxMock, shareSlide, shareSlideMock } from './hooks/useAgentCore';
 import type { ShareResult } from './hooks/useAgentCore';
 
 // モック使用フラグ（ローカル開発用：認証スキップ＆モックAPI）
@@ -110,12 +110,13 @@ function MainApp({ signOut }: { signOut?: () => void }) {
     }, 100);
   };
 
-  const handleExport = async (format: 'pdf' | 'pptx', theme: string) => {
+  const handleExport = async (format: 'pdf' | 'pptx' | 'pptx_editable', theme: string) => {
     if (!markdown) return;
 
     const exportFns = {
       pdf: useMock ? exportPdfMock : exportPdf,
       pptx: useMock ? exportPptxMock : exportPptx,
+      pptx_editable: useMock ? exportEditablePptxMock : exportEditablePptx,
     };
 
     setIsDownloading(true);
@@ -129,7 +130,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         const a = document.createElement('a');
         a.href = url;
-        a.download = `slide.${format}`;
+        a.download = `slide.${format === 'pptx_editable' ? 'pptx' : format}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -249,6 +250,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
             onThemeChange={setSelectedTheme}
             onDownloadPdf={(theme) => handleExport('pdf', theme)}
             onDownloadPptx={(theme) => handleExport('pptx', theme)}
+            onDownloadEditablePptx={(theme) => handleExport('pptx_editable', theme)}
             onShareSlide={handleShareRequest}
             isDownloading={isDownloading}
             onRequestEdit={handleRequestEdit}
