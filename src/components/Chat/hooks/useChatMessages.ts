@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { invokeAgent, invokeAgentMock } from '../../../hooks/useAgentCore';
-import { MESSAGES, getWebSearchStatus, getShareMessage, useMock } from '../constants';
+import { MESSAGES, getWebSearchStatus, getWebFetchStatus, getShareMessage, useMock } from '../constants';
 import type { ModelType, Message } from '../types';
 import { createMessage } from '../types';
 import { useTipRotation } from './useTipRotation';
@@ -157,6 +157,9 @@ export function useChatMessages({
               if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
                 return { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
               }
+              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
+                return { ...msg, statusText: MESSAGES.WEB_FETCH_COMPLETED };
+              }
               if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
                 return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
               }
@@ -228,6 +231,22 @@ export function useChatMessages({
                 createMessage({ role: 'assistant', content: '', isStatus: true, statusText: searchStatus }),
               ];
             });
+          } else if (toolName === 'http_request') {
+            const fetchStatus = getWebFetchStatus(query);
+            setMessages(prev => {
+              const hasInProgress = prev.some(
+                msg => msg.isStatus && msg.statusText === fetchStatus
+              );
+              if (hasInProgress) return prev;
+
+              const filtered = prev.filter(
+                msg => !(msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX) && msg.statusText !== MESSAGES.WEB_FETCH_COMPLETED)
+              );
+              return [
+                ...filtered,
+                createMessage({ role: 'assistant', content: '', isStatus: true, statusText: fetchStatus }),
+              ];
+            });
           }
         },
         onMarkdown: (markdown) => {
@@ -258,11 +277,15 @@ export function useChatMessages({
         },
         onComplete: () => {
           setMessages(prev =>
-            prev.map(msg =>
-              msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)
-                ? { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED }
-                : msg
-            )
+            prev.map(msg => {
+              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
+                return { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
+              }
+              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
+                return { ...msg, statusText: MESSAGES.WEB_FETCH_COMPLETED };
+              }
+              return msg;
+            })
           );
         },
       }, sessionId, modelType);

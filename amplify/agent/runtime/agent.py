@@ -116,6 +116,11 @@ async def invoke(payload, context=None):
                     web_search_executed = True
                     if isinstance(tool_input, dict) and "query" in tool_input:
                         yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+                elif tool_name == "http_request":
+                    if isinstance(tool_input, dict) and "url" in tool_input:
+                        yield {"type": "tool_use", "data": tool_name, "query": tool_input["url"]}
+                    else:
+                        yield {"type": "tool_use", "data": tool_name}
                 else:
                     yield {"type": "tool_use", "data": tool_name}
 
