@@ -78,6 +78,40 @@ section.blue>header {
   color: #303ca6;
 }
 
+/* || SECTION CLASS: top */
+/* title slide - same style as lead */
+section.top {
+  background-color: #ffffff;
+  background-image: linear-gradient(to bottom right, #cadaf7 5%, #87a7e4 95%);
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+section.top h1 {
+  color: #214484;
+  text-align: center;
+}
+
+section.top h2,
+section.top h3,
+section.top h4,
+section.top h5,
+section.top h6 {
+  color: #214484;
+  text-align: center;
+  font-weight: normal;
+}
+
+section.top p {
+  text-align: center;
+}
+
+section.top::after {
+  display: none;
+}
+
 /* || SECTION CLASS: lead */
 /* section divider / title slide - blue gradient with centered text */
 section.lead {

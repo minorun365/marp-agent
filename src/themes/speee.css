@@ -256,6 +256,69 @@ section > *:first-child,
 section > header:first-child + * {
   margin-top: 0;
 }
+/* || SECTION CLASS: top */
+/* title slide - same style as lead */
+section.top {
+  --color-background: #003981;
+  --color-background-stripe: rgba(255, 255, 255, 0.1);
+  --color-foreground: white;
+  --color-dimmed: #ccd7e6;
+  --color-highlight: #81d4fa;
+  background-image: linear-gradient(115deg, #080058, #008bcd);
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+section.top h1 {
+  text-align: center;
+}
+section.top h2,
+section.top h3,
+section.top h4,
+section.top h5,
+section.top h6 {
+  text-align: center;
+  font-weight: normal;
+}
+section.top h1 svg[data-marp-fitting=svg],
+section.top h2 svg[data-marp-fitting=svg],
+section.top h3 svg[data-marp-fitting=svg],
+section.top h4 svg[data-marp-fitting=svg],
+section.top h5 svg[data-marp-fitting=svg],
+section.top h6 svg[data-marp-fitting=svg] {
+  --preserve-aspect-ratio: xMidYMid meet;
+}
+section.top p {
+  text-align: center;
+}
+section.top blockquote > h1,
+section.top blockquote > h2,
+section.top blockquote > h3,
+section.top blockquote > h4,
+section.top blockquote > h5,
+section.top blockquote > h6,
+section.top blockquote > p {
+  text-align: left;
+}
+section.top blockquote svg[data-marp-fitting=svg]:not([data-marp-fitting-math]) {
+  --preserve-aspect-ratio: xMinYMin meet;
+}
+section.top ul > li > p,
+section.top ol > li > p {
+  text-align: left;
+}
+section.top table {
+  margin-left: auto;
+  margin-right: auto;
+}
+section.top::before {
+  display: none;
+}
+section.top::after {
+  display: none;
+}
+
 section.lead {
   --color-background: #003981;
   --color-background-stripe: rgba(255, 255, 255, 0.1);
