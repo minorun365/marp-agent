@@ -41,8 +41,8 @@ python -m pytest tests/
 [ブラウザ] ←→ [React + Tailwind] ←SSE→ [AgentCore Runtime]
                                               │
                                               ├── Strands Agent (Python)
-                                              ├── Claude Sonnet / Opus / Haiku / Kimi K2
-                                              └── Marp CLI (PDF/PPTX変換)
+                                              ├── Claude Sonnet 4.5 / Opus 4.6
+                                              └── Marp CLI (PDF/PPTX/編集可能PPTX変換)
 ```
 
 ### ディレクトリ構成
