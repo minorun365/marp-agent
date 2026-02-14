@@ -12,7 +12,7 @@
  * @size 16:9 1280px 720px
  * @size 4:3 960px 720px
  */
-@import url("https://fonts.googleapis.com/css2?family=Lato&family=Noto+Sans+JP&family=Roboto+Mono&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Roboto+Mono&display=swap");
 @import url("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/tomorrow-night-blue.min.css");
 svg[data-marp-fitting=svg] {
   max-height: 580px;
@@ -37,6 +37,7 @@ h6 strong {
 
 h1 {
   font-size: 1.8em;
+  font-weight: 900;
 }
 
 h2 {
