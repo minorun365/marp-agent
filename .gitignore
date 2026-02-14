@@ -36,6 +36,7 @@ amplify/agent/runtime/*.css
 __pycache__
 *.pyc
 uv.lock
+.pytest_cache
 
 # 環境変数
 .env
