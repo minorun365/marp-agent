@@ -9,10 +9,19 @@
 
 ### Docker内での設定
 ```dockerfile
-RUN apt-get update && apt-get install -y chromium
+RUN apt-get update && apt-get install -y chromium libreoffice-impress
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ```
+
+### 編集可能PPTX（`--pptx-editable`）
+
+`--pptx --pptx-editable` オプションで、PowerPointでテキスト編集可能なPPTXを生成できる（実験的機能）。
+
+- **依存関係**: LibreOffice Impress が必要（Dockerfileに `libreoffice-impress` を追加）
+- **仕組み**: Marp CLI が内部でLibreOfficeを使って画像ベースPPTXを編集可能形式に変換
+- **制約**: テーマのスタイルが崩れる場合がある（画像ベースPPTXの方が再現度は高い）
+- **タイムアウト**: LibreOffice変換に時間がかかるため `timeout=120` を設定
 
 ### Marp フロントマター
 ```yaml
