@@ -91,7 +91,6 @@ async def invoke(payload, context=None):
     reset_generated_markdown()
     web_search_executed = False
     stream_error = False
-    last_tool_name = None
 
     try:
         stream = agent.stream_async(user_message)
@@ -105,11 +104,6 @@ async def invoke(payload, context=None):
                 tool_info = event["current_tool_use"]
                 tool_name = tool_info.get("name", "unknown")
                 tool_input = tool_info.get("input", {})
-
-                # 同一ツールの重複イベントをスキップ（LLMストリーミングで複数チャンクに分散するため）
-                if tool_name == last_tool_name:
-                    continue
-                last_tool_name = tool_name
 
                 # 文字列の場合はJSONパースを試みる
                 if isinstance(tool_input, str):
@@ -126,7 +120,6 @@ async def invoke(payload, context=None):
                     yield {"type": "tool_use", "data": tool_name}
 
             elif "result" in event:
-                last_tool_name = None  # ツール完了後にリセット（同一ツールの再呼び出しを正しく検知するため）
                 result = event["result"]
                 if hasattr(result, 'message') and result.message:
                     for content in getattr(result.message, 'content', []):
