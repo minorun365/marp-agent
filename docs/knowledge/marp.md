@@ -37,11 +37,12 @@ paginate: true
 
 | 用途 | ディレクティブ |
 |------|-------------|
-| タイトルスライド | `<!-- _class: lead --><!-- _paginate: skip -->` |
+| タイトルスライド | `<!-- _class: top --><!-- _paginate: skip -->` |
 | セクション区切り | `<!-- _class: lead -->` |
+| 裏表紙 | `<!-- _class: end --><!-- _paginate: skip -->` |
 | 参考文献スライド | `<!-- _class: tinytext -->` |
 
-各テーマのCSSで `.lead` / `.tinytext` クラスをテーマの世界観に合わせてスタイリングしている。
+各テーマのCSSで `.top` / `.lead` / `.end` / `.tinytext` クラスをテーマの世界観に合わせてスタイリングしている。
 
 ### borderテーマ（コミュニティテーマ）
 

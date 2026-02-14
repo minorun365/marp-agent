@@ -126,11 +126,11 @@ def get_model_config(model_type: str = "sonnet") -> dict:
     else:
         return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", ...}
 
-def get_system_prompt(theme: str = "border") -> str:
+def get_system_prompt(theme: str = "speee") -> str:
     """全テーマで統一ディレクティブを使用。themeはフロントマターに埋め込むのみ"""
     return f"""...
     - フロントマター: marp: true, theme: {theme}, size: 16:9, paginate: true
-    - タイトルスライド: <!-- _class: lead --><!-- _paginate: skip -->
+    - タイトルスライド: <!-- _class: top --><!-- _paginate: skip -->
     - セクション区切り: <!-- _class: lead -->
     - 参考文献: <!-- _class: tinytext -->
     ..."""
@@ -138,7 +138,7 @@ def get_system_prompt(theme: str = "border") -> str:
 @app.entrypoint
 async def invoke(payload, context=None):
     model_type = payload.get("model_type", "sonnet")
-    theme = payload.get("theme", "border")
+    theme = payload.get("theme", "speee")
     agent = get_or_create_agent(session_id, model_type, theme)
 ```
 
