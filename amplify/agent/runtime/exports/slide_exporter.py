@@ -5,13 +5,14 @@ import tempfile
 from pathlib import Path
 
 
-def _run_marp_cli(markdown: str, output_format: str, theme: str = 'border') -> Path:
+def _run_marp_cli(markdown: str, output_format: str, theme: str = 'border', editable: bool = False) -> Path:
     """Marp CLIを実行して出力ファイルのパスを返す（共通処理）
 
     Args:
         markdown: Marpマークダウン
         output_format: 出力形式（"pdf", "pptx", "html", "png"）
         theme: テーマ名
+        editable: PPTXを編集可能形式で出力（LibreOffice必要）
 
     Returns:
         出力ファイルのPath
@@ -40,6 +41,8 @@ def _run_marp_cli(markdown: str, output_format: str, theme: str = 'border') -> P
         cmd.append("--pdf")
     elif output_format == "pptx":
         cmd.append("--pptx")
+        if editable:
+            cmd.append("--pptx-editable")
     elif output_format == "html":
         cmd.append("--html")
     elif output_format == "png":
@@ -50,7 +53,7 @@ def _run_marp_cli(markdown: str, output_format: str, theme: str = 'border') -> P
     if theme_path.exists():
         cmd.extend(["--theme", str(theme_path)])
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
     if result.returncode != 0:
         raise RuntimeError(f"Marp CLI error: {result.stderr}")
@@ -67,6 +70,12 @@ def generate_pdf(markdown: str, theme: str = 'border') -> bytes:
 def generate_pptx(markdown: str, theme: str = 'border') -> bytes:
     """Marp CLIでPPTXを生成"""
     output_path = _run_marp_cli(markdown, "pptx", theme)
+    return output_path.read_bytes()
+
+
+def generate_editable_pptx(markdown: str, theme: str = 'border') -> bytes:
+    """Marp CLIで編集可能なPPTXを生成（実験的機能、LibreOffice必要）"""
+    output_path = _run_marp_cli(markdown, "pptx", theme, editable=True)
     return output_path.read_bytes()
 
 

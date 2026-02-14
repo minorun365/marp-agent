@@ -15,7 +15,7 @@ from tools import (
     reset_generated_tweet_url,
 )
 from tools.web_search import get_last_search_result, reset_last_search_result
-from exports import generate_pdf, generate_pptx
+from exports import generate_pdf, generate_pptx, generate_editable_pptx
 from sharing import share_slide
 from session import get_or_create_agent
 
@@ -55,6 +55,16 @@ async def invoke(payload, context=None):
             yield {"type": "pptx", "data": pptx_base64}
         except Exception as e:
             yield {"type": "error", "message": str(e)}
+        return
+
+    # 編集可能PPTX出力（実験的機能）
+    if action == "export_pptx_editable" and current_markdown:
+        try:
+            pptx_bytes = generate_editable_pptx(current_markdown, theme)
+            pptx_base64 = base64.b64encode(pptx_bytes).decode("utf-8")
+            yield {"type": "pptx", "data": pptx_base64}
+        except Exception as e:
+            yield {"type": "error", "message": f"編集可能PPTX生成エラー（実験的機能）: {str(e)}"}
         return
 
     # スライド共有

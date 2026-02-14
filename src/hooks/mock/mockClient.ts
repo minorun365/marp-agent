@@ -87,6 +87,14 @@ export async function exportPptxMock(markdown: string, _theme: string = 'border'
 }
 
 /**
+ * 編集可能PPTX生成モック
+ */
+export async function exportEditablePptxMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
+  await sleep(2000);
+  return new Blob([markdown], { type: 'text/markdown' });
+}
+
+/**
  * スライド共有モック
  */
 export async function shareSlideMock(_markdown: string, _theme: string = 'border'): Promise<ShareResult> {
