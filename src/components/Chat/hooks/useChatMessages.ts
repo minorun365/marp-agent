@@ -151,12 +151,17 @@ export function useChatMessages({
       await invoke(userMessage, currentMarkdown, theme, {
         onText: (text) => {
           setStatus('');
+          stopTipRotation();
           setMessages(prev => {
-            const msgs = prev.map(msg =>
-              msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)
-                ? { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED }
-                : msg
-            );
+            const msgs = prev.map(msg => {
+              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
+                return { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
+              }
+              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+                return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
+              }
+              return msg;
+            });
             let lastStatusIdx = -1;
             let lastTextAssistantIdx = -1;
             for (let i = msgs.length - 1; i >= 0; i--) {
