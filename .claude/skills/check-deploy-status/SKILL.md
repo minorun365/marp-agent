@@ -1,7 +1,7 @@
 ---
 name: check-deploy-status
 description: Amplifyに存在するすべてのブランチのデプロイ状況を確認（直近5件ずつ、所要時間付き）
-allowed-tools: Bash(aws:*)
+allowed-tools: Bash
 ---
 
 # Amplify デプロイ状況チェック
@@ -17,32 +17,27 @@ allowed-tools: Bash(aws:*)
 
 ## 調査手順
 
-以下の2コマンドで両環境のデプロイ状況を取得する:
+**重要: 以下を1つのBashコマンドとして実行すること（承認1回で済むように）。**
 
-### 1. main環境
+両環境を `;` で連結し、一方のSSOが切れていてももう一方は正常に実行される:
 
 ```bash
-APP_ID=$(aws amplify list-apps --region us-east-1 --profile sandbox --query "apps[?name=='marp-agent'].appId" --output text) && \
+(APP_ID=$(aws amplify list-apps --region us-east-1 --profile sandbox --query "apps[?name=='marp-agent'].appId" --output text) && \
 echo "=== main環境 (sandbox) ===" && \
 aws amplify list-branches --app-id "$APP_ID" --region us-east-1 --profile sandbox --query "branches[].branchName" --output text | tr '\t' '\n' | while read BRANCH; do \
   echo "--- $BRANCH ---" && \
   aws amplify list-jobs --app-id "$APP_ID" --branch-name "$BRANCH" --max-items 5 --region us-east-1 --profile sandbox \
     --query "jobSummaries[].{jobId:jobId, status:status, commitMessage:commitMessage, startTime:startTime, endTime:endTime}" \
     --output json; \
-done
-```
-
-### 2. kag環境
-
-```bash
-APP_ID=$(aws amplify list-apps --region us-east-1 --profile kag-sandbox --query "apps[?name=='marp-agent-kag'].appId" --output text) && \
+done) ; \
+(APP_ID=$(aws amplify list-apps --region us-east-1 --profile kag-sandbox --query "apps[?name=='marp-agent-kag'].appId" --output text) && \
 echo "=== kag環境 (kag-sandbox) ===" && \
 aws amplify list-branches --app-id "$APP_ID" --region us-east-1 --profile kag-sandbox --query "branches[].branchName" --output text | tr '\t' '\n' | while read BRANCH; do \
   echo "--- $BRANCH ---" && \
   aws amplify list-jobs --app-id "$APP_ID" --branch-name "$BRANCH" --max-items 5 --region us-east-1 --profile kag-sandbox \
     --query "jobSummaries[].{jobId:jobId, status:status, commitMessage:commitMessage, startTime:startTime, endTime:endTime}" \
     --output json; \
-done
+done)
 ```
 
 ## 出力フォーマット
