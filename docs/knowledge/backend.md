@@ -34,6 +34,18 @@ tavily-python
 - `POST /invocations` - エージェント実行
 - `GET /ping` - ヘルスチェック
 
+### アクション一覧
+
+リクエストボディの `action` フィールドで処理を分岐：
+
+| アクション | 説明 | レスポンスtype |
+|-----------|------|---------------|
+| `chat`（デフォルト） | エージェントとの会話・スライド生成 | `text`, `markdown`, `tool_use`, `done` |
+| `export_pdf` | PDF生成（Marp CLI） | `pdf` |
+| `export_pptx` | PPTX生成（画像ベース、再現度100%） | `pptx` |
+| `export_pptx_editable` | 編集可能PPTX生成（LibreOffice依存、実験的） | `pptx` |
+| `share_slide` | S3にアップロードして公開URL取得 | `share_result` |
+
 ---
 
 ## Strands Agents
@@ -292,6 +304,32 @@ data: {"type": "markdown", "data": "生成されたマークダウン"}
 data: {"type": "tweet_url", "data": "https://twitter.com/intent/tweet?text=..."}
 data: {"type": "error", "error": "エラーメッセージ"}
 data: {"type": "done"}
+```
+
+#### イベント送信の最適化
+
+- **tool_use重複スキップ**: LLMのストリーミングでは同一ツールの `current_tool_use` イベントが数十〜百回発生する（チャンクごとに1回）。`last_tool_name` で重複を排除し、1ツール1イベントに絞る
+- **markdown即時送信**: `output_slide` ツール完了直後に `markdown` イベントを送信する（ストリーム終了を待たない）。これによりフロントエンドのスピナーを即座に停止し、プレビュータブへの切り替えを高速化
+
+```python
+last_tool_name = None
+
+async for event in stream:
+    elif "current_tool_use" in event:
+        tool_name = tool_info.get("name", "unknown")
+        if tool_name == last_tool_name:
+            continue  # 同一ツールの重複スキップ
+        last_tool_name = tool_name
+        yield {"type": "tool_use", "data": tool_name}
+
+    elif "result" in event:
+        # ツール結果テキストを送信
+        ...
+        # ツール完了直後にマークダウンを即送信
+        generated_markdown = get_generated_markdown()
+        if generated_markdown:
+            yield {"type": "markdown", "data": generated_markdown}
+            reset_generated_markdown()
 ```
 
 ### resultイベントからのテキスト抽出
