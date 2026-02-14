@@ -74,9 +74,9 @@ CSS変更箇所:
 | `src/components/SlidePreview.tsx` | THEMES配列にSpeee追加、テーマ状態を外部props化 | 完了 |
 | `src/App.tsx` | `selectedTheme`状態を管理、Chat/SlidePreviewに渡す | 完了 |
 
-#### 3. テーマ別システムプロンプト対応
+#### 3. テーマ統一システムプロンプト対応
 
-エージェントがテーマに応じたスライド構成指示を使うようにした。
+全テーマで統一されたCSSクラスベースのディレクティブを使用。`config.py` の `get_system_prompt(theme)` はテーマ名をフロントマターに埋め込むのみで、ディレクティブ指示は共通。
 
 | ファイル | 変更内容 | 状態 |
 |----------|----------|------|

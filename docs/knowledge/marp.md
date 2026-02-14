@@ -31,6 +31,18 @@ paginate: true
 | gaia | クラシックなデザイン |
 | uncover | ミニマル・モダン |
 
+### テーマ統一ディレクティブ
+
+全テーマ（border, gradient, beam, speee）で統一されたCSSクラスベースのディレクティブを使用。テーマ切り替え時の互換性を確保。
+
+| 用途 | ディレクティブ |
+|------|-------------|
+| タイトルスライド | `<!-- _class: lead --><!-- _paginate: skip -->` |
+| セクション区切り | `<!-- _class: lead -->` |
+| 参考文献スライド | `<!-- _class: tinytext -->` |
+
+各テーマのCSSで `.lead` / `.tinytext` クラスをテーマの世界観に合わせてスタイリングしている。
+
 ### borderテーマ（コミュニティテーマ）
 
 本プロジェクトで採用しているカスタムテーマ。
@@ -40,7 +52,8 @@ paginate: true
 - 濃いグレーの太枠線（`#303030`）
 - 白いアウトライン
 - Interフォント（Google Fonts）
-- `<!-- _class: tinytext -->` で参考文献用の小さいテキスト対応
+- `.lead`: 暗い枠線色（`#303030`）背景 + 白テキスト + 中央揃え
+- `.tinytext`: 参考文献用の小さいテキスト
 
 **ファイル配置**:
 - `src/themes/border.css` - フロントエンド（Marp Core）用
@@ -63,6 +76,25 @@ url('data:image/png;base64,{Base64データ}')
 ```
 
 **注意**: 画像が複数あるとCSSファイルが数MB級になる。Git管理には注意。
+
+### Gaiaベーステーマの注意点（Speee等）
+
+`@import "default"` を使わないGaiaベースのテーマは、リスト余白やビュレット位置のデフォルトスタイルが欠落する。以下を明示的に設定する必要がある：
+
+```css
+/* リストの左パディングとビュレット位置 */
+ul, ol {
+  padding-left: 0;
+  list-style-position: inside;
+  margin-top: 0.6em;
+}
+
+/* ネストリストのインデント */
+ul ul, ul ol, ol ul, ol ol {
+  padding-left: 1.5em;
+  margin-top: 0;
+}
+```
 
 ### ブランチ別テーマ切り替え
 
@@ -175,25 +207,27 @@ Marpの`class: invert`とTailwindの`.invert`ユーティリティが競合す�
 #### 箇条書き（リストスタイル）の競合
 Tailwind CSS v4のPreflight（CSSリセット）が`list-style: none`を適用するため、Marpスライド内の箇条書きビュレット（●○■）が消える。
 
+**注意**: `list-style`（ショートハンド）ではなく `list-style-type`（個別プロパティ）を使うこと。ショートハンドだと `list-style-position` も暗黙的にリセットされ、テーマ側の設定が上書きされる。
+
 ```css
 /* src/index.css に追加 */
 .marpit ul {
-  list-style: disc !important;
+  list-style-type: disc !important;
 }
 
 .marpit ol {
-  list-style: decimal !important;
+  list-style-type: decimal !important;
 }
 
 /* ネストされたリストのスタイル */
 .marpit ul ul,
 .marpit ol ul {
-  list-style: circle !important;
+  list-style-type: circle !important;
 }
 
 .marpit ul ul ul,
 .marpit ol ul ul {
-  list-style: square !important;
+  list-style-type: square !important;
 }
 ```
 
