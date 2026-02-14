@@ -121,13 +121,25 @@ body: JSON.stringify({
 #### バックエンド（config.py）
 ```python
 def get_model_config(model_type: str = "sonnet") -> dict:
-    # 現在はSonnetのみ。MODEL_OPTIONS追加時にここも拡張する
-    return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "cache_prompt": "default", "cache_tools": "default"}
+    if model_type == "opus":
+        return {"model_id": "us.anthropic.claude-opus-4-6-v1", ...}
+    else:
+        return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", ...}
+
+def get_system_prompt(theme: str = "border") -> str:
+    """全テーマで統一ディレクティブを使用。themeはフロントマターに埋め込むのみ"""
+    return f"""...
+    - フロントマター: marp: true, theme: {theme}, size: 16:9, paginate: true
+    - タイトルスライド: <!-- _class: lead --><!-- _paginate: skip -->
+    - セクション区切り: <!-- _class: lead -->
+    - 参考文献: <!-- _class: tinytext -->
+    ..."""
 
 @app.entrypoint
 async def invoke(payload, context=None):
     model_type = payload.get("model_type", "sonnet")
-    agent = get_or_create_agent(session_id, model_type)
+    theme = payload.get("theme", "border")
+    agent = get_or_create_agent(session_id, model_type, theme)
 ```
 
 ### 新モデル追加時のチェックリスト

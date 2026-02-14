@@ -117,8 +117,16 @@ setMessages(prev =>
 ```typescript
 // 派生値を生成
 const markdownWithTheme = useMemo(() => {
-  // markdownにテーマ指定を注入
-  return injectTheme(markdown, selectedTheme);
+  if (!markdown) return '';
+  // 旧スタイルのインラインディレクティブを統一クラスに正規化
+  let normalized = markdown;
+  normalized = normalized.replace(
+    /<!-- _backgroundColor: #303030 -->\s*<!-- _color: white -->/g,
+    '<!-- _class: lead -->'
+  );
+  // フロントマターのthemeを選択中テーマで上書き
+  // ...
+  return normalized;
 }, [markdown, selectedTheme]);
 
 // NG: 元の値だけ依存配列に入れると、selectedTheme変更で再計算されない
