@@ -256,12 +256,6 @@ section > header:first-child + * {
   margin-top: 0;
 }
 section.lead {
-  --color-background: #003981;
-  --color-background-stripe: rgba(255, 255, 255, 0.1);
-  --color-foreground: white;
-  --color-dimmed: #ccd7e6;
-  --color-highlight: #81d4fa;
-  background-image: linear-gradient(115deg, #080058, #008bcd);
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
@@ -274,6 +268,7 @@ section.lead h4,
 section.lead h5,
 section.lead h6 {
   text-align: center;
+  font-weight: bold;
 }
 section.lead h1 svg[data-marp-fitting=svg],
 section.lead h2 svg[data-marp-fitting=svg],
