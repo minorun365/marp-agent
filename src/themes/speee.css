@@ -313,3 +313,35 @@ section.tinytext > ul,
 section.tinytext > blockquote {
   font-size: 0.65em;
 }
+
+/* || SECTION CLASS: end */
+/* back cover - same style as lead, hide page number */
+section.end {
+  --color-background: #003981;
+  --color-background-stripe: rgba(255, 255, 255, 0.1);
+  --color-foreground: white;
+  --color-dimmed: #ccd7e6;
+  --color-highlight: #81d4fa;
+  background-image: linear-gradient(115deg, #080058, #008bcd);
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+section.end h1,
+section.end h2,
+section.end h3,
+section.end h4,
+section.end h5,
+section.end h6 {
+  text-align: center;
+}
+section.end p {
+  text-align: center;
+}
+section.end::before {
+  display: none;
+}
+section.end::after {
+  display: none;
+}

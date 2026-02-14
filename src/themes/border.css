@@ -95,3 +95,33 @@ section.tinytext>ul,
 section.tinytext>blockquote {
   font-size: 0.65em;
 }
+
+/* || SECTION CLASS: end */
+/* back cover - same style as lead, hide page number */
+section.end {
+  background-image: none;
+  background-color: var(--border-color);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+section.end h1,
+section.end h2,
+section.end h3,
+section.end h4,
+section.end h5,
+section.end h6 {
+  color: white;
+  text-align: center;
+}
+
+section.end p {
+  text-align: center;
+}
+
+section.end::after {
+  display: none;
+}
