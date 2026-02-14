@@ -126,6 +126,7 @@ async def invoke(payload, context=None):
                     yield {"type": "tool_use", "data": tool_name}
 
             elif "result" in event:
+                last_tool_name = None  # ツール完了後にリセット（同一ツールの再呼び出しを正しく検知するため）
                 result = event["result"]
                 if hasattr(result, 'message') and result.message:
                     for content in getattr(result.message, 'content', []):
