@@ -37,6 +37,11 @@ export const MESSAGES = {
   WEB_SEARCH_DEFAULT: 'Web検索中...',
   WEB_SEARCH_COMPLETED: 'Web検索完了',
 
+  // ステータス - Webページ取得
+  WEB_FETCH_PREFIX: 'Webページを読み込み中...',
+  WEB_FETCH_DEFAULT: 'Webページを読み込み中...',
+  WEB_FETCH_COMPLETED: 'Webページを読み込みました',
+
   // ステータス - ツイート
   TWEET_GENERATING: 'ツイート案を作成中...',
   TWEET_COMPLETED: 'ツイート案を作成しました',
@@ -45,6 +50,10 @@ export const MESSAGES = {
 // 検索クエリ付きのステータスを生成
 export const getWebSearchStatus = (query?: string) =>
   query ? `${MESSAGES.WEB_SEARCH_PREFIX} "${query}"` : MESSAGES.WEB_SEARCH_DEFAULT;
+
+// URL付きのWebページ取得ステータスを生成
+export const getWebFetchStatus = (url?: string) =>
+  url ? `${MESSAGES.WEB_FETCH_PREFIX} ${url}` : MESSAGES.WEB_FETCH_DEFAULT;
 
 // シェアメッセージを生成
 export const getShareMessage = (url: string) =>

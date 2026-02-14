@@ -16,7 +16,7 @@ const defaultProps = {
 describe('ChatInput', () => {
   it('テキスト入力欄が表示される', () => {
     render(<ChatInput {...defaultProps} />);
-    expect(screen.getByPlaceholderText('例：AgentCoreの入門資料')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('例：製造業のAIエージェント構築事例')).toBeInTheDocument();
   });
 
   it('送信ボタンが表示される', () => {
@@ -36,7 +36,7 @@ describe('ChatInput', () => {
 
   it('isLoading中は入力欄と送信ボタンが無効', () => {
     render(<ChatInput {...defaultProps} input="テスト" isLoading={true} />);
-    expect(screen.getByPlaceholderText('例：AgentCoreの入門資料')).toBeDisabled();
+    expect(screen.getByPlaceholderText('例：製造業のAIエージェント構築事例')).toBeDisabled();
     expect(screen.getByRole('button', { name: '送信' })).toBeDisabled();
   });
 
