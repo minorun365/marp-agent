@@ -62,11 +62,8 @@ mark {
 }
 
 /* || SECTION CLASS: lead */
-/* section divider / title slide - dark background with centered text */
+/* section divider / title slide - centered text, same background */
 section.lead {
-  background-image: none;
-  background-color: var(--border-color);
-  color: white;
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
@@ -79,7 +76,6 @@ section.lead h3,
 section.lead h4,
 section.lead h5,
 section.lead h6 {
-  color: white;
   text-align: center;
 }
 
