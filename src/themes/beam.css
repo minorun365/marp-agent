@@ -161,6 +161,7 @@ section.lead h5,
 section.lead h6 {
   color: white;
   text-align: center;
+  font-weight: normal;
 }
 
 section.lead p {

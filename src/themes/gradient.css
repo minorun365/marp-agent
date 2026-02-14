@@ -89,7 +89,11 @@ section.lead {
   justify-content: center;
 }
 
-section.lead h1,
+section.lead h1 {
+  color: #214484;
+  text-align: center;
+}
+
 section.lead h2,
 section.lead h3,
 section.lead h4,
@@ -97,6 +101,7 @@ section.lead h5,
 section.lead h6 {
   color: #214484;
   text-align: center;
+  font-weight: normal;
 }
 
 section.lead p {
