@@ -19,7 +19,7 @@ def get_model_config(model_type: str = "sonnet") -> dict:
         }
 
 
-def get_system_prompt(theme: str = "border") -> str:
+def get_system_prompt(theme: str = "speee") -> str:
     """テーマに応じたシステムプロンプトを生成（統一ディレクティブ）"""
     return f"""あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。
 ユーザーと壁打ちしながらスライドの完成度を高めます。現在は2026年です。

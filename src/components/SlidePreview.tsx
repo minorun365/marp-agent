@@ -9,10 +9,10 @@ import speeeTheme from '../themes/speee.css?raw';
 
 // テーマ定義
 export const THEMES = [
+  { id: 'speee', name: 'Speee', css: speeeTheme },
   { id: 'border', name: 'Border', css: borderTheme },
   { id: 'gradient', name: 'Gradient', css: gradientTheme },
   { id: 'beam', name: 'Beam', css: beamTheme },
-  { id: 'speee', name: 'Speee', css: speeeTheme },
 ] as const;
 
 export type ThemeId = typeof THEMES[number]['id'];
