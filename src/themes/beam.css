@@ -176,3 +176,44 @@ section.tinytext>ul,
 section.tinytext>blockquote {
   font-size: 0.65em;
 }
+
+/* || SECTION CLASS: end */
+/* back cover - same style as lead, hide page number */
+section.end {
+  background-color: var(--main);
+  background-image: none;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+section.end h1:nth-of-type(1) {
+  color: white;
+  background-color: transparent;
+  border-top: none;
+  position: static;
+  width: auto;
+  height: auto;
+  text-indent: 0;
+  text-align: center;
+}
+
+section.end h2,
+section.end h3,
+section.end h4,
+section.end h5,
+section.end h6 {
+  color: white;
+  text-align: center;
+}
+
+section.end p {
+  text-align: center;
+  color: white;
+}
+
+section.end::after {
+  display: none;
+}
