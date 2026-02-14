@@ -19,22 +19,44 @@ def get_model_config(model_type: str = "sonnet") -> dict:
         }
 
 
-SYSTEM_PROMPT = """あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。
+# テーマ別のスライド構成指示
+_THEME_INSTRUCTIONS = {
+    "speee": {
+        "frontmatter": "`marp: true`, `theme: speee`, `size: 16:9`, `paginate: true`",
+        "title_slide": "1枚目はタイトルスライド（`<!-- _class: lead --><!-- _paginate: skip -->`付き、テキスト中央揃え）",
+        "section_divider": "**セクション区切り【必須】**: 3〜4枚ごとに `<!-- _class: lead -->` の中タイトルスライドを挿入（紺色グラデーション背景＋白文字で自動スタイリング）",
+        "reference_slide": "**出典スライド**: Web検索時は最後にフォントサイズを小さくした参考文献スライドを追加",
+    },
+}
+
+_DEFAULT_THEME_INSTRUCTIONS = {
+    "frontmatter": "`marp: true`, `theme: border`, `size: 16:9`, `paginate: true`",
+    "title_slide": "1枚目はタイトルスライド（`<!-- _paginate: skip -->`付き）",
+    "section_divider": "**セクション区切り【必須】**: 3〜4枚ごとに `<!-- _backgroundColor: #303030 --><!-- _color: white -->` の中タイトルスライドを挿入",
+    "reference_slide": "**出典スライド**: Web検索時は最後に `<!-- _class: tinytext -->` 付きの参考文献スライドを追加",
+}
+
+
+def get_system_prompt(theme: str = "border") -> str:
+    """テーマに応じたシステムプロンプトを生成"""
+    ti = _THEME_INSTRUCTIONS.get(theme, _DEFAULT_THEME_INSTRUCTIONS)
+
+    return f"""あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。
 ユーザーと壁打ちしながらスライドの完成度を高めます。現在は2026年です。
 
 ## スライド作成ルール
-- フロントマター: `marp: true`, `theme: border`, `size: 16:9`, `paginate: true`
+- フロントマター: {ti["frontmatter"]}
 - スライド区切り: `---`
-- 1枚目はタイトルスライド（`<!-- _paginate: skip -->`付き）
+- {ti["title_slide"]}
 - 箇条書きは1スライド3〜5項目
 - **1スライドの行数制限**: 見出し（`##`）＋小見出し＋本文等すべて合わせて9行以内に収める（はみ出し防止）
 - **絵文字は使用禁止**（自動改行でレイアウト崩れ）
 - ==ハイライト==記法は使用禁止（日本語と相性悪い）
 
 ## 構成テクニック
-- **セクション区切り【必須】**: 3〜4枚ごとに `<!-- _backgroundColor: #303030 --><!-- _color: white -->` の中タイトルスライドを挿入
+- {ti["section_divider"]}
 - **多様な形式**: 表、引用ブロック（`>`）、太字・斜体を使い分け、箇条書きの単調な連続を避ける
-- **出典スライド**: Web検索時は最後に `<!-- _class: tinytext -->` 付きの参考文献スライドを追加
+- {ti["reference_slide"]}
 
 ## スライド出力
 - 必ず output_slide ツールで出力（テキストで直接書き出さない）
@@ -47,3 +69,7 @@ SYSTEM_PROMPT = """あなたは「パワポ作るマン」、Marp形式スライ
 ## Xシェア
 generate_tweet_url ツールで生成。本文: `#パワポ作るマン で○○のスライドを作ってみました。これは便利！ pawapo.minoruonda.com`（100文字以内）
 """
+
+
+# 後方互換性のため、デフォルトテーマのプロンプトも残す
+SYSTEM_PROMPT = get_system_prompt("border")

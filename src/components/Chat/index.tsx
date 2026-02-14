@@ -3,7 +3,7 @@ import { useChatMessages } from './hooks/useChatMessages';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 
-export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sharePromptTrigger, sessionId }: ChatProps) {
+export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromptTrigger, sharePromptTrigger, sessionId, theme }: ChatProps) {
   const {
     messages,
     input,
@@ -19,6 +19,7 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
     editPromptTrigger,
     sharePromptTrigger,
     sessionId,
+    theme,
   });
 
   return (

@@ -91,6 +91,7 @@ function handleEvent(
 export async function invokeAgent(
   prompt: string,
   currentMarkdown: string,
+  theme: string,
   callbacks: AgentCoreCallbacks,
   sessionId?: string,
   modelType: ModelType = 'sonnet'
@@ -110,6 +111,7 @@ export async function invokeAgent(
         prompt,
         markdown: currentMarkdown,
         model_type: modelType,
+        theme,
       }),
     });
 

@@ -5,18 +5,22 @@ import { observe } from '@marp-team/marpit-svg-polyfill';
 import borderTheme from '../themes/border.css?raw';
 import gradientTheme from '../themes/gradient.css?raw';
 import beamTheme from '../themes/beam.css?raw';
+import speeeTheme from '../themes/speee.css?raw';
 
 // テーマ定義
-const THEMES = [
+export const THEMES = [
   { id: 'border', name: 'Border', css: borderTheme },
   { id: 'gradient', name: 'Gradient', css: gradientTheme },
   { id: 'beam', name: 'Beam', css: beamTheme },
+  { id: 'speee', name: 'Speee', css: speeeTheme },
 ] as const;
 
-type ThemeId = typeof THEMES[number]['id'];
+export type ThemeId = typeof THEMES[number]['id'];
 
 interface SlidePreviewProps {
   markdown: string;
+  selectedTheme: ThemeId;
+  onThemeChange: (theme: ThemeId) => void;
   onDownloadPdf: (theme: string) => void;
   onDownloadPptx: (theme: string) => void;
   onShareSlide: (theme: string) => void;
@@ -24,11 +28,10 @@ interface SlidePreviewProps {
   onRequestEdit?: () => void;
 }
 
-export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, onShareSlide, isDownloading, onRequestEdit }: SlidePreviewProps) {
+export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloadPdf, onDownloadPptx, onShareSlide, isDownloading, onRequestEdit }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('border');
 
   // Safari/iOS WebKit向けのpolyfillを適用
   useEffect(() => {
@@ -140,7 +143,7 @@ export function SlidePreview({ markdown, onDownloadPdf, onDownloadPptx, onShareS
           <span className="text-xs text-gray-500">デザイン</span>
           <select
             value={selectedTheme}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTheme(e.target.value as ThemeId)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => onThemeChange(e.target.value as ThemeId)}
             className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer hover:text-gray-700 transition-colors appearance-none pr-4 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%3E%3Cpath%20d%3D%22M0%200l5%206%205-6z%22%20fill%3D%22%239ca3af%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[right_center] bg-no-repeat"
           >
             {THEMES.map(theme => (

@@ -70,8 +70,8 @@ async def invoke(payload, context=None):
             yield {"type": "error", "message": str(e)}
         return
 
-    # セッションIDとモデルタイプに対応するAgentを取得
-    agent = get_or_create_agent(session_id, model_type)
+    # セッションIDとモデルタイプとテーマに対応するAgentを取得
+    agent = get_or_create_agent(session_id, model_type, theme)
 
     # 既存セッション（Agent履歴にスライド内容が残っている）ではMarkdown付加をスキップ
     # 新規セッションまたは履歴がない場合のみ、フロントからのMarkdownをメッセージに結合

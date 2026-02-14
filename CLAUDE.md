@@ -157,6 +157,11 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 
 - サンドボックスのデプロイには3-5分かかる（Hotswap時は30秒程度）
 - `npm run sandbox` には `--profile sandbox` がスクリプトに内蔵済み（追加不要）
+- **環境変数の読み込み**: `npm run sandbox` は `.env` を自動読み込みしない。CDKビルド時に `process.env` を参照する環境変数（`TAVILY_API_KEYS` 等）は、事前にシェルに読み込んでおく必要がある：
+  ```bash
+  export $(grep -v '^#' .env | grep -v '^$' | xargs) && npm run sandbox
+  ```
+- **デプロイ完了の確認**: サンドボックス起動後は `Watching for file changes...` が表示されるまでこまめにポーリングして完了を確認すること（放置すると検知が遅れる）
 
 ## Git コミットルール
 

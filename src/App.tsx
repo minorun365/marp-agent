@@ -3,6 +3,7 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
+import type { ThemeId } from './components/SlidePreview';
 import { ShareConfirmModal } from './components/ShareConfirmModal';
 import { ShareResultModal } from './components/ShareResultModal';
 import { exportPdf, exportPdfMock, exportPptx, exportPptxMock, shareSlide, shareSlideMock } from './hooks/useAgentCore';
@@ -79,6 +80,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [markdown, setMarkdown] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('border');
   const [editPromptTrigger, setEditPromptTrigger] = useState(0);
   const [sharePromptTrigger, setSharePromptTrigger] = useState(0);
   const [hasShownSharePrompt, setHasShownSharePrompt] = useState(false);
@@ -237,11 +239,14 @@ function MainApp({ signOut }: { signOut?: () => void }) {
             editPromptTrigger={editPromptTrigger}
             sharePromptTrigger={sharePromptTrigger}
             sessionId={sessionId}
+            theme={selectedTheme}
           />
         </div>
         <div className={`h-full ${activeTab === 'preview' ? '' : 'hidden'}`}>
           <SlidePreview
             markdown={markdown}
+            selectedTheme={selectedTheme}
+            onThemeChange={setSelectedTheme}
             onDownloadPdf={(theme) => handleExport('pdf', theme)}
             onDownloadPptx={(theme) => handleExport('pptx', theme)}
             onShareSlide={handleShareRequest}

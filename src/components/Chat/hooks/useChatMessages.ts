@@ -12,6 +12,7 @@ interface UseChatMessagesProps {
   editPromptTrigger?: number;
   sharePromptTrigger?: number;
   sessionId?: string;
+  theme?: string;
 }
 
 export function useChatMessages({
@@ -20,6 +21,7 @@ export function useChatMessages({
   editPromptTrigger,
   sharePromptTrigger,
   sessionId,
+  theme = 'border',
 }: UseChatMessagesProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -59,7 +61,7 @@ export function useChatMessages({
       try {
         const invoke = useMock ? invokeAgentMock : invokeAgent;
 
-        await invoke('今回の体験をXでシェアするURLを提案してください（無言でツール使用開始すること）', currentMarkdown, {
+        await invoke('今回の体験をXでシェアするURLを提案してください（無言でツール使用開始すること）', currentMarkdown, theme, {
           onText: (text) => {
             setMessages(prev =>
               prev.map((msg, idx) =>
@@ -146,7 +148,7 @@ export function useChatMessages({
     try {
       const invoke = useMock ? invokeAgentMock : invokeAgent;
 
-      await invoke(userMessage, currentMarkdown, {
+      await invoke(userMessage, currentMarkdown, theme, {
         onText: (text) => {
           setStatus('');
           setMessages(prev => {
@@ -300,7 +302,7 @@ export function useChatMessages({
         )
       );
     }
-  }, [input, isLoading, currentMarkdown, sessionId, modelType, onMarkdownGenerated, startTipRotation, stopTipRotation, streamText]);
+  }, [input, isLoading, currentMarkdown, sessionId, modelType, theme, onMarkdownGenerated, startTipRotation, stopTipRotation, streamText]);
 
   return {
     messages,

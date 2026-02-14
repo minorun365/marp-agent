@@ -13,6 +13,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export async function invokeAgentMock(
   prompt: string,
   _currentMarkdown: string,
+  _theme: string,
   callbacks: AgentCoreCallbacks,
   _sessionId?: string,
   _modelType: ModelType = 'sonnet'
