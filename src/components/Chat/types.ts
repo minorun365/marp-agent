@@ -33,4 +33,5 @@ export interface ChatProps {
   editPromptTrigger?: number;  // 値が変わるたびに修正用メッセージを表示
   sharePromptTrigger?: number;  // 値が変わるたびにシェア用メッセージを自動送信
   sessionId?: string;  // 会話履歴を保持するためのセッションID
+  theme?: string;  // 選択中のデザインテーマ
 }

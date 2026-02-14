@@ -205,21 +205,23 @@ fi
 # ========================================
 echo "💰 Bedrockコストを取得中..."
 
-# sandbox アカウント（main+dev）のコスト
+# sandbox アカウント（main+dev）のコスト（クレジット適用前）
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
   --metrics "UnblendedCost" \
+  --filter '{"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}}' \
   --group-by Type=DIMENSION,Key=SERVICE \
   --region $REGION --profile $PROFILE_MAIN \
   --output json > "$OUTPUT_DIR/cost.json"
 
-# kag-sandbox アカウントのコスト
+# kag-sandbox アカウントのコスト（クレジット適用前）
 if [ "$KAG_AVAILABLE" = true ]; then
   aws ce get-cost-and-usage \
     --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
     --granularity DAILY \
     --metrics "UnblendedCost" \
+    --filter '{"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}}' \
     --group-by Type=DIMENSION,Key=SERVICE \
     --region $REGION --profile $PROFILE_KAG \
     --output json > "$OUTPUT_DIR/cost_kag.json"
@@ -233,10 +235,10 @@ aws ce get-cost-and-usage \
   --granularity DAILY \
   --metrics "UnblendedCost" \
   --filter '{
-    "Dimensions": {
-      "Key": "SERVICE",
-      "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]
-    }
+    "And": [
+      {"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}},
+      {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]}}
+    ]
   }' \
   --group-by Type=DIMENSION,Key=USAGE_TYPE \
   --region $REGION --profile $PROFILE_MAIN \
@@ -249,10 +251,10 @@ if [ "$KAG_AVAILABLE" = true ]; then
     --granularity DAILY \
     --metrics "UnblendedCost" \
     --filter '{
-      "Dimensions": {
-        "Key": "SERVICE",
-        "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]
-      }
+      "And": [
+        {"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}},
+        {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]}}
+      ]
     }' \
     --group-by Type=DIMENSION,Key=USAGE_TYPE \
     --region $REGION --profile $PROFILE_KAG \
@@ -267,10 +269,10 @@ aws ce get-cost-and-usage \
   --granularity DAILY \
   --metrics "UnblendedCost" \
   --filter '{
-    "Dimensions": {
-      "Key": "SERVICE",
-      "Values": ["Claude Opus 4.6 (Amazon Bedrock Edition)"]
-    }
+    "And": [
+      {"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}},
+      {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Opus 4.6 (Amazon Bedrock Edition)"]}}
+    ]
   }' \
   --group-by Type=DIMENSION,Key=USAGE_TYPE \
   --region $REGION --profile $PROFILE_MAIN \
@@ -283,10 +285,10 @@ if [ "$KAG_AVAILABLE" = true ]; then
     --granularity DAILY \
     --metrics "UnblendedCost" \
     --filter '{
-      "Dimensions": {
-        "Key": "SERVICE",
-        "Values": ["Claude Opus 4.6 (Amazon Bedrock Edition)"]
-      }
+      "And": [
+        {"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}},
+        {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Opus 4.6 (Amazon Bedrock Edition)"]}}
+      ]
     }' \
     --group-by Type=DIMENSION,Key=USAGE_TYPE \
     --region $REGION --profile $PROFILE_KAG \
@@ -300,6 +302,7 @@ aws ce get-cost-and-usage \
   --time-period Start=$(date -v-28d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
   --metrics "UnblendedCost" \
+  --filter '{"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}}' \
   --group-by Type=DIMENSION,Key=SERVICE \
   --region $REGION --profile $PROFILE_MAIN \
   --output json > "$OUTPUT_DIR/weekly_cost.json"
@@ -310,6 +313,7 @@ if [ "$KAG_AVAILABLE" = true ]; then
     --time-period Start=$(date -v-28d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
     --granularity DAILY \
     --metrics "UnblendedCost" \
+    --filter '{"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}}' \
     --group-by Type=DIMENSION,Key=SERVICE \
     --region $REGION --profile $PROFILE_KAG \
     --output json > "$OUTPUT_DIR/weekly_cost_kag.json"
@@ -645,7 +649,7 @@ for i in $(seq 23 -1 0); do
 done
 echo ""
 
-echo "💰 Bedrockコスト（過去7日間・日別）"
+echo "💰 Bedrockコスト（過去7日間・日別・クレジット適用前）"
 echo "[sandbox (main+dev)]"
 jq -r '
   .ResultsByTime[] |
@@ -685,7 +689,7 @@ echo ""
 # ========================================
 # 環境別 x モデル別コスト（実コスト）
 # ========================================
-echo "💰 Bedrockコスト内訳（過去7日間・アカウント別実コスト）"
+echo "💰 Bedrockコスト内訳（過去7日間・クレジット適用前）"
 echo ""
 
 # sandbox アカウントのモデル別コスト
@@ -766,7 +770,7 @@ M_KAG=$(printf "%.0f" $(echo "$ENV_KAG * 4" | bc -l))
 M_DEV=$(printf "%.0f" $(echo "$ENV_DEV * 4" | bc -l))
 M_TOTAL=$(printf "%.0f" $(echo "$ENV_TOTAL * 4" | bc -l))
 
-echo "  ※ sandbox(main+dev)=実コスト、kag=実コスト（別アカウント）"
+echo "  ※ クレジット適用前の利用コスト（RECORD_TYPE=Usageでフィルタ）"
 echo ""
 printf "  %-16s | %8s | %8s | %8s | %8s\n" "モデル" "main" "kag" "dev" "合計"
 printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
@@ -1198,6 +1202,7 @@ SSOセッションが切れている場合、スクリプトが自動的に `aws
 
 ### コスト計算方法
 
+- **クレジット除外**: Cost Explorer APIで `RECORD_TYPE=Usage` フィルターを適用し、AWSクレジット適用前の実利用コストを取得
 - **kag**: kag-sandboxアカウントの実コスト（推定なし）
 - **main/dev**: sandboxアカウントのコストをセッション比率で按分（devセッションがない場合は全額main）
 

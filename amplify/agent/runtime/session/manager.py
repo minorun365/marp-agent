@@ -4,7 +4,7 @@ from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands.models import BedrockModel
 
-from config import get_model_config, SYSTEM_PROMPT
+from config import get_model_config, get_system_prompt
 from tools import web_search, output_slide, generate_tweet_url
 
 # セッションごとのAgentインスタンスを管理（会話履歴保持用）
@@ -27,16 +27,18 @@ def _create_bedrock_model(model_type: str = "sonnet") -> BedrockModel:
         )
 
 
-def get_or_create_agent(session_id: str | None, model_type: str = "sonnet") -> Agent:
-    """セッションIDとモデルタイプに対応するAgentを取得または作成"""
-    # セッションキーにモデルタイプを含める（モデル切り替え時に新しいAgentを作成）
-    cache_key = f"{session_id}:{model_type}" if session_id else None
+def get_or_create_agent(session_id: str | None, model_type: str = "sonnet", theme: str = "border") -> Agent:
+    """セッションIDとモデルタイプとテーマに対応するAgentを取得または作成"""
+    system_prompt = get_system_prompt(theme)
+
+    # セッションキーにモデルタイプとテーマを含める（切り替え時に新しいAgentを作成）
+    cache_key = f"{session_id}:{model_type}:{theme}" if session_id else None
 
     # セッションIDがない場合は新規Agentを作成（履歴なし）
     if not cache_key:
         return Agent(
             model=_create_bedrock_model(model_type),
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             tools=[web_search, output_slide, generate_tweet_url],
             conversation_manager=_conversation_manager,
         )
@@ -48,7 +50,7 @@ def get_or_create_agent(session_id: str | None, model_type: str = "sonnet") -> A
     # 新規セッションの場合はAgentを作成して保存
     agent = Agent(
         model=_create_bedrock_model(model_type),
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         tools=[web_search, output_slide, generate_tweet_url],
         conversation_manager=_conversation_manager,
     )
