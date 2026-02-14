@@ -308,19 +308,21 @@ data: {"type": "done"}
 
 #### イベント送信の最適化
 
-- **tool_use重複スキップ**: LLMのストリーミングでは同一ツールの `current_tool_use` イベントが数十〜百回発生する（チャンクごとに1回）。`last_tool_name` で重複を排除し、1ツール1イベントに絞る
-- **markdown即時送信**: `output_slide` ツール完了直後に `markdown` イベントを送信する（ストリーム終了を待たない）。これによりフロントエンドのスピナーを即座に停止し、プレビュータブへの切り替えを高速化
+- **tool_use重複はフロントエンド側で吸収**: LLMのストリーミングでは同一ツールの `current_tool_use` イベントが数十〜百回発生する（チャンクごとに1回）。バックエンド側で重複スキップ（`last_tool_name`方式）を実装すると、最初のチャンク（inputが不完全なJSON文字列）のみ処理されてしまい、queryなどのパラメータが取得できない問題が発生する。フロントエンド側の `hasInProgress` / `hasExisting` チェックで重複を吸収するのが正しい
+- **markdown即時送信**: `result` イベント（エージェント完了時）でマークダウンを即送信する（ストリーム終了後のフォールバックも残す）
 
 ```python
-last_tool_name = None
-
 async for event in stream:
     elif "current_tool_use" in event:
         tool_name = tool_info.get("name", "unknown")
-        if tool_name == last_tool_name:
-            continue  # 同一ツールの重複スキップ
-        last_tool_name = tool_name
-        yield {"type": "tool_use", "data": tool_name}
+        tool_input = tool_info.get("input", {})
+        # ⚠️ バックエンドで重複スキップしない！inputが段階的にビルドされるため
+        # 最初のチャンクではqueryが空 → フロントにイベントが送信されない問題が起きる
+        if tool_name == "web_search":
+            if isinstance(tool_input, dict) and "query" in tool_input:
+                yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+        else:
+            yield {"type": "tool_use", "data": tool_name}
 
     elif "result" in event:
         # ツール結果テキストを送信

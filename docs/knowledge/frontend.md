@@ -390,6 +390,31 @@ const getNextTipIndex = useCallback((): number => {
 }, []);
 ```
 
+### onTextコールバックでの全ステータス完了（重要）
+
+テキスト受信（`onText`）はツール完了のシグナルとして機能する。Strands SDKではツール実行完了後にLLMが次のテキストを生成するため、`onText`が呼ばれた時点で全ての進行中ステータス（Web検索・スライド生成）を完了にする：
+
+```typescript
+onText: (text) => {
+  setStatus('');
+  stopTipRotation();  // TIPSローテーション停止
+  setMessages(prev => {
+    const msgs = prev.map(msg => {
+      if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
+        return { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
+      }
+      if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+        return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
+      }
+      return msg;
+    });
+    // テキスト追加処理...
+  });
+},
+```
+
+**なぜ `onMarkdown` だけでは不十分か**: `onMarkdown` は `result` イベント（エージェント全体の完了時）で送信されるため、ツール完了後にLLMがテキストを生成している間はまだ呼ばれない。`onText` で先にスピナーを止めることで、ユーザーにテキストが表示されるタイミングでスピナーが停止する。
+
 ### finallyブロックのスライドステータス安全弁
 
 `handleSubmit` の `finally` ブロックで、ストリーム切断やバックエンドエラー等で `onMarkdown` が呼ばれなかった場合の安全弁として、スライド生成ステータスを強制完了する：
