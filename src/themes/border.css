@@ -61,6 +61,32 @@ mark {
   margin: 0 2px;
 }
 
+/* || SECTION CLASS: lead */
+/* section divider / title slide - dark background with centered text */
+section.lead {
+  background-image: none;
+  background-color: var(--border-color);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+section.lead h1,
+section.lead h2,
+section.lead h3,
+section.lead h4,
+section.lead h5,
+section.lead h6 {
+  color: white;
+  text-align: center;
+}
+
+section.lead p {
+  text-align: center;
+}
+
 /* || SECTION CLASS: tinytext */
 /* new class that makes p, ul, and blockquote text smaller */
 /* might be useful for the References slide, use <!-- _class: tinytext --> */

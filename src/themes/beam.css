@@ -131,6 +131,43 @@ section.title>p {
   top: 35px;
 }
 
+/* || SECTION CLASS: lead */
+/* section divider / title slide - main color background with centered text */
+section.lead {
+  background-color: var(--main);
+  background-image: none;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+section.lead h1:nth-of-type(1) {
+  color: white;
+  background-color: transparent;
+  border-top: none;
+  position: static;
+  width: auto;
+  height: auto;
+  text-indent: 0;
+  text-align: center;
+}
+
+section.lead h2,
+section.lead h3,
+section.lead h4,
+section.lead h5,
+section.lead h6 {
+  color: white;
+  text-align: center;
+}
+
+section.lead p {
+  text-align: center;
+  color: white;
+}
+
 /* || SECTION CLASS: tinytext */
 /* new class that makes p, ul, and blockquote text smaller */
 /* might be useful for the References slide, use <!-- _class: tinytext --> */

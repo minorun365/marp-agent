@@ -64,8 +64,15 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
   const markdownWithTheme = useMemo(() => {
     if (!markdown) return '';
 
+    // 旧スタイルのインラインディレクティブを統一クラスに正規化
+    let normalized = markdown;
+    normalized = normalized.replace(
+      /<!-- _backgroundColor: #303030 -->\s*<!-- _color: white -->/g,
+      '<!-- _class: lead -->'
+    );
+
     // 既存のフロントマターを解析
-    const frontMatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+    const frontMatterMatch = normalized.match(/^---\n([\s\S]*?)\n---/);
 
     if (frontMatterMatch) {
       // 既存のフロントマターにthemeを追加/上書き
@@ -75,14 +82,14 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
       if (hasTheme) {
         // 既存のthemeを置換
         const newFrontMatter = frontMatter.replace(/^theme:.*$/m, `theme: ${selectedTheme}`);
-        return markdown.replace(frontMatterMatch[0], `---\n${newFrontMatter}\n---`);
+        return normalized.replace(frontMatterMatch[0], `---\n${newFrontMatter}\n---`);
       } else {
         // themeを追加
-        return markdown.replace(frontMatterMatch[0], `---\n${frontMatter}\ntheme: ${selectedTheme}\n---`);
+        return normalized.replace(frontMatterMatch[0], `---\n${frontMatter}\ntheme: ${selectedTheme}\n---`);
       }
     } else {
       // フロントマターがない場合は追加
-      return `---\ntheme: ${selectedTheme}\n---\n\n${markdown}`;
+      return `---\ntheme: ${selectedTheme}\n---\n\n${normalized}`;
     }
   }, [markdown, selectedTheme]);
 
