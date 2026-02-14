@@ -297,9 +297,15 @@ export function useChatMessages({
       setStatus('');
       stopTipRotation();
       setMessages(prev =>
-        prev.map(msg =>
-          msg.isStreaming ? { ...msg, isStreaming: false } : msg
-        )
+        prev.map(msg => {
+          if (msg.isStreaming) {
+            return { ...msg, isStreaming: false };
+          }
+          if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+            return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
+          }
+          return msg;
+        })
       );
     }
   }, [input, isLoading, currentMarkdown, sessionId, modelType, theme, onMarkdownGenerated, startTipRotation, stopTipRotation, streamText]);

@@ -10,6 +10,7 @@ interface UseTipRotationReturn {
 export function useTipRotation(): UseTipRotationReturn {
   const tipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tipIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const shuffledQueueRef = useRef<number[]>([]);
 
   // コンポーネントアンマウント時にタイマーをクリア
   useEffect(() => {
@@ -23,13 +24,16 @@ export function useTipRotation(): UseTipRotationReturn {
     };
   }, []);
 
-  // ランダムにTipsを選択する関数（前回と異なるものを選択）
-  const getRandomTipIndex = useCallback((currentIndex?: number): number => {
-    let newIndex: number;
-    do {
-      newIndex = Math.floor(Math.random() * TIPS.length);
-    } while (TIPS.length > 1 && newIndex === currentIndex);
-    return newIndex;
+  // シャッフルキュー方式でTipsを順番に表示（全メッセージを均等に巡回）
+  const getNextTipIndex = useCallback((): number => {
+    if (shuffledQueueRef.current.length === 0) {
+      shuffledQueueRef.current = Array.from({ length: TIPS.length }, (_, i) => i);
+      for (let i = shuffledQueueRef.current.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledQueueRef.current[i], shuffledQueueRef.current[j]] = [shuffledQueueRef.current[j], shuffledQueueRef.current[i]];
+      }
+    }
+    return shuffledQueueRef.current.pop()!;
   }, []);
 
   const stopTipRotation = useCallback(() => {
@@ -52,23 +56,23 @@ export function useTipRotation(): UseTipRotationReturn {
       setMessages(prev =>
         prev.map(msg =>
           msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
-            ? { ...msg, tipIndex: getRandomTipIndex() }
+            ? { ...msg, tipIndex: getNextTipIndex() }
             : msg
         )
       );
 
-      // その後5秒ごとにランダムにローテーション
+      // その後5秒ごとにシャッフル順でローテーション
       tipIntervalRef.current = setInterval(() => {
         setMessages(prev =>
           prev.map(msg =>
             msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
-              ? { ...msg, tipIndex: getRandomTipIndex(msg.tipIndex) }
+              ? { ...msg, tipIndex: getNextTipIndex() }
               : msg
           )
         );
       }, 5000);
     }, 3000);
-  }, [getRandomTipIndex, stopTipRotation]);
+  }, [getNextTipIndex, stopTipRotation]);
 
   return { startTipRotation, stopTipRotation };
 }
