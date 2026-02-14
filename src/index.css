@@ -164,23 +164,24 @@ html, body {
 }
 
 /* Tailwind CSSリセットを上書きしてMarpの箇条書きを復元 */
+/* list-style-type のみ指定（ショートハンドだとlist-style-positionも上書きしてしまう） */
 .marpit ul {
-  list-style: disc !important;
+  list-style-type: disc !important;
 }
 
 .marpit ol {
-  list-style: decimal !important;
+  list-style-type: decimal !important;
 }
 
 /* ネストされたリストのスタイル */
 .marpit ul ul,
 .marpit ol ul {
-  list-style: circle !important;
+  list-style-type: circle !important;
 }
 
 .marpit ul ul ul,
 .marpit ol ul ul {
-  list-style: square !important;
+  list-style-type: square !important;
 }
 
 /* 豆知識のフェードインアニメーション */

@@ -16,7 +16,8 @@ aws sso login --profile sandbox
 npm run dev
 
 # サンドボックス起動（バックエンド込み、ブランチ名が識別子になる）
-npm run sandbox
+# ⚠️ 必ず .env を読み込んでから実行すること（TAVILY_API_KEYS等がCDKビルド時に必要）
+export $(grep -v '^#' .env | grep -v '^$' | xargs) && npm run sandbox
 
 # 認証スキップでUIのみ確認
 VITE_USE_MOCK=true npm run dev
@@ -157,11 +158,11 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 
 - サンドボックスのデプロイには3-5分かかる（Hotswap時は30秒程度）
 - `npm run sandbox` には `--profile sandbox` がスクリプトに内蔵済み（追加不要）
-- **環境変数の読み込み**: `npm run sandbox` は `.env` を自動読み込みしない。CDKビルド時に `process.env` を参照する環境変数（`TAVILY_API_KEYS` 等）は、事前にシェルに読み込んでおく必要がある：
+- **⚠️ 環境変数の読み込み【必須】**: `npm run sandbox` は `.env` を自動読み込みしない。**サンドボックス起動時は必ず以下のワンライナーを使うこと**（`npm run sandbox` を単体で実行してはならない）：
   ```bash
   export $(grep -v '^#' .env | grep -v '^$' | xargs) && npm run sandbox
   ```
-- **デプロイ完了の確認**: サンドボックス起動後は `Watching for file changes...` が表示されるまでこまめにポーリングして完了を確認すること（放置すると検知が遅れる）
+- **デプロイ完了の確認**: サンドボックスをバックグラウンド起動した後は、`tail -3` で**10〜15秒間隔**でこまめにポーリングし、`Watching for file changes...` が表示されるまで確認すること。**`TaskOutput` のブロッキング待機は使わない**（ユーザーが待たされるため）
 
 ## Git コミットルール
 

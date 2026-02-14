@@ -64,6 +64,21 @@ blockquote {
   margin: 1em 0 0 0;
 }
 
+ul,
+ol {
+  padding-left: 0;
+  list-style-position: inside;
+  margin-top: 0.6em;
+}
+
+ul ul,
+ul ol,
+ol ul,
+ol ol {
+  padding-left: 1.5em;
+  margin-top: 0;
+}
+
 ul > li,
 ol > li {
   margin: 0.3em 0 0 0;
@@ -289,4 +304,11 @@ section.lead ol > li > p {
 section.lead table {
   margin-left: auto;
   margin-right: auto;
+}
+
+/* || SECTION CLASS: tinytext */
+section.tinytext > p,
+section.tinytext > ul,
+section.tinytext > blockquote {
+  font-size: 0.65em;
 }
