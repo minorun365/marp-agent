@@ -61,6 +61,41 @@ mark {
   margin: 0 2px;
 }
 
+/* || SECTION CLASS: top */
+/* title slide - same style as lead */
+section.top {
+  background-image: none;
+  background-color: var(--border-color);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+section.top h1 {
+  color: white;
+  text-align: center;
+}
+
+section.top h2,
+section.top h3,
+section.top h4,
+section.top h5,
+section.top h6 {
+  color: white;
+  text-align: center;
+  font-weight: normal;
+}
+
+section.top p {
+  text-align: center;
+}
+
+section.top::after {
+  display: none;
+}
+
 /* || SECTION CLASS: lead */
 /* section divider / title slide - dark background with centered text */
 section.lead {
