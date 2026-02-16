@@ -52,6 +52,10 @@ echo "🔍 リソースIDを取得中..."
 POOL_MAIN=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION --profile $PROFILE_MAIN \
   --query "UserPools[?contains(Name, 'marp-main')].Id" --output text)
 
+# 旧KAG環境のCognito Pool ID（sandbox内）
+POOL_KAG_OLD=$(aws cognito-idp list-user-pools --max-results 60 --region $REGION --profile $PROFILE_MAIN \
+  --query "UserPools[?contains(Name, 'kag')].Id" --output text 2>/dev/null || echo "")
+
 POOL_KAG=""
 if [ "$KAG_AVAILABLE" = true ]; then
   # kag-sandbox ではプール名が汎用的なため、CloudFormation出力から特定
@@ -92,6 +96,45 @@ if [ "$KAG_AVAILABLE" = true ] && [ -n "$POOL_KAG" ]; then
     --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
 fi
 
+USERS_KAG_OLD=0
+if [ -n "$POOL_KAG_OLD" ]; then
+  USERS_KAG_OLD=$(aws cognito-idp describe-user-pool --user-pool-id "$POOL_KAG_OLD" --region $REGION --profile $PROFILE_MAIN \
+    --query "UserPool.EstimatedNumberOfUsers" --output text 2>/dev/null || echo "0")
+fi
+
+# kag Cognitoユーザー一覧取得（新旧両方、重複除外用）
+echo "👤 kag Cognitoユーザー一覧を取得中..."
+
+# 旧KAG環境（sandbox内）
+if [ -n "$POOL_KAG_OLD" ]; then
+  aws cognito-idp list-users \
+    --user-pool-id "$POOL_KAG_OLD" \
+    --region $REGION --profile $PROFILE_MAIN \
+    --output json > "$OUTPUT_DIR/kag_old_users.json" 2>/dev/null || echo '{"Users":[]}' > "$OUTPUT_DIR/kag_old_users.json"
+else
+  echo '{"Users":[]}' > "$OUTPUT_DIR/kag_old_users.json"
+fi
+
+# 新KAG環境（kag-sandbox）
+if [ "$KAG_AVAILABLE" = true ] && [ -n "$POOL_KAG" ]; then
+  aws cognito-idp list-users \
+    --user-pool-id "$POOL_KAG" \
+    --region $REGION --profile $PROFILE_KAG \
+    --output json > "$OUTPUT_DIR/kag_users.json" 2>/dev/null || echo '{"Users":[]}' > "$OUTPUT_DIR/kag_users.json"
+else
+  echo '{"Users":[]}' > "$OUTPUT_DIR/kag_users.json"
+fi
+
+# 新旧KAGユーザーをメールで重複除外してユニーク数を算出
+USERS_KAG_OLD_ACTUAL=$(jq '.Users | length' "$OUTPUT_DIR/kag_old_users.json")
+USERS_KAG_NEW_ACTUAL=$(jq '.Users | length' "$OUTPUT_DIR/kag_users.json")
+USERS_KAG_UNIQUE=$(jq -s '
+  [.[].Users[] |
+    ((.Attributes // [])[] | select(.Name == "email") | .Value) // "no-email-\(.Username)"
+  ] | unique | length
+' "$OUTPUT_DIR/kag_old_users.json" "$OUTPUT_DIR/kag_users.json")
+USERS_KAG_OVERLAP=$((USERS_KAG_OLD_ACTUAL + USERS_KAG_NEW_ACTUAL - USERS_KAG_UNIQUE))
+
 # 前回値を読み込み（キャッシュファイルがあれば）
 CACHE_FILE="$OUTPUT_DIR/cognito_cache.json"
 PREV_MAIN=0
@@ -103,24 +146,13 @@ if [ -f "$CACHE_FILE" ]; then
   PREV_DATE=$(jq -r '.date // ""' "$CACHE_FILE")
 fi
 
-# 増加数を計算
+# 増加数を計算（kagはユニーク数で比較）
 DIFF_MAIN=$((USERS_MAIN - PREV_MAIN))
-DIFF_KAG=$((USERS_KAG - PREV_KAG))
+DIFF_KAG=$((USERS_KAG_UNIQUE - PREV_KAG))
 
-# 現在の値をキャッシュに保存
+# 現在の値をキャッシュに保存（kagはユニーク数）
 TODAY=$(TZ=Asia/Tokyo date +%Y-%m-%d)
-echo "{\"main\": $USERS_MAIN, \"kag\": $USERS_KAG, \"date\": \"$TODAY\"}" > "$CACHE_FILE"
-
-# kag Cognitoの最近追加ユーザー取得
-if [ "$KAG_AVAILABLE" = true ] && [ -n "$POOL_KAG" ]; then
-  echo "👤 kag Cognitoユーザー一覧を取得中..."
-  aws cognito-idp list-users \
-    --user-pool-id "$POOL_KAG" \
-    --region $REGION --profile $PROFILE_KAG \
-    --output json > "$OUTPUT_DIR/kag_users.json" 2>/dev/null || echo '{"Users":[]}' > "$OUTPUT_DIR/kag_users.json"
-else
-  echo '{"Users":[]}' > "$OUTPUT_DIR/kag_users.json"
-fi
+echo "{\"main\": $USERS_MAIN, \"kag\": $USERS_KAG_UNIQUE, \"date\": \"$TODAY\"}" > "$CACHE_FILE"
 
 # ========================================
 # 3. CloudWatch Logsクエリを並列開始
@@ -485,30 +517,45 @@ if [ -n "$PREV_DATE" ] && [ "$PREV_DATE" != "$TODAY" ]; then
   DIFF_TOTAL_STR=""
   if [ $DIFF_TOTAL -gt 0 ]; then DIFF_TOTAL_STR=" (+$DIFF_TOTAL)"; elif [ $DIFF_TOTAL -lt 0 ]; then DIFF_TOTAL_STR=" ($DIFF_TOTAL)"; fi
   echo "  main: $USERS_MAIN 人$DIFF_MAIN_STR"
-  echo "  kag:  $USERS_KAG 人$DIFF_KAG_STR"
-  echo "  合計: $((USERS_MAIN + USERS_KAG)) 人$DIFF_TOTAL_STR"
+  echo "  kag:  $USERS_KAG_UNIQUE 人$DIFF_KAG_STR（旧環境: ${USERS_KAG_OLD_ACTUAL}人 / 新環境: ${USERS_KAG_NEW_ACTUAL}人 / 重複: ${USERS_KAG_OVERLAP}人）"
+  echo "  合計: $((USERS_MAIN + USERS_KAG_UNIQUE)) 人$DIFF_TOTAL_STR"
   echo "  （前回記録: $PREV_DATE）"
 else
   # 初回または同日の場合は増減なし
   echo "  main: $USERS_MAIN 人"
-  echo "  kag:  $USERS_KAG 人"
-  echo "  合計: $((USERS_MAIN + USERS_KAG)) 人"
+  echo "  kag:  $USERS_KAG_UNIQUE 人（旧環境: ${USERS_KAG_OLD_ACTUAL}人 / 新環境: ${USERS_KAG_NEW_ACTUAL}人 / 重複: ${USERS_KAG_OVERLAP}人）"
+  echo "  合計: $((USERS_MAIN + USERS_KAG_UNIQUE)) 人"
   if [ -z "$PREV_DATE" ]; then
     echo "  （初回記録 - 次回以降増減を表示）"
   fi
 fi
 
-# kag 最近追加されたユーザー
-KAG_USER_COUNT=$(jq '.Users | length' "$OUTPUT_DIR/kag_users.json" 2>/dev/null || echo 0)
-if [ "$KAG_USER_COUNT" -gt 0 ]; then
+# kag ユーザー一覧（新旧マージ、重複除外済み）
+KAG_ALL_USER_COUNT=$((USERS_KAG_OLD_ACTUAL + USERS_KAG_NEW_ACTUAL))
+if [ "$KAG_ALL_USER_COUNT" -gt 0 ]; then
   echo ""
-  echo "  [kag 最近追加されたユーザー]"
-  jq -r '
-    .Users | sort_by(.UserCreateDate) | reverse | .[] |
-    (.UserCreateDate | split("T")[0]) as $date |
-    ((.Attributes // [])[] | select(.Name == "email") | .Value) as $email |
-    "  \($date): \($email // "email未設定")"
-  ' "$OUTPUT_DIR/kag_users.json" 2>/dev/null | head -10
+  echo "  [kag ユーザー一覧（新旧マージ）]"
+  jq -s '
+    [
+      (.[0].Users[] | {
+        date: (.UserCreateDate | split("T")[0]),
+        email: (((.Attributes // [])[] | select(.Name == "email") | .Value) // "email未設定"),
+        env: "旧"
+      }),
+      (.[1].Users[] | {
+        date: (.UserCreateDate | split("T")[0]),
+        email: (((.Attributes // [])[] | select(.Name == "email") | .Value) // "email未設定"),
+        env: "新"
+      })
+    ] | group_by(.email) |
+    map({
+      email: .[0].email,
+      date: ([.[].date] | max),
+      envs: [.[].env] | unique | join("+")
+    }) |
+    sort_by(.date) | reverse |
+    .[] | "  \(.date): \(.email) [\(.envs)]"
+  ' "$OUTPUT_DIR/kag_old_users.json" "$OUTPUT_DIR/kag_users.json" 2>/dev/null | head -15
 fi
 echo ""
 
@@ -1165,7 +1212,7 @@ echo "✅ 完了！"
 スクリプト実行後、以下の情報が出力される：
 
 1. **直近12時間のセッション数**: 時間帯別の表形式（main/kag/dev）
-2. **Cognitoユーザー数**: 環境ごとのユーザー数（main/kag）+ kag最近追加ユーザーのEmail一覧
+2. **Cognitoユーザー数**: 環境ごとのユーザー数（main/kag）。kagは旧環境（sandbox内）と新環境（kag-sandbox）の両方を取得し、メールで重複除外したユニーク数を表示 + kagユーザー一覧（新旧マージ、所属環境タグ付き）
 3. **日次セッション数**: 過去7日間の日別回数（main/kag/dev別）
 4. **時間別セッション数**: 直近24時間の全時間帯（ASCIIバーグラフ・JST表示、main/kag/dev）
 5. **Bedrockコスト（日別）**: 過去7日間の日別コスト（main+dev/kag別）
@@ -1180,11 +1227,12 @@ echo "✅ 完了！"
 ```
 sandbox アカウント (715841358122)
 ├── Cognito: marp-main プール
+├── Cognito: marp-kag プール（旧KAG環境）
 ├── AgentCore: marp_agent_main, marp_agent_dev
 └── Bedrock: main + dev のコスト
 
 kag-sandbox アカウント (105778051969)
-├── Cognito: amplifyAuthUserPool（CloudFormation出力で特定）
+├── Cognito: amplifyAuthUserPool（新KAG環境、CloudFormation出力で特定）
 ├── AgentCore: marp_agent_main（kagリポのmainブランチ）
 └── Bedrock: kag のコスト
 ```
