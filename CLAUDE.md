@@ -87,7 +87,7 @@ python -m pytest tests/
 | [frontend.md](docs/knowledge/frontend.md) | React、Tailwind CSS、フロントエンド構成 |
 | [amplify.md](docs/knowledge/amplify.md) | Amplify Gen2、Cognito認証、ビルド設定 |
 | [features.md](docs/knowledge/features.md) | API接続、シェア機能、共有機能、ローカル開発 |
-| [temporary-cost-reduction.md](docs/temporary-cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
+| [cost-reduction.md](docs/temp/cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
 
 ## CloudWatch Logs 調査
 

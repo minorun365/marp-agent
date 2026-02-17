@@ -18,7 +18,7 @@
 
 | ファイル | 内容 |
 |----------|------|
-| [temporary-cost-reduction.md](../temporary-cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
+| [cost-reduction.md](../temp/cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
 
 ## 参考リンク
 
