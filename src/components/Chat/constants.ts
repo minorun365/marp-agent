@@ -4,7 +4,7 @@ export const TIPS = [
   'このアプリはAWSのBedrock AgentCoreとAmplify Gen2でフルサーバーレス構築されています。',
   'このアプリの裏では、Strands Agentsフレームワークで構築されたAIエージェントが稼働しています。',
   'このアプリはサーバーレス構成なので維持費が激安！かかる費用はほぼ推論時のAPI料金のみです。',
-  'このアプリのLLMには、Amazon BedrockのClaude Sonnet 4.5を利用しています。',
+  'このアプリのLLMには、Amazon BedrockのClaude Sonnet 4.6を利用しています。',
   'このアプリはOSSとして、GitHub上でコードと構築方法を公開しています！',
   'みのるんのQiitaブログで、このアプリと似た構成をAWS CDKで構築する手順も紹介しています！',
   'このアプリへの感想や要望は、Xで #パワポ作るマン のハッシュタグを付けてフィードバックください！',
@@ -26,6 +26,7 @@ export const MESSAGES = {
   EMPTY_STATE_EXAMPLE: '例: 「AWS入門の5枚スライドを作って」',
   ERROR: 'エラーが発生しました。もう一度お試しください。',
   ERROR_MODEL_NOT_AVAILABLE: '選択されたモデルは現在利用できません。Amazon Bedrockへのモデル追加をお待ちください！',
+  ERROR_MODEL_THROTTLED: 'モデルが高負荷のようです。しばらく待ってからリトライするか、別のモデルをお試しください。',
 
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',

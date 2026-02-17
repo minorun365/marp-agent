@@ -178,6 +178,7 @@ async def invoke(payload, context=None):
     except Exception as e:
         stream_error = True
         print(f"[ERROR] Stream failed (model_type={model_type}): {e}")
+        yield {"type": "error", "error": str(e)}
 
     # マークダウン出力
     generated_markdown = get_generated_markdown()

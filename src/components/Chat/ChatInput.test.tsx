@@ -16,7 +16,7 @@ const defaultProps = {
 describe('ChatInput', () => {
   it('テキスト入力欄が表示される', () => {
     render(<ChatInput {...defaultProps} />);
-    expect(screen.getByPlaceholderText('例：製造業のAIエージェント構築事例')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('例：AgentCoreの入門資料')).toBeInTheDocument();
   });
 
   it('送信ボタンが表示される', () => {
@@ -36,7 +36,7 @@ describe('ChatInput', () => {
 
   it('isLoading中は入力欄と送信ボタンが無効', () => {
     render(<ChatInput {...defaultProps} input="テスト" isLoading={true} />);
-    expect(screen.getByPlaceholderText('例：製造業のAIエージェント構築事例')).toBeDisabled();
+    expect(screen.getByPlaceholderText('例：AgentCoreの入門資料')).toBeDisabled();
     expect(screen.getByRole('button', { name: '送信' })).toBeDisabled();
   });
 
@@ -59,11 +59,12 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    it('MODEL_OPTIONSが1つのときセレクターが非表示', () => {
-      // 現在の設定（sonnetのみ）ではセレクターは非表示
+    it('MODEL_OPTIONSが1つのときもセレクターが表示される', () => {
+      // 現在の設定（sonnetのみ）でもモデル名を表示するためセレクターは表示
       render(<ChatInput {...defaultProps} />);
-      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-      expect(screen.queryByTitle('使用するAIモデルを選択')).not.toBeInTheDocument();
+      const select = screen.getByTitle('使用するAIモデルを選択');
+      expect(select).toBeInTheDocument();
+      expect(select.querySelectorAll('option')).toHaveLength(1);
     });
 
     it('MODEL_OPTIONSが複数のときセレクターが表示される', () => {

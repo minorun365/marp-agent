@@ -7,6 +7,9 @@ import outputs from '../../../amplify_outputs.json';
 import { readSSEStream } from '../streaming/sseParser';
 import type { ModelType } from '../../components/Chat/types';
 
+const SSE_IDLE_TIMEOUT_MS = 30_000;         // 初回イベント前: 30秒
+const SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000;  // イベント間: 60秒
+
 export interface AgentCoreCallbacks {
   onText: (text: string) => void;
   onStatus: (status: string) => void;
@@ -128,8 +131,12 @@ export async function invokeAgent(
       reader,
       (event) => handleEvent(event as Parameters<typeof handleEvent>[0], callbacks),
       () => callbacks.onComplete(),
+      SSE_IDLE_TIMEOUT_MS,
+      SSE_ONGOING_IDLE_TIMEOUT_MS,
     );
   } catch (error) {
-    callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+    // ストリーム切断エラーは呼び出し元のcatchで処理
+    // （ストリーム中のエラーイベントはhandleEvent→onErrorで処理済み）
+    throw error instanceof Error ? error : new Error(String(error));
   }
 }

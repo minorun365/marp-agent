@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { invokeAgent, invokeAgentMock } from '../../../hooks/useAgentCore';
+import { SSEIdleTimeoutError } from '../../../hooks/streaming/sseParser';
 import { MESSAGES, getWebSearchStatus, getWebFetchStatus, getShareMessage, useMock } from '../constants';
 import type { ModelType, Message } from '../types';
 import { createMessage } from '../types';
@@ -261,6 +262,7 @@ export function useChatMessages({
           );
         },
         onError: (error) => {
+          // ストリーム中のエラーイベント（バックエンドが{type:"error"}を送信）
           console.error('Agent error:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
           const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
@@ -299,11 +301,14 @@ export function useChatMessages({
       );
     } catch (error) {
       console.error('Error:', error);
+      const isIdleTimeout = error instanceof SSEIdleTimeoutError;
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
-      const displayMessage = isModelNotAvailable
-        ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE
-        : MESSAGES.ERROR;
+      const displayMessage = isIdleTimeout
+        ? MESSAGES.ERROR_MODEL_THROTTLED
+        : isModelNotAvailable
+          ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE
+          : MESSAGES.ERROR;
 
       setMessages(prev => {
         const filtered = prev.filter(msg => !msg.isStatus);

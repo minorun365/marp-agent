@@ -2,12 +2,13 @@ export type ModelType = 'sonnet' | 'opus';
 
 export interface ModelOption {
   value: ModelType;
-  label: string;
+  label: string;       // ドロップダウンに表示
+  shortLabel?: string;  // セレクター閉じた状態で表示
 }
 
 // モデル選択肢の定義（ここを増減するだけでUIが自動対応）
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'sonnet', label: '標準（Claude Sonnet 4.5）' },
+  { value: 'sonnet', label: 'Claude Sonnet 4.6', shortLabel: 'Sonnet 4.6' },
   // { value: 'opus', label: '高品質（Claude Opus 4.6）' },
 ];
 
