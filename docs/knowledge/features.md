@@ -110,7 +110,7 @@ encoded_text = urllib.parse.quote(tweet_text, safe='')
 
 ### 実装場所
 
-`src/components/Chat.tsx` のメッセージ一覧の先頭に追加。
+`src/components/Chat/index.tsx` のメッセージ一覧の先頭に追加。
 
 ```tsx
 {/* メッセージ一覧 */}
