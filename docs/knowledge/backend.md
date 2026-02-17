@@ -41,10 +41,12 @@ tavily-python
 | アクション | 説明 | レスポンスtype |
 |-----------|------|---------------|
 | `chat`（デフォルト） | エージェントとの会話・スライド生成 | `text`, `markdown`, `tool_use`, `done` |
-| `export_pdf` | PDF生成（Marp CLI） | `pdf` |
-| `export_pptx` | PPTX生成（画像ベース、再現度100%） | `pptx` |
-| `export_pptx_editable` | 編集可能PPTX生成（LibreOffice依存、実験的） | `pptx` |
-| `share_slide` | S3にアップロードして公開URL取得 | `share_result` |
+| `export_pdf` | PDF生成（Marp CLI） | `progress`, `pdf` |
+| `export_pptx` | PPTX生成（画像ベース、再現度100%） | `progress`, `pptx` |
+| `export_pptx_editable` | 編集可能PPTX生成（LibreOffice依存、実験的） | `progress`, `pptx` |
+| `share_slide` | S3にアップロードして公開URL取得 | `progress`, `share_result` |
+
+※ `progress` イベントはSSE keep-alive用（5秒ごとに送信、コネクション維持目的）。エクスポート処理は `asyncio.run_in_executor` でスレッド実行され、変換中もSSEストリームが途切れない。
 
 ---
 
@@ -69,8 +71,8 @@ tavily-python
 
 | モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
 |--------|-------------------|--------------|-------------|------|
-| Claude Sonnet 4.5 | ✅ `us.` | ✅ 対応 | ✅ 対応 | デフォルト |
-| Claude Opus 4.6 | ✅ `us.` | ✅ 対応 | ✅ 対応 | フロントでコメントアウト中 |
+| Claude Sonnet 4.5 | ✅ `us.` | `"default"` | `"default"` | デフォルト |
+| Claude Opus 4.6 | ✅ `us.` | `"default"` | `"default"` | フロントでコメントアウト中 |
 
 過去に対応していたモデル（Haiku, Kimi K2）は削除済み。Opusはバックエンド（`config.py`）に設定が残っており、フロントエンド（`types.ts`）の `MODEL_OPTIONS` のコメントアウトを外すだけで再有効化可能。
 
@@ -150,7 +152,7 @@ def get_system_prompt(theme: str = "speee") -> str:
 @app.entrypoint
 async def invoke(payload, context=None):
     model_type = payload.get("model_type", "sonnet")
-    theme = payload.get("theme", "speee")
+    theme = payload.get("theme", "border")
     agent = get_or_create_agent(session_id, model_type, theme)
 ```
 
@@ -302,6 +304,7 @@ data: {"type": "text", "data": "テキストチャンク"}
 data: {"type": "tool_use", "data": "ツール名"}
 data: {"type": "markdown", "data": "生成されたマークダウン"}
 data: {"type": "tweet_url", "data": "https://twitter.com/intent/tweet?text=..."}
+data: {"type": "progress", "message": "PPTX変換中..."}
 data: {"type": "error", "error": "エラーメッセージ"}
 data: {"type": "done"}
 ```
@@ -379,6 +382,40 @@ web_searchツールがエラーを返した場合：
 2. 一般的な知識や推測でスライド作成せず、修正待ちを案内
 3. スライド作成は行わず、エラー報告のみで終了
 ```
+
+### 登録ツール一覧
+
+| ツール名 | 説明 |
+|----------|------|
+| `web_search` | Tavily APIでWeb検索（複数APIキーフォールバック対応） |
+| `output_slide` | 生成したMarpマークダウンを出力 |
+| `generate_tweet_url` | スライド内容からツイートURL生成 |
+| `http_request` | ビルトインHTTPツール（strands_tools）。Webページ取得等に使用 |
+
+### エクスポート処理のSSE keep-alive
+
+PDF/PPTX変換はMarp CLI（Chromium）で数十秒かかる。変換中SSEストリームが無音になるとネットワーク不安定時にコネクションがドロップするため、5秒ごとにkeep-aliveイベントを送信する。
+
+```python
+import asyncio
+
+async def _wait_with_keepalive(task, format_name):
+    """タスク完了を待ちつつ、5秒ごとにSSE keep-aliveイベントをyield"""
+    while not task.done():
+        try:
+            await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
+        except asyncio.TimeoutError:
+            yield {"type": "progress", "message": f"{format_name}変換中..."}
+
+# エクスポート処理での使用例
+loop = asyncio.get_event_loop()
+task = loop.run_in_executor(None, generate_pptx, current_markdown, theme)
+async for event in _wait_with_keepalive(task, "PPTX"):
+    yield event  # 5秒ごとにprogressイベント送信
+pptx_bytes = task.result()
+```
+
+フロントエンド側のSSEパーサーは未知の `type` を無視するため、`progress` イベントの追加でフロントエンドの変更は不要。
 
 ### ツール駆動型のマークダウン出力
 
