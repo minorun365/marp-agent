@@ -436,6 +436,16 @@ finally {
 }
 ```
 
-### SSEアイドルタイムアウト（削除済み）
+### SSEアイドルタイムアウト
 
-以前はSSEストリームに2段階のアイドルタイムアウト（初回10秒/イベント間60秒）を設定していたが、コスト削減施策デプロイ時にSystem Prompt圧縮によるレスポンス時間変動で誤検知が発生したため、2026年2月に完全削除。現在の `sseParser.ts` はタイムアウトなしのシンプルな実装。
+SSEストリームに2段階のアイドルタイムアウトを設定し、バックエンドが無応答の場合にユーザーへエラーメッセージを表示する。
+
+```typescript
+// agentCoreClient.ts
+const SSE_IDLE_TIMEOUT_MS = 30_000;         // 初回イベント前: 30秒
+const SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000;  // イベント間: 60秒
+```
+
+`sseParser.ts` の `readSSEStream` が `Promise.race` でタイムアウトを検知し、`SSEIdleTimeoutError` をスローする。`useChatMessages.ts` の `catch` ブロックでこのエラーを判定し、`MESSAGES.ERROR_MODEL_THROTTLED`（「モデルが高負荷のようです…」）を表示する。
+
+**経緯**: 初回実装（初回10秒/イベント間60秒）→ System Prompt圧縮で誤検知が発生し一度削除 → タイムアウト値を調整（初回30秒/イベント間60秒）して再実装。

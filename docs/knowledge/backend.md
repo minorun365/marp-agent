@@ -82,22 +82,30 @@ tavily-python
 
 #### フロントエンド（types.ts / ChatInput.tsx）
 
-モデル選択肢は `types.ts` の `MODEL_OPTIONS` で一元管理。選択肢が1つだけの場合、セレクターUIは自動的に非表示になる。
+モデル選択肢は `types.ts` の `MODEL_OPTIONS` で一元管理。選択肢が1つでもモデル名を表示するためセレクターは常時表示。`shortLabel` でセレクター閉じた状態の短いラベルを指定できる。
 
 ```typescript
 // types.ts - モデル選択肢の定義（ここを増減するだけでUIが自動対応）
 export type ModelType = 'sonnet' | 'opus';
 
+export interface ModelOption {
+  value: ModelType;
+  label: string;       // ドロップダウンに表示
+  shortLabel?: string;  // セレクター閉じた状態で表示
+}
+
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'sonnet', label: '標準（Claude Sonnet 4.6）' },
-  // { value: 'opus', label: '高品質（Claude Opus 4.6）' },  // コメント外すだけで復活
+  { value: 'sonnet', label: 'Claude Sonnet 4.6', shortLabel: 'Sonnet 4.6' },
+  // { value: 'opus', label: '高品質（Claude Opus 4.6）' },
 ];
 
-// ChatInput.tsx - MODEL_OPTIONSの数でセレクター表示を制御
-const showModelSelector = MODEL_OPTIONS.length > 1;
+// ChatInput.tsx - MODEL_OPTIONSがあればセレクター表示（1つでもモデル名表示のため）
+const showModelSelector = MODEL_OPTIONS.length > 0;
+const modelLabel = currentModel?.shortLabel ?? currentModel?.label ?? modelType;
 
 {showModelSelector && (
   <>
+    <span className="hidden sm:inline text-xs">{modelLabel}</span>
     <select value={modelType} onChange={(e) => setModelType(e.target.value as ModelType)}>
       {MODEL_OPTIONS.map(opt => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -474,7 +482,7 @@ agent = Agent(
 )
 ```
 
-- `window_size=6` で古いメッセージを自動削除（初期値10から調整。ログ分析の詳細は `docs/temporary-cost-reduction.md` 参照）
+- `window_size=6` で古いメッセージを自動削除（初期値10から調整。ログ分析の詳細は `docs/temp/cost-reduction.md` 参照）
 - 実測で100K超リクエスト（全体の10%）が50K以下に抑制
 - フロントエンドが修正リクエスト時に最新Markdown全文を毎回送信するため、古い履歴が消えても会話は成立
 
