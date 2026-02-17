@@ -60,8 +60,8 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Claude Sonnet 4.5（デフォルト）
-"us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+# Claude Sonnet 4.6（デフォルト）
+"us.anthropic.claude-sonnet-4-6"
 
 # Claude Opus 4.6（バックエンドに設定あり、フロントでコメントアウト中）
 "us.anthropic.claude-opus-4-6-v1"
@@ -71,7 +71,7 @@ tavily-python
 
 | モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
 |--------|-------------------|--------------|-------------|------|
-| Claude Sonnet 4.5 | ✅ `us.` | `"default"` | `"default"` | デフォルト |
+| Claude Sonnet 4.6 | ✅ `us.` | `"default"` | `"default"` | デフォルト |
 | Claude Opus 4.6 | ✅ `us.` | `"default"` | `"default"` | フロントでコメントアウト中 |
 
 過去に対応していたモデル（Haiku, Kimi K2）は削除済み。Opusはバックエンド（`config.py`）に設定が残っており、フロントエンド（`types.ts`）の `MODEL_OPTIONS` のコメントアウトを外すだけで再有効化可能。
@@ -89,7 +89,7 @@ tavily-python
 export type ModelType = 'sonnet' | 'opus';
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'sonnet', label: '標準（Claude Sonnet 4.5）' },
+  { value: 'sonnet', label: '標準（Claude Sonnet 4.6）' },
   // { value: 'opus', label: '高品質（Claude Opus 4.6）' },  // コメント外すだけで復活
 ];
 
@@ -138,7 +138,7 @@ def get_model_config(model_type: str = "sonnet") -> dict:
     if model_type == "opus":
         return {"model_id": "us.anthropic.claude-opus-4-6-v1", ...}
     else:
-        return {"model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", ...}
+        return {"model_id": "us.anthropic.claude-sonnet-4-6", ...}
 
 def get_system_prompt(theme: str = "speee") -> str:
     """全テーマで統一ディレクティブを使用。themeはフロントマターに埋め込むのみ"""

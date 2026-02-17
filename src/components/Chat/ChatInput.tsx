@@ -24,9 +24,9 @@ export function ChatInput({
   inputRef,
   onSubmit,
 }: ChatInputProps) {
-  const showModelSelector = MODEL_OPTIONS.length > 1;
+  const showModelSelector = MODEL_OPTIONS.length > 0;
   const currentModel = MODEL_OPTIONS.find(m => m.value === modelType);
-  const modelLabel = currentModel?.label.split('（')[0] ?? modelType;
+  const modelLabel = currentModel?.shortLabel ?? currentModel?.label ?? modelType;
   const isNearLimit = input.length > MAX_INPUT_LENGTH * 0.9;
 
   return (
@@ -64,7 +64,7 @@ export function ChatInput({
             value={input}
             onChange={(e) => setInput(e.target.value.slice(0, MAX_INPUT_LENGTH))}
             maxLength={MAX_INPUT_LENGTH}
-            placeholder="例：製造業のAIエージェント構築事例"
+            placeholder="例：AgentCoreの入門資料"
             className="flex-1 bg-transparent px-3 py-2 focus:outline-none placeholder:text-gray-400"
             disabled={isLoading}
           />
