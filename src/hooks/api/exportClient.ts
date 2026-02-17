@@ -22,12 +22,36 @@ const EVENT_TYPES: Record<ExportFormat, string> = {
 };
 
 /**
- * スライドをエクスポート（PDF/PPTX共通処理）
+ * スライドをエクスポート（PDF/PPTX共通処理、リトライ付き）
  */
 export async function exportSlide(
   markdown: string,
   format: ExportFormat,
   theme: string = 'border'
+): Promise<Blob> {
+  const MAX_RETRIES = 1;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const blob = await _exportSlideOnce(markdown, format, theme);
+      return blob;
+    } catch (e) {
+      lastError = e as Error;
+      if (attempt < MAX_RETRIES) {
+        console.warn(`${format.toUpperCase()} export failed (attempt ${attempt + 1}), retrying...`, e);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+  }
+
+  throw lastError!;
+}
+
+async function _exportSlideOnce(
+  markdown: string,
+  format: ExportFormat,
+  theme: string,
 ): Promise<Blob> {
   const { url, accessToken } = await getAgentCoreConfig();
 

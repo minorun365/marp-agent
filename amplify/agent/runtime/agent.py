@@ -1,5 +1,6 @@
 """パワポ作るマン - エージェントエントリポイント"""
 
+import asyncio
 import base64
 import json
 
@@ -22,6 +23,15 @@ from session import get_or_create_agent
 app = BedrockAgentCoreApp()
 
 
+async def _wait_with_keepalive(task, format_name):
+    """タスク完了を待ちつつ、5秒ごとにSSE keep-aliveイベントをyield"""
+    while not task.done():
+        try:
+            await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
+        except asyncio.TimeoutError:
+            yield {"type": "progress", "message": f"{format_name}変換中..."}
+
+
 @app.entrypoint
 async def invoke(payload, context=None):
     """エージェント実行（ストリーミング対応）"""
@@ -40,43 +50,71 @@ async def invoke(payload, context=None):
     # PDF出力
     if action == "export_pdf" and current_markdown:
         try:
-            pdf_bytes = generate_pdf(current_markdown, theme)
+            print(f"[INFO] PDF export started (theme={theme})")
+            loop = asyncio.get_event_loop()
+            task = loop.run_in_executor(None, generate_pdf, current_markdown, theme)
+            async for event in _wait_with_keepalive(task, "PDF"):
+                yield event
+            pdf_bytes = task.result()
             pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
+            print(f"[INFO] PDF export completed (size={len(pdf_bytes)} bytes)")
             yield {"type": "pdf", "data": pdf_base64}
         except Exception as e:
+            print(f"[ERROR] PDF export failed: {e}")
             yield {"type": "error", "message": str(e)}
         return
 
     # PPTX出力
     if action == "export_pptx" and current_markdown:
         try:
-            pptx_bytes = generate_pptx(current_markdown, theme)
+            print(f"[INFO] PPTX export started (theme={theme})")
+            loop = asyncio.get_event_loop()
+            task = loop.run_in_executor(None, generate_pptx, current_markdown, theme)
+            async for event in _wait_with_keepalive(task, "PPTX"):
+                yield event
+            pptx_bytes = task.result()
             pptx_base64 = base64.b64encode(pptx_bytes).decode("utf-8")
+            print(f"[INFO] PPTX export completed (size={len(pptx_bytes)} bytes)")
             yield {"type": "pptx", "data": pptx_base64}
         except Exception as e:
+            print(f"[ERROR] PPTX export failed: {e}")
             yield {"type": "error", "message": str(e)}
         return
 
     # 編集可能PPTX出力（実験的機能）
     if action == "export_pptx_editable" and current_markdown:
         try:
-            pptx_bytes = generate_editable_pptx(current_markdown, theme)
+            print(f"[INFO] Editable PPTX export started (theme={theme})")
+            loop = asyncio.get_event_loop()
+            task = loop.run_in_executor(None, generate_editable_pptx, current_markdown, theme)
+            async for event in _wait_with_keepalive(task, "編集可能PPTX"):
+                yield event
+            pptx_bytes = task.result()
             pptx_base64 = base64.b64encode(pptx_bytes).decode("utf-8")
+            print(f"[INFO] Editable PPTX export completed (size={len(pptx_bytes)} bytes)")
             yield {"type": "pptx", "data": pptx_base64}
         except Exception as e:
+            print(f"[ERROR] Editable PPTX export failed: {e}")
             yield {"type": "error", "message": f"編集可能PPTX生成エラー（実験的機能）: {str(e)}"}
         return
 
     # スライド共有
     if action == "share_slide" and current_markdown:
         try:
-            result = share_slide(current_markdown, theme)
+            print(f"[INFO] Slide share started (theme={theme})")
+            loop = asyncio.get_event_loop()
+            task = loop.run_in_executor(None, share_slide, current_markdown, theme)
+            async for event in _wait_with_keepalive(task, "共有"):
+                yield event
+            result = task.result()
+            print(f"[INFO] Slide share completed (url={result['url']})")
             yield {
                 "type": "share_result",
                 "url": result['url'],
                 "expiresAt": result['expiresAt'],
             }
         except Exception as e:
+            print(f"[ERROR] Slide share failed: {e}")
             yield {"type": "error", "message": str(e)}
         return
 
