@@ -105,6 +105,15 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, s
     ],
   }));
 
+  // Marketplaceサブスクリプション権限（新モデル初回利用時に自動サブスクライブが必要）
+  runtime.addToRolePolicy(new iam.PolicyStatement({
+    actions: [
+      'aws-marketplace:Subscribe',
+      'aws-marketplace:ViewSubscriptions',
+    ],
+    resources: ['*'],
+  }));
+
   // 共有スライド用S3への書き込み権限を付与
   if (sharedSlidesBucket) {
     runtime.addToRolePolicy(new iam.PolicyStatement({
