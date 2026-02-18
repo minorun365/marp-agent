@@ -53,6 +53,7 @@ authorizerConfiguration: agentcore.RuntimeAuthorizerConfiguration.usingCognito(
 
 ### Bedrockモデル権限付与
 ```typescript
+// モデル呼び出し権限
 runtime.addToRolePolicy(new iam.PolicyStatement({
   actions: [
     'bedrock:InvokeModel',
@@ -63,9 +64,26 @@ runtime.addToRolePolicy(new iam.PolicyStatement({
     'arn:aws:bedrock:*:*:inference-profile/*',    // 推論プロファイル（クロスリージョン推論）
   ],
 }));
+
+// Marketplaceサブスクリプション権限（新モデル初回利用時に必要）
+runtime.addToRolePolicy(new iam.PolicyStatement({
+  actions: [
+    'aws-marketplace:Subscribe',
+    'aws-marketplace:ViewSubscriptions',
+  ],
+  resources: ['*'],
+}));
 ```
 
 **重要**: クロスリージョン推論（`us.`/`jp.`等のプレフィックス付きモデルID）を使用する場合、`inference-profile/*` リソースへの権限も必要。`foundation-model/*` だけでは `AccessDeniedException` が発生する。
+
+### Marketplaceサブスクリプションの仕組み（2025年10月〜）
+
+2025年10月以降、Bedrockモデルはデフォルトで自動有効化されたが、新しいClaudeモデルを初めてAPI呼び出しすると裏側でMarketplaceサブスクリプションが自動作成される。
+
+- `aws-marketplace:Subscribe` 権限がないと `AccessDeniedException: API Model access is denied by Marketplace subscription` エラー
+- 一度アカウントでサブスクライブされれば、以降はMarketplace権限不要で呼び出し可能
+- Product IDで条件付き制限も可能だが、新モデルごとにIDを追加する運用コストがあるためワイルドカード推奨
 
 ### Amplify Gen2との統合
 ```typescript
