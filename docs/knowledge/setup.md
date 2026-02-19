@@ -20,6 +20,7 @@
 - bedrock-agentcore（AgentCore SDK）
 - @marp-team/marp-cli
 - @aws-cdk/aws-bedrock-agentcore-alpha
+- pdfplumber（PDF テキスト抽出、参考資料アップロード用）
 
 ---
 

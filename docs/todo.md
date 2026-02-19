@@ -10,24 +10,103 @@
 
 | # | タスク | 工数 | 状態 | ラベル | main 実装 | main docs | kag 実装 | kag docs |
 |---|--------|------|------|--------|-----------|-----------|----------|----------|
+| #39 | 画面のどこかに最後のリリースの情報を表示したい | 3h | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
+| #22 | 参考資料などをアップロードして使えるようにしたい | 5-7日 | 🔧 作業中 | 🔴 重要 | 🔧 Phase1完了 | ⬜ | ➖ | ➖ |
 | #28 | 表のセル内パディング調整 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #19 | ツイートおすすめメッセージのストリーミング対応 | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #14 | 環境識別子リネーム（dev→sandbox） | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #68 | スライド作成後の出力メッセージをシンプルにしたい | 30分 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #65 | Tavily APIキーをラベリング・整理したい | 1h | ⬜ 未着手 | | ⬜ | ➖ | ➖ | ➖ |
+| #61 | 入力フォームを広げて改行込みで入力できるようにしたい | 1-2h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #32 | deploy-time-build: Repositoryを自前で渡す方式に修正 | 1.5h | ⬜ 未着手 | | ⬜ | ➖ | ➖ | ➖ |
 | #45 | Langfuseでトレースしたい | 2.5h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #39 | 画面のどこかに最後のリリースの情報を表示したい | 3h | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
+| #66 | SlackなどでもOGPを出したい | 3h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #64 | スライド公開URLを独自ドメインにしたい | 3h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #63 | テンプレの画像をCSSから分離する | 3h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #6 | Tavilyレートリミット枯渇通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #7 | エラー監視・通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #67 | ページ溢れを厳格にチェックしたい | 1日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #48 | GPTを実装してみる | 2日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #16 | スライド編集（マークダウンエディタ） | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
+| #62 | KDDIテンプレ版を作る | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #60 | リピーター率などを分析したい | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #21 | 企業のカスタムテンプレをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
-| #22 | 参考資料などをアップロードして使えるようにしたい | 5-7日 | ⬜ 未着手 | 🔴 重要 | ⬜ | ⬜ | ➖ | ➖ |
 
 ---
 
 ## タスク詳細
 
 > **並び順**: 上記タスク管理表と同じ順番（①重要度が高い順 → ②実装が簡単な順）で記載しています。
+
+### #39 画面のどこかに最後のリリースの情報を表示したい
+
+**概要**: 画面にバージョン情報を表示したい。
+
+#### 実現案の比較
+
+| 案 | 工数 | 常に最新 | クライアント負荷 | 推奨度 |
+|----|------|---------|----------------|--------|
+| **案A: クライアントサイドAPI** | 3h | ✅ | 1リクエスト | ⭐推奨 |
+| 案B: ビルド時package.json埋め込み | 1h | ❌ | 0 | △ 手動同期 |
+| 案C: ビルド時API取得 | 2.5h | ✅ | 0 | △ CI依存 |
+
+#### 推奨: 案A（クライアントサイドでGitHub API取得）
+
+```typescript
+// hooks/useLatestRelease.ts
+export function useLatestRelease(owner: string, repo: string) {
+  const [release, setRelease] = useState<Release | null>(null);
+
+  useEffect(() => {
+    // キャッシュチェック（1時間有効）
+    const cached = localStorage.getItem(`github_release_${owner}_${repo}`);
+    if (cached && Date.now() - JSON.parse(cached).timestamp < 3600000) {
+      setRelease(JSON.parse(cached).data);
+      return;
+    }
+
+    fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`)
+      .then(res => res.json())
+      .then(data => {
+        localStorage.setItem(`github_release_${owner}_${repo}`, JSON.stringify({
+          data, timestamp: Date.now()
+        }));
+        setRelease(data);
+      });
+  }, [owner, repo]);
+
+  return release;
+}
+
+// 使用例
+function VersionBadge() {
+  const release = useLatestRelease('minorun365', 'marp-agent');
+  if (!release) return null;
+  return <span>Latest: {release.tag_name}</span>;
+}
+```
+
+**レート制限**: 認証なし60回/時間（キャッシュで対応可能）
+
+**工数**: 3時間
+
+---
+
+### #22 参考資料などをアップロードして使えるようにしたい
+
+**概要**: PDF/Word/テキスト/画像をアップロードし、その内容に基づいてスライドを生成。
+
+**対応ファイル形式**:
+| 形式 | 処理方法 | ライブラリ |
+|------|---------|---------|
+| PDF | テキスト抽出 | `pdfplumber` |
+| Word (.docx) | テキスト抽出 | `python-docx` |
+| テキスト | そのまま | - |
+| 画像 | OCR | Bedrock Multimodal |
+
+**工数**: 5-7日
+
+---
 
 ### #28 表のセル内パディング調整
 
@@ -98,6 +177,36 @@ section table tr:nth-child(even) td {
 **注意**: AgentCore Runtimeのランタイム名が変わるため再作成が必要
 
 **工数**: 30分
+
+---
+
+### #68 スライド作成後の出力メッセージをシンプルにしたい
+
+**概要**: スライド作成後にエージェントが出力するメッセージが冗長なので、シンプルにしたい。
+
+**修正方法**: システムプロンプトでスライド出力後のメッセージ形式を指定する。
+
+**工数**: 30分
+
+---
+
+### #65 Tavily APIキーをラベリング・整理したい
+
+**概要**: 複数のTavily APIキーを管理しやすいようにラベリング・整理する。
+
+**修正方法**: 環境変数やキー管理の仕組みを整理し、どのキーがどの用途かを明確にする。
+
+**工数**: 1時間
+
+---
+
+### #61 入力フォームを広げて改行込みで入力できるようにしたい
+
+**概要**: 現在の入力フォームが1行のみで狭いため、改行込みでたくさん入力できるようにしたい。
+
+**修正方法**: `<input>` を `<textarea>` に変更し、自動リサイズ機能を追加する。
+
+**工数**: 1-2時間
 
 ---
 
@@ -201,55 +310,31 @@ if (!isSandbox) {
 
 ---
 
-### #39 画面のどこかに最後のリリースの情報を表示したい
+### #66 SlackなどでもOGPを出したい
 
-**概要**: 画面にバージョン情報を表示したい。
+**概要**: 共有スライドのURLをSlackなどに貼った際にOGPプレビュー（タイトル・サムネイル等）が表示されるようにしたい。
 
-#### 実現案の比較
+**修正方法**: 共有ページにOGPメタタグ（og:title, og:image, og:description等）を追加する。
 
-| 案 | 工数 | 常に最新 | クライアント負荷 | 推奨度 |
-|----|------|---------|----------------|--------|
-| **案A: クライアントサイドAPI** | 3h | ✅ | 1リクエスト | ⭐推奨 |
-| 案B: ビルド時package.json埋め込み | 1h | ❌ | 0 | △ 手動同期 |
-| 案C: ビルド時API取得 | 2.5h | ✅ | 0 | △ CI依存 |
+**工数**: 3時間
 
-#### 推奨: 案A（クライアントサイドでGitHub API取得）
+---
 
-```typescript
-// hooks/useLatestRelease.ts
-export function useLatestRelease(owner: string, repo: string) {
-  const [release, setRelease] = useState<Release | null>(null);
+### #64 スライド公開URLを独自ドメインにしたい
 
-  useEffect(() => {
-    // キャッシュチェック（1時間有効）
-    const cached = localStorage.getItem(`github_release_${owner}_${repo}`);
-    if (cached && Date.now() - JSON.parse(cached).timestamp < 3600000) {
-      setRelease(JSON.parse(cached).data);
-      return;
-    }
+**概要**: 現在CloudFrontのデフォルトドメインで公開しているスライドURLを、独自ドメインに変更したい。
 
-    fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`)
-      .then(res => res.json())
-      .then(data => {
-        localStorage.setItem(`github_release_${owner}_${repo}`, JSON.stringify({
-          data, timestamp: Date.now()
-        }));
-        setRelease(data);
-      });
-  }, [owner, repo]);
+**修正方法**: Route 53でサブドメインを設定し、CloudFrontディストリビューションに紐付ける。
 
-  return release;
-}
+**工数**: 3時間
 
-// 使用例
-function VersionBadge() {
-  const release = useLatestRelease('minorun365', 'marp-agent');
-  if (!release) return null;
-  return <span>Latest: {release.tag_name}</span>;
-}
-```
+---
 
-**レート制限**: 認証なし60回/時間（キャッシュで対応可能）
+### #63 テンプレの画像をCSSから分離する
+
+**概要**: 現在Marpテーマ内でbase64エンコードされている画像をCSSから分離し、外部ファイルとして管理する。
+
+**修正方法**: 画像をS3等にホストし、CSSからURLで参照する形に変更する。
 
 **工数**: 3時間
 
@@ -280,6 +365,16 @@ function VersionBadge() {
 3. メール通知設定
 
 **工数**: 3-4時間
+
+---
+
+### #67 ページ溢れを厳格にチェックしたい
+
+**概要**: スライド生成時にページ溢れ（コンテンツが1ページに収まらない）を厳格にチェックし、溢れている場合はエージェントが自動的に調整するようにしたい。
+
+**修正方法**: Marp CLIやMarp Coreでレンダリング後のページ数をチェックし、意図しないページ分割が発生した場合にリトライする仕組みを追加する。
+
+**工数**: 1日
 
 ---
 
@@ -333,6 +428,26 @@ npm install @uiw/react-codemirror @codemirror/lang-markdown @codemirror/lang-yam
 
 ---
 
+### #62 KDDIテンプレ版を作る
+
+**概要**: KDDIブランドのスライドテンプレートを新規作成する。
+
+**修正方法**: 既存テンプレートを参考にKDDI用のMarpテーマCSS・画像を作成し、テンプレート選択UIに追加する。
+
+**工数**: 3-5日
+
+---
+
+### #60 リピーター率などを分析したい
+
+**概要**: ユーザーの利用状況（リピーター率、利用頻度、アクティブユーザー数など）を分析できるようにしたい。
+
+**修正方法**: Cognitoのユーザーデータやアクセスログを活用して分析ダッシュボードを構築する。
+
+**工数**: 3-5日
+
+---
+
 ### #21 企業のカスタムテンプレをアップロードして使えるようにしたい
 
 **概要**: 企業独自のMarpテーマ（CSS）をアップロードして使用できるようにする。
@@ -346,21 +461,5 @@ npm install @uiw/react-codemirror @codemirror/lang-markdown @codemirror/lang-yam
 ```
 
 **必要なインフラ**: S3バケット + DynamoDBテーブル
-
-**工数**: 5-7日
-
----
-
-### #22 参考資料などをアップロードして使えるようにしたい
-
-**概要**: PDF/Word/テキスト/画像をアップロードし、その内容に基づいてスライドを生成。
-
-**対応ファイル形式**:
-| 形式 | 処理方法 | ライブラリ |
-|------|---------|---------|
-| PDF | テキスト抽出 | `pdfplumber` |
-| Word (.docx) | テキスト抽出 | `python-docx` |
-| テキスト | そのまま | - |
-| 画像 | OCR | Bedrock Multimodal |
 
 **工数**: 5-7日
