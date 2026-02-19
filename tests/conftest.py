@@ -12,6 +12,7 @@ sys.modules["strands.models"] = MagicMock()
 mock_tavily = MagicMock()
 sys.modules["tavily"] = mock_tavily
 
+sys.modules["strands_tools"] = MagicMock()
 sys.modules["bedrock_agentcore"] = MagicMock()
 sys.modules["boto3"] = MagicMock()
 
