@@ -3,7 +3,9 @@
 import asyncio
 import base64
 import json
+import os
 
+import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
 
 from tools import (
@@ -21,6 +23,24 @@ from sharing import share_slide
 from session import get_or_create_agent
 
 app = BedrockAgentCoreApp()
+
+MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_EXTRACTED_CHARS = 50000  # 約25,000トークン
+
+
+def extract_text_from_pdf(pdf_path: str) -> str:
+    """PDFからテキストを抽出"""
+    text_parts = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(page_text)
+
+    full_text = "\n\n".join(text_parts)
+    if len(full_text) > MAX_EXTRACTED_CHARS:
+        full_text = full_text[:MAX_EXTRACTED_CHARS] + "\n\n（以降省略）"
+    return full_text
 
 
 async def _wait_with_keepalive(task, format_name):
@@ -46,6 +66,7 @@ async def invoke(payload, context=None):
     model_type = payload.get("model_type", "sonnet")
     session_id = getattr(context, 'session_id', None) if context else None
     theme = payload.get("theme", "border")
+    reference_file = payload.get("reference_file")
 
     # PDF出力
     if action == "export_pdf" and current_markdown:
@@ -117,6 +138,47 @@ async def invoke(payload, context=None):
             print(f"[ERROR] Slide share failed: {e}")
             yield {"type": "error", "message": str(e)}
         return
+
+    # 参考資料PDFの処理
+    if reference_file:
+        try:
+            file_name = reference_file.get("file_name", "upload.pdf")
+            base64_data = reference_file.get("base64_data", "")
+            file_size = reference_file.get("size", 0)
+
+            if file_size > MAX_PDF_SIZE:
+                yield {"type": "error", "error": "ファイルサイズが10MBを超えています"}
+                return
+
+            yield {"type": "status", "data": "参考資料を読み込んでいます..."}
+            print(f"[INFO] PDF upload received: {file_name} ({file_size} bytes)")
+
+            pdf_bytes = base64.b64decode(base64_data)
+            pdf_path = f"/tmp/{file_name}"
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
+
+            extracted_text = extract_text_from_pdf(pdf_path)
+
+            # 一時ファイルを削除
+            os.remove(pdf_path)
+
+            if not extracted_text.strip():
+                print(f"[WARN] No text extracted from PDF: {file_name}")
+                yield {"type": "text", "data": "このPDFからテキストを抽出できませんでした（画像ベースのPDFの可能性があります）。テキスト情報なしでスライドを作成します。\n\n"}
+            else:
+                print(f"[INFO] PDF text extracted: {len(extracted_text)} chars from {file_name}")
+                user_message = f"""以下は参考資料「{file_name}」の内容です：
+
+---参考資料ここから---
+{extracted_text}
+---参考資料ここまで---
+
+上記の参考資料を踏まえて、{user_message}"""
+
+        except Exception as e:
+            print(f"[ERROR] PDF processing failed: {e}")
+            yield {"type": "text", "data": f"PDFの読み取りに失敗しました: {e}\nテキスト情報なしでスライドを作成します。\n\n"}
 
     # セッションIDとモデルタイプとテーマに対応するAgentを取得
     agent = get_or_create_agent(session_id, model_type, theme)

@@ -5,7 +5,7 @@
 import { fetchAuthSession } from 'aws-amplify/auth';
 import outputs from '../../../amplify_outputs.json';
 import { readSSEStream } from '../streaming/sseParser';
-import type { ModelType } from '../../components/Chat/types';
+import type { ModelType, ReferenceFile } from '../../components/Chat/types';
 
 const SSE_IDLE_TIMEOUT_MS = 30_000;         // 初回イベント前: 30秒
 const SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000;  // イベント間: 60秒
@@ -97,7 +97,8 @@ export async function invokeAgent(
   theme: string,
   callbacks: AgentCoreCallbacks,
   sessionId?: string,
-  modelType: ModelType = 'sonnet'
+  modelType: ModelType = 'sonnet',
+  referenceFile?: ReferenceFile
 ): Promise<void> {
   try {
     const { url, accessToken } = await getAgentCoreConfig();
@@ -115,6 +116,7 @@ export async function invokeAgent(
         markdown: currentMarkdown,
         model_type: modelType,
         theme,
+        ...(referenceFile && { reference_file: referenceFile }),
       }),
     });
 

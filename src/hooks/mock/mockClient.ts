@@ -3,6 +3,7 @@
  */
 
 import type { AgentCoreCallbacks, ModelType } from '../api/agentCoreClient';
+import type { ReferenceFile } from '../../components/Chat/types';
 import type { ShareResult } from '../api/exportClient';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -16,7 +17,8 @@ export async function invokeAgentMock(
   _theme: string,
   callbacks: AgentCoreCallbacks,
   _sessionId?: string,
-  _modelType: ModelType = 'sonnet'
+  _modelType: ModelType = 'sonnet',
+  _referenceFile?: ReferenceFile
 ): Promise<void> {
   // 思考過程をストリーミング
   const thinkingText = `${prompt}についてスライドを作成しますね。\n\n構成を考えています...`;
