@@ -75,6 +75,38 @@ const accessToken = session.tokens?.accessToken?.toString();
 
 ---
 
+## 参考資料PDFアップロード
+
+### 概要
+
+チャット入力欄の📎ボタンからPDFを添付し、その内容を参考にスライドを生成する機能。
+
+### データフロー
+
+```
+[ChatInput 📎] → File API → Base64変換 → JSON body に含めてPOST
+                                              ↓
+[AgentCore Runtime] → Base64デコード → /tmp保存 → pdfplumber テキスト抽出
+                                              ↓
+                   抽出テキストをプロンプトに付加 → 通常のスライド生成フロー
+```
+
+### 制約
+
+| 項目 | 値 |
+|------|-----|
+| 対応形式 | PDF のみ（Phase 1） |
+| ファイルサイズ上限 | 10MB |
+| テキスト抽出上限 | 50,000文字 |
+| ファイル数 | 1ファイル |
+| ストレージ | エフェメラル（/tmp、処理後削除） |
+
+### 計画書
+
+詳細な実装計画は `docs/temp/upload.md` を参照。Phase 2（Word、画像、複数ファイル対応）は今後の拡張。
+
+---
+
 ## Twitter/X シェア機能
 
 ### Web Intent URL形式（重要）
