@@ -10,4 +10,5 @@ dependencies = [
     "strands-agents>=1.23.0",
     "strands-agents-tools>=0.1.0",
     "tavily-python>=0.5.0",
+    "pdfplumber>=0.11.0",
 ]

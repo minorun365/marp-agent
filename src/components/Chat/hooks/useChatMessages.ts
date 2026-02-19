@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { invokeAgent, invokeAgentMock } from '../../../hooks/useAgentCore';
 import { SSEIdleTimeoutError } from '../../../hooks/streaming/sseParser';
 import { MESSAGES, getWebSearchStatus, getWebFetchStatus, getShareMessage, useMock } from '../constants';
-import type { ModelType, Message } from '../types';
+import type { ModelType, Message, ReferenceFile } from '../types';
 import { createMessage } from '../types';
 import { useTipRotation } from './useTipRotation';
 import { useStreamingText } from './useStreamingText';
@@ -14,6 +14,18 @@ interface UseChatMessagesProps {
   sharePromptTrigger?: number;
   sessionId?: string;
   theme?: string;
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export function useChatMessages({
@@ -29,6 +41,7 @@ export function useChatMessages({
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [modelType, setModelType] = useState<ModelType>('sonnet');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const initializedRef = useRef(false);
 
   const { startTipRotation, stopTipRotation } = useTipRotation();
@@ -137,14 +150,44 @@ export function useChatMessages({
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    const hasText = input.trim().length > 0;
+    const hasFile = !!selectedFile;
+    if ((!hasText && !hasFile) || isLoading) return;
 
-    const userMessage = input.trim();
+    const userMessage = input.trim() || 'この参考資料をもとにスライドを作成してください';
     setInput('');
-    setMessages(prev => [...prev, createMessage({ role: 'user', content: userMessage })]);
+
+    // ファイルがある場合は表示用テキストにファイル名を含める
+    const displayContent = hasFile
+      ? `📄 ${selectedFile!.name}\n${userMessage}`
+      : userMessage;
+    setMessages(prev => [...prev, createMessage({ role: 'user', content: displayContent })]);
     setIsLoading(true);
     setStatus('考え中...');
     setMessages(prev => [...prev, createMessage({ role: 'assistant', content: '', isStreaming: true })]);
+
+    // ファイルをBase64エンコード
+    let referenceFile: ReferenceFile | undefined;
+    if (hasFile) {
+      try {
+        setStatus('参考資料を準備中...');
+        referenceFile = {
+          file_name: selectedFile!.name,
+          content_type: selectedFile!.type,
+          base64_data: await fileToBase64(selectedFile!),
+          size: selectedFile!.size,
+        };
+      } catch {
+        setStatus('');
+        setIsLoading(false);
+        setMessages(prev => [
+          ...prev.filter(m => !m.isStreaming),
+          createMessage({ role: 'assistant', content: 'ファイルの読み込みに失敗しました。もう一度お試しください。', isStreaming: false }),
+        ]);
+        return;
+      }
+      setSelectedFile(null);
+    }
 
     try {
       const invoke = useMock ? invokeAgentMock : invokeAgent;
@@ -290,7 +333,7 @@ export function useChatMessages({
             })
           );
         },
-      }, sessionId, modelType);
+      }, sessionId, modelType, referenceFile);
 
       setMessages(prev =>
         prev.map(msg =>
@@ -341,7 +384,7 @@ export function useChatMessages({
         })
       );
     }
-  }, [input, isLoading, currentMarkdown, sessionId, modelType, theme, onMarkdownGenerated, startTipRotation, stopTipRotation, streamText]);
+  }, [input, isLoading, selectedFile, currentMarkdown, sessionId, modelType, theme, onMarkdownGenerated, startTipRotation, stopTipRotation, streamText]);
 
   return {
     messages,
@@ -351,6 +394,8 @@ export function useChatMessages({
     status,
     modelType,
     setModelType,
+    selectedFile,
+    setSelectedFile,
     handleSubmit,
   };
 }

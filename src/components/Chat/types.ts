@@ -12,6 +12,15 @@ export const MODEL_OPTIONS: ModelOption[] = [
   // { value: 'opus', label: '高品質（Claude Opus 4.6）' },
 ];
 
+export interface ReferenceFile {
+  file_name: string;
+  content_type: string;
+  base64_data: string;
+  size: number;
+}
+
+export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';

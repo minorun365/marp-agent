@@ -12,6 +12,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
     status,
     modelType,
     setModelType,
+    selectedFile,
+    setSelectedFile,
     handleSubmit,
   } = useChatMessages({
     onMarkdownGenerated,
@@ -34,6 +36,8 @@ export function Chat({ onMarkdownGenerated, currentMarkdown, inputRef, editPromp
         hasUserMessage={messages.some(m => m.role === 'user')}
         inputRef={inputRef}
         onSubmit={handleSubmit}
+        selectedFile={selectedFile}
+        onFileSelect={setSelectedFile}
       />
     </div>
   );
