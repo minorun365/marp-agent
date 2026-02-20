@@ -190,6 +190,8 @@ async def invoke(payload, context=None):
 
     reset_generated_markdown()
     web_search_executed = False
+    slide_outputted = False
+    suppress_text = False
     stream_error = False
 
     try:
@@ -197,8 +199,18 @@ async def invoke(payload, context=None):
 
         async for event in stream:
             if "data" in event:
-                chunk = event["data"]
-                yield {"type": "text", "data": chunk}
+                # output_slide完了後はテキスト送信を抑制
+                if not suppress_text:
+                    # ツール実行でmarkdownがセットされていたら即座に送信＆抑制開始
+                    generated_markdown = get_generated_markdown()
+                    if generated_markdown:
+                        yield {"type": "markdown", "data": generated_markdown}
+                        reset_generated_markdown()
+                        slide_outputted = True
+                        suppress_text = True
+                    else:
+                        chunk = event["data"]
+                        yield {"type": "text", "data": chunk}
 
             elif "current_tool_use" in event:
                 tool_info = event["current_tool_use"]
@@ -236,6 +248,8 @@ async def invoke(payload, context=None):
                 if generated_markdown:
                     yield {"type": "markdown", "data": generated_markdown}
                     reset_generated_markdown()
+                    slide_outputted = True
+                    suppress_text = True
 
     except Exception as e:
         stream_error = True
@@ -249,7 +263,7 @@ async def invoke(payload, context=None):
 
     # Web検索後にスライドが生成されなかった場合のフォールバック
     last_search_result = get_last_search_result()
-    if web_search_executed and not generated_markdown and last_search_result:
+    if web_search_executed and not slide_outputted and last_search_result:
         truncated_result = last_search_result[:500]
         if len(last_search_result) > 500:
             truncated_result += "..."
