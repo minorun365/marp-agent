@@ -14,11 +14,11 @@
 | [amplify.md](./amplify.md) | Amplify Gen2、Cognito認証、ビルド設定 |
 | [features.md](./features.md) | API接続、シェア機能、共有機能、ローカル開発 |
 
-## 関連ドキュメント（docs直下）
+## 関連ドキュメント（docs/temp）
 
 | ファイル | 内容 |
 |----------|------|
-| [cost-reduction.md](../temp/cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
+| [temp-improvement.md](../temp/temp-improvement.md) | セッション単価改善（分析・施策・効果測定） |
 
 ## 参考リンク
 

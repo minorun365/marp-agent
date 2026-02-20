@@ -16,11 +16,14 @@
 - @aws-amplify/ui-react
 
 ### エージェント・インフラ
-- strands-agents（Python >=3.13）
-- bedrock-agentcore（AgentCore SDK）
+- strands-agents>=1.23.0（Python >=3.13）
+- strands-agents-tools>=0.1.0（ビルトインツール群）
+- bedrock-agentcore>=1.2.0（AgentCore SDK）
+- botocore[crt]>=1.42.34（AWS CLI login認証用）
+- tavily-python>=0.5.0（Web検索API）
+- pdfplumber>=0.11.0（PDF テキスト抽出、参考資料アップロード用）
 - @marp-team/marp-cli
 - @aws-cdk/aws-bedrock-agentcore-alpha
-- pdfplumber（PDF テキスト抽出、参考資料アップロード用）
 
 ---
 

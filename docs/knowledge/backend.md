@@ -585,7 +585,7 @@ agent = Agent(
 )
 ```
 
-- `window_size=6` で古いメッセージを自動削除（初期値10から調整。ログ分析の詳細は `docs/temp/cost-reduction.md` 参照）
+- `window_size=6` で古いメッセージを自動削除（初期値10から調整。詳細は `docs/temp/temp-improvement.md` 参照）
 - 実測で100K超リクエスト（全体の10%）が50K以下に抑制
 - フロントエンドが修正リクエスト時に最新Markdown全文を毎回送信するため、古い履歴が消えても会話は成立
 
