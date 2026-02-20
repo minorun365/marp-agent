@@ -1,159 +1,84 @@
-# スライド生成UX改善提案
+# セッション単価改善（2026-02-20）
 
-## 全体の処理フロー（現状）
+## 背景
 
-スライド生成時の処理は、バックエンド（`agent.py`）→ フロントエンド（`useChatMessages.ts`）で以下のように流れる。
+2/19のセッション単価が $1.03（平均 $0.64）と高く、原因を分析して改善を実施。
 
-```
-[ユーザーがプロンプト送信]
-    ↓
-[バックエンド: agent.py]
-    ↓ LLMのストリーミング開始
-    ↓
-    ├─ "data" イベント → type:"text" として送信 → フロントのチャット欄に表示
-    ├─ "current_tool_use" イベント → type:"tool_use" として送信 → フロントのステータス表示
-    ├─ "result" イベント → ツール実行結果を処理
-    │   ├─ result.message.text → type:"text" で送信（※ここも表示される）
-    │   └─ output_slideの場合: type:"markdown" で送信 → フロントのスライドプレビューに反映
-    │                          ↑ ここで reset_generated_markdown() を実行
-    ↓
-    ├─ LLMが引き続きテキスト生成 → type:"text" でそのまま送信（※止められない）
-    ↓
-[ストリーム終了後の後処理]
-    ├─ get_generated_markdown() → None（既にリセット済み！）
-    ├─ web_search_executed=true AND not generated_markdown → フォールバック条件が成立！
-    └─ → 「Web検索結果: ... スライドを作成しますか？」を誤出力
-```
+## 原因分析
 
----
+### 根本原因: http_request のWebページ全文がコンテキストを肥大化
 
-## 改善1: スライド出力後のサマリーメッセージを廃止
+セッション `1f6c9f13` で以下が判明:
+- `http_request` が1回あたり 15,000〜19,000文字のWebページ全文を返していた
+- 2件のhttp_request結果（合計約34,000文字）がコンテキストに累積
+- `output_slide` のページあふれリトライで毎回LLMに再送信
+- ピーク時 69,728文字（約35,000トークン）のinput、31回のLLMコール
 
-### 現状の問題
+## 実施した改善
 
-2箇所で不要なテキストが出力されている。
+### 改善1: http_request ツールにHaiku要約を導入 ✅
 
-#### 問題A: LLMの後続テキスト
+**ファイル**: `amplify/agent/runtime/tools/http_request.py`（新規）、`tools/__init__.py`（変更）
 
-`agent.py:198-201` で、LLMが生成する全テキストを無条件に `type:"text"` で送信している。
-output_slide ツール完了後もLLMはテキスト生成を続けるため、要約メッセージがチャットに表示される。
+- `strands_tools` のビルトイン `http_request` → カスタムラッパーに差し替え
+- HTMLレスポンスはタグ除去してテキスト化
+- 5,000文字以上のレスポンスは Claude Haiku（`us.anthropic.claude-haiku-4-5-20251001-v1:0`）で要約
+- 要約失敗時は5,000文字で切り詰め（フォールバック）
 
-```python
-# agent.py 198-201行目
-async for event in stream:
-    if "data" in event:
-        chunk = event["data"]
-        yield {"type": "text", "data": chunk}  # ← 全部送ってしまう
-```
+**コスト試算**: Haiku要約1回 ~$0.015 vs Sonnetでの再送コスト ~$0.108 → 約85%削減
 
-システムプロンプトで「一切喋るな」と指示しても、LLMが100%従う保証はない。
+### 改善2: per_turn=True の導入 → 即座に撤回 ❌
 
-#### 問題B: フォールバックの誤発動（「スライドを作成しますか？」）
+**ファイル**: `amplify/agent/runtime/session/manager.py`
 
-`agent.py:250-258` のフォールバックロジックにバグがある。
+- `SlidingWindowConversationManager(window_size=6, per_turn=True)` に変更
+- **Strands の並列ツール実行と非互換**: ツール結果が1件ずつ追加される際にトリミングが走り、LLMが情報不足と判断して再検索を繰り返す正のフィードバックループが発生
+- 1セッションで web_search 16〜20回に増殖、Tavily APIレートリミットに抵触
+- `output_slide` で "The tool result was too large!" エラーも発生
+- **即座に `per_turn=False` に戻して解消**
 
-```python
-# agent.py 234-238行目（ストリーム中）
-generated_markdown = get_generated_markdown()
-if generated_markdown:
-    yield {"type": "markdown", "data": generated_markdown}
-    reset_generated_markdown()  # ← ここでリセット！
+## 残課題
 
-# agent.py 246-258行目（ストリーム終了後）
-generated_markdown = get_generated_markdown()  # ← None（リセット済み）
-# ...
-if web_search_executed and not generated_markdown and last_search_result:
-    # ↑ web検索した & markdownがNone → 条件成立！
-    fallback_message = f"Web検索結果:\n\n{truncated_result}\n\n---\nスライドを作成しますか？"
-    yield {"type": "text", "data": fallback_message}  # ← これが誤出力される
-```
+### Tavily検索回数がやや多い
 
-**原因**: 238行目で `reset_generated_markdown()` した後に、246行目で再チェックしているため、
-スライドを正常に出力したのに「スライドが生成されなかった」と誤判定される。
-
-### 修正方針
-
-1. **スライド出力済みフラグ**（`slide_outputted`）を追加し、フォールバック判定に使う
-2. **output_slide完了後のテキスト送信を抑制**するフラグを追加
-
-```python
-# 修正イメージ（agent.py）
-slide_outputted = False
-suppress_text = False
-
-async for event in stream:
-    if "data" in event:
-        if not suppress_text:  # スライド出力後はテキストを抑制
-            yield {"type": "text", "data": event["data"]}
-
-    elif "result" in event:
-        # ... 既存処理 ...
-        generated_markdown = get_generated_markdown()
-        if generated_markdown:
-            yield {"type": "markdown", "data": generated_markdown}
-            reset_generated_markdown()
-            slide_outputted = True   # フラグを立てる
-            suppress_text = True     # 以降のテキストを抑制
-
-# ストリーム終了後のフォールバック
-if web_search_executed and not slide_outputted and last_search_result:
-    # ↑ slide_outputted で判定（generated_markdown ではなく）
-    yield {"type": "text", "data": fallback_message}
-```
-
----
-
-## 改善2: 文字あふれ修正時のユーザーメッセージを分かりやすく
-
-### 現状の問題
-
-ページあふれ検出時、`output_slide.py` のツール戻り値（LLM向けのエラーメッセージ）を受けて、
-LLMが「スライド5を修正します」のように簡素なメッセージしか返さない。
-
-ユーザーには何が起きているのか分かりにくい。
-
-### 修正方針
-
-`config.py` のシステムプロンプトに指示追加（済み）:
-
-```
-- ページあふれ修正時は「○ページ目の文字量がはみ出していたため、内容を調整します」のように伝える
-```
-
-※ `output_slide.py` のツール戻り値は変更不要（LLMへの技術情報として現状維持）
-
----
-
-## 改善3: 箇条書きスタイルの改善（太字見出し禁止）
-
-### 現状の問題
-
-LLMが箇条書きで「**見出し**: 説明文」形式を多用する。
-
-```markdown
-- **AWS Lambda**: サーバーレスでコードを実行できるサービス
-- **Amazon S3**: オブジェクトストレージサービス
-```
-
-### 修正方針
-
-`config.py` のシステムプロンプトに指示追加（済み）:
-
-```
-- 箇条書きは「**見出し**: 説明」形式を使わず、説明内容だけをベタ書きで書く（太字不使用）
-```
-
-期待する出力:
-```markdown
-- Lambdaなら、サーバーレスでコードを実行できる
-- S3はオブジェクトストレージサービス
-```
-
----
+- per_turn問題は解消したが、http_request ツール導入以前と比べて検索回数がやや多い印象
+- システムプロンプトで「http_requestでページ内容を直接取得すること（Tavily APIクレジット節約のため）」と指示しているが、十分に効いていない可能性
+- 対策案:
+  - システムプロンプトで検索回数の上限を明示（例: 「1リクエストで検索は最大3回まで」）
+  - web_search ツール内にリクエスト単位の呼び出し回数ガードを実装
 
 ## 変更ファイル一覧
 
-| ファイル | 変更内容 |
-|----------|----------|
-| `amplify/agent/runtime/config.py` | システムプロンプト修正（改善2, 3は対応済み） |
-| `amplify/agent/runtime/agent.py` | スライド出力済みフラグ追加 + テキスト抑制 + フォールバック修正（改善1） |
+| ファイル | 変更内容 | 状態 |
+|----------|----------|------|
+| `amplify/agent/runtime/tools/http_request.py` | Haiku要約付きHTTPラッパー（新規） | ✅ |
+| `amplify/agent/runtime/tools/__init__.py` | import先を strands_tools → ローカルに変更 | ✅ |
+| `amplify/agent/runtime/session/manager.py` | per_turn=True → False に戻し（変更なし） | ✅ |
+| `docs/knowledge/backend.md` | ナレッジ反映 | ✅ |
+
+## 効果測定（2/20 23:30〜23:59 JST サンドボックステスト）
+
+### テスト結果
+
+| セッション | web_search | http_request | inputピーク | 結果 |
+|-----------|-----------|-------------|-----------|------|
+| `db9d3972` | 3回 | 0回 | ~7,000文字 | 情報収集のみ（正常） |
+| `8cf7a652` | 20回 | 5回 | ~3,900文字 | Tavily API枯渇で途中終了 |
+| `7a2beb47` | 15回 | 3回 | ~9,600文字 | スライド正常完了 |
+
+### 改善効果の評価
+
+- **per_turn問題は解消**: フィードバックループは発生せず ✅
+- **inputトークンはコンパクト**: 各スパンのピークが ~9,600文字（改善前ピーク69,728文字から大幅減） ✅
+- **Haiku要約は未発動**: テストページが全て5,000文字未満のため発動しなかった（大きなページでの別途テストが必要）
+- **web_search回数は改善されず**: 15〜20回/セッション（改善前と同水準） ❌
+
+### 結論
+
+http_requestのHaiku要約は**コンテキスト肥大化の防止策**として有効だが、**web_search回数の削減**は別のアプローチが必要。検索回数が多い問題は http_request ツール導入以前からの傾向であり、LLMの検索行動パターン自体を制御する必要がある。
+
+### 次のアクション
+
+1. **web_search回数の制御**: システムプロンプトに検索回数の上限を明示 or ツール内にガードを実装
+2. **Haiku要約の動作確認**: 大きなWebページ（企業サイト等）を対象にしたテスト
+3. **cache_prompt 警告**: Strands SDK更新に伴い `SystemContentBlock.cachePoint` への移行を検討（機能影響なし）

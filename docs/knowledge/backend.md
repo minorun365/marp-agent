@@ -398,7 +398,51 @@ web_searchツールがエラーを返した場合：
 | `web_search` | Tavily APIでWeb検索（複数APIキーフォールバック対応） |
 | `output_slide` | 生成したMarpマークダウンを出力（ページあふれチェック付き） |
 | `generate_tweet_url` | スライド内容からツイートURL生成 |
-| `http_request` | ビルトインHTTPツール（strands_tools）。Webページ取得等に使用 |
+| `http_request` | カスタムHTTPツール（大きなレスポンスはHaikuで要約）。Webページ取得等に使用 |
+
+### http_request のHaiku要約ラッパー
+
+`strands_tools` のビルトイン `http_request` はWebページ全文をツール結果として返すため、会話履歴のトークンが膨らむ原因になっていた。カスタムラッパー（`tools/http_request.py`）で大きなレスポンスをHaikuで要約してコスト削減する。
+
+#### 導入背景（2026-02-20分析）
+
+2/19の高コストセッションを分析した結果、以下が判明:
+- `http_request` が1回あたり **15,000〜19,000文字** のWebページ全文を返していた
+- その結果が `output_slide` のページあふれリトライで毎回LLMに再送信され、ピーク時 **69,728文字**（約35,000トークン）のinputに
+- 1セッションで31回のLLMコールが発生し、セッション単価が平均の約2倍に
+
+#### 実装
+
+```python
+# tools/http_request.py
+SUMMARIZE_THRESHOLD = 5000   # この文字数以下はそのまま返す
+HAIKU_INPUT_LIMIT = 50000    # Haiku要約への入力上限
+HAIKU_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+@tool
+def http_request(url: str, method: str = "GET") -> str:
+    response = requests.request(method, url, timeout=30)
+    content = response.text
+    # HTMLはタグ除去してテキスト化
+    if "text/html" in response.headers.get("Content-Type", ""):
+        content = _html_to_text(content)
+    # 大きいレスポンスはHaikuで要約
+    if len(content) > SUMMARIZE_THRESHOLD:
+        summary = _summarize_with_haiku(content[:HAIKU_INPUT_LIMIT])
+        content = f"（Webページの要約 - 元の文字数: {len(response.text)}）\n\n{summary}"
+    return f"Status: {response.status_code}\n\n{content}"
+```
+
+- `__init__.py` で `from strands_tools import http_request` → `from .http_request import http_request` に差し替え
+- 要約失敗時は5,000文字で切り詰め（フォールバック）
+
+#### コスト試算
+
+| 項目 | 要約なし（Sonnet再送） | 要約あり（Haiku 1回） |
+|------|---------------------|---------------------|
+| 18K文字 × Sonnet 4回 | ~$0.108 | - |
+| Haiku要約1回 | - | ~$0.015 |
+| **差額** | | **約85%削減** |
 
 ### ページあふれチェック（output_slide内蔵）
 
@@ -545,6 +589,19 @@ agent = Agent(
 - 実測で100K超リクエスト（全体の10%）が50K以下に抑制
 - フロントエンドが修正リクエスト時に最新Markdown全文を毎回送信するため、古い履歴が消えても会話は成立
 
+#### ⚠️ per_turn=True は使用禁止
+
+`SlidingWindowConversationManager` の `per_turn` パラメータは **Strands の並列ツール実行と根本的に相性が悪い**ため、**必ず `per_turn=False`（デフォルト）のままにする**こと。
+
+**問題のメカニズム**:
+1. LLMが `web_search` ×2 を並列発行
+2. Strands は各ツール結果を1件ずつ個別にセッション履歴に追加
+3. `per_turn=True` だと各LLMコール前にトリミングが走り、「ツール結果1件だけ」の中途半端な状態でLLMが呼ばれる
+4. LLMは「情報不足」と判断して追加の `web_search` を発行 → 正のフィードバックループ
+5. 1セッションで web_search が16〜20回に増殖し、Tavily APIのレートリミットに抵触
+
+**実例（2026-02-20）**: `per_turn=True` に変更した直後のテストで、通常2〜4回の検索が16〜20回に急増。さらに `output_slide` で "The tool result was too large!" エラーも発生。即座に `per_turn=False` に戻して解消。
+
 ### Markdown二重送信の回避
 
 既存セッション（Agent履歴にスライド内容が残っている）ではMarkdown付加をスキップ:
@@ -630,6 +687,8 @@ def search_and_summarize(query: str) -> str:
 #### 結論
 
 サブエージェント化によるトークン削減は、スライド生成のような品質が重要なユースケースには不向き。コスト削減は履歴トリミング（施策2）やキャッシュ最適化（施策4）など、情報を加工しない手法で対応するのが適切。
+
+**例外: http_requestのHaiku要約は有効**。Web検索結果（メインエージェントのコアタスクに直結）と異なり、http_requestのWebページ全文はノイズが多い（ナビ、フッター等）。Haikuで要約しても情報の質は維持され、むしろスライド作成に必要な情報が凝縮される。要約の対象がエージェントの入力データ（参考情報）か出力データ（生成物）かで効果が変わる点に注意。
 
 ### cache_writeの値 = System Prompt + Tools定義のサイズ
 
