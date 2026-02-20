@@ -60,7 +60,7 @@ python -m pytest tests/
 | `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |
 | `amplify/agent/resource.ts` | AgentCore Runtime定義 |
 | `amplify/agent/runtime/` | Pythonエージェント本体 |
-| `amplify/agent/runtime/tools/` | ツール定義（output_slide, web_search, generate_tweet_url） |
+| `amplify/agent/runtime/tools/` | ツール定義（output_slide, web_search, generate_tweet_url, http_request） |
 | `amplify/agent/runtime/exports/` | PDF/PPTX変換（slide_exporter） |
 | `amplify/agent/runtime/session/` | セッション管理（manager） |
 | `amplify/agent/runtime/sharing/` | 共有機能（s3_uploader） |
@@ -87,7 +87,7 @@ python -m pytest tests/
 | [frontend.md](docs/knowledge/frontend.md) | React、Tailwind CSS、フロントエンド構成 |
 | [amplify.md](docs/knowledge/amplify.md) | Amplify Gen2、Cognito認証、ビルド設定 |
 | [features.md](docs/knowledge/features.md) | API接続、シェア機能、共有機能、ローカル開発 |
-| [cost-reduction.md](docs/temp/cost-reduction.md) | コスト削減計画書（施策一覧、実装ログ、効果測定） |
+| [temp-improvement.md](docs/temp/temp-improvement.md) | セッション単価改善（分析・施策・効果測定） |
 
 ## CloudWatch Logs 調査
 
