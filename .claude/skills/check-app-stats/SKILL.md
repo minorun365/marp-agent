@@ -33,6 +33,7 @@ bash .claude/skills/check-app-stats/run.sh
 9. **週次トレンド**: リリース以降の週ごとのセッション数とコストの推移（過去4週間、両アカウント合算）
 10. **Tavily API 利用状況**: キー別の使用量/上限/残り、日平均消費クレジット、枯渇予測日
 11. **Tavily 日次消費推移**: 過去の記録からの消費推移テーブル、日平均消費、月間推定、必要キー数の分析（記録が2日以上ある場合のみ表示）
+12. **直近のユーザー依頼内容**: 過去7日間のユーザーの依頼内容（main/kag別、日時JST表示、最大20件、50文字で切り詰め）
 
 ## アーキテクチャ
 
@@ -74,6 +75,14 @@ AgentCoreのログは `otel-rt-logs` ストリームにOTEL形式で出力され
 
 CloudWatch Logs Insightsで `datefloor(@timestamp + 9h, ...)` を使うと挙動が不安定なため、UTCのまま集計してからスクリプト側でJSTに変換している。
 
+### セッション重複カウント防止
+
+セッションは複数のログエントリに跨って記録されるため、単純に `count_distinct(sid) by datefloor(@timestamp, 1h)` で集計すると、複数時間に跨るセッションが各時間で重複カウントされる。二段階 `stats` パイプラインで初回出現時刻を基準に集計することで防止：
+
+```
+stats min(@timestamp) as first_seen by sid | stats count(*) as sessions by datefloor(first_seen, 1h) as hour_utc
+```
+
 ### kag-sandbox の Cognito プール特定
 
 kag-sandboxアカウントではCognitoプール名が汎用的（`amplifyAuthUserPool*`）なため、`marp-kag` のような名前検索ができない。代わりにCloudFormation出力からAmplifyアプリ `dt1uykzxnkuoh` に紐づくプールIDを取得している。
@@ -92,4 +101,5 @@ kag-sandboxアカウントではCognitoプール名が汎用的（`amplifyAuthUs
 2. **1セッションあたりのコスト**: サマリーせず、日別テーブルをそのままMarkdownテーブルとして表示する
 3. **Tavily API 利用状況**: サマリーせず、キー別テーブルと枯渇予測をそのまま表示する
 4. **Tavily 日次消費推移**: サマリーせず、推移テーブルと必要キー数の分析をそのまま表示する
-5. その他のデータは適宜サマリーしてOK
+5. **直近のユーザー依頼内容**: サマリーせず、テーブルをそのままMarkdownテーブルとして表示する
+6. その他のデータは適宜サマリーしてOK

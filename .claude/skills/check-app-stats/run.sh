@@ -149,11 +149,14 @@ END_NOW=$(date +%s)
 # OTELログからsession.idをparseしてユニークカウント（UTCで集計）
 OTEL_QUERY='parse @message /"session\.id":\s*"(?<sid>[^"]+)"/ | filter ispresent(sid)'
 
+# セッション集計クエリ: 二段階statsでセッションの初回出現時刻を基準に集計（重複カウント防止）
+SESSION_QUERY="$OTEL_QUERY | stats min(@timestamp) as first_seen by sid | stats count(*) as sessions by datefloor(first_seen, 1h) as hour_utc | sort hour_utc asc"
+
 # 日次クエリ開始（main: sandbox, kag: kag-sandbox）
 Q_DAILY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_7D --end-time $END_NOW \
-  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+  --query-string "$SESSION_QUERY" \
   --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 
 Q_DAILY_KAG=""
@@ -161,7 +164,7 @@ if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
   Q_DAILY_KAG=$(aws logs start-query \
     --log-group-name "$LOG_KAG" \
     --start-time $START_7D --end-time $END_NOW \
-    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+    --query-string "$SESSION_QUERY" \
     --region $REGION --profile $PROFILE_KAG --query 'queryId' --output text)
 fi
 
@@ -170,7 +173,7 @@ if [ "$LOG_DEV" != "None" ]; then
   Q_DAILY_DEV=$(aws logs start-query \
     --log-group-name "$LOG_DEV" \
     --start-time $START_7D --end-time $END_NOW \
-    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+    --query-string "$SESSION_QUERY" \
     --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 fi
 
@@ -178,7 +181,7 @@ fi
 Q_HOURLY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_24H --end-time $END_NOW \
-  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
+  --query-string "$SESSION_QUERY" \
   --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 
 Q_HOURLY_KAG=""
@@ -186,7 +189,7 @@ if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
   Q_HOURLY_KAG=$(aws logs start-query \
     --log-group-name "$LOG_KAG" \
     --start-time $START_24H --end-time $END_NOW \
-    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
+    --query-string "$SESSION_QUERY" \
     --region $REGION --profile $PROFILE_KAG --query 'queryId' --output text)
 fi
 
@@ -195,7 +198,7 @@ if [ "$LOG_DEV" != "None" ]; then
   Q_HOURLY_DEV=$(aws logs start-query \
     --log-group-name "$LOG_DEV" \
     --start-time $START_24H --end-time $END_NOW \
-    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1h) as hour_utc | sort hour_utc asc" \
+    --query-string "$SESSION_QUERY" \
     --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 fi
 
@@ -203,7 +206,7 @@ fi
 Q_WEEKLY_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
   --start-time $START_28D --end-time $END_NOW \
-  --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+  --query-string "$SESSION_QUERY" \
   --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
 
 Q_WEEKLY_KAG=""
@@ -211,7 +214,25 @@ if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
   Q_WEEKLY_KAG=$(aws logs start-query \
     --log-group-name "$LOG_KAG" \
     --start-time $START_28D --end-time $END_NOW \
-    --query-string "$OTEL_QUERY | stats count_distinct(sid) as sessions by datefloor(@timestamp, 1d) as day_utc | sort day_utc asc" \
+    --query-string "$SESSION_QUERY" \
+    --region $REGION --profile $PROFILE_KAG --query 'queryId' --output text)
+fi
+
+# ユーザー依頼内容クエリ開始（過去7日間）
+USER_REQ_QUERY='parse @message /"session\.id":\s*"(?<sid>[^"]+)"/ | parse @message /"input":.*?\\"text\\":\s*\\"(?<user_msg>[^\\"]{1,200})/ | filter ispresent(sid) and ispresent(user_msg) | stats earliest(user_msg) as first_message, min(@timestamp) as ts by sid | sort ts desc | limit 20'
+
+Q_REQUESTS_MAIN=$(aws logs start-query \
+  --log-group-name "$LOG_MAIN" \
+  --start-time $START_7D --end-time $END_NOW \
+  --query-string "$USER_REQ_QUERY" \
+  --region $REGION --profile $PROFILE_MAIN --query 'queryId' --output text)
+
+Q_REQUESTS_KAG=""
+if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
+  Q_REQUESTS_KAG=$(aws logs start-query \
+    --log-group-name "$LOG_KAG" \
+    --start-time $START_7D --end-time $END_NOW \
+    --query-string "$USER_REQ_QUERY" \
     --region $REGION --profile $PROFILE_KAG --query 'queryId' --output text)
 fi
 
@@ -394,6 +415,14 @@ else
   echo '{"results":[]}' > "$OUTPUT_DIR/weekly_kag.json"
 fi
 
+# ユーザー依頼内容クエリ結果取得
+aws logs get-query-results --query-id "$Q_REQUESTS_MAIN" --region $REGION --profile $PROFILE_MAIN > "$OUTPUT_DIR/requests_main.json"
+if [ -n "$Q_REQUESTS_KAG" ]; then
+  aws logs get-query-results --query-id "$Q_REQUESTS_KAG" --region $REGION --profile $PROFILE_KAG > "$OUTPUT_DIR/requests_kag.json"
+else
+  echo '{"results":[]}' > "$OUTPUT_DIR/requests_kag.json"
+fi
+
 # ========================================
 # 6. 結果出力
 # ========================================
@@ -489,6 +518,47 @@ echo "  -------|------|------|------|------"
 printf "  合計   | %4d | %4d | %4d | %4d\n" "$SUM_MAIN_12H" "$SUM_KAG_12H" "$SUM_DEV_12H" "$SUM_TOTAL_12H"
 echo ""
 
+echo "📝 直近のユーザー依頼内容（過去7日間）"
+echo ""
+echo "[main]"
+MAIN_REQ_COUNT=$(jq '.results | length' "$OUTPUT_DIR/requests_main.json")
+if [ "$MAIN_REQ_COUNT" -gt 0 ]; then
+  echo "  日時(JST)      | 依頼内容"
+  echo "  ---------------|--------------------------------------------------"
+  jq -r '.results[] |
+    (.[] | select(.field == "ts") | .value) as $ts |
+    (.[] | select(.field == "first_message") | .value) as $msg |
+    ($msg | if length > 50 then .[:50] + "..." else . end) as $truncated |
+    "\($ts)\t\($truncated)"
+  ' "$OUTPUT_DIR/requests_main.json" | while IFS=$'\t' read -r TS MSG; do
+    UTC_TS=$(echo "$TS" | cut -c1-19)
+    JST_TS=$(date -j -v+9H -f "%Y-%m-%d %H:%M:%S" "$UTC_TS" "+%m/%d %H:%M" 2>/dev/null || echo "$UTC_TS")
+    printf "  %-14s | %s\n" "$JST_TS" "$MSG"
+  done
+else
+  echo "  （依頼なし）"
+fi
+echo ""
+echo "[kag]"
+KAG_REQ_COUNT=$(jq '.results | length' "$OUTPUT_DIR/requests_kag.json")
+if [ "$KAG_REQ_COUNT" -gt 0 ]; then
+  echo "  日時(JST)      | 依頼内容"
+  echo "  ---------------|--------------------------------------------------"
+  jq -r '.results[] |
+    (.[] | select(.field == "ts") | .value) as $ts |
+    (.[] | select(.field == "first_message") | .value) as $msg |
+    ($msg | if length > 50 then .[:50] + "..." else . end) as $truncated |
+    "\($ts)\t\($truncated)"
+  ' "$OUTPUT_DIR/requests_kag.json" | while IFS=$'\t' read -r TS MSG; do
+    UTC_TS=$(echo "$TS" | cut -c1-19)
+    JST_TS=$(date -j -v+9H -f "%Y-%m-%d %H:%M:%S" "$UTC_TS" "+%m/%d %H:%M" 2>/dev/null || echo "$UTC_TS")
+    printf "  %-14s | %s\n" "$JST_TS" "$MSG"
+  done
+else
+  echo "  （依頼なし）"
+fi
+echo ""
+
 echo "👥 Cognitoユーザー数"
 if [ -n "$PREV_DATE" ] && [ "$PREV_DATE" != "$TODAY" ]; then
   # 前回記録が別日の場合、増減を表示
@@ -542,44 +612,74 @@ if [ "$KAG_ALL_USER_COUNT" -gt 0 ]; then
 fi
 echo ""
 
-echo "📈 日次セッション数（過去7日間）"
+echo "📈 日次セッション数（過去7日間・JST）"
+
+# UTC時間別データをJST日別に変換する共通処理
+_utc_hourly_to_jst_daily() {
+  local file=$1
+  jq -r '.results[] |
+    (.[] | select(.field == "hour_utc") | .value) as $hour |
+    (.[] | select(.field == "sessions") | .value) as $sessions |
+    "\($hour)|\($sessions)"
+  ' "$file" 2>/dev/null | while IFS='|' read -r HOUR_UTC SESSIONS; do
+    if [ -n "$HOUR_UTC" ] && [ -n "$SESSIONS" ]; then
+      local UTC_DATE=${HOUR_UTC:0:10}
+      local UTC_H=${HOUR_UTC:11:2}
+      local JST_H=$((10#$UTC_H + 9))
+      if [ $JST_H -ge 24 ]; then
+        echo "$(date -j -v+1d -f "%Y-%m-%d" "$UTC_DATE" "+%Y-%m-%d" 2>/dev/null)|$SESSIONS"
+      else
+        echo "$UTC_DATE|$SESSIONS"
+      fi
+    fi
+  done
+}
+
+# main: JST日別セッション数を集計
+declare -A JST_DAILY_MAIN
+while IFS='|' read -r JST_DATE SESSIONS; do
+  JST_DAILY_MAIN[$JST_DATE]=$((${JST_DAILY_MAIN[$JST_DATE]:-0} + SESSIONS))
+done < <(_utc_hourly_to_jst_daily "$OUTPUT_DIR/daily_main.json")
+
 echo "[main]"
-jq -r '.results[] |
-  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-  (.[] | select(.field == "sessions") | .value) as $sessions |
-  "  \($date): \($sessions) 回"
-' "$OUTPUT_DIR/daily_main.json"
-TOTAL_MAIN=$(jq '[.results[][] | select(.field == "sessions") | .value | tonumber] | add // 0' "$OUTPUT_DIR/daily_main.json")
+TOTAL_MAIN=0
+for DATE in $(echo "${!JST_DAILY_MAIN[@]}" | tr ' ' '\n' | sort); do
+  echo "  $DATE: ${JST_DAILY_MAIN[$DATE]} 回"
+  TOTAL_MAIN=$((TOTAL_MAIN + ${JST_DAILY_MAIN[$DATE]}))
+done
+[ $TOTAL_MAIN -eq 0 ] && echo "  （セッションなし）"
 echo "  合計: $TOTAL_MAIN 回"
 echo ""
+
+# kag: JST日別セッション数を集計
+declare -A JST_DAILY_KAG
+while IFS='|' read -r JST_DATE SESSIONS; do
+  JST_DAILY_KAG[$JST_DATE]=$((${JST_DAILY_KAG[$JST_DATE]:-0} + SESSIONS))
+done < <(_utc_hourly_to_jst_daily "$OUTPUT_DIR/daily_kag.json")
+
 echo "[kag]"
-KAG_DAILY_COUNT=$(jq '.results | length' "$OUTPUT_DIR/daily_kag.json")
-if [ "$KAG_DAILY_COUNT" -gt 0 ]; then
-  jq -r '.results[] |
-    (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-    (.[] | select(.field == "sessions") | .value) as $sessions |
-    "  \($date): \($sessions) 回"
-  ' "$OUTPUT_DIR/daily_kag.json"
-  TOTAL_KAG=$(jq '[.results[][] | select(.field == "sessions") | .value | tonumber] | add // 0' "$OUTPUT_DIR/daily_kag.json")
-else
-  TOTAL_KAG=0
-  echo "  （セッションなし）"
-fi
+TOTAL_KAG=0
+for DATE in $(echo "${!JST_DAILY_KAG[@]}" | tr ' ' '\n' | sort); do
+  echo "  $DATE: ${JST_DAILY_KAG[$DATE]} 回"
+  TOTAL_KAG=$((TOTAL_KAG + ${JST_DAILY_KAG[$DATE]}))
+done
+[ $TOTAL_KAG -eq 0 ] && echo "  （セッションなし）"
 echo "  合計: $TOTAL_KAG 回"
 echo ""
+
+# dev: JST日別セッション数を集計
+declare -A JST_DAILY_DEV
+while IFS='|' read -r JST_DATE SESSIONS; do
+  JST_DAILY_DEV[$JST_DATE]=$((${JST_DAILY_DEV[$JST_DATE]:-0} + SESSIONS))
+done < <(_utc_hourly_to_jst_daily "$OUTPUT_DIR/daily_dev.json")
+
 echo "[dev]"
-DEV_DAILY_COUNT=$(jq '.results | length' "$OUTPUT_DIR/daily_dev.json")
-if [ "$DEV_DAILY_COUNT" -gt 0 ]; then
-  jq -r '.results[] |
-    (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-    (.[] | select(.field == "sessions") | .value) as $sessions |
-    "  \($date): \($sessions) 回"
-  ' "$OUTPUT_DIR/daily_dev.json"
-  TOTAL_DEV=$(jq '[.results[][] | select(.field == "sessions") | .value | tonumber] | add // 0' "$OUTPUT_DIR/daily_dev.json")
-else
-  TOTAL_DEV=0
-  echo "  （セッションなし）"
-fi
+TOTAL_DEV=0
+for DATE in $(echo "${!JST_DAILY_DEV[@]}" | tr ' ' '\n' | sort); do
+  echo "  $DATE: ${JST_DAILY_DEV[$DATE]} 回"
+  TOTAL_DEV=$((TOTAL_DEV + ${JST_DAILY_DEV[$DATE]}))
+done
+[ $TOTAL_DEV -eq 0 ] && echo "  （セッションなし）"
 echo "  合計: $TOTAL_DEV 回"
 echo ""
 
@@ -818,55 +918,41 @@ echo ""
 # ========================================
 # 1セッションあたりのコスト分析
 # ========================================
-echo "💡 1セッションあたりのコスト（過去7日間）"
+echo "💡 1セッションあたりのコスト（過去7日間・UTC基準）"
 echo ""
 echo "  日付       | main+dev | kag      | 全体"
 echo "  -----------|----------|----------|----------"
 
-# 日別セッション数をmapに格納
+# 日別セッション数をmapに格納（UTC日別に再集計、Cost Explorerデータと整合させるため）
 declare -A DAILY_SESSIONS_SANDBOX
 declare -A DAILY_SESSIONS_KAG_MAP
 declare -A DAILY_COST_SANDBOX
 declare -A DAILY_COST_KAG_MAP
 
+# UTC時間別データをUTC日別に再集計する共通処理
+_utc_hourly_to_utc_daily() {
+  local file=$1
+  jq -r '.results[] |
+    (.[] | select(.field == "hour_utc") | .value) as $hour |
+    (.[] | select(.field == "sessions") | .value) as $sessions |
+    "\($hour | split(" ")[0])|\($sessions)"
+  ' "$file" 2>/dev/null
+}
+
 # main+devのセッション数をsandboxとして集計
-while IFS= read -r line; do
-  if [ -n "$line" ]; then
-    DATE=$(echo "$line" | cut -d'|' -f1)
-    SESSIONS=$(echo "$line" | cut -d'|' -f2)
-    DAILY_SESSIONS_SANDBOX[$DATE]=$((${DAILY_SESSIONS_SANDBOX[$DATE]:-0} + SESSIONS))
-  fi
-done < <(jq -r '.results[] |
-  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-  (.[] | select(.field == "sessions") | .value) as $sessions |
-  "\($date)|\($sessions)"
-' "$OUTPUT_DIR/daily_main.json" 2>/dev/null)
+while IFS='|' read -r DATE SESSIONS; do
+  [ -n "$DATE" ] && DAILY_SESSIONS_SANDBOX[$DATE]=$((${DAILY_SESSIONS_SANDBOX[$DATE]:-0} + SESSIONS))
+done < <(_utc_hourly_to_utc_daily "$OUTPUT_DIR/daily_main.json")
 
 # devのセッションも加算
-while IFS= read -r line; do
-  if [ -n "$line" ]; then
-    DATE=$(echo "$line" | cut -d'|' -f1)
-    SESSIONS=$(echo "$line" | cut -d'|' -f2)
-    DAILY_SESSIONS_SANDBOX[$DATE]=$((${DAILY_SESSIONS_SANDBOX[$DATE]:-0} + SESSIONS))
-  fi
-done < <(jq -r '.results[] |
-  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-  (.[] | select(.field == "sessions") | .value) as $sessions |
-  "\($date)|\($sessions)"
-' "$OUTPUT_DIR/daily_dev.json" 2>/dev/null)
+while IFS='|' read -r DATE SESSIONS; do
+  [ -n "$DATE" ] && DAILY_SESSIONS_SANDBOX[$DATE]=$((${DAILY_SESSIONS_SANDBOX[$DATE]:-0} + SESSIONS))
+done < <(_utc_hourly_to_utc_daily "$OUTPUT_DIR/daily_dev.json")
 
 # kagのセッション数
-while IFS= read -r line; do
-  if [ -n "$line" ]; then
-    DATE=$(echo "$line" | cut -d'|' -f1)
-    SESSIONS=$(echo "$line" | cut -d'|' -f2)
-    DAILY_SESSIONS_KAG_MAP[$DATE]=$SESSIONS
-  fi
-done < <(jq -r '.results[] |
-  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-  (.[] | select(.field == "sessions") | .value) as $sessions |
-  "\($date)|\($sessions)"
-' "$OUTPUT_DIR/daily_kag.json" 2>/dev/null)
+while IFS='|' read -r DATE SESSIONS; do
+  [ -n "$DATE" ] && DAILY_SESSIONS_KAG_MAP[$DATE]=$((${DAILY_SESSIONS_KAG_MAP[$DATE]:-0} + SESSIONS))
+done < <(_utc_hourly_to_utc_daily "$OUTPUT_DIR/daily_kag.json")
 
 # sandboxの日別コスト
 while IFS= read -r line; do
@@ -1052,27 +1138,19 @@ fi
 echo "📅 週次トレンド（リリース以降）"
 echo ""
 
-# jqで日次データに週番号を付けてファイルに保存
-jq -r '.results[] |
-  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-  (.[] | select(.field == "sessions") | .value) as $sessions |
-  "\($date)|\($sessions)"
-' "$OUTPUT_DIR/weekly_main.json" 2>/dev/null | while read line; do
-  DATE=$(echo "$line" | cut -d'|' -f1)
-  SESSIONS=$(echo "$line" | cut -d'|' -f2)
-  WEEK=$(date -j -f "%Y-%m-%d" "$DATE" "+%Y-W%W" 2>/dev/null)
-  echo "$WEEK|main|$SESSIONS"
+# UTC時間別データをJST日別に変換してから週番号を付けてファイルに保存
+_utc_hourly_to_jst_daily "$OUTPUT_DIR/weekly_main.json" | while IFS='|' read -r JST_DATE SESSIONS; do
+  if [ -n "$JST_DATE" ]; then
+    WEEK=$(date -j -f "%Y-%m-%d" "$JST_DATE" "+%Y-W%W" 2>/dev/null)
+    echo "$WEEK|main|$SESSIONS"
+  fi
 done > "$OUTPUT_DIR/weekly_sessions.tmp"
 
-jq -r '.results[] |
-  (.[] | select(.field == "day_utc") | .value | split(" ")[0]) as $date |
-  (.[] | select(.field == "sessions") | .value) as $sessions |
-  "\($date)|\($sessions)"
-' "$OUTPUT_DIR/weekly_kag.json" 2>/dev/null | while read line; do
-  DATE=$(echo "$line" | cut -d'|' -f1)
-  SESSIONS=$(echo "$line" | cut -d'|' -f2)
-  WEEK=$(date -j -f "%Y-%m-%d" "$DATE" "+%Y-W%W" 2>/dev/null)
-  echo "$WEEK|kag|$SESSIONS"
+_utc_hourly_to_jst_daily "$OUTPUT_DIR/weekly_kag.json" | while IFS='|' read -r JST_DATE SESSIONS; do
+  if [ -n "$JST_DATE" ]; then
+    WEEK=$(date -j -f "%Y-%m-%d" "$JST_DATE" "+%Y-W%W" 2>/dev/null)
+    echo "$WEEK|kag|$SESSIONS"
+  fi
 done >> "$OUTPUT_DIR/weekly_sessions.tmp"
 
 # sandbox アカウントのコスト
