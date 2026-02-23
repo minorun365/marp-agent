@@ -1,5 +1,6 @@
 ---
 name: check-app-stats
+model: sonnet
 description: このアプリの利用統計を確認（Cognitoユーザー数、AgentCore呼び出し回数、Bedrockコスト、Tavily API残量）
 allowed-tools: Bash(bash .claude/skills/check-app-stats/run.sh)
 ---

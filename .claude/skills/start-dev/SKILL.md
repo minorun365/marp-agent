@@ -1,5 +1,6 @@
 ---
 name: start-dev
+model: sonnet
 description: Amplifyサンドボックス（バックエンド）を起動し、完了後にフロントエンドもローカル起動する
 argument-hint: [環境名: main (デフォルト) / kag]
 allowed-tools: Bash(npm run copy-themes:*), Bash(npx ampx sandbox:*), Bash(npm run dev:*), Bash(export:*), Bash(tail:*), Bash(lsof:*), Bash(git:*), Bash(aws sts:*)

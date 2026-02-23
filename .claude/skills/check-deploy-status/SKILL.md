@@ -1,5 +1,6 @@
 ---
 name: check-deploy-status
+model: sonnet
 description: Amplifyに存在するすべてのブランチのデプロイ状況を確認（直近5件ずつ、所要時間付き）
 allowed-tools: Bash
 ---
