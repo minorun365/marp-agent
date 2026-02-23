@@ -1,5 +1,6 @@
 ---
 name: sync-to-kag
+model: sonnet
 description: mainリポジトリの変更をkagリポジトリにも適用する。「kagにも反映して」「kag環境にも適用して」と言われたらこのスキルを使う。mainとkagは別リポジトリなのでマージではなくチェリーピックで適用する。
 allowed-tools: Bash(git:*), Bash(cd:*), Bash(cp:*)
 ---
