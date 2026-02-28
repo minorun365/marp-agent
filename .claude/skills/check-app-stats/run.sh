@@ -265,7 +265,7 @@ else
   echo '{"ResultsByTime":[]}' > "$OUTPUT_DIR/cost_kag.json"
 fi
 
-# Claude Sonnet 4.5の使用タイプ別コスト（キャッシュ効果分析用）- sandbox
+# Claude Sonnet 4.6の使用タイプ別コスト（キャッシュ効果分析用）- sandbox
 aws ce get-cost-and-usage \
   --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
   --granularity DAILY \
@@ -273,14 +273,14 @@ aws ce get-cost-and-usage \
   --filter '{
     "And": [
       {"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}},
-      {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]}}
+      {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Sonnet 4.6 (Amazon Bedrock Edition)"]}}
     ]
   }' \
   --group-by Type=DIMENSION,Key=USAGE_TYPE \
   --region $REGION --profile $PROFILE_MAIN \
   --output json > "$OUTPUT_DIR/sonnet_usage.json"
 
-# Claude Sonnet 4.5 - kag-sandbox
+# Claude Sonnet 4.6 - kag-sandbox
 if [ "$KAG_AVAILABLE" = true ]; then
   aws ce get-cost-and-usage \
     --time-period Start=$(date -v-7d +%Y-%m-%d),End=$(date +%Y-%m-%d) \
@@ -289,7 +289,7 @@ if [ "$KAG_AVAILABLE" = true ]; then
     --filter '{
       "And": [
         {"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}},
-        {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Sonnet 4.5 (Amazon Bedrock Edition)"]}}
+        {"Dimensions": {"Key": "SERVICE", "Values": ["Claude Sonnet 4.6 (Amazon Bedrock Edition)"]}}
       ]
     }' \
     --group-by Type=DIMENSION,Key=USAGE_TYPE \
@@ -824,7 +824,7 @@ echo ""
 
 # sandbox アカウントのモデル別コスト
 SONNET_COST_SANDBOX=$(jq -r '
-  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.5")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.6")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
 OPUS_COST_SANDBOX=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Opus")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
@@ -833,12 +833,12 @@ KIMI_COST_SANDBOX=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Kimi")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
 OTHER_COST_SANDBOX=$(jq -r '
-  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.5") | not) and (.Keys[0] | contains("Claude Opus") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.6") | not) and (.Keys[0] | contains("Claude Opus") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost.json")
 
 # kag-sandbox アカウントのモデル別コスト
 SONNET_COST_KAG_REAL=$(jq -r '
-  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.5")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+  [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Sonnet 4.6")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost_kag.json")
 OPUS_COST_KAG_REAL=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Claude Opus")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
@@ -847,7 +847,7 @@ KIMI_COST_KAG_REAL=$(jq -r '
   [.ResultsByTime[].Groups[] | select(.Keys[0] | contains("Kimi")) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost_kag.json")
 OTHER_COST_KAG_REAL=$(jq -r '
-  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.5") | not) and (.Keys[0] | contains("Claude Opus") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
+  [.ResultsByTime[].Groups[] | select((.Keys[0] | contains("Bedrock") or contains("Claude")) and (.Keys[0] | contains("Claude Sonnet 4.6") | not) and (.Keys[0] | contains("Claude Opus") | not) and (.Keys[0] | contains("Kimi") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0
 ' "$OUTPUT_DIR/cost_kag.json")
 
 # sandbox 内の main/dev 比率（dev がある場合のみ分割）
@@ -904,7 +904,7 @@ echo "  ※ クレジット適用前の利用コスト（RECORD_TYPE=Usageでフ
 echo ""
 printf "  %-16s | %8s | %8s | %8s | %8s\n" "モデル" "main" "kag" "dev" "合計"
 printf "  %-16s-|----------|----------|----------|----------\n" "----------------"
-printf "  %-16s | %8s | %8s | %8s | %8s\n" "Sonnet 4.5" "\$$S_MAIN" "\$$S_KAG" "\$$S_DEV" "\$$S_TOTAL"
+printf "  %-16s | %8s | %8s | %8s | %8s\n" "Sonnet 4.6" "\$$S_MAIN" "\$$S_KAG" "\$$S_DEV" "\$$S_TOTAL"
 printf "  %-16s | %8s | %8s | %8s | %8s\n" "Opus 4.6" "\$$O_MAIN" "\$$O_KAG" "\$$O_DEV" "\$$O_TOTAL"
 printf "  %-16s | %8s | %8s | %8s | %8s\n" "Kimi K2" "\$$K_MAIN" "\$$K_KAG" "\$$K_DEV" "\$$K_TOTAL"
 printf "  %-16s | %8s | %8s | %8s | %8s\n" "その他" "\$$OT_MAIN" "\$$OT_KAG" "\$$OT_DEV" "\$$OT_TOTAL"
@@ -1048,8 +1048,8 @@ echo ""
 # Claudeモデル キャッシュ効果（両アカウント合算）
 # ========================================
 
-# --- Sonnet 4.5 ---
-echo "📊 Claude Sonnet 4.5 キャッシュ効果"
+# --- Sonnet 4.6 ---
+echo "📊 Claude Sonnet 4.6 キャッシュ効果"
 
 S_INPUT_COST=$(echo \
   "$(jq -r '[.ResultsByTime[].Groups[] | select(.Keys[0] | test("InputToken") and (test("Cache") | not)) | .Metrics.UnblendedCost.Amount | tonumber] | add // 0' "$OUTPUT_DIR/sonnet_usage.json")" \
