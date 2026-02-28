@@ -1204,9 +1204,10 @@ echo ""
 # ========================================
 if [ "$TAVILY_KEY_COUNT" -gt 0 ]; then
   echo "🔍 Tavily API 利用状況"
+  echo "  ※ 使用量・残量はアカウント全体ベース（キー単体ではなく紐づくアカウントの消費量）"
   echo ""
-  echo "  キー  | 使用量 | 上限   | 残り   | 状態"
-  echo "  ------|--------|--------|--------|------"
+  echo "  キー  | キー使用量 | acct使用量 | acct上限 | 残り   | 状態"
+  echo "  ------|------------|------------|----------|--------|------"
 
   TAVILY_TOTAL_USED=0
   TAVILY_TOTAL_LIMIT=0
@@ -1214,11 +1215,13 @@ if [ "$TAVILY_KEY_COUNT" -gt 0 ]; then
   for i in $(seq 1 $TAVILY_KEY_COUNT); do
     FILE="$OUTPUT_DIR/tavily_key${i}.json"
     if [ -f "$FILE" ] && [ -s "$FILE" ]; then
-      USED=$(jq -r '.key.usage // 0' "$FILE" 2>/dev/null)
+      KEY_USED=$(jq -r '.key.usage // 0' "$FILE" 2>/dev/null)
+      ACCT_USED=$(jq -r '.account.plan_usage // 0' "$FILE" 2>/dev/null)
       LIMIT=$(jq -r '.account.plan_limit // 0' "$FILE" 2>/dev/null)
-      [ "$USED" = "null" ] && USED=0
+      [ "$KEY_USED" = "null" ] && KEY_USED=0
+      [ "$ACCT_USED" = "null" ] && ACCT_USED=0
       [ "$LIMIT" = "null" ] && LIMIT=1000
-      REMAINING=$((LIMIT - USED))
+      REMAINING=$((LIMIT - ACCT_USED))
       [ $REMAINING -lt 0 ] && REMAINING=0
 
       if [ $REMAINING -le 0 ]; then
@@ -1229,17 +1232,17 @@ if [ "$TAVILY_KEY_COUNT" -gt 0 ]; then
         STATUS="OK"
       fi
 
-      printf "  KEY%-2d | %6d | %6d | %6d | %s\n" "$i" "$USED" "$LIMIT" "$REMAINING" "$STATUS"
+      printf "  KEY%-2d | %10d | %10d | %8d | %6d | %s\n" "$i" "$KEY_USED" "$ACCT_USED" "$LIMIT" "$REMAINING" "$STATUS"
 
-      TAVILY_TOTAL_USED=$((TAVILY_TOTAL_USED + USED))
+      TAVILY_TOTAL_USED=$((TAVILY_TOTAL_USED + ACCT_USED))
       TAVILY_TOTAL_LIMIT=$((TAVILY_TOTAL_LIMIT + LIMIT))
     fi
   done
 
   TAVILY_TOTAL_REMAINING=$((TAVILY_TOTAL_LIMIT - TAVILY_TOTAL_USED))
   [ $TAVILY_TOTAL_REMAINING -lt 0 ] && TAVILY_TOTAL_REMAINING=0
-  echo "  ------|--------|--------|--------|------"
-  printf "  合計  | %6d | %6d | %6d |\n" "$TAVILY_TOTAL_USED" "$TAVILY_TOTAL_LIMIT" "$TAVILY_TOTAL_REMAINING"
+  echo "  ------|------------|------------|----------|--------|------"
+  printf "  合計  |            | %10d | %8d | %6d |\n" "$TAVILY_TOTAL_USED" "$TAVILY_TOTAL_LIMIT" "$TAVILY_TOTAL_REMAINING"
 
   # 日平均消費の推定（全体セッション数から逆算: セッション≒検索回数）
   TOTAL_SESSIONS_ALL=$((TOTAL_MAIN + TOTAL_KAG + TOTAL_DEV))
@@ -1275,15 +1278,16 @@ if [ "$TAVILY_KEY_COUNT" -gt 0 ]; then
   fi
 
   # 本日のエントリが既にあるか確認（同日2回目以降は上書き）
+  # KEY_USAGES はキー単体の使用量を記録（CSV参照用に残す）
   KEY_USAGES=""
   for i in $(seq 1 $TAVILY_KEY_COUNT); do
     FILE="$OUTPUT_DIR/tavily_key${i}.json"
-    USED=$(jq -r '.key.usage // 0' "$FILE" 2>/dev/null)
-    [ "$USED" = "null" ] && USED=0
+    KEY_USED=$(jq -r '.key.usage // 0' "$FILE" 2>/dev/null)
+    [ "$KEY_USED" = "null" ] && KEY_USED=0
     if [ -z "$KEY_USAGES" ]; then
-      KEY_USAGES="$USED"
+      KEY_USAGES="$KEY_USED"
     else
-      KEY_USAGES="$KEY_USAGES|$USED"
+      KEY_USAGES="$KEY_USAGES|$KEY_USED"
     fi
   done
 
