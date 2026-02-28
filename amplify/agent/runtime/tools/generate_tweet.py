@@ -23,6 +23,11 @@ def reset_generated_tweet_url() -> None:
 def generate_tweet_url(tweet_text: str) -> str:
     """ツイート投稿用のURLを生成します。ユーザーがXでシェアしたい場合に使用してください。
 
+    ## ツイート本文のフォーマット
+
+    `#パワポ作るマン で○○のスライドを作ってみました。これは便利！ pawapo.minoruonda.com`
+    （100文字以内に収める）
+
     Args:
         tweet_text: ツイート本文（100文字以内、ハッシュタグ含む）
 
