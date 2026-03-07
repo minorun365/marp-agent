@@ -26,6 +26,17 @@ app = BedrockAgentCoreApp()
 
 MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_EXTRACTED_CHARS = 50000  # 約25,000トークン
+STREAM_KEEPALIVE_INTERVAL = 10.0  # ストリーミング中のkeep-alive間隔（秒）
+
+_STREAM_SENTINEL = object()
+
+
+async def _safe_anext(aiter):
+    """StopAsyncIterationをセンチネル値に変換（asyncio.ensure_future対応）"""
+    try:
+        return await aiter.__anext__()
+    except StopAsyncIteration:
+        return _STREAM_SENTINEL
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
@@ -196,8 +207,17 @@ async def invoke(payload, context=None):
 
     try:
         stream = agent.stream_async(user_message)
+        stream_iter = stream.__aiter__()
+        pending = asyncio.ensure_future(_safe_anext(stream_iter))
 
-        async for event in stream:
+        while True:
+            done, _ = await asyncio.wait({pending}, timeout=STREAM_KEEPALIVE_INTERVAL)
+            if not done:
+                yield {"type": "progress", "message": "処理中..."}
+                continue
+            event = pending.result()
+            if event is _STREAM_SENTINEL:
+                break
             if "data" in event:
                 # output_slide完了後はテキスト送信を抑制
                 if not suppress_text:
@@ -250,6 +270,8 @@ async def invoke(payload, context=None):
                     reset_generated_markdown()
                     slide_outputted = True
                     suppress_text = True
+
+            pending = asyncio.ensure_future(_safe_anext(stream_iter))
 
     except Exception as e:
         stream_error = True
