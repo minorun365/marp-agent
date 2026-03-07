@@ -528,6 +528,40 @@ pptx_bytes = task.result()
 
 フロントエンド側のSSEパーサーは未知の `type` を無視するため、`progress` イベントの追加でフロントエンドの変更は不要。
 
+### メインストリーミングのSSE keep-alive
+
+エージェントのメインストリーミング（`stream_async`）でも同様のkeep-alive問題がある。Strandsは**ツール引数の生成中にイベントをyieldしない**ため、大きなスライド（16ページのタイムテーブル等）のMarpマークダウンをtool引数として生成する間、フロントエンドのSSEタイムアウト（60秒）に達することがある。
+
+対策として、`asyncio.wait` + タイムアウトで10秒ごとにkeep-aliveを送信する：
+
+```python
+STREAM_KEEPALIVE_INTERVAL = 10.0
+_STREAM_SENTINEL = object()
+
+async def _safe_anext(aiter):
+    try:
+        return await aiter.__anext__()
+    except StopAsyncIteration:
+        return _STREAM_SENTINEL
+
+# ストリーミングループ
+stream_iter = stream.__aiter__()
+pending = asyncio.ensure_future(_safe_anext(stream_iter))
+
+while True:
+    done, _ = await asyncio.wait({pending}, timeout=STREAM_KEEPALIVE_INTERVAL)
+    if not done:
+        yield {"type": "progress", "message": "処理中..."}
+        continue
+    event = pending.result()
+    if event is _STREAM_SENTINEL:
+        break
+    # ... イベント処理 ...
+    pending = asyncio.ensure_future(_safe_anext(stream_iter))
+```
+
+`progress` イベントはフロントエンドの `handleEvent` で `default` ケースに入り、`content`/`data` フィールドがないため何も表示されずに無視される。SSEパーサーのタイムアウトタイマーのみがリセットされる。
+
 ### ツール駆動型のマークダウン出力
 
 マークダウンをテキストでストリーミング出力すると、フロントエンドで除去処理が複雑になる。
