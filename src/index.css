@@ -74,12 +74,26 @@ html, body {
 }
 
 .btn-kag {
+  appearance: none;
+  -webkit-appearance: none;
   background: linear-gradient(to right, #1a3a6e, #5ba4d9);
+  border: none;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
   transition: all 0.2s;
 }
 
 .btn-kag:hover {
   background: linear-gradient(to right, #142d54, #4a93c8);
+}
+
+.btn-kag:focus {
+  outline: none;
+}
+
+.btn-kag:focus-visible {
+  outline: 2px solid rgba(91, 164, 217, 0.45);
+  outline-offset: 2px;
 }
 
 .btn-kag:disabled {
