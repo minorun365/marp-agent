@@ -20,9 +20,10 @@ interface MarpAgentProps {
   nameSuffix?: string;
   sharedSlidesBucket?: s3.IBucket;
   sharedSlidesDistributionDomain?: string;
+  sharedSlidesPublicDomain?: string;
 }
 
-export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, sharedSlidesBucket, sharedSlidesDistributionDomain }: MarpAgentProps) {
+export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, sharedSlidesBucket, sharedSlidesDistributionDomain, sharedSlidesPublicDomain }: MarpAgentProps) {
   // 環境判定: sandbox（ローカル）vs 本番（Amplify Console）
   const isSandbox = !process.env.AWS_BRANCH;
 
@@ -80,6 +81,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, s
       // 共有スライド用S3/CloudFront設定
       SHARED_SLIDES_BUCKET: sharedSlidesBucket?.bucketName || '',
       CLOUDFRONT_DOMAIN: sharedSlidesDistributionDomain || '',
+      SHARED_SLIDES_PUBLIC_DOMAIN: sharedSlidesPublicDomain || sharedSlidesDistributionDomain || '',
       // Observability（OTEL）設定
       AGENT_OBSERVABILITY_ENABLED: 'true',
       OTEL_PYTHON_DISTRO: 'aws_distro',

@@ -4,7 +4,7 @@ import os
 import re
 import html as html_escape
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import boto3
 
@@ -58,8 +58,9 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
     """スライドをHTML化してS3に保存し、公開URLを返す（OGP対応）"""
     bucket_name = os.environ.get('SHARED_SLIDES_BUCKET')
     cloudfront_domain = os.environ.get('CLOUDFRONT_DOMAIN')
+    public_domain = os.environ.get('SHARED_SLIDES_PUBLIC_DOMAIN') or cloudfront_domain
 
-    if not bucket_name or not cloudfront_domain:
+    if not bucket_name or not public_domain:
         raise RuntimeError("共有機能が設定されていません（環境変数未設定）")
 
     # スライドID生成（UUID v4）
@@ -77,14 +78,14 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
             Body=thumbnail_bytes,
             ContentType='image/png',
         )
-        thumbnail_url = f"https://{cloudfront_domain}/{thumbnail_key}"
+        thumbnail_url = f"https://{public_domain}/{thumbnail_key}"
         print(f"[INFO] Thumbnail uploaded: {thumbnail_url}")
     except Exception as e:
         # サムネイル生成に失敗してもHTML共有は続行
         print(f"[WARN] Thumbnail generation failed: {e}")
 
     # 共有URL（OGPタグ挿入前に決定）
-    share_url = f"https://{cloudfront_domain}/slides/{slide_id}/index.html"
+    share_url = f"https://{public_domain}/slides/{slide_id}/index.html"
 
     # HTML生成
     html_content = generate_standalone_html(markdown, theme)
@@ -104,7 +105,7 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
     )
 
     # 有効期限（7日後）
-    expires_at = int((datetime.utcnow() + timedelta(days=7)).timestamp())
+    expires_at = int((datetime.now(UTC) + timedelta(days=7)).timestamp())
 
     print(f"[INFO] Slide shared: {share_url} (expires: {expires_at})")
 

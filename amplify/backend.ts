@@ -36,7 +36,10 @@ if (isSandbox) {
 }
 
 // 共有スライド用インフラを作成（S3 + CloudFront）
-const sharedSlides = new SharedSlidesConstruct(agentCoreStack, 'SharedSlides');
+const sharedSlides = new SharedSlidesConstruct(agentCoreStack, 'SharedSlides', {
+  publicDomainName: process.env.SHARED_SLIDES_PUBLIC_DOMAIN,
+  certificateArn: process.env.SHARED_SLIDES_CERTIFICATE_ARN,
+});
 
 // Marp Agentを作成（Cognito認証統合）
 const { runtime } = createMarpAgent({
@@ -46,6 +49,7 @@ const { runtime } = createMarpAgent({
   nameSuffix,
   sharedSlidesBucket: sharedSlides.bucket,
   sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
+  sharedSlidesPublicDomain: sharedSlides.publicDomainName,
 });
 
 // フロントエンドにランタイム情報を渡す（DEFAULTエンドポイントを使用）
@@ -54,6 +58,7 @@ backend.addOutput({
     agentRuntimeArn: runtime.agentRuntimeArn,
     environment: isSandbox ? 'sandbox' : nameSuffix,
     sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
+    sharedSlidesPublicDomain: sharedSlides.publicDomainName,
   },
 });
 

@@ -20,6 +20,9 @@ export async function invokeAgentMock(
   _modelType: ModelType = 'sonnet',
   _referenceFile?: ReferenceFile
 ): Promise<void> {
+  void _modelType;
+  void _referenceFile;
+
   // 思考過程をストリーミング
   const thinkingText = `${prompt}についてスライドを作成しますね。\n\n構成を考えています...`;
   for (const char of thinkingText) {
@@ -76,6 +79,7 @@ paginate: true
  * PDF生成モック
  */
 export async function exportPdfMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
+  void _theme;
   await sleep(1000);
   return new Blob([markdown], { type: 'text/markdown' });
 }
@@ -84,6 +88,7 @@ export async function exportPdfMock(markdown: string, _theme: string = 'border')
  * PPTX生成モック
  */
 export async function exportPptxMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
+  void _theme;
   await sleep(1000);
   return new Blob([markdown], { type: 'text/markdown' });
 }
@@ -92,6 +97,7 @@ export async function exportPptxMock(markdown: string, _theme: string = 'border'
  * 編集可能PPTX生成モック
  */
 export async function exportEditablePptxMock(markdown: string, _theme: string = 'border'): Promise<Blob> {
+  void _theme;
   await sleep(2000);
   return new Blob([markdown], { type: 'text/markdown' });
 }
@@ -100,10 +106,11 @@ export async function exportEditablePptxMock(markdown: string, _theme: string = 
  * スライド共有モック
  */
 export async function shareSlideMock(_markdown: string, _theme: string = 'border'): Promise<ShareResult> {
+  void _theme;
   await sleep(1000);
   const mockSlideId = crypto.randomUUID();
   return {
-    url: `https://mock.cloudfront.net/slides/${mockSlideId}/index.html`,
+    url: `https://slides.pawapo.minoruonda.com/slides/${mockSlideId}/index.html`,
     expiresAt: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
   };
 }

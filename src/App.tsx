@@ -24,7 +24,7 @@ const authComponents = {
     return (
       <div className="text-center py-4">
         <h1 className="text-2xl font-bold text-white">
-          パワポ作るマン　by みのるん
+          パワポ作るマン by みのるん
         </h1>
         <p className="text-sm text-white/80 mt-1">
           誰でもアカウントを作って利用できます！<br/>
@@ -188,7 +188,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
         <div className="max-w-3xl mx-auto flex justify-between items-center gap-2">
           <div className="min-w-0">
             <h1 className="text-lg md:text-2xl font-bold truncate">
-              パワポ作るマン　<span className="text-base md:text-lg font-normal ml-1">by みのるん</span>
+              パワポ作るマン <span className="text-base md:text-lg font-normal ml-1">by みのるん</span>
             </h1>
             <p className="text-xs md:text-sm text-white/50 truncate">AgentCore ＆ Amplifyでフルサーバーレス構築！</p>
           </div>
