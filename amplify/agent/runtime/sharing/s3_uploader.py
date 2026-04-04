@@ -65,13 +65,14 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
 
     # スライドID生成（UUID v4）
     slide_id = str(uuid.uuid4())
+    slide_path = slide_id
     s3_client = _get_s3_client()
 
     # サムネイル生成・アップロード
     thumbnail_url = None
     try:
         thumbnail_bytes = generate_thumbnail(markdown, theme)
-        thumbnail_key = f"slides/{slide_id}/thumbnail.png"
+        thumbnail_key = f"{slide_path}/thumbnail.png"
         s3_client.put_object(
             Bucket=bucket_name,
             Key=thumbnail_key,
@@ -85,7 +86,7 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
         print(f"[WARN] Thumbnail generation failed: {e}")
 
     # 共有URL（OGPタグ挿入前に決定）
-    share_url = f"https://{public_domain}/slides/{slide_id}/index.html"
+    share_url = f"https://{public_domain}/{slide_path}/index.html"
 
     # HTML生成
     html_content = generate_standalone_html(markdown, theme)
@@ -96,7 +97,7 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
         html_content = _inject_ogp_tags(html_content, title, thumbnail_url, share_url)
 
     # S3にHTMLアップロード
-    s3_key = f"slides/{slide_id}/index.html"
+    s3_key = f"{slide_path}/index.html"
     s3_client.put_object(
         Bucket=bucket_name,
         Key=s3_key,

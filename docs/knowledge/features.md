@@ -288,7 +288,39 @@ marp slide.md --image png -o slide.png
 ```html
 <meta property="og:title" content="スライドタイトル">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://xxx.cloudfront.net/slides/{id}/index.html">
-<meta property="og:image" content="https://xxx.cloudfront.net/slides/{id}/thumbnail.png">
+<meta property="og:url" content="https://slides.example.com/{id}/index.html">
+<meta property="og:image" content="https://slides.example.com/{id}/thumbnail.png">
 <meta name="twitter:card" content="summary_large_image">
 ```
+
+### 独自ドメイン運用メモ（`slides.pawapo.minoruonda.com`）
+
+共有URLを独自ドメイン化する場合は、ユーザーに見せるホスト名と実際の配信用 CloudFront ドメインを分けて扱う。
+
+| 用途 | 例 | 使いどころ |
+|------|----|------------|
+| 公開URL / OGP 用ドメイン | `slides.pawapo.minoruonda.com` | ユーザーに見せるURL、`og:url`、`og:image` |
+| 配信用 CloudFront ドメイン | `dxxxxxxxxxxxx.cloudfront.net` | Route53 Alias の向き先、CloudFront 実体 |
+
+実装上は `SHARED_SLIDES_PUBLIC_DOMAIN` を優先し、未設定時のみ `distributionDomainName` にフォールバックさせると安全。
+
+### Amplify ブランチ環境での切り替え手順
+
+1. 移行先ブランチに `SHARED_SLIDES_PUBLIC_DOMAIN` と `SHARED_SLIDES_CERTIFICATE_ARN` を設定する
+2. 既に同じ独自ドメインを持っているプレビュー branch からその設定を外す
+3. プレビュー branch を再デプロイして CloudFront の alternate domain name を解放する
+4. 移行先 branch を再デプロイして独自ドメインを取得する
+5. Route53 の `A` / `AAAA` Alias を移行先の `sharedSlidesDistributionDomain` に切り替える
+6. `customOutputs.sharedSlidesPublicDomain` と実URLのHTTP 200を確認する
+
+### 重要な制約
+
+- CloudFront の alternate domain name は同時に1つの distribution にしか付けられない
+- Amplify のブランチ環境変数は branch ごとに独立しており、プレビュー branch に入れた値は `main` に自動反映されない
+- 共有URL生成だけ直しても、Route53 が旧 distribution を向いていると実際の公開先は切り替わらない
+- OGP 用の `og:url` と `og:image` も公開ドメインに寄せないと、SNS 上では CloudFront 生URL が残る
+
+### クロスアカウント構成の注意
+
+- CloudFront で使う ACM 証明書は distribution と同じ AWS アカウント、かつ `us-east-1` に置く
+- Route53 hosted zone が別アカウントでも、DNS 検証レコードと Alias レコードは hosted zone 側アカウントで追加すればよい

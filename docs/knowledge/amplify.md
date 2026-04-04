@@ -225,3 +225,25 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 
 - **アプリレベルの環境変数**（`aws amplify get-app`）はブランチ更新で消えない
 - **ブランチレベルの環境変数**（`aws amplify get-branch`）は上書きされる
+
+### 独自ドメイン切り替え時のハマりどころ
+
+共有用 CloudFront の独自ドメインを branch 間で切り替えるときは、環境変数の更新だけでは足りない。
+
+1. `aws amplify get-branch` で対象 branch の `SHARED_SLIDES_PUBLIC_DOMAIN` / `SHARED_SLIDES_CERTIFICATE_ARN` を確認する
+2. `customOutputs.sharedSlidesPublicDomain` と `sharedSlidesDistributionDomain` を見て、デプロイ後に何が実際に反映されたか確認する
+3. 同じ独自ドメインを持つ別 branch がある場合は、先にそちらを再デプロイして CloudFront の CNAME を解放する
+4. その後で移行先 branch を再デプロイする
+
+今回のケースでは、プレビュー branch にだけ独自ドメイン用の環境変数が入っていて、`main` には入っていなかったため、本番の共有URLだけ CloudFront 生ドメインのままだった。
+
+### 環境変数を外すときの注意
+
+`aws amplify update-branch --environment-variables '{}'` では、既存の branch 環境変数が消えないことがあった。
+
+このリポジトリではコード側で `trim()` して空文字を未設定扱いにしているため、次のように空文字で更新して再デプロイすると独自ドメイン設定を外せる。
+
+```bash
+aws amplify update-branch --app-id {appId} --branch-name {branch} --region {region} \
+  --environment-variables SHARED_SLIDES_PUBLIC_DOMAIN=,SHARED_SLIDES_CERTIFICATE_ARN=
+```

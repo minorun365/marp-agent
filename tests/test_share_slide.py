@@ -31,10 +31,10 @@ def test_share_slide_uses_public_domain():
                     ):
                         result = share_slide("# テスト")
 
-    assert result["url"] == "https://slides.pawapo.minoruonda.com/slides/12345678-1234-5678-1234-567812345678/index.html"
+    assert result["url"] == "https://slides.pawapo.minoruonda.com/12345678-1234-5678-1234-567812345678/index.html"
     assert s3_client.put_object.call_count == 2
-    assert s3_client.put_object.call_args_list[0].kwargs["Key"] == "slides/12345678-1234-5678-1234-567812345678/thumbnail.png"
-    assert b"slides.pawapo.minoruonda.com/slides/12345678-1234-5678-1234-567812345678/thumbnail.png" in (
+    assert s3_client.put_object.call_args_list[0].kwargs["Key"] == "12345678-1234-5678-1234-567812345678/thumbnail.png"
+    assert b"slides.pawapo.minoruonda.com/12345678-1234-5678-1234-567812345678/thumbnail.png" in (
         s3_client.put_object.call_args_list[1].kwargs["Body"]
     )
 
@@ -64,4 +64,4 @@ def test_share_slide_falls_back_to_cloudfront_domain():
                     ):
                         result = share_slide("# テスト")
 
-    assert result["url"] == "https://d111111abcdef8.cloudfront.net/slides/87654321-4321-8765-4321-876543218765/index.html"
+    assert result["url"] == "https://d111111abcdef8.cloudfront.net/87654321-4321-8765-4321-876543218765/index.html"

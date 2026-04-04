@@ -110,7 +110,7 @@ export async function shareSlideMock(_markdown: string, _theme: string = 'border
   await sleep(1000);
   const mockSlideId = crypto.randomUUID();
   return {
-    url: `https://slides.pawapo.minoruonda.com/slides/${mockSlideId}/index.html`,
+    url: `https://slides.pawapo.minoruonda.com/${mockSlideId}/index.html`,
     expiresAt: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
   };
 }
