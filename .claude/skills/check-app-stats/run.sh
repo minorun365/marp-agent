@@ -219,7 +219,7 @@ if [ "$KAG_AVAILABLE" = true ] && [ "$LOG_KAG" != "None" ]; then
 fi
 
 # ユーザー依頼内容クエリ開始（過去7日間）
-USER_REQ_QUERY='filter scope.name = "strands.telemetry.tracer" and body.input.messages.0.role = "user" | stats earliest(body.input.messages.0.content.content) as first_message, min(@timestamp) as ts by traceId | sort ts desc | limit 20'
+USER_REQ_QUERY='filter scope.name = "strands.telemetry.tracer" and body.input.messages.0.role = "user" and body.input.messages.0.content.content not like "今回の体験をXでシェア" | stats earliest(body.input.messages.0.content.content) as first_message, min(@timestamp) as ts by traceId | sort ts desc | limit 20'
 
 Q_REQUESTS_MAIN=$(aws logs start-query \
   --log-group-name "$LOG_MAIN" \
@@ -529,16 +529,22 @@ if [ "$MAIN_REQ_COUNT" -gt 0 ]; then
     (.[] | select(.field == "ts") | .value) as $ts |
     (.[] | select(.field == "first_message") | .value) as $raw_msg |
     (($raw_msg | try (fromjson | .[0].text) catch $raw_msg) // $raw_msg) as $msg |
-    ($msg | gsub("\n"; " ") | if length > 100 then .[:100] + "..." else . end) as $truncated |
+    ($msg | gsub("\n"; " ")) as $clean |
+    (if ($clean | test("ユーザーの指示: ")) then ($clean | split("ユーザーの指示: ") | .[1:] | join("ユーザーの指示: ")) else $clean end) as $user_msg |
+    ($user_msg | if length > 210 then .[:210] + "..." else . end) as $truncated |
     "\($ts)\t\($truncated)"
   ' "$OUTPUT_DIR/requests_main.json" | while IFS=$'\t' read -r TS MSG; do
     UTC_TS=$(echo "$TS" | cut -c1-19)
     JST_TS=$(date -j -v+9H -f "%Y-%m-%d %H:%M:%S" "$UTC_TS" "+%m/%d %H:%M" 2>/dev/null || echo "$UTC_TS")
-    LINE1=$(echo "$MSG" | cut -c1-50)
-    LINE2=$(echo "$MSG" | cut -c51-)
+    LINE1=$(echo "$MSG" | cut -c1-70)
+    LINE2=$(echo "$MSG" | cut -c71-140)
+    LINE3=$(echo "$MSG" | cut -c141-)
     printf "  %-14s | %s\n" "$JST_TS" "$LINE1"
     if [ -n "$LINE2" ]; then
       printf "  %-14s | %s\n" "" "$LINE2"
+    fi
+    if [ -n "$LINE3" ]; then
+      printf "  %-14s | %s\n" "" "$LINE3"
     fi
   done
 else
@@ -554,16 +560,22 @@ if [ "$KAG_REQ_COUNT" -gt 0 ]; then
     (.[] | select(.field == "ts") | .value) as $ts |
     (.[] | select(.field == "first_message") | .value) as $raw_msg |
     (($raw_msg | try (fromjson | .[0].text) catch $raw_msg) // $raw_msg) as $msg |
-    ($msg | gsub("\n"; " ") | if length > 100 then .[:100] + "..." else . end) as $truncated |
+    ($msg | gsub("\n"; " ")) as $clean |
+    (if ($clean | test("ユーザーの指示: ")) then ($clean | split("ユーザーの指示: ") | .[1:] | join("ユーザーの指示: ")) else $clean end) as $user_msg |
+    ($user_msg | if length > 210 then .[:210] + "..." else . end) as $truncated |
     "\($ts)\t\($truncated)"
   ' "$OUTPUT_DIR/requests_kag.json" | while IFS=$'\t' read -r TS MSG; do
     UTC_TS=$(echo "$TS" | cut -c1-19)
     JST_TS=$(date -j -v+9H -f "%Y-%m-%d %H:%M:%S" "$UTC_TS" "+%m/%d %H:%M" 2>/dev/null || echo "$UTC_TS")
-    LINE1=$(echo "$MSG" | cut -c1-50)
-    LINE2=$(echo "$MSG" | cut -c51-)
+    LINE1=$(echo "$MSG" | cut -c1-70)
+    LINE2=$(echo "$MSG" | cut -c71-140)
+    LINE3=$(echo "$MSG" | cut -c141-)
     printf "  %-14s | %s\n" "$JST_TS" "$LINE1"
     if [ -n "$LINE2" ]; then
       printf "  %-14s | %s\n" "" "$LINE2"
+    fi
+    if [ -n "$LINE3" ]; then
+      printf "  %-14s | %s\n" "" "$LINE3"
     fi
   done
 else
