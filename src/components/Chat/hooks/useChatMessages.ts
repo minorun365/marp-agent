@@ -308,7 +308,7 @@ export function useChatMessages({
           // ストリーム中のエラーイベント（バックエンドが{type:"error"}を送信）
           console.error('Agent error:', error);
           const errorMessage = error instanceof Error ? error.message : String(error);
-          const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
+          const isModelNotAvailable = errorMessage.includes('model identifier is invalid') || errorMessage.includes('Model not found');
           const displayMessage = isModelNotAvailable
             ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE
             : MESSAGES.ERROR;
@@ -346,7 +346,7 @@ export function useChatMessages({
       console.error('Error:', error);
       const isIdleTimeout = error instanceof SSEIdleTimeoutError;
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const isModelNotAvailable = errorMessage.includes('model identifier is invalid');
+      const isModelNotAvailable = errorMessage.includes('model identifier is invalid') || errorMessage.includes('Model not found');
       const displayMessage = isIdleTimeout
         ? MESSAGES.ERROR_MODEL_THROTTLED
         : isModelNotAvailable
