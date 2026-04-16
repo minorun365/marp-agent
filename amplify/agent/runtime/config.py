@@ -3,7 +3,14 @@
 
 def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
-    if model_type == "opus":
+    if model_type == "opus4.7":
+        # Claude Opus 4.7
+        return {
+            "model_id": "us.anthropic.claude-opus-4-7",
+            "cache_prompt": "default",
+            "cache_tools": "default",
+        }
+    elif model_type == "opus":
         # Claude Opus 4.6
         return {
             "model_id": "us.anthropic.claude-opus-4-6-v1",
