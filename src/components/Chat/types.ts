@@ -1,4 +1,4 @@
-export type ModelType = 'sonnet' | 'opus' | 'opus4.7';
+export type ModelType = 'sonnet' | 'opus' /* | 'opus4.7' */;
 
 export interface ModelOption {
   value: ModelType;
@@ -9,7 +9,7 @@ export interface ModelOption {
 // モデル選択肢の定義（ここを増減するだけでUIが自動対応）
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'sonnet', label: 'Claude Sonnet 4.6', shortLabel: 'Sonnet 4.6' },
-  { value: 'opus4.7', label: 'Claude Opus 4.7', shortLabel: 'Opus 4.7' },
+  // { value: 'opus4.7', label: 'Claude Opus 4.7', shortLabel: 'Opus 4.7' },
 ];
 
 export interface ReferenceFile {
