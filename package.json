@@ -5,7 +5,7 @@
   "type": "module",
   "overrides": {
     "@aws-cdk/toolkit-lib": "1.14.0",
-    "@smithy/core": "^3.21.0"
+    "@smithy/core": "3.24.6"
   },
   "scripts": {
     "dev": "vite",
