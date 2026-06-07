@@ -139,26 +139,26 @@ SHARED_SLIDES_CERTIFICATE_ARN=
 
 ---
 
-## 派生版リポジトリへの変更反映
+## KAG社内版リポジトリへの変更反映
 
-派生版を別リポジトリで運用している場合、共通変更はマージではなく cherry-pick で反映する。派生版固有のテーマ、ドメイン、認証制限などをこの一般公開リポジトリへ混ぜないため。
+KAG社内版は別リポジトリで運用している。共通変更はマージではなく cherry-pick で反映する。KAG社内版固有のテーマ、ドメイン、認証制限などをこの一般公開リポジトリへ混ぜないため。
 
 ```
 ~/git/minorun365/
 ├── marp-agent/             # 一般公開版
-└── marp-agent-variant/     # 派生版（必要な場合のみ）
+└── marp-agent-kag/         # KAG社内版
 ```
 
 ### 反映例
 
 ```bash
-# 一般公開版で作業後、派生版に反映
-cd ../marp-agent-variant
+# 一般公開版で作業後、KAG社内版に反映
+cd ../marp-agent-kag
 git cherry-pick <commit-hash>
 git push origin main
 ```
 
-**注意**: 派生版のデプロイ先、AWS アカウント ID、実際のドメイン、Role ARN などの具体値は公開ドキュメントへ書かない。
+**注意**: 公開リポジトリには、一般公開版やKAG社内版の実際の AWS アカウント ID、User Pool ID、証明書 ARN、Role ARN などの具体値は書かない。KAG社内版の運用方針や反映手順は記載してよい。
 
 ---
 

@@ -167,7 +167,7 @@ encoded_text = urllib.parse.quote(tweet_text, safe='')
 ### 運用手順
 
 1. `src/components/Chat.tsx` にバナーを追加
-2. コミット & main と必要な派生版へ反映
+2. コミット & main と必要なKAG社内版へ反映
 3. 不要になったらバナーを削除してpush
 
 ---

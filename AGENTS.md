@@ -169,20 +169,20 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 - コミットメッセージは **1行の日本語でシンプルに**
 - `Co-Authored-By: Codex` などの **AI協働の痕跡は入れない**
 
-## 派生版環境（別リポジトリ）
+## KAG社内版環境（別リポジトリ）
 
-派生版は完全に別のGitHubリポジトリで管理する。公開リポジトリには、派生版の実リポジトリ名、デプロイ先アカウント、実ドメイン、IAM Role ARN などの具体値を書かない。
+KAG社内版は完全に別のGitHubリポジトリ（`minorun365/marp-agent-kag`）で管理されている（ローカル: `../marp-agent-kag`）。
 
-派生版に変更を反映する際は、**派生版リポジトリに移動してチェリーピック** する：
+KAG社内版に変更を反映する際は、**KAG社内版リポジトリに移動してチェリーピック** する：
 
 ```bash
-cd ../marp-agent-variant
+cd ../marp-agent-kag
 git fetch upstream
 git cherry-pick <commit-hash>
 git push origin main
 ```
 
-**注意**: 派生版固有のドキュメントや設定は派生版リポジトリ側だけに保持する。
+**注意**: 公開リポジトリには、実際の AWS アカウントID、User Pool ID、証明書ARN、IAM Role ARN などの具体値を書かない。KAG社内版固有の設定やデプロイ先詳細は KAG社内版リポジトリ側だけに保持する。
 
 ## リリース管理（セマンティックバージョニング）
 
@@ -229,4 +229,4 @@ EOF
 
 - ドキュメントのみの変更
 - CI/CD・開発環境の設定変更
-- **派生版ブランチ**（このリポジトリではリリースを作成しない）
+- **KAG社内版リポジトリ**（このリポジトリではリリースを作成しない）
