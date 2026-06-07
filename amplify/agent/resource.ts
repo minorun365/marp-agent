@@ -18,12 +18,13 @@ interface MarpAgentProps {
   userPool?: IUserPool;
   userPoolClient?: IUserPoolClient;
   nameSuffix?: string;
+  runtimeNamePrefix?: string;
   sharedSlidesBucket?: s3.IBucket;
   sharedSlidesDistributionDomain?: string;
   sharedSlidesPublicDomain?: string;
 }
 
-export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, sharedSlidesBucket, sharedSlidesDistributionDomain, sharedSlidesPublicDomain }: MarpAgentProps) {
+export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, runtimeNamePrefix, sharedSlidesBucket, sharedSlidesDistributionDomain, sharedSlidesPublicDomain }: MarpAgentProps) {
   // 環境判定: sandbox（ローカル）vs 本番（Amplify Console）
   const isSandbox = !process.env.AWS_BRANCH;
 
@@ -68,7 +69,8 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, s
     : undefined;
 
   // 環境ごとのランタイム名（例: marp_agent_dev, marp_agent_main）
-  const runtimeName = nameSuffix ? `marp_agent_${nameSuffix}` : 'marp_agent';
+  const runtimePrefix = (runtimeNamePrefix || 'marp_agent').replace(/[^a-zA-Z0-9_]/g, '_');
+  const runtimeName = nameSuffix ? `${runtimePrefix}_${nameSuffix}` : runtimePrefix;
 
   // AgentCore Runtime作成
   const runtime = new agentcore.Runtime(stack, 'MarpAgentRuntime', {

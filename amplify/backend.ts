@@ -1,22 +1,66 @@
 import 'dotenv/config';
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
+import { isUserMigrationEnabled } from './auth/user-migration/config';
+import { userMigration } from './auth/user-migration/resource';
 import { createMarpAgent } from './agent/resource';
 import { SharedSlidesConstruct } from './storage/resource';
+import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cr from 'aws-cdk-lib/custom-resources';
 
 // 環境判定
 // - Sandbox: AWS_BRANCHが未定義
 // - 本番/ステージング: AWS_BRANCHにブランチ名が設定される
 const isSandbox = !process.env.AWS_BRANCH;
+const enableUserMigration = isUserMigrationEnabled();
+const projectTagValue = process.env.PROJECT_TAG_VALUE?.trim();
 
-const backend = defineBackend({
-  auth,
-});
+const backend = defineBackend(enableUserMigration ? { auth, userMigration } : { auth });
+const authResources = (backend.auth as unknown as {
+  resources: {
+    userPool: cognito.UserPool;
+    userPoolClient: cognito.UserPoolClient;
+  };
+}).resources;
 
 // AgentCoreスタックを作成
 const agentCoreStack = backend.createStack('AgentCoreStack');
+
+if (projectTagValue) {
+  const app = cdk.App.of(agentCoreStack);
+  if (app) {
+    cdk.Tags.of(app).add('Project', projectTagValue);
+  }
+}
+
+if (enableUserMigration) {
+  const migrationResources = (backend as unknown as {
+    userMigration: {
+      resources: {
+        lambda: {
+          addToRolePolicy: (statement: iam.PolicyStatement) => void;
+        };
+      };
+    };
+  }).userMigration.resources;
+
+  migrationResources.lambda.addToRolePolicy(new iam.PolicyStatement({
+    actions: ['sts:AssumeRole'],
+    resources: [process.env.OLD_ACCOUNT_ROLE_ARN!],
+  }));
+
+  // Migration Triggerにパスワードを渡すため、新UserPool側だけ一時的に有効化する。
+  const cfnUserPoolClient = authResources.userPoolClient.node
+    .defaultChild as cognito.CfnUserPoolClient;
+  cfnUserPoolClient.explicitAuthFlows = [
+    'ALLOW_CUSTOM_AUTH',
+    'ALLOW_USER_PASSWORD_AUTH',
+    'ALLOW_USER_SRP_AUTH',
+    'ALLOW_REFRESH_TOKEN_AUTH',
+  ];
+}
 
 // nameSuffix の決定
 // - 本番: AWS_BRANCH を使用（Runtime名に使えない文字をサニタイズ）
@@ -44,9 +88,10 @@ const sharedSlides = new SharedSlidesConstruct(agentCoreStack, 'SharedSlides', {
 // Marp Agentを作成（Cognito認証統合）
 const { runtime } = createMarpAgent({
   stack: agentCoreStack,
-  userPool: backend.auth.resources.userPool,
-  userPoolClient: backend.auth.resources.userPoolClient,
+  userPool: authResources.userPool,
+  userPoolClient: authResources.userPoolClient,
   nameSuffix,
+  runtimeNamePrefix: process.env.AGENT_RUNTIME_PREFIX,
   sharedSlidesBucket: sharedSlides.bucket,
   sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
   sharedSlidesPublicDomain: sharedSlides.publicDomainName,
@@ -68,7 +113,7 @@ if (isSandbox) {
   const testUserPassword = process.env.TEST_USER_PASSWORD;
 
   if (testUserEmail && testUserPassword) {
-    const userPool = backend.auth.resources.userPool;
+    const userPool = authResources.userPool;
 
     // テストユーザーを作成（CfnUserPoolUser）
     const testUser = new cognito.CfnUserPoolUser(agentCoreStack, 'TestUser', {

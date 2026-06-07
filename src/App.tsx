@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Authenticator } from '@aws-amplify/ui-react';
+import { signIn } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
@@ -11,6 +12,7 @@ import type { ShareResult } from './hooks/useAgentCore';
 
 // モック使用フラグ（ローカル開発用：認証スキップ＆モックAPI）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
+const useUserPasswordAuth = import.meta.env.VITE_USE_USER_PASSWORD_AUTH === 'true';
 
 type Tab = 'chat' | 'preview';
 
@@ -70,7 +72,17 @@ function App() {
   }
 
   return (
-    <Authenticator components={authComponents}>
+    <Authenticator
+      components={authComponents}
+      services={useUserPasswordAuth
+        ? {
+            handleSignIn: (input) => signIn({
+              ...input,
+              options: { authFlowType: 'USER_PASSWORD_AUTH' },
+            }),
+          }
+        : undefined}
+    >
       {({ signOut }) => <MainApp signOut={signOut} />}
     </Authenticator>
   );
