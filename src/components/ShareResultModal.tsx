@@ -75,7 +75,7 @@ export function ShareResultModal({ isOpen, url, expiresAt, onClose }: ShareResul
           </button>
           <button
             onClick={handleShareToX}
-            className="flex-1 btn-kag text-white py-2 rounded-lg"
+            className="flex-1 btn-brand text-white py-2 rounded-lg"
           >
             Xでシェア
           </button>

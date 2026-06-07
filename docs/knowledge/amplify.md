@@ -52,6 +52,48 @@ npm install --save-dev @types/aws-lambda
 
 ---
 
+## Cognito User Migration Trigger
+
+別の Cognito User Pool から既存ユーザーを段階的に移す場合は、Cognito の User Migration Trigger を使う。旧 User Pool は残したまま、新環境で再ログインしたユーザーだけを新 User Pool に作成できるため、全ユーザーの一括移行やパスワード再設定を避けられる。
+
+### 有効化条件
+
+このリポジトリでは、次の環境変数がすべて設定されている場合のみ User Migration Trigger を作成する。
+
+| 環境変数 | 用途 |
+|----------|------|
+| `OLD_USER_POOL_ID` | 移行元 User Pool ID |
+| `OLD_USER_POOL_CLIENT_ID` | 移行元 App Client ID |
+| `OLD_ACCOUNT_ROLE_ARN` | 移行元 Cognito を読むために AssumeRole する IAM Role ARN |
+
+未設定の環境ではトリガーを作らないため、通常の新規デプロイやローカル sandbox には影響しない。
+
+### 認証フロー
+
+1. 新環境の Cognito でメールアドレスとパスワードによるログインを試行する
+2. 新 User Pool にユーザーが存在しない場合、User Migration Trigger が起動する
+3. Lambda が `OLD_ACCOUNT_ROLE_ARN` を AssumeRole して移行元 Cognito に問い合わせる
+4. `ADMIN_USER_PASSWORD_AUTH` で旧パスワードを検証する
+5. 認証できた場合のみ、メールアドレスと `email_verified` を新 User Pool に登録する
+
+フロントエンドは、移行期間だけ `VITE_USE_USER_PASSWORD_AUTH=true` にして `USER_PASSWORD_AUTH` を使う。これにより、Cognito が User Migration Trigger にパスワードを渡せる。
+
+### IAM と旧 User Pool 側の条件
+
+- 移行元アカウントに、移行先 Lambda から AssumeRole できる IAM Role を作る
+- その Role には移行元 User Pool への `cognito-idp:AdminInitiateAuth` と `cognito-idp:AdminGetUser` のみを許可する
+- 移行元 App Client では `ALLOW_ADMIN_USER_PASSWORD_AUTH` を有効にする
+- 旧 User Pool は削除せず、移行期間中は参照元として残す
+
+### 注意点
+
+- User Migration Trigger は初回ログイン時の移行なので、ログインしないユーザーは新 User Pool に作成されない
+- `ForgotPassword` 起点でもユーザー属性を移せるが、パスワード再設定の体験は Cognito の標準フローに従う
+- 移行が完了したと判断するまでは、旧 User Pool と AssumeRole 用 IAM Role を残しておく
+- 公開ドキュメントには実際の User Pool ID、App Client ID、AWS Account ID、Role ARN を書かない
+
+---
+
 ## Amplify UI Authenticatorのカスタマイズ
 
 Cognito認証画面のヘッダー/フッターをカスタマイズして、アプリ名やメールアドレスの利用目的を表示できる。
@@ -145,10 +187,9 @@ const authComponents = {
 
 ### 設定済み環境変数
 
-| ブランチ | 環境変数 |
-|----------|----------|
-| main | `AMPLIFY_DIFF_DEPLOY=true` |
-| kag | `AMPLIFY_DIFF_DEPLOY=true` |
+| 対象 | 環境変数 |
+|------|----------|
+| デプロイ対象ブランチ | `AMPLIFY_DIFF_DEPLOY=true` |
 
 ### 動作
 
@@ -169,7 +210,7 @@ git commit -m "ドキュメント更新 [skip-cd]"
 
 ```bash
 # 既存の環境変数を確認してからマージして更新すること
-aws amplify update-branch --app-id d3i0gx3tizcqc1 --branch-name main \
+aws amplify update-branch --app-id {appId} --branch-name {branch} \
   --environment-variables AMPLIFY_DIFF_DEPLOY=true --region us-east-1
 ```
 
@@ -228,14 +269,15 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 
 ### 独自ドメイン切り替え時のハマりどころ
 
-共有用 CloudFront の独自ドメインを branch 間で切り替えるときは、環境変数の更新だけでは足りない。
+共有用 CloudFront の独自ドメインを branch や AWS アカウント間で切り替えるときは、環境変数の更新だけでは足りない。
 
 1. `aws amplify get-branch` で対象 branch の `SHARED_SLIDES_PUBLIC_DOMAIN` / `SHARED_SLIDES_CERTIFICATE_ARN` を確認する
 2. `customOutputs.sharedSlidesPublicDomain` と `sharedSlidesDistributionDomain` を見て、デプロイ後に何が実際に反映されたか確認する
-3. 同じ独自ドメインを持つ別 branch がある場合は、先にそちらを再デプロイして CloudFront の CNAME を解放する
-4. その後で移行先 branch を再デプロイする
+3. 同じ独自ドメインを持つ旧環境がある場合は、先にそちらの環境変数を外して再デプロイし、CloudFront の alternate domain name を解放する
+4. 移行先環境で `SHARED_SLIDES_PUBLIC_DOMAIN` と、移行先 AWS アカウントの `us-east-1` ACM 証明書 ARN を設定して再デプロイする
+5. Route53 の Alias を `customOutputs.sharedSlidesDistributionDomain` に切り替える
 
-今回のケースでは、プレビュー branch にだけ独自ドメイン用の環境変数が入っていて、`main` には入っていなかったため、本番の共有URLだけ CloudFront 生ドメインのままだった。
+CloudFront の alternate domain name は同時に1つの distribution にしか付けられない。旧環境の Distribution が `Deployed` になり、Aliases が空になってから移行先を更新すると失敗しにくい。
 
 ### 環境変数を外すときの注意
 

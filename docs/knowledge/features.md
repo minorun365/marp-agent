@@ -167,7 +167,7 @@ encoded_text = urllib.parse.quote(tweet_text, safe='')
 ### 運用手順
 
 1. `src/components/Chat.tsx` にバナーを追加
-2. コミット & 両ブランチにpush（mainとkag）
+2. コミット & main と必要な派生版へ反映
 3. 不要になったらバナーを削除してpush
 
 ---
@@ -241,13 +241,15 @@ import { SharedSlidesConstruct } from './storage/resource';
 // カスタムスタックを作成
 const sharedSlidesStack = backend.createStack('SharedSlidesStack');
 const sharedSlides = new SharedSlidesConstruct(sharedSlidesStack, 'SharedSlides', {
-  nameSuffix,
+  publicDomainName: process.env.SHARED_SLIDES_PUBLIC_DOMAIN,
+  certificateArn: process.env.SHARED_SLIDES_CERTIFICATE_ARN,
 });
 
 // フロントエンドに出力
 backend.addOutput({
   custom: {
     sharedSlidesDistributionDomain: sharedSlides.distribution.distributionDomainName,
+    sharedSlidesPublicDomain: sharedSlides.publicDomainName,
   },
 });
 ```
@@ -293,34 +295,39 @@ marp slide.md --image png -o slide.png
 <meta name="twitter:card" content="summary_large_image">
 ```
 
-### 独自ドメイン運用メモ（`slides.pawapo.minoruonda.com`）
+### 独自ドメイン運用メモ
 
 共有URLを独自ドメイン化する場合は、ユーザーに見せるホスト名と実際の配信用 CloudFront ドメインを分けて扱う。
 
 | 用途 | 例 | 使いどころ |
 |------|----|------------|
-| 公開URL / OGP 用ドメイン | `slides.pawapo.minoruonda.com` | ユーザーに見せるURL、`og:url`、`og:image` |
+| 公開URL / OGP 用ドメイン | `slides.example.com` | ユーザーに見せるURL、`og:url`、`og:image` |
 | 配信用 CloudFront ドメイン | `dxxxxxxxxxxxx.cloudfront.net` | Route53 Alias の向き先、CloudFront 実体 |
 
 実装上は `SHARED_SLIDES_PUBLIC_DOMAIN` を優先し、未設定時のみ `distributionDomainName` にフォールバックさせると安全。
 
-### Amplify ブランチ環境での切り替え手順
+### Amplify 環境での切り替え手順
 
-1. 移行先ブランチに `SHARED_SLIDES_PUBLIC_DOMAIN` と `SHARED_SLIDES_CERTIFICATE_ARN` を設定する
-2. 既に同じ独自ドメインを持っているプレビュー branch からその設定を外す
-3. プレビュー branch を再デプロイして CloudFront の alternate domain name を解放する
-4. 移行先 branch を再デプロイして独自ドメインを取得する
-5. Route53 の `A` / `AAAA` Alias を移行先の `sharedSlidesDistributionDomain` に切り替える
-6. `customOutputs.sharedSlidesPublicDomain` と実URLのHTTP 200を確認する
+1. 移行先環境の AWS アカウントで、公開ドメイン用の ACM 証明書を `us-east-1` に発行する
+2. Route53 hosted zone 側で ACM の DNS 検証 CNAME を追加し、証明書が `ISSUED` になるまで待つ
+3. 移行先ブランチに `SHARED_SLIDES_PUBLIC_DOMAIN` と `SHARED_SLIDES_CERTIFICATE_ARN` を設定する
+4. 既に同じ独自ドメインを持っている旧環境からその設定を外す
+5. 旧環境を再デプロイして CloudFront の alternate domain name を解放する
+6. 移行先環境を再デプロイして独自ドメインを取得する
+7. Route53 の `A` / `AAAA` Alias を移行先の `sharedSlidesDistributionDomain` に切り替える
+8. `customOutputs.sharedSlidesPublicDomain` と CloudFront の Alias / ViewerCertificate を確認する
+9. 既知の共有スライドURLがあれば HTTP 200 を確認する。ルートや存在しないパスは S3/CloudFront の 403 になることがあるため、TLS と CloudFront 到達確認として扱う
 
 ### 重要な制約
 
 - CloudFront の alternate domain name は同時に1つの distribution にしか付けられない
-- Amplify のブランチ環境変数は branch ごとに独立しており、プレビュー branch に入れた値は `main` に自動反映されない
+- Amplify のブランチ環境変数は branch ごとに独立しており、別 branch に入れた値は自動反映されない
 - 共有URL生成だけ直しても、Route53 が旧 distribution を向いていると実際の公開先は切り替わらない
 - OGP 用の `og:url` と `og:image` も公開ドメインに寄せないと、SNS 上では CloudFront 生URL が残る
 
 ### クロスアカウント構成の注意
 
 - CloudFront で使う ACM 証明書は distribution と同じ AWS アカウント、かつ `us-east-1` に置く
+- 別アカウントへ移行する場合、移行元アカウントの ACM 証明書 ARN は使い回せない
 - Route53 hosted zone が別アカウントでも、DNS 検証レコードと Alias レコードは hosted zone 側アカウントで追加すればよい
+- 公開ドキュメントには実際の AWS Account ID、証明書 ARN、Distribution ID、Hosted Zone ID を書かない

@@ -37,7 +37,7 @@ export function ShareConfirmModal({ isOpen, onConfirm, onCancel, isSharing }: Sh
           <button
             onClick={onConfirm}
             disabled={isSharing}
-            className="btn-kag text-white px-4 py-2 rounded-lg disabled:opacity-50"
+            className="btn-brand text-white px-4 py-2 rounded-lg disabled:opacity-50"
           >
             {isSharing ? '公開中...' : '公開する'}
           </button>

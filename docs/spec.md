@@ -14,7 +14,7 @@
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search, output_slide, generate_tweet_url |
 | インフラ | リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
-| インフラ | モデル | Claude Sonnet 4.5 |
+| インフラ | モデル | Claude Sonnet 4.6 |
 | 認証 | スコープ | 誰でもサインアップ可能（本番時） |
 
 ---
@@ -285,7 +285,7 @@ theme: gradient
 [ブラウザ] ←→ [React + Tailwind] ←SSE→ [AgentCore Runtime]
                                               │
                                               ├── Strands Agent (Python)
-                                              ├── Claude Sonnet 4.5
+                                              ├── Claude Sonnet 4.6
                                               └── Marp CLI (PDF変換)
 ```
 
@@ -298,6 +298,7 @@ theme: gradient
 | Bedrockモデル | リージョンに応じて自動判定（`us.` or `jp.`プレフィックス） |
 | プロンプトキャッシュ | `cache_prompt="default"`, `cache_tools="default"` |
 | 認証 | Cognito（本番のみ） |
+| 共有スライド | S3 + CloudFront OAC（7日後自動削除） |
 
 ### フロントエンド
 
@@ -369,6 +370,20 @@ const invoke = useMock ? invokeAgentMock : invokeAgent;
 - 誰でもサインアップ可能
 - メール確認必須
 - AgentCore RuntimeのauthorizerConfigurationでCognito統合
+- 既存 User Pool からの段階移行が必要な環境では、User Migration Trigger を任意で有効化する
+
+### Cognito User Migration Trigger（任意）
+
+別環境の既存ユーザーを再登録なしで移す場合、次の環境変数をすべて設定したときだけ User Migration Trigger を作成する。
+
+| 環境変数 | 説明 |
+|----------|------|
+| `OLD_USER_POOL_ID` | 移行元 User Pool ID |
+| `OLD_USER_POOL_CLIENT_ID` | 移行元 App Client ID |
+| `OLD_ACCOUNT_ROLE_ARN` | 移行元 Cognito を読むための AssumeRole 先 |
+| `VITE_USE_USER_PASSWORD_AUTH` | フロントエンドで `USER_PASSWORD_AUTH` を使うかどうか |
+
+未設定の環境では通常の Cognito 認証として動作する。公開ドキュメントには実際の User Pool ID、App Client ID、AWS Account ID、Role ARN を書かない。
 
 ### 認証画面のカスタマイズ
 
@@ -573,13 +588,15 @@ Amplify Console → **Environment variables** で設定:
 
 | 変数名 | 説明 |
 |--------|------|
-| `TAVILY_API_KEY` | Web検索API用（1つ目） |
-| `TAVILY_API_KEY2` | Web検索API用（2つ目、フォールバック） |
-| `TAVILY_API_KEY3` | Web検索API用（3つ目、フォールバック） |
+| `TAVILY_API_KEYS` | Web検索API用。カンマ区切りで複数指定するとフォールバックする |
+| `SHARED_SLIDES_PUBLIC_DOMAIN` | 共有スライドの公開用独自ドメイン（任意） |
+| `SHARED_SLIDES_CERTIFICATE_ARN` | 共有スライド用 CloudFront 証明書ARN（任意、`us-east-1`） |
+| `OLD_USER_POOL_ID` / `OLD_USER_POOL_CLIENT_ID` / `OLD_ACCOUNT_ROLE_ARN` | Cognito User Migration Trigger 用（任意） |
 
 **Amplify環境変数の更新時の注意事項**:
-- CLIで更新する場合、`aws amplify update-app --environment-variables` は**全変数を指定する必要がある**（指定しなかった変数は削除される）
+- CLIで更新する場合、`--environment-variables` は**全変数を指定する必要がある**（指定しなかった変数は削除される）
 - 環境変数の更新は**コードプッシュ（デプロイ）より先に実行**すること（デプロイ時にCDKが環境変数を参照するため）
+- 共有スライドの独自ドメインを使う場合、公開用ドメインと証明書ARNは必ず両方設定する
 
 ### 4. ブランチ連携
 
@@ -594,7 +611,7 @@ Amplify Console → **Environment variables** で設定:
 - [x] チャット応答のマークダウンレンダリング（react-markdown）
 - [ ] マークダウン編集機能（シンタックスハイライト付き）
 - [x] テーマ選択（Border / Gradient / Beam の3種類）
-- [x] モデル選択（Claude Sonnet 4.5 / Kimi K2 Thinking）
+- [x] モデル表示/選択基盤（Claude Sonnet 4.6、Opus 4.6はバックエンド設定のみ保持）
 - [ ] 画像アップロード・挿入
 - [ ] スライド履歴管理
 - [x] PPTX 出力対応（ドロップダウンでPDF/PPTX選択）

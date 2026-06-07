@@ -173,7 +173,7 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={isDownloading || slides.length === 0}
-              className="btn-kag text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              className="btn-brand text-white px-4 py-2 rounded-lg flex items-center gap-2"
             >
               {isDownloading ? 'ダウンロード中...' : 'エクスポート'}
               {!isDownloading && <span className="text-xs">▼</span>}

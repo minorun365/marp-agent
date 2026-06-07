@@ -63,17 +63,17 @@ html, body {
 }
 
 @theme {
-  --color-kag-blue: #0e0d6a;
-  --color-kag-blue-light: #1a1994;
-  --color-kag-blue-dark: #0a0a4d;
-  --color-kag-cyan: #4ecdc4;
+  --color-brand-blue: #0e0d6a;
+  --color-brand-blue-light: #1a1994;
+  --color-brand-blue-dark: #0a0a4d;
+  --color-brand-cyan: #4ecdc4;
 }
 
-.bg-kag-gradient {
+.bg-brand-gradient {
   background: linear-gradient(to right, #1a3a6e, #5ba4d9);
 }
 
-.btn-kag {
+.btn-brand {
   appearance: none;
   -webkit-appearance: none;
   background: linear-gradient(to right, #1a3a6e, #5ba4d9);
@@ -83,29 +83,29 @@ html, body {
   transition: all 0.2s;
 }
 
-.btn-kag:hover {
+.btn-brand:hover {
   background: linear-gradient(to right, #142d54, #4a93c8);
 }
 
-.btn-kag:focus {
+.btn-brand:focus {
   outline: none;
 }
 
-.btn-kag:focus-visible {
+.btn-brand:focus-visible {
   outline: 2px solid rgba(91, 164, 217, 0.45);
   outline-offset: 2px;
 }
 
-.btn-kag:disabled {
+.btn-brand:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.border-kag-gradient {
+.border-brand-gradient {
   border-color: #5ba4d9;
 }
 
-.text-kag-gradient {
+.text-brand-gradient {
   background: linear-gradient(to right, #1a3a6e, #5ba4d9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

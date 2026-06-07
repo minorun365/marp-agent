@@ -65,9 +65,9 @@ class TestGetDisplayWidth:
         # "ABC" = 3, "あいう" = 6 → 合計9
         assert _get_display_width("ABCあいう") == 9
 
-    def test_real_world_kag_line(self):
-        """実際にはみ出したKAGスライドの行（装飾除去後）"""
-        text = "2022年設立、KDDIグループのDX推進専門会社（母体は2016年発足の社内組織）"
+    def test_real_world_long_line(self):
+        """実際にはみ出した長い日本語スライド行（装飾除去後）"""
+        text = "2022年設立、企業グループのDX推進専門会社（母体は2016年発足の事業組織）"
         width = _get_display_width(text)
         # 半角48を超えるはず
         assert width > MAX_DISPLAY_WIDTH_PER_LINE
@@ -108,8 +108,8 @@ class TestStripMarkdownFormatting:
 
     def test_combined(self):
         """複合装飾"""
-        result = _strip_markdown_formatting("- **2022年設立**、KDDIグループ")
-        assert result == "2022年設立、KDDIグループ"
+        result = _strip_markdown_formatting("- **2022年設立**、企業グループ")
+        assert result == "2022年設立、企業グループ"
 
     def test_quote(self):
         """引用マーカーの除去"""
@@ -125,7 +125,7 @@ class TestEstimateVisualLines:
 
     def test_long_japanese_line(self):
         """長い日本語行は折り返しで2行以上"""
-        long_text = "- **2022年設立**、KDDIグループのDX推進専門会社（母体は2016年発足の社内組織）"
+        long_text = "- **2022年設立**、企業グループのDX推進専門会社（母体は2016年発足の事業組織）"
         assert _estimate_visual_lines(long_text) >= 2
 
     def test_table_row_no_wrap(self):
@@ -218,8 +218,8 @@ class TestCountContentLines:
     def test_long_line_counts_as_multiple(self):
         """長い行は折り返しで複数行としてカウント"""
         # 7行だが、各行が長くて折り返しが入るケース
-        long_bullet = "- **2022年設立**、KDDIグループのDX推進専門会社（母体は2016年発足の社内組織）"
-        content = f"## KAGとは\n\n{long_bullet}\n- 短い項目\n- 短い項目2"
+        long_bullet = "- **2022年設立**、企業グループのDX推進専門会社（母体は2016年発足の事業組織）"
+        content = f"## DX支援会社とは\n\n{long_bullet}\n- 短い項目\n- 短い項目2"
         line_count = _count_content_lines(content)
         # 見出し(1) + 長い行(2) + 短い行(1) + 短い行(1) = 5
         assert line_count > 4  # 折り返しで4行より多くなるはず
@@ -245,16 +245,16 @@ class TestCheckSlideOverflow:
         assert violations[0]['excess'] == 1
 
     def test_overflow_by_long_lines(self):
-        """行数は少ないが長い行の折り返しで超過するケース（実際のKAGスライド再現）"""
+        """行数は少ないが長い行の折り返しで超過するケース"""
         content = "\n".join([
-            "## KAGとは？",
+            "## DX支援会社とは？",
             "",
-            "> re-INNOVATE YOUR BUSINESS",
+            "> TRANSFORM YOUR BUSINESS",
             "",
-            "- **2022年設立**、KDDIグループのDX推進専門会社（母体は2016年発足の社内組織）",
-            "- 全社員がScrum Inc. Japan認定資格を保有、経営層を含む全員がスクラムの実践者",
+            "- **2022年設立**、企業グループのDX推進専門会社（母体は2016年発足の事業組織）",
+            "- 全社員がアジャイル認定資格を保有、経営層を含む全員がスクラムの実践者",
             "- 「サービスデザイン」「アジャイル開発」「クラウドネイティブ」の3本柱でDXを一貫支援",
-            "- 開発期間1/2・コスト1/3を実現した実績（auでんきアプリ開発事例）",
+            "- 開発期間1/2・コスト1/3を実現した実績（エネルギー系アプリ開発事例）",
             "- 高輪ゲートウェイシティ都市OS開発など、社会インフラ規模のプロジェクトも担う",
         ])
         md = f"---\nmarp: true\n---\n\n{content}"
@@ -322,7 +322,7 @@ class TestOutputSlideOverflowValidation:
         md = f"---\nmarp: true\n---\n\n{slide_content}"
 
         result = output_slide(markdown=md)
-        assert "ページあふれ検出" in result
+        assert "あふれ検出" in result
         assert get_generated_markdown() is None
 
     def test_overflow_rejected_second_time(self):
@@ -334,7 +334,7 @@ class TestOutputSlideOverflowValidation:
 
         output_slide(markdown=md)  # 1回目
         result = output_slide(markdown=md)  # 2回目
-        assert "ページあふれ検出" in result
+        assert "あふれ検出" in result
         assert get_generated_markdown() is None
 
     def test_overflow_accepted_after_max_retries(self):
@@ -360,7 +360,7 @@ class TestOutputSlideOverflowValidation:
         lines = ["## 見出し"] + [f"- 項目{i}" for i in range(1, 11)]
         overflow_md = f"---\nmarp: true\n---\n\n" + "\n".join(lines)
         result = output_slide(markdown=overflow_md)
-        assert "ページあふれ検出" in result
+        assert "あふれ検出" in result
 
     def test_retry_counter_resets_on_reset(self):
         """reset_generated_markdown でリトライカウンターもリセット"""
@@ -375,22 +375,22 @@ class TestOutputSlideOverflowValidation:
 
         # リセット後は1回目リジェクトとして扱われる（受入ではない）
         result = output_slide(markdown=md)
-        assert "ページあふれ検出" in result
+        assert "あふれ検出" in result
 
     def test_long_lines_overflow_rejected(self):
         """折り返しによる超過もリジェクトされる"""
         reset_generated_markdown()
         content = "\n".join([
-            "## KAGとは？",
+            "## DX支援会社とは？",
             "",
-            "> re-INNOVATE YOUR BUSINESS",
+            "> TRANSFORM YOUR BUSINESS",
             "",
-            "- **2022年設立**、KDDIグループのDX推進専門会社（母体は2016年発足の社内組織）",
-            "- 全社員がScrum Inc. Japan認定資格を保有、経営層を含む全員がスクラムの実践者",
+            "- **2022年設立**、企業グループのDX推進専門会社（母体は2016年発足の事業組織）",
+            "- 全社員がアジャイル認定資格を保有、経営層を含む全員がスクラムの実践者",
             "- 「サービスデザイン」「アジャイル開発」「クラウドネイティブ」の3本柱でDXを一貫支援",
-            "- 開発期間1/2・コスト1/3を実現した実績（auでんきアプリ開発事例）",
+            "- 開発期間1/2・コスト1/3を実現した実績（エネルギー系アプリ開発事例）",
             "- 高輪ゲートウェイシティ都市OS開発など、社会インフラ規模のプロジェクトも担う",
         ])
         md = f"---\nmarp: true\n---\n\n{content}"
         result = output_slide(markdown=md)
-        assert "ページあふれ検出" in result
+        assert "あふれ検出" in result

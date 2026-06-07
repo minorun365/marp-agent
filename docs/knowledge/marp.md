@@ -112,24 +112,24 @@ ul ul, ul ol, ol ul, ol ol {
 
 ```typescript
 // amplify/backend.ts
-const themeName = process.env.MARP_THEME || (branchName === 'kag' ? 'kag' : 'border');
+const themeName = process.env.MARP_THEME || 'border';
 ```
 
 | 環境 | コマンド | テーマ |
 |------|---------|--------|
 | sandbox | `npx ampx sandbox` | border |
-| sandbox | `MARP_THEME=kag npx ampx sandbox` | kag |
-| 本番 | Amplify Console | ブランチ名で自動判定 |
+| sandbox | `MARP_THEME=speee npx ampx sandbox` | speee |
+| 本番 | Amplify Console | 環境変数で指定 |
 
 **フロントエンド側**:
 ```typescript
 // SlidePreview.tsx
 import borderTheme from '../themes/border.css?raw';
-import kagTheme from '../themes/kag.css?raw';
+import speeeTheme from '../themes/speee.css?raw';
 import outputs from '../../amplify_outputs.json';
 
 const themeName = outputs.custom?.themeName || 'border';
-const themeMap = { border: borderTheme, kag: kagTheme };
+const themeMap = { border: borderTheme, speee: speeeTheme };
 const currentTheme = themeMap[themeName] || borderTheme;
 
 marp.themeSet.add(currentTheme);

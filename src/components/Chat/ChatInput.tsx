@@ -149,7 +149,7 @@ export function ChatInput({
             <button
               type="submit"
               disabled={isLoading || (!input.trim() && !selectedFile)}
-              className="btn-kag text-white px-4 sm:px-6 py-2 rounded-lg whitespace-nowrap"
+              className="btn-brand text-white px-4 sm:px-6 py-2 rounded-lg whitespace-nowrap"
             >
               送信
             </button>

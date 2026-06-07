@@ -18,31 +18,31 @@ export default defineConfig({
 @import "tailwindcss";
 
 @theme {
-  --color-kag-blue: #0e0d6a;
+  --color-brand-blue: #0e0d6a;
 }
 ```
 
 ### グラデーション定義
 ```css
 /* カスタムクラスとして定義 */
-.bg-kag-gradient {
+.bg-brand-gradient {
   background: linear-gradient(to right, #1a3a6e, #5ba4d9);
 }
 
-.btn-kag {
+.btn-brand {
   background: linear-gradient(to right, #1a3a6e, #5ba4d9);
   transition: all 0.2s;
 }
 
-.btn-kag:hover {
+.btn-brand:hover {
   background: linear-gradient(to right, #142d54, #4a93c8);
 }
 ```
 
 ### 使用方法
 ```jsx
-<header className="bg-kag-gradient">ヘッダー</header>
-<button className="btn-kag text-white">送信</button>
+<header className="bg-brand-gradient">ヘッダー</header>
+<button className="btn-brand text-white">送信</button>
 ```
 
 ---

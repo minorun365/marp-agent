@@ -5,7 +5,7 @@
 | 環境 | URL |
 |------|-----|
 | sandbox | http://localhost:5173 |
-| 本番 | https://main.d3i0gx3tizcqc1.amplifyapp.com/ |
+| 本番 | https://pawapo.minoruonda.com/ |
 
 ## テストケース
 
@@ -31,7 +31,7 @@
 
 ```bash
 # sandbox起動
-TAVILY_API_KEY=$(grep TAVILY_API_KEY .env | cut -d= -f2) npx ampx sandbox
+npm run sandbox
 
 # devサーバー起動（別ターミナル）
 npm run dev

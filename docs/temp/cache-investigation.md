@@ -96,9 +96,9 @@ UserWarning: cache_prompt is deprecated. Use SystemContentBlock with cachePoint 
 - 自動修正（ページあふれ検出→修正→再出力）も動作
 - エラーなし
 
-### kagへの反映
+### 派生版への反映
 
-- コミット: `1a39145`（marp-agent-kag）でチェリーピック済み
+- コミット: `1a39145`（派生版リポジトリ）でチェリーピック済み
 
 ---
 

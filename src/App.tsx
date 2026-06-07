@@ -196,7 +196,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* ヘッダー */}
-      <header className="bg-kag-gradient text-white px-4 md:px-6 py-3 md:py-4 shadow-md">
+      <header className="bg-brand-gradient text-white px-4 md:px-6 py-3 md:py-4 shadow-md">
         <div className="max-w-3xl mx-auto flex justify-between items-center gap-2">
           <div className="min-w-0">
             <h1 className="text-lg md:text-2xl font-bold truncate">
@@ -220,7 +220,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
             onClick={() => setActiveTab('chat')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'chat'
-                ? 'text-kag-gradient border-b-2 border-[#5ba4d9]'
+                ? 'text-brand-gradient border-b-2 border-[#5ba4d9]'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -230,7 +230,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
             onClick={() => setActiveTab('preview')}
             className={`px-6 py-3 font-medium transition-colors relative ${
               activeTab === 'preview'
-                ? 'text-kag-gradient border-b-2 border-[#5ba4d9]'
+                ? 'text-brand-gradient border-b-2 border-[#5ba4d9]'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
