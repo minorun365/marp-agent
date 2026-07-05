@@ -5,6 +5,7 @@ strands_tools の http_request はWebページ全文を返すため、
 このラッパーでは大きなレスポンスをHaikuで要約してコスト削減する。
 """
 
+import os
 import re
 
 import boto3
@@ -17,7 +18,10 @@ SUMMARIZE_THRESHOLD = 5000
 # Haiku要約用の入力上限（これ以上はHaikuにも送らない）
 HAIKU_INPUT_LIMIT = 50000
 
-HAIKU_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+HAIKU_MODEL_ID = os.getenv(
+    "BEDROCK_HAIKU_MODEL_ID",
+    "arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/pv7yoax0edh3",
+)
 
 _bedrock_client = None
 

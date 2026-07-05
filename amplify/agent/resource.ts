@@ -12,6 +12,9 @@ import type { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 // ESモジュールで__dirnameを取得
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const BEDROCK_SONNET_MODEL_ID = 'arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/xmbdb94a4tsr';
+const BEDROCK_OPUS_MODEL_ID = 'arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/07dhj89poos0';
+const BEDROCK_HAIKU_MODEL_ID = 'arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/pv7yoax0edh3';
 
 interface MarpAgentProps {
   stack: cdk.Stack;
@@ -84,6 +87,9 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
       SHARED_SLIDES_BUCKET: sharedSlidesBucket?.bucketName || '',
       CLOUDFRONT_DOMAIN: sharedSlidesDistributionDomain || '',
       SHARED_SLIDES_PUBLIC_DOMAIN: sharedSlidesPublicDomain || sharedSlidesDistributionDomain || '',
+      BEDROCK_SONNET_MODEL_ID,
+      BEDROCK_OPUS_MODEL_ID,
+      BEDROCK_HAIKU_MODEL_ID,
       // Observability（OTEL）設定
       AGENT_OBSERVABILITY_ENABLED: 'true',
       OTEL_PYTHON_DISTRO: 'aws_distro',
@@ -106,6 +112,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
     resources: [
       'arn:aws:bedrock:*::foundation-model/*',
       'arn:aws:bedrock:*:*:inference-profile/*',
+      'arn:aws:bedrock:*:*:application-inference-profile/*',
     ],
   }));
 

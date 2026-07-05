@@ -1,5 +1,7 @@
 """モデル設定・定数・システムプロンプト"""
 
+import os
+
 
 def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
@@ -13,14 +15,20 @@ def get_model_config(model_type: str = "sonnet") -> dict:
     if model_type == "opus":
         # Claude Opus 4.6
         return {
-            "model_id": "us.anthropic.claude-opus-4-6-v1",
+            "model_id": os.getenv(
+                "BEDROCK_OPUS_MODEL_ID",
+                "arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/07dhj89poos0",
+            ),
             "cache_prompt": "default",
             "cache_tools": "default",
         }
     else:
         # Claude Sonnet 4.6（デフォルト）
         return {
-            "model_id": "us.anthropic.claude-sonnet-4-6",
+            "model_id": os.getenv(
+                "BEDROCK_SONNET_MODEL_ID",
+                "arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/xmbdb94a4tsr",
+            ),
             "cache_prompt": "default",
             "cache_tools": "default",
         }
