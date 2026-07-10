@@ -1,4 +1,5 @@
-export type ModelType = 'sonnet' | 'opus' /* | 'opus4.7' */;
+// バックエンドが認識できるモデル型。現在無効なモデルも型からは削除しない。
+export type ModelType = 'sonnet' | 'opus';
 
 export interface ModelOption {
   value: ModelType;
@@ -6,10 +7,11 @@ export interface ModelOption {
   shortLabel?: string;  // セレクター閉じた状態で表示
 }
 
-// モデル選択肢の定義（ここを増減するだけでUIが自動対応）
+// UIで有効なモデル一覧。2件以上になるとChatInputのセレクターが自動表示される。
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'sonnet', label: 'Claude Sonnet 4.6', shortLabel: 'Sonnet 4.6' },
-  // { value: 'opus4.7', label: 'Claude Opus 4.7', shortLabel: 'Opus 4.7' },
+  // Opus 4.6を再有効化するときは、この行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
+  // { value: 'opus', label: 'Claude Opus 4.6', shortLabel: 'Opus 4.6' },
 ];
 
 export interface ReferenceFile {

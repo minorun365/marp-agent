@@ -61,20 +61,20 @@ tavily-python
 
 ```python
 # Claude Sonnet 4.6（デフォルト）
-"us.anthropic.claude-sonnet-4-6"
+"arn:aws:bedrock:us-east-1:<account-id>:application-inference-profile/<sonnet-profile-id>"
 
 # Claude Opus 4.6（バックエンドに設定あり、フロントでコメントアウト中）
-"us.anthropic.claude-opus-4-6-v1"
+"arn:aws:bedrock:us-east-1:<account-id>:application-inference-profile/<opus-profile-id>"
 ```
 
 ### モデル別の設定差異
 
 | モデル | クロスリージョン推論 | cache_prompt | cache_tools | 備考 |
 |--------|-------------------|--------------|-------------|------|
-| Claude Sonnet 4.6 | ✅ `us.` | `"default"` | `"default"` | デフォルト |
-| Claude Opus 4.6 | ✅ `us.` | `"default"` | `"default"` | フロントでコメントアウト中 |
+| Claude Sonnet 4.6 | ✅ AIP経由 | `"default"` | `"default"` | 現在有効 |
+| Claude Opus 4.6 | ✅ AIP経由 | `"default"` | `"default"` | 設定保持・現在無効 |
 
-過去に対応していたモデル（Haiku, Kimi K2）は削除済み。Opusはバックエンド（`config.py`）に設定が残っており、フロントエンド（`types.ts`）の `MODEL_OPTIONS` のコメントアウトを外すだけで再有効化可能。
+OpusはAIP設定を保持したまま無効化している。再有効化するときは、フロントエンド（`types.ts`）の `MODEL_OPTIONS` とバックエンド（`config.py`）の `ENABLED_MODEL_TYPES` にあるOpus行を同時にコメント解除する。
 
 ### フロントエンドからのモデル切り替え
 
@@ -82,7 +82,7 @@ tavily-python
 
 #### フロントエンド（types.ts / ChatInput.tsx）
 
-モデル選択肢は `types.ts` の `MODEL_OPTIONS` で一元管理。選択肢が1つでもモデル名を表示するためセレクターは常時表示。`shortLabel` でセレクター閉じた状態の短いラベルを指定できる。
+モデル選択肢は `types.ts` の `MODEL_OPTIONS` で一元管理。選択肢が1つならセレクターを非表示にし、2つ以上なら同じUIを自動表示する。`shortLabel` でセレクター閉じた状態の短いラベルを指定できる。
 
 ```typescript
 // types.ts - モデル選択肢の定義（ここを増減するだけでUIが自動対応）
@@ -96,11 +96,11 @@ export interface ModelOption {
 
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'sonnet', label: 'Claude Sonnet 4.6', shortLabel: 'Sonnet 4.6' },
-  // { value: 'opus', label: '高品質（Claude Opus 4.6）' },
+  // { value: 'opus', label: 'Claude Opus 4.6', shortLabel: 'Opus 4.6' },
 ];
 
-// ChatInput.tsx - MODEL_OPTIONSがあればセレクター表示（1つでもモデル名表示のため）
-const showModelSelector = MODEL_OPTIONS.length > 0;
+// ChatInput.tsx - 複数モデルを有効にしたときだけセレクター表示
+const showModelSelector = MODEL_OPTIONS.length > 1;
 const modelLabel = currentModel?.shortLabel ?? currentModel?.label ?? modelType;
 
 {showModelSelector && (
@@ -143,10 +143,18 @@ body: JSON.stringify({
 #### バックエンド（config.py）
 ```python
 def get_model_config(model_type: str = "sonnet") -> dict:
-    if model_type == "opus":
-        return {"model_id": "us.anthropic.claude-opus-4-6-v1", ...}
-    else:
-        return {"model_id": "us.anthropic.claude-sonnet-4-6", ...}
+    normalized_model_type = normalize_model_type(model_type)
+    return {
+        "model_id": _get_required_model_id(
+            MODEL_ENVIRONMENT_VARIABLES[normalized_model_type]
+        ),
+        ...,
+    }
+
+ENABLED_MODEL_TYPES = {
+    "sonnet",
+    # "opus",  # types.tsのOpus行と同時にコメント解除
+}
 
 def get_system_prompt(theme: str = "speee") -> str:
     """全テーマで統一ディレクティブを使用。themeはフロントマターに埋め込むのみ"""

@@ -36,7 +36,7 @@ export function ChatInput({
   onFileSelect,
 }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const showModelSelector = MODEL_OPTIONS.length > 0;
+  const showModelSelector = MODEL_OPTIONS.length > 1;
   const currentModel = MODEL_OPTIONS.find(m => m.value === modelType);
   const modelLabel = currentModel?.shortLabel ?? currentModel?.label ?? modelType;
   const isNearLimit = input.length > MAX_INPUT_LENGTH * 0.9;

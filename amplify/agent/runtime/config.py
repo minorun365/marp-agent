@@ -11,29 +11,33 @@ def _get_required_model_id(environment_variable: str) -> str:
     return model_id
 
 
+MODEL_ENVIRONMENT_VARIABLES = {
+    "sonnet": "BEDROCK_SONNET_MODEL_ID",
+    "opus": "BEDROCK_OPUS_MODEL_ID",
+}
+
+# Opusを再有効化するときは、types.tsのMODEL_OPTIONSと次の行を同時にコメント解除する。
+ENABLED_MODEL_TYPES = {
+    "sonnet",
+    # "opus",
+}
+
+
+def normalize_model_type(model_type: str | None) -> str:
+    """未有効のモデル指定をSonnetへ安全にフォールバックする。"""
+    return model_type if model_type in ENABLED_MODEL_TYPES else "sonnet"
+
+
 def get_model_config(model_type: str = "sonnet") -> dict:
-    """モデルタイプに応じた設定を返す"""
-    # if model_type == "opus4.7":
-    #     # Claude Opus 4.7
-    #     return {
-    #         "model_id": "us.anthropic.claude-opus-4-7",
-    #         "cache_prompt": "default",
-    #         "cache_tools": "default",
-    #     }
-    if model_type == "opus":
-        # Claude Opus 4.6
-        return {
-            "model_id": _get_required_model_id("BEDROCK_OPUS_MODEL_ID"),
-            "cache_prompt": "default",
-            "cache_tools": "default",
-        }
-    else:
-        # Claude Sonnet 4.6（デフォルト）
-        return {
-            "model_id": _get_required_model_id("BEDROCK_SONNET_MODEL_ID"),
-            "cache_prompt": "default",
-            "cache_tools": "default",
-        }
+    """有効化されているモデルの設定を返す。"""
+    normalized_model_type = normalize_model_type(model_type)
+    return {
+        "model_id": _get_required_model_id(
+            MODEL_ENVIRONMENT_VARIABLES[normalized_model_type]
+        ),
+        "cache_prompt": "default",
+        "cache_tools": "default",
+    }
 
 
 def get_system_prompt(theme: str = "speee") -> str:

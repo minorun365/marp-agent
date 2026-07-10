@@ -8,6 +8,7 @@ import os
 import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
 
+from config import normalize_model_type
 from tools import (
     web_search,
     output_slide,
@@ -74,7 +75,7 @@ async def invoke(payload, context=None):
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")
     current_markdown = payload.get("markdown", "")
-    model_type = payload.get("model_type", "sonnet")
+    model_type = normalize_model_type(payload.get("model_type"))
     session_id = getattr(context, 'session_id', None) if context else None
     theme = payload.get("theme", "border")
     reference_file = payload.get("reference_file")

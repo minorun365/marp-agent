@@ -59,12 +59,9 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    it('MODEL_OPTIONSが1つのときもセレクターが表示される', () => {
-      // 現在の設定（sonnetのみ）でもモデル名を表示するためセレクターは表示
+    it('MODEL_OPTIONSが1つのときセレクターを表示しない', () => {
       render(<ChatInput {...defaultProps} />);
-      const select = screen.getByTitle('使用するAIモデルを選択');
-      expect(select).toBeInTheDocument();
-      expect(select.querySelectorAll('option')).toHaveLength(1);
+      expect(screen.queryByTitle('使用するAIモデルを選択')).not.toBeInTheDocument();
     });
 
     it('MODEL_OPTIONSが複数のときセレクターが表示される', () => {
