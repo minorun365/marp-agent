@@ -3,6 +3,14 @@
 import os
 
 
+def _get_required_model_id(environment_variable: str) -> str:
+    """CDKから渡されたBedrockモデルIDを取得する。"""
+    model_id = os.getenv(environment_variable, "").strip()
+    if not model_id:
+        raise RuntimeError(f"{environment_variable} is required")
+    return model_id
+
+
 def get_model_config(model_type: str = "sonnet") -> dict:
     """モデルタイプに応じた設定を返す"""
     # if model_type == "opus4.7":
@@ -15,20 +23,14 @@ def get_model_config(model_type: str = "sonnet") -> dict:
     if model_type == "opus":
         # Claude Opus 4.6
         return {
-            "model_id": os.getenv(
-                "BEDROCK_OPUS_MODEL_ID",
-                "arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/07dhj89poos0",
-            ),
+            "model_id": _get_required_model_id("BEDROCK_OPUS_MODEL_ID"),
             "cache_prompt": "default",
             "cache_tools": "default",
         }
     else:
         # Claude Sonnet 4.6（デフォルト）
         return {
-            "model_id": os.getenv(
-                "BEDROCK_SONNET_MODEL_ID",
-                "arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/xmbdb94a4tsr",
-            ),
+            "model_id": _get_required_model_id("BEDROCK_SONNET_MODEL_ID"),
             "cache_prompt": "default",
             "cache_tools": "default",
         }

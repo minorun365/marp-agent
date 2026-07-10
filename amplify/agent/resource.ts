@@ -12,9 +12,10 @@ import type { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 // ESモジュールで__dirnameを取得
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const BEDROCK_SONNET_MODEL_ID = 'arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/xmbdb94a4tsr';
-const BEDROCK_OPUS_MODEL_ID = 'arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/07dhj89poos0';
-const BEDROCK_HAIKU_MODEL_ID = 'arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/pv7yoax0edh3';
+const BEDROCK_REGION = 'us-east-1';
+const BEDROCK_SONNET_PROFILE_ID = 'xmbdb94a4tsr';
+const BEDROCK_OPUS_PROFILE_ID = '07dhj89poos0';
+const BEDROCK_HAIKU_PROFILE_ID = 'pv7yoax0edh3';
 
 interface MarpAgentProps {
   stack: cdk.Stack;
@@ -30,6 +31,18 @@ interface MarpAgentProps {
 export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, runtimeNamePrefix, sharedSlidesBucket, sharedSlidesDistributionDomain, sharedSlidesPublicDomain }: MarpAgentProps) {
   // 環境判定: sandbox（ローカル）vs 本番（Amplify Console）
   const isSandbox = !process.env.AWS_BRANCH;
+  const applicationInferenceProfileArn = (profileId: string) => stack.formatArn({
+    service: 'bedrock',
+    region: BEDROCK_REGION,
+    resource: 'application-inference-profile',
+    resourceName: profileId,
+  });
+  const bedrockSonnetModelId = process.env.BEDROCK_SONNET_MODEL_ID?.trim()
+    || applicationInferenceProfileArn(BEDROCK_SONNET_PROFILE_ID);
+  const bedrockOpusModelId = process.env.BEDROCK_OPUS_MODEL_ID?.trim()
+    || applicationInferenceProfileArn(BEDROCK_OPUS_PROFILE_ID);
+  const bedrockHaikuModelId = process.env.BEDROCK_HAIKU_MODEL_ID?.trim()
+    || applicationInferenceProfileArn(BEDROCK_HAIKU_PROFILE_ID);
 
   let agentRuntimeArtifact: agentcore.AgentRuntimeArtifact;
   let containerImageBuild: ContainerImageBuild | undefined;
@@ -87,9 +100,9 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
       SHARED_SLIDES_BUCKET: sharedSlidesBucket?.bucketName || '',
       CLOUDFRONT_DOMAIN: sharedSlidesDistributionDomain || '',
       SHARED_SLIDES_PUBLIC_DOMAIN: sharedSlidesPublicDomain || sharedSlidesDistributionDomain || '',
-      BEDROCK_SONNET_MODEL_ID,
-      BEDROCK_OPUS_MODEL_ID,
-      BEDROCK_HAIKU_MODEL_ID,
+      BEDROCK_SONNET_MODEL_ID: bedrockSonnetModelId,
+      BEDROCK_OPUS_MODEL_ID: bedrockOpusModelId,
+      BEDROCK_HAIKU_MODEL_ID: bedrockHaikuModelId,
       // Observability（OTEL）設定
       AGENT_OBSERVABILITY_ENABLED: 'true',
       OTEL_PYTHON_DISTRO: 'aws_distro',

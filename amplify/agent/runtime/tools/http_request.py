@@ -18,11 +18,6 @@ SUMMARIZE_THRESHOLD = 5000
 # Haiku要約用の入力上限（これ以上はHaikuにも送らない）
 HAIKU_INPUT_LIMIT = 50000
 
-HAIKU_MODEL_ID = os.getenv(
-    "BEDROCK_HAIKU_MODEL_ID",
-    "arn:aws:bedrock:us-east-1:105778051969:application-inference-profile/pv7yoax0edh3",
-)
-
 _bedrock_client = None
 
 
@@ -31,6 +26,14 @@ def _get_bedrock_client():
     if _bedrock_client is None:
         _bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
     return _bedrock_client
+
+
+def _get_haiku_model_id() -> str:
+    """CDKから渡されたHaiku用BedrockモデルIDを取得する。"""
+    model_id = os.getenv("BEDROCK_HAIKU_MODEL_ID", "").strip()
+    if not model_id:
+        raise RuntimeError("BEDROCK_HAIKU_MODEL_ID is required")
+    return model_id
 
 
 def _html_to_text(html: str) -> str:
@@ -46,7 +49,7 @@ def _summarize_with_haiku(content: str) -> str:
     """Claude Haikuでコンテンツを要約"""
     client = _get_bedrock_client()
     response = client.converse(
-        modelId=HAIKU_MODEL_ID,
+        modelId=_get_haiku_model_id(),
         messages=[
             {
                 "role": "user",
