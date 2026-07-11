@@ -30,7 +30,7 @@ def _create_bedrock_model(model_type: str = "sonnet") -> BedrockModel:
 def get_or_create_agent(session_id: str | None, model_type: str = "sonnet", theme: str = "border") -> Agent:
     """セッションIDとモデルタイプとテーマに対応するAgentを取得または作成"""
     model_type = normalize_model_type(model_type)
-    system_prompt = get_system_prompt(theme)
+    system_prompt = get_system_prompt(theme, model_type)
 
     # セッションキーにモデルタイプとテーマを含める（切り替え時に新しいAgentを作成）
     cache_key = f"{session_id}:{model_type}:{theme}" if session_id else None

@@ -12,6 +12,7 @@ from config import normalize_model_type
 from tools import (
     web_search,
     output_slide,
+    configure_slide_validation,
     generate_tweet_url,
     get_generated_markdown,
     reset_generated_markdown,
@@ -201,6 +202,7 @@ async def invoke(payload, context=None):
         user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
 
     reset_generated_markdown()
+    configure_slide_validation(user_message, model_type)
     web_search_executed = False
     slide_outputted = False
     suppress_text = False

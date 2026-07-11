@@ -3,13 +3,20 @@
 import pytest
 
 import config
-from config import ENABLED_MODEL_TYPES, get_model_config, normalize_model_type
+from config import (
+    ENABLED_MODEL_TYPES,
+    get_model_config,
+    get_system_prompt,
+    normalize_model_type,
+)
 from tools.http_request import _get_haiku_model_id
 
 
-def test_sonnet_and_kimi_are_enabled():
-    assert ENABLED_MODEL_TYPES == {"sonnet", "kimi"}
+def test_sonnet5_kimi_and_glm_are_enabled():
+    assert ENABLED_MODEL_TYPES == {"sonnet", "sonnet5", "kimi", "glm"}
+    assert normalize_model_type("sonnet5") == "sonnet5"
     assert normalize_model_type("kimi") == "kimi"
+    assert normalize_model_type("glm") == "glm"
 
 
 @pytest.mark.parametrize("requested_model", [None, "opus", "opus4.7", "unknown"])
@@ -40,6 +47,30 @@ def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
     }
 
 
+def test_get_model_config_uses_sonnet5_with_prompt_cache(monkeypatch):
+    monkeypatch.setenv("BEDROCK_SONNET5_MODEL_ID", "sonnet5-profile-arn")
+
+    model_config = get_model_config("sonnet5")
+
+    assert model_config == {
+        "model_id": "sonnet5-profile-arn",
+        "cache_prompt": "default",
+        "cache_tools": "default",
+    }
+
+
+def test_get_model_config_uses_glm_without_prompt_cache(monkeypatch):
+    monkeypatch.setenv("BEDROCK_GLM_MODEL_ID", "zai.glm-5")
+
+    model_config = get_model_config("glm")
+
+    assert model_config == {
+        "model_id": "zai.glm-5",
+        "cache_prompt": None,
+        "cache_tools": None,
+    }
+
+
 def test_opus_profile_is_ready_for_reenable(monkeypatch):
     monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "opus"})
     monkeypatch.setenv("BEDROCK_OPUS_MODEL_ID", "opus-profile-arn")
@@ -61,6 +92,20 @@ def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch)
         get_model_config("kimi")
 
 
+def test_get_model_config_rejects_missing_sonnet5_environment_variable(monkeypatch):
+    monkeypatch.delenv("BEDROCK_SONNET5_MODEL_ID", raising=False)
+
+    with pytest.raises(RuntimeError, match="BEDROCK_SONNET5_MODEL_ID"):
+        get_model_config("sonnet5")
+
+
+def test_get_model_config_rejects_missing_glm_environment_variable(monkeypatch):
+    monkeypatch.delenv("BEDROCK_GLM_MODEL_ID", raising=False)
+
+    with pytest.raises(RuntimeError, match="BEDROCK_GLM_MODEL_ID"):
+        get_model_config("glm")
+
+
 def test_get_haiku_model_id_uses_environment_variable(monkeypatch):
     monkeypatch.setenv("BEDROCK_HAIKU_MODEL_ID", "haiku-profile-arn")
 
@@ -72,3 +117,33 @@ def test_get_haiku_model_id_rejects_missing_environment_variable(monkeypatch):
 
     with pytest.raises(RuntimeError, match="BEDROCK_HAIKU_MODEL_ID"):
         _get_haiku_model_id()
+
+
+def test_kimi_system_prompt_adds_slide_balance_rules():
+    prompt = get_system_prompt("speee", "kimi")
+
+    assert "指定枚数を増減しない" in prompt
+    assert "合計10" in prompt
+    assert "中タイトルを最大2枚" in prompt
+    assert "アジェンダ・目次・まとめ" in prompt
+    assert "根拠が与えられていない割合" in prompt
+
+
+def test_sonnet_system_prompt_does_not_add_kimi_rules():
+    prompt = get_system_prompt("speee", "sonnet")
+
+    assert "OSS系モデル向け" not in prompt
+    assert "theme: speee" in prompt
+
+
+def test_sonnet5_uses_the_same_system_prompt_as_sonnet46():
+    assert get_system_prompt("speee", "sonnet5") == get_system_prompt(
+        "speee", "sonnet"
+    )
+
+
+def test_glm_system_prompt_adds_oss_slide_rules():
+    prompt = get_system_prompt("speee", "glm")
+
+    assert "OSS系モデル向け" in prompt
+    assert "合計8" in prompt

@@ -1,5 +1,6 @@
 """output_slide ツールのユニットテスト"""
 from tools.output_slide import (
+    configure_slide_validation,
     output_slide,
     get_generated_markdown,
     reset_generated_markdown,
@@ -394,3 +395,68 @@ class TestOutputSlideOverflowValidation:
         md = f"---\nmarp: true\n---\n\n{content}"
         result = output_slide(markdown=md)
         assert "あふれ検出" in result
+
+
+class TestOutputSlideStructureValidation:
+    def test_rejects_wrong_requested_slide_count(self):
+        reset_generated_markdown()
+        configure_slide_validation("タイトル込み10枚で作って", "kimi")
+        slides = [f"## スライド{i}\n\n- 項目" for i in range(1, 12)]
+        md = "---\nmarp: true\n---\n" + "\n---\n".join(slides)
+
+        result = output_slide(markdown=md)
+
+        assert "11枚（指定は10枚）" in result
+        assert get_generated_markdown() is None
+
+    def test_rejects_unrequested_agenda(self):
+        reset_generated_markdown()
+        configure_slide_validation("提案資料を作って", "kimi")
+        md = "---\nmarp: true\n---\n## 本日のアジェンダ\n\n- 項目"
+
+        result = output_slide(markdown=md)
+
+        assert "アジェンダ・目次は指定されていません" in result
+
+    def test_allows_explicitly_requested_agenda(self):
+        reset_generated_markdown()
+        configure_slide_validation("アジェンダを含めて作って", "kimi")
+        md = "---\nmarp: true\n---\n## 本日のアジェンダ\n\n- 項目"
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
+    def test_rejects_kimi_bold_overuse_but_allows_sonnet(self):
+        md = "---\nmarp: true\n---\n## 課題\n\n- **項目1**：説明\n- **項目2**：説明"
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi")
+        kimi_result = output_slide(markdown=md)
+
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "sonnet")
+        sonnet_result = output_slide(markdown=md)
+
+        assert "太字が2か所" in kimi_result
+        assert sonnet_result == "スライドを出力しました。"
+
+    def test_rejects_three_consecutive_kimi_bullet_slides(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi")
+        slide = "## 見出し\n\n- 項目1\n- 項目2\n- 項目3"
+        md = "---\nmarp: true\n---\n" + "\n---\n".join([slide, slide, slide])
+
+        result = output_slide(markdown=md)
+
+        assert "bullets型が3枚連続" in result
+
+    def test_sonnet_keeps_existing_two_retry_limit(self):
+        reset_generated_markdown()
+        configure_slide_validation("10枚で作って", "sonnet")
+        md = "---\nmarp: true\n---\n## 1枚だけ"
+
+        output_slide(markdown=md)
+        output_slide(markdown=md)
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"

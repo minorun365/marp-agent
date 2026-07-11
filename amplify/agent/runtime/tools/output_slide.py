@@ -10,6 +10,9 @@ from strands import tool
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
 _generated_markdown: str | None = None
 _overflow_retry_count: int = 0
+_expected_slide_count: int | None = None
+_agenda_requested: bool = False
+_active_model_type: str = "sonnet"
 
 MAX_OVERFLOW_RETRIES = 2
 MAX_LINES_PER_SLIDE = 9
@@ -158,6 +161,87 @@ def _check_slide_overflow(markdown: str) -> list[dict]:
     return violations
 
 
+def configure_slide_validation(user_message: str, model_type: str) -> None:
+    """ユーザー指示とモデル種別に応じた出力検証を設定する。"""
+    global _expected_slide_count, _agenda_requested, _active_model_type
+    slide_counts = re.findall(r'(\d{1,2})\s*枚', user_message)
+    _expected_slide_count = int(slide_counts[-1]) if slide_counts else None
+    _agenda_requested = bool(
+        re.search(r'(アジェンダ|目次).{0,12}(作|追加|含)', user_message)
+    )
+    _active_model_type = model_type
+
+
+def _check_slide_structure(markdown: str) -> list[dict]:
+    """指定枚数・中タイトル数・モデル固有スタイルを検証する。"""
+    slides = _parse_slides(markdown)
+    violations = []
+
+    if _expected_slide_count is not None and len(slides) != _expected_slide_count:
+        violations.append({
+            'type': 'slide_count',
+            'expected': _expected_slide_count,
+            'actual': len(slides),
+        })
+
+    lead_count = sum(bool(re.search(r'_class:\s*lead', slide)) for slide in slides)
+    if _expected_slide_count is not None and _expected_slide_count <= 12 and lead_count > 2:
+        violations.append({
+            'type': 'lead_count',
+            'actual': lead_count,
+            'maximum': 2,
+        })
+
+    if not _agenda_requested:
+        agenda_slides = [
+            index
+            for index, slide in enumerate(slides, start=1)
+            if re.search(r'^#{1,3}\s+.*(アジェンダ|目次)', slide, re.MULTILINE)
+        ]
+        if agenda_slides:
+            violations.append({
+                'type': 'unrequested_agenda',
+                'slides': agenda_slides,
+            })
+
+    if _active_model_type in {'kimi', 'glm'}:
+        previous_pattern = None
+        consecutive_pattern_count = 0
+        for index, slide in enumerate(slides, start=1):
+            if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
+                previous_pattern = None
+                consecutive_pattern_count = 0
+                continue
+            bold_count = len(re.findall(r'\*\*.+?\*\*', slide))
+            if bold_count > 1:
+                violations.append({
+                    'type': 'bold_overuse',
+                    'slide_number': index,
+                    'count': bold_count,
+                })
+            if re.search(r'^\|.*\|$', slide, re.MULTILINE):
+                pattern = 'table'
+            elif re.search(r'^###\s+', slide, re.MULTILINE):
+                pattern = 'subheading'
+            elif len(re.findall(r'^[-*+]\s+', slide, re.MULTILINE)) >= 3:
+                pattern = 'bullets'
+            else:
+                pattern = 'prose'
+            if pattern == previous_pattern:
+                consecutive_pattern_count += 1
+            else:
+                previous_pattern = pattern
+                consecutive_pattern_count = 1
+            if consecutive_pattern_count >= 3:
+                violations.append({
+                    'type': 'pattern_repetition',
+                    'slide_number': index,
+                    'pattern': pattern,
+                })
+
+    return violations
+
+
 def get_generated_markdown() -> str | None:
     """生成されたマークダウンを取得"""
     return _generated_markdown
@@ -166,8 +250,12 @@ def get_generated_markdown() -> str | None:
 def reset_generated_markdown() -> None:
     """マークダウンをリセット"""
     global _generated_markdown, _overflow_retry_count
+    global _expected_slide_count, _agenda_requested, _active_model_type
     _generated_markdown = None
     _overflow_retry_count = 0
+    _expected_slide_count = None
+    _agenda_requested = False
+    _active_model_type = "sonnet"
 
 
 @tool
@@ -178,6 +266,7 @@ def output_slide(markdown: str) -> str:
 
     - フロントマター: `marp: true`, `theme: {テーマ名}`, `size: 16:9`, `paginate: true`
     - スライド区切り: `---`
+    - **総枚数【最優先】**: ユーザーが枚数を指定した場合、タイトル・中タイトル・参考文献・裏表紙をすべて含めて指定枚数ちょうどにする。出力前に必ず数える
     - 1枚目はタイトルスライド（`<!-- _class: top --><!-- _paginate: skip -->`付き、テキスト中央揃え）
     - **1スライドの行数**: 見出し＋本文すべて合わせて7〜8行を目標（9行が上限、このツールが自動検証）。3〜4行で終わらせない。1行が長いと折り返しで実質2行になるため、全角24文字（半角48文字）程度に抑える
     - **絵文字は使用禁止**（自動改行でレイアウト崩れ）
@@ -185,6 +274,7 @@ def output_slide(markdown: str) -> str:
 
     ## 構成テクニック
 
+    - **アジェンダ・目次**: ユーザーが明示した場合だけ作る。短い資料へ自動追加しない
     - **セクション区切り【必須】**: 3〜4枚ごとに `<!-- _class: lead -->` の中タイトルスライドを挿入
     - **スライドの表現パターン【重要】**: 同じパターンが2枚連続しないよう、以下A〜Eをローテーションする:
       - A. **箇条書き型**: `##` + 箇条書き5〜6項目
@@ -209,9 +299,10 @@ def output_slide(markdown: str) -> str:
     """
     global _generated_markdown, _overflow_retry_count
 
-    violations = _check_slide_overflow(markdown)
+    violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 
-    if violations and _overflow_retry_count < MAX_OVERFLOW_RETRIES:
+    retry_limit = 4 if _active_model_type in {'kimi', 'glm'} else MAX_OVERFLOW_RETRIES
+    if violations and _overflow_retry_count < retry_limit:
         _overflow_retry_count += 1
         details = []
         for v in violations:
@@ -223,9 +314,29 @@ def output_slide(markdown: str) -> str:
                 details.append(
                     f"  - スライド{v['slide_number']}: 表の横幅超過（{v['max_width']}文字、上限{MAX_TABLE_ROW_WIDTH}文字）"
                 )
+            elif v['type'] == 'slide_count':
+                details.append(
+                    f"  - 総枚数: {v['actual']}枚（指定は{v['expected']}枚）。内容を統合・分割して指定枚数ちょうどにする"
+                )
+            elif v['type'] == 'lead_count':
+                details.append(
+                    f"  - 中タイトル: {v['actual']}枚（上限{v['maximum']}枚）。余分な中タイトルを本文スライドへ統合する"
+                )
+            elif v['type'] == 'unrequested_agenda':
+                details.append(
+                    f"  - アジェンダ・目次は指定されていません（該当スライド: {v['slides']}）。削除する"
+                )
+            elif v['type'] == 'bold_overuse':
+                details.append(
+                    f"  - スライド{v['slide_number']}: 太字が{v['count']}か所。太字ラベルを外し、太字は最大1か所にする"
+                )
+            elif v['type'] == 'pattern_repetition':
+                details.append(
+                    f"  - スライド{v['slide_number']}: {v['pattern']}型が3枚連続。表・小見出し・本文型のいずれかへ変更する"
+                )
         violation_details = "\n".join(details)
         return (
-            f"あふれ検出！以下のスライドに問題があります：\n"
+            f"あふれ検出または構成違反！以下の問題があります：\n"
             f"{violation_details}\n"
             f"修正してから再度 output_slide を呼んでください。"
             f"（行数超過→内容を減らすか分割。表の横幅超過→列数を減らすかセル内容を短くする）"
