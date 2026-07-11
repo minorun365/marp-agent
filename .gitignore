@@ -43,6 +43,14 @@ uv.lock
 .env.local
 .env.*.local
 
+# Private operations (deployment accounts and local AWS profile mappings)
+.agents/skills/check-app-stats/
+.agents/skills/check-deploy-status/
+.agents/skills/start-dev/
+.claude/skills/check-app-stats/
+.claude/skills/check-deploy-status/
+.claude/skills/start-dev/
+
 # テストスクリーンショット
 tests/screenshots/*
 !tests/screenshots/.gitkeep

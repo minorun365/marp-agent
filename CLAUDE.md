@@ -137,6 +137,14 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 - **アプリレベルの環境変数**（`aws amplify get-app`）はブランチ更新で消えない
 - **ブランチレベルの環境変数**（`aws amplify get-branch`）は上書きされる
 
+## デプロイ先情報の取り扱い
+
+- このリポジトリが公開されていることと、本番環境のAWSアカウント所有者は別の情報として扱う。
+- ローカル開発用のAWS profile名、`package.json` のsandboxコマンド、または残存する旧リソースから、現行の本番デプロイ先を推測しない。
+- 本番環境を調査するときは、Git追跡対象外の運用設定を使い、AmplifyアプリのリポジトリURL・ブランチ・現行Runtimeを照合して対象を特定する。
+- AWSアカウントID、profile対応表、組織名とデプロイ先の関係、実リソースIDは、公開ファイル・コミットメッセージ・リリースノートへ記載しない。
+- これらの対応表を含む運用スキルはローカル専用とし、Gitへ追加しない。
+
 ## E2Eテスト手順
 
 コード変更後のE2Eテストは以下の手順で実施する。Chrome DevTools MCPを使用してブラウザ操作を自動化する。
