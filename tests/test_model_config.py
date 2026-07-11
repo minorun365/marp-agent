@@ -12,19 +12,22 @@ from config import (
 from tools.http_request import _get_haiku_model_id
 
 
-def test_sonnet5_kimi_and_glm_are_enabled():
-    assert ENABLED_MODEL_TYPES == {"sonnet", "sonnet5", "kimi", "glm"}
-    assert normalize_model_type("sonnet5") == "sonnet5"
+def test_sonnet_and_kimi_are_enabled():
+    assert ENABLED_MODEL_TYPES == {"sonnet", "kimi"}
     assert normalize_model_type("kimi") == "kimi"
-    assert normalize_model_type("glm") == "glm"
 
 
-@pytest.mark.parametrize("requested_model", [None, "opus", "opus4.7", "unknown"])
+@pytest.mark.parametrize(
+    "requested_model",
+    [None, "sonnet5", "glm", "opus", "opus4.7", "unknown"],
+)
 def test_disabled_model_falls_back_to_sonnet(requested_model):
     assert normalize_model_type(requested_model) == "sonnet"
 
 
-@pytest.mark.parametrize("requested_model", ["sonnet", "opus", "opus4.7"])
+@pytest.mark.parametrize(
+    "requested_model", ["sonnet", "sonnet5", "glm", "opus", "opus4.7"]
+)
 def test_get_model_config_uses_sonnet_while_opus_is_disabled(
     monkeypatch,
     requested_model,
@@ -48,6 +51,7 @@ def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
 
 
 def test_get_model_config_uses_sonnet5_with_prompt_cache(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sonnet5"})
     monkeypatch.setenv("BEDROCK_SONNET5_MODEL_ID", "sonnet5-profile-arn")
 
     model_config = get_model_config("sonnet5")
@@ -60,6 +64,7 @@ def test_get_model_config_uses_sonnet5_with_prompt_cache(monkeypatch):
 
 
 def test_get_model_config_uses_glm_without_prompt_cache(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "glm"})
     monkeypatch.setenv("BEDROCK_GLM_MODEL_ID", "zai.glm-5")
 
     model_config = get_model_config("glm")
@@ -93,6 +98,7 @@ def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch)
 
 
 def test_get_model_config_rejects_missing_sonnet5_environment_variable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sonnet5"})
     monkeypatch.delenv("BEDROCK_SONNET5_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_SONNET5_MODEL_ID"):
@@ -100,6 +106,7 @@ def test_get_model_config_rejects_missing_sonnet5_environment_variable(monkeypat
 
 
 def test_get_model_config_rejects_missing_glm_environment_variable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "glm"})
     monkeypatch.delenv("BEDROCK_GLM_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_GLM_MODEL_ID"):

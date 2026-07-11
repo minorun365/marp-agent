@@ -59,14 +59,14 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    it('Sonnet 4.6、Sonnet 5、Kimi K2.5、GLM 5を選択肢に表示する', () => {
+    it('Sonnet 4.6とKimi K2.5だけを選択肢に表示する', () => {
       render(<ChatInput {...defaultProps} />);
       const select = screen.getByTitle('使用するAIモデルを選択');
       expect(select).toBeInTheDocument();
       expect(screen.getByRole('option', { name: 'Claude Sonnet 4.6' })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'Claude Sonnet 5' })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: 'Kimi K2.5' })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'GLM 5' })).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: 'Claude Sonnet 5' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: 'GLM 5' })).not.toBeInTheDocument();
     });
 
     it('会話中はモデルセレクターが無効になる', () => {

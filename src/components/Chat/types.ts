@@ -10,9 +10,10 @@ export interface ModelOption {
 // UIで有効なモデル一覧。2件以上になるとChatInputのセレクターが自動表示される。
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'sonnet', label: 'Claude Sonnet 4.6', shortLabel: 'Sonnet 4.6' },
-  { value: 'sonnet5', label: 'Claude Sonnet 5', shortLabel: 'Sonnet 5' },
   { value: 'kimi', label: 'Kimi K2.5', shortLabel: 'Kimi K2.5' },
-  { value: 'glm', label: 'GLM 5', shortLabel: 'GLM 5' },
+  // 再検証時は、以下の行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
+  // { value: 'sonnet5', label: 'Claude Sonnet 5', shortLabel: 'Sonnet 5' },
+  // { value: 'glm', label: 'GLM 5', shortLabel: 'GLM 5' },
   // Opus 4.6を再有効化するときは、この行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
   // { value: 'opus', label: 'Claude Opus 4.6', shortLabel: 'Opus 4.6' },
 ];

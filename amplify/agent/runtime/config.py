@@ -22,9 +22,9 @@ MODEL_ENVIRONMENT_VARIABLES = {
 # UIのMODEL_OPTIONSと同じモデルだけを有効化する。
 ENABLED_MODEL_TYPES = {
     "sonnet",
-    "sonnet5",
     "kimi",
-    "glm",
+    # "sonnet5",
+    # "glm",
     # "opus",
 }
 
