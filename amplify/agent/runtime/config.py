@@ -13,12 +13,14 @@ def _get_required_model_id(environment_variable: str) -> str:
 
 MODEL_ENVIRONMENT_VARIABLES = {
     "sonnet": "BEDROCK_SONNET_MODEL_ID",
+    "kimi": "BEDROCK_KIMI_MODEL_ID",
     "opus": "BEDROCK_OPUS_MODEL_ID",
 }
 
-# Opusを再有効化するときは、types.tsのMODEL_OPTIONSと次の行を同時にコメント解除する。
+# UIのMODEL_OPTIONSと同じモデルだけを有効化する。
 ENABLED_MODEL_TYPES = {
     "sonnet",
+    "kimi",
     # "opus",
 }
 
@@ -31,12 +33,14 @@ def normalize_model_type(model_type: str | None) -> str:
 def get_model_config(model_type: str = "sonnet") -> dict:
     """有効化されているモデルの設定を返す。"""
     normalized_model_type = normalize_model_type(model_type)
+    uses_prompt_cache = normalized_model_type != "kimi"
     return {
         "model_id": _get_required_model_id(
             MODEL_ENVIRONMENT_VARIABLES[normalized_model_type]
         ),
-        "cache_prompt": "default",
-        "cache_tools": "default",
+        # Kimi K2.5はBedrockのプロンプトキャッシュに対応していない。
+        "cache_prompt": "default" if uses_prompt_cache else None,
+        "cache_tools": "default" if uses_prompt_cache else None,
     }
 
 

@@ -13,6 +13,7 @@ import type { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const BEDROCK_REGION = 'us-east-1';
+const BEDROCK_KIMI_MODEL_ID = 'moonshotai.kimi-k2.5';
 const BEDROCK_SONNET_PROFILE_ID = 'xmbdb94a4tsr';
 const BEDROCK_OPUS_PROFILE_ID = '07dhj89poos0';
 const BEDROCK_HAIKU_PROFILE_ID = 'pv7yoax0edh3';
@@ -39,6 +40,8 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
   });
   const bedrockSonnetModelId = process.env.BEDROCK_SONNET_MODEL_ID?.trim()
     || applicationInferenceProfileArn(BEDROCK_SONNET_PROFILE_ID);
+  const bedrockKimiModelId = process.env.BEDROCK_KIMI_MODEL_ID?.trim()
+    || BEDROCK_KIMI_MODEL_ID;
   const bedrockOpusModelId = process.env.BEDROCK_OPUS_MODEL_ID?.trim()
     || applicationInferenceProfileArn(BEDROCK_OPUS_PROFILE_ID);
   const bedrockHaikuModelId = process.env.BEDROCK_HAIKU_MODEL_ID?.trim()
@@ -101,6 +104,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
       CLOUDFRONT_DOMAIN: sharedSlidesDistributionDomain || '',
       SHARED_SLIDES_PUBLIC_DOMAIN: sharedSlidesPublicDomain || sharedSlidesDistributionDomain || '',
       BEDROCK_SONNET_MODEL_ID: bedrockSonnetModelId,
+      BEDROCK_KIMI_MODEL_ID: bedrockKimiModelId,
       BEDROCK_OPUS_MODEL_ID: bedrockOpusModelId,
       BEDROCK_HAIKU_MODEL_ID: bedrockHaikuModelId,
       // Observability（OTEL）設定

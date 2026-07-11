@@ -59,48 +59,18 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    it('MODEL_OPTIONSが1つのときセレクターを表示しない', () => {
+    it('Sonnet 4.6とKimi K2.5を選択肢に表示する', () => {
       render(<ChatInput {...defaultProps} />);
-      expect(screen.queryByTitle('使用するAIモデルを選択')).not.toBeInTheDocument();
-    });
-
-    it('MODEL_OPTIONSが複数のときセレクターが表示される', () => {
-      // MODEL_OPTIONSを一時的に複数に変更
-      const originalOptions = [...types.MODEL_OPTIONS];
-      types.MODEL_OPTIONS.length = 0;
-      types.MODEL_OPTIONS.push(
-        { value: 'sonnet', label: '標準（Claude Sonnet 4.5）' },
-        { value: 'opus', label: '高品質（Claude Opus 4.6）' },
-      );
-
-      try {
-        render(<ChatInput {...defaultProps} />);
-        const select = screen.getByTitle('使用するAIモデルを選択');
-        expect(select).toBeInTheDocument();
-        expect(select.querySelectorAll('option')).toHaveLength(2);
-      } finally {
-        // 元に戻す
-        types.MODEL_OPTIONS.length = 0;
-        originalOptions.forEach(o => types.MODEL_OPTIONS.push(o));
-      }
+      const select = screen.getByTitle('使用するAIモデルを選択');
+      expect(select).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Claude Sonnet 4.6' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Kimi K2.5' })).toBeInTheDocument();
     });
 
     it('会話中はモデルセレクターが無効になる', () => {
-      const originalOptions = [...types.MODEL_OPTIONS];
-      types.MODEL_OPTIONS.length = 0;
-      types.MODEL_OPTIONS.push(
-        { value: 'sonnet', label: '標準（Claude Sonnet 4.5）' },
-        { value: 'opus', label: '高品質（Claude Opus 4.6）' },
-      );
-
-      try {
-        render(<ChatInput {...defaultProps} hasUserMessage={true} />);
-        const select = screen.getByTitle('会話中はモデルを変更できません');
-        expect(select).toBeDisabled();
-      } finally {
-        types.MODEL_OPTIONS.length = 0;
-        originalOptions.forEach(o => types.MODEL_OPTIONS.push(o));
-      }
+      render(<ChatInput {...defaultProps} hasUserMessage={true} />);
+      const select = screen.getByTitle('会話中はモデルを変更できません');
+      expect(select).toBeDisabled();
     });
   });
 });
