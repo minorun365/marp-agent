@@ -6,9 +6,9 @@
 
 [pawapo.minoruonda.com](https://pawapo.minoruonda.com/)
 
-<p>
-  <img src="https://github.com/user-attachments/assets/c0f87329-0fb7-492a-9054-32811b1f6d7d" alt="イメージ1" width="49%" style="display:inline-block;" />
-  <img src="https://github.com/user-attachments/assets/70be1846-37ed-4d65-8b9a-be14ccdb5b76" alt="イメージ2" width="49%" style="display:inline-block;" />
+<p align="center">
+  <img src="docs/images/pawapo1.png" alt="スライド生成中のチャット画面" width="38%" style="display:inline-block;" />
+  <img src="docs/images/pawapo2.png" alt="生成したスライドのプレビュー画面" width="60%" style="display:inline-block;" />
 </p>
 
 
