@@ -298,7 +298,7 @@ does not provide an export named 'ModelType'
 1. **型をローカルで定義**（シンプル、2-3箇所でしか使わない場合に推奨）
    ```typescript
    // types.ts 内で直接定義
-   type ModelType = 'sonnet' | 'opus';  // MODEL_OPTIONS で実際に有効な選択肢を管理
+   type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus';  // MODEL_OPTIONS で実際に有効な選択肢を管理
    ```
 
 2. **`import type` を使う**（多くのファイルで使う場合）
@@ -370,7 +370,9 @@ setMessages(prev =>
 
 ### TIPSローテーション（シャッフルキュー方式）
 
-スライド生成中に表示する豆知識（TIPS）は、シャッフルキュー方式で全メッセージを均等に巡回する。純粋なランダム選択だと少ない回転回数では偏りが出るため、Fisher-Yatesシャッフルで全インデックスを配列に入れ、順番に消費する。配列が空になったら再シャッフル。
+スライド生成中に表示する豆知識（TIPS）は、最初の`output_slide`イベントから3秒後に表示し、以降5秒ごとに切り替える。シャッフルキュー方式で全メッセージを均等に巡回し、配列が空になったら再シャッフルする。
+
+Kimi K2.5は大きなツール引数を複数のdeltaに分けるため、同じ`tool_use`イベントが複数回届く。`startTipRotation`は開始済みのtimeoutまたはintervalがあれば何もせず、最初のイベントを基準にしたタイマーを維持する。重複イベントごとにタイマーをリセットすると、Tipsの表示が後ろ倒しになる。
 
 ```typescript
 // useTipRotation.ts
@@ -388,6 +390,11 @@ const getNextTipIndex = useCallback((): number => {
   }
   return shuffledQueueRef.current.pop()!;
 }, []);
+
+const startTipRotation = useCallback((setMessages) => {
+  if (tipTimeoutRef.current || tipIntervalRef.current) return;
+  // 最初のイベントから3秒後に表示を開始
+}, [getNextTipIndex]);
 ```
 
 ### onTextコールバックでの全ステータス完了（重要）
@@ -460,7 +467,7 @@ export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
          │ 📄 proposal.pdf (2.3MB) ✕  │  ← ファイル選択時のみ表示
          └────────────────────────────┘
 ┌──────────────────────────────────────────┐
-│ [Sonnet ▾] | [入力テキスト...        📎] │ [送信]
+│ [高品質 ▾] | [入力テキスト...        📎] │ [送信]
 └──────────────────────────────────────────┘
 ```
 
