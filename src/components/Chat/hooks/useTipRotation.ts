@@ -48,11 +48,13 @@ export function useTipRotation(): UseTipRotationReturn {
   }, []);
 
   const startTipRotation = useCallback((setMessages: React.Dispatch<React.SetStateAction<Message[]>>) => {
-    // 既存のタイマーをクリア
-    stopTipRotation();
+    // Kimiは大きなツール引数を複数deltaで送るため、同じtool_useイベントが複数回届く。
+    // 開始済みのタイマーをリセットせず、最初のイベントを基準にTipsを表示する。
+    if (tipTimeoutRef.current || tipIntervalRef.current) return;
 
     // 3秒後に最初のTipsを表示
     tipTimeoutRef.current = setTimeout(() => {
+      tipTimeoutRef.current = null;
       setMessages(prev =>
         prev.map(msg =>
           msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
@@ -72,7 +74,7 @@ export function useTipRotation(): UseTipRotationReturn {
         );
       }, 5000);
     }, 3000);
-  }, [getNextTipIndex, stopTipRotation]);
+  }, [getNextTipIndex]);
 
   return { startTipRotation, stopTipRotation };
 }
