@@ -11,6 +11,7 @@ from strands import tool
 _generated_markdown: str | None = None
 _overflow_retry_count: int = 0
 _expected_slide_count: int | None = None
+_maximum_slide_count: int | None = None
 _agenda_requested: bool = False
 _active_model_type: str = "sonnet"
 
@@ -163,9 +164,19 @@ def _check_slide_overflow(markdown: str) -> list[dict]:
 
 def configure_slide_validation(user_message: str, model_type: str) -> None:
     """ユーザー指示とモデル種別に応じた出力検証を設定する。"""
-    global _expected_slide_count, _agenda_requested, _active_model_type
+    global _expected_slide_count, _maximum_slide_count
+    global _agenda_requested, _active_model_type
     slide_counts = re.findall(r'(\d{1,2})\s*枚', user_message)
-    _expected_slide_count = int(slide_counts[-1]) if slide_counts else None
+    if slide_counts:
+        _expected_slide_count = int(slide_counts[-1])
+        _maximum_slide_count = None
+    elif model_type in {'kimi', 'sol'}:
+        # 枚数確認で会話を止めず、モデル別プロンプトの上限だけを確実に守らせる。
+        _expected_slide_count = None
+        _maximum_slide_count = 10
+    else:
+        _expected_slide_count = None
+        _maximum_slide_count = None
     _agenda_requested = bool(
         re.search(r'(アジェンダ|目次).{0,12}(作|追加|含)', user_message)
     )
@@ -184,8 +195,16 @@ def _check_slide_structure(markdown: str) -> list[dict]:
             'actual': len(slides),
         })
 
+    if _maximum_slide_count is not None and len(slides) > _maximum_slide_count:
+        violations.append({
+            'type': 'slide_count_max',
+            'maximum': _maximum_slide_count,
+            'actual': len(slides),
+        })
+
     lead_count = sum(bool(re.search(r'_class:\s*lead', slide)) for slide in slides)
-    if _expected_slide_count is not None and _expected_slide_count <= 12 and lead_count > 2:
+    validation_count = _expected_slide_count or _maximum_slide_count
+    if validation_count is not None and validation_count <= 12 and lead_count > 2:
         violations.append({
             'type': 'lead_count',
             'actual': lead_count,
@@ -250,10 +269,12 @@ def get_generated_markdown() -> str | None:
 def reset_generated_markdown() -> None:
     """マークダウンをリセット"""
     global _generated_markdown, _overflow_retry_count
-    global _expected_slide_count, _agenda_requested, _active_model_type
+    global _expected_slide_count, _maximum_slide_count
+    global _agenda_requested, _active_model_type
     _generated_markdown = None
     _overflow_retry_count = 0
     _expected_slide_count = None
+    _maximum_slide_count = None
     _agenda_requested = False
     _active_model_type = "sonnet"
 
@@ -317,6 +338,10 @@ def output_slide(markdown: str) -> str:
             elif v['type'] == 'slide_count':
                 details.append(
                     f"  - 総枚数: {v['actual']}枚（指定は{v['expected']}枚）。内容を統合・分割して指定枚数ちょうどにする"
+                )
+            elif v['type'] == 'slide_count_max':
+                details.append(
+                    f"  - 総枚数: {v['actual']}枚（上限は{v['maximum']}枚）。内容を統合して上限以内にする"
                 )
             elif v['type'] == 'lead_count':
                 details.append(

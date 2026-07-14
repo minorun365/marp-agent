@@ -154,6 +154,13 @@ def test_get_haiku_model_id_rejects_missing_environment_variable(monkeypatch):
 def test_kimi_system_prompt_adds_slide_balance_rules():
     prompt = get_system_prompt("speee", "kimi")
 
+    assert "Kimi K2.5向けの実行指示" in prompt
+    assert "テーマが判別できれば新規スライド作成" in prompt
+    assert "スライド枚数を質問しない" in prompt
+    assert "原則8枚" in prompt
+    assert "最大10枚" in prompt
+    assert "同じ応答内でoutput_slideまで実行" in prompt
+    assert "何枚にしますか" in prompt
     assert "指定枚数を増減しない" in prompt
     assert "合計10" in prompt
     assert "中タイトルを最大2枚" in prompt
@@ -165,6 +172,7 @@ def test_sonnet_system_prompt_does_not_add_kimi_rules():
     prompt = get_system_prompt("speee", "sonnet")
 
     assert "OSS系モデル向け" not in prompt
+    assert "自律実行ルール（最優先）" not in prompt
     assert "theme: speee" in prompt
 
 
@@ -179,3 +187,16 @@ def test_glm_system_prompt_adds_oss_slide_rules():
 
     assert "OSS系モデル向け" in prompt
     assert "合計8" in prompt
+
+
+def test_sol_system_prompt_runs_research_and_slide_creation_without_questions():
+    prompt = get_system_prompt("speee", "sol")
+
+    assert "GPT-5.6 Sol向けの実行指示" in prompt
+    assert "対象読者・利用目的・構成・デザイン・スライド枚数を質問しない" in prompt
+    assert "原則8枚" in prompt
+    assert "最大10枚" in prompt
+    assert "web_search" in prompt
+    assert "同じ応答内でoutput_slideまで実行" in prompt
+    assert "作成しますか" in prompt
+    assert "OSS系モデル向け" not in prompt

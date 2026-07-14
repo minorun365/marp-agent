@@ -1,4 +1,6 @@
 """output_slide ツールのユニットテスト"""
+import pytest
+
 from tools.output_slide import (
     configure_slide_validation,
     output_slide,
@@ -409,6 +411,45 @@ class TestOutputSlideStructureValidation:
         assert "11枚（指定は10枚）" in result
         assert get_generated_markdown() is None
 
+    @pytest.mark.parametrize("model_type", ["kimi", "sol"])
+    def test_non_sonnet_models_limit_unspecified_count_to_ten_slides(self, model_type):
+        reset_generated_markdown()
+        configure_slide_validation("AWS AgentCore", model_type)
+        slides = [f"## スライド{i}\n\n- 項目" for i in range(1, 12)]
+        md = "---\nmarp: true\n---\n" + "\n---\n".join(slides)
+
+        result = output_slide(markdown=md)
+
+        assert "11枚（上限は10枚）" in result
+        assert get_generated_markdown() is None
+
+    @pytest.mark.parametrize("model_type", ["kimi", "sol"])
+    def test_non_sonnet_models_accept_nine_slides_when_count_is_unspecified(
+        self, model_type
+    ):
+        reset_generated_markdown()
+        configure_slide_validation("AWS AgentCore", model_type)
+        slides = [
+            f"## スライド{i}\n\n- 項目1\n- 項目2\n- 項目3"
+            if i % 2 == 0
+            else f"## スライド{i}\n\n本文"
+            for i in range(1, 10)
+        ]
+        md = "---\nmarp: true\n---\n" + "\n---\n".join(slides)
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
+    def test_sonnet_keeps_slide_count_flexible_when_unspecified(self):
+        reset_generated_markdown()
+        configure_slide_validation("AWS AgentCore", "sonnet")
+        md = "---\nmarp: true\n---\n## 1枚だけ"
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
     def test_rejects_unrequested_agenda(self):
         reset_generated_markdown()
         configure_slide_validation("提案資料を作って", "kimi")
@@ -420,7 +461,7 @@ class TestOutputSlideStructureValidation:
 
     def test_allows_explicitly_requested_agenda(self):
         reset_generated_markdown()
-        configure_slide_validation("アジェンダを含めて作って", "kimi")
+        configure_slide_validation("1枚でアジェンダを含めて作って", "kimi")
         md = "---\nmarp: true\n---\n## 本日のアジェンダ\n\n- 項目"
 
         result = output_slide(markdown=md)

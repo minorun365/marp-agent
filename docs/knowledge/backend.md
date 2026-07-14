@@ -185,7 +185,7 @@ ENABLED_MODEL_TYPES = {
 }
 
 def get_system_prompt(theme: str = "speee", model_type: str = "sonnet") -> str:
-    model_prompt = OSS_MODEL_SLIDE_PROMPT if model_type in {"kimi", "glm"} else ""
+    model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
     return f"""共通プロンプト
     {model_prompt}"""
 
@@ -196,7 +196,9 @@ async def invoke(payload, context=None):
     agent = get_or_create_agent(session_id, model_type, theme)
 ```
 
-`session/manager.py`の`_create_model()`は`provider`で分岐し、Solだけ`OpenAIResponsesModel`へ`bedrock_mantle_config`と`max_output_tokens`を渡す。Kimi K2.5には共通プロンプトへ追加ルールを連結するが、Sonnet 4.6とGPT-5.6 Solには追加しない。
+`session/manager.py`の`_create_model()`は`provider`で分岐し、Solだけ`OpenAIResponsesModel`へ`bedrock_mantle_config`と`max_output_tokens`を渡す。Sonnet 4.6は共通プロンプトだけを使用する。Kimi K2.5とGPT-5.6 Solには、短いキーワードでも要件確認を挟まず、原則Web検索から`output_slide`まで同じ応答内で完了する自律実行ルールを追加する。枚数未指定時は原則8枚、最大10枚とし、Kimiには従来の文章量・見出し・表現パターン調整も併用する。
+
+`output_slide.configure_slide_validation()`でも、KimiとSolの枚数未指定時は10枚を上限として検証する。プロンプトだけで上限を超えた場合は、ツールからの修正指示を受けてモデル自身が内容を統合し、ユーザーへ枚数確認を戻さない。
 
 ### 新モデル追加時のチェックリスト
 
