@@ -68,6 +68,7 @@ runtime.addToRolePolicy(new iam.PolicyStatement({
 // Bedrock Mantle Responses API（GPT-5.6 Sol）
 runtime.addToRolePolicy(new iam.PolicyStatement({
   actions: [
+    'bedrock-mantle:CallWithBearerToken',
     'bedrock-mantle:CreateInference',
     'bedrock-mantle:GetProject',
     'bedrock-mantle:ListProjects',
@@ -88,7 +89,7 @@ runtime.addToRolePolicy(new iam.PolicyStatement({
 
 **重要**: クロスリージョン推論（`us.`/`jp.`等のプレフィックス付きモデルID）を使用する場合、`inference-profile/*` リソースへの権限も必要。`foundation-model/*` だけでは `AccessDeniedException` が発生する。
 
-**Mantleは別系統**: `bedrock-mantle` endpointは`bedrock-runtime`とはIAMアクションとクォータが別。GPT-5.6 Solは`OpenAIResponsesModel`からMantleへ接続し、実行ロールをもとに短期トークンを生成する。OpenAI APIキーやSecrets Managerは不要。
+**Mantleは別系統**: `bedrock-mantle` endpointは`bedrock-runtime`とはIAMアクションとクォータが別。GPT-5.6 Solは`OpenAIResponsesModel`からMantleへ接続し、実行ロールをもとに短期トークンを生成する。短期Bearerトークンで呼び出すため、`bedrock-mantle:CallWithBearerToken`も必要。OpenAI APIキーやSecrets Managerは不要。
 
 ### Marketplaceサブスクリプションの仕組み（2025年10月〜）
 

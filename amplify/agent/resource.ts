@@ -149,6 +149,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
   // Bedrock Mantle（OpenAI Responses API）の呼び出し権限
   runtime.addToRolePolicy(new iam.PolicyStatement({
     actions: [
+      'bedrock-mantle:CallWithBearerToken',
       'bedrock-mantle:CreateInference',
       'bedrock-mantle:GetProject',
       'bedrock-mantle:ListProjects',

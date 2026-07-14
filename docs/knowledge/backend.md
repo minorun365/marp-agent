@@ -86,7 +86,7 @@ tavily-python
 | GLM-5 | `BedrockModel` / native | なし | 設定保持・現在無効 |
 | Claude Opus 4.6 | `BedrockModel` / native | Sonnetと同じ | 設定保持・現在無効 |
 
-Sonnet 4.6をデフォルトとし、GPT-5.6 SolとKimi K2.5を選択可能にしている。Solは`BEDROCK_MANTLE_REGION`（既定`us-east-1`）へ接続し、Strandsが実行ロールから短期Bearerトークンを都度生成するため、OpenAI APIキーは保存しない。Responses APIのサーバー側保存は無効で、会話履歴は従来どおりAgent側で保持する。無効なモデルがAPIへ指定された場合はSonnetへ正規化する。
+Sonnet 4.6をデフォルトとし、GPT-5.6 SolとKimi K2.5を選択可能にしている。Solは`BEDROCK_MANTLE_REGION`（既定`us-east-1`）へ接続し、Strandsが実行ロールから短期Bearerトークンを都度生成するため、実行ロールには`bedrock-mantle:CallWithBearerToken`が必要。OpenAI APIキーは保存しない。Responses APIのサーバー側保存は無効で、会話履歴は従来どおりAgent側で保持する。無効なモデルがAPIへ指定された場合はSonnetへ正規化する。
 
 ### フロントエンドからのモデル切り替え
 
