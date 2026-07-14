@@ -41,7 +41,8 @@ python -m pytest tests/
 [ブラウザ] ←→ [React + Tailwind] ←SSE→ [AgentCore Runtime]
                                               │
                                               ├── Strands Agent (Python)
-                                              ├── Sonnet 4.6（デフォルト）/ Kimi K2.5（高速オプション）
+                                              ├── Sonnet 4.6（デフォルト）/ GPT-5.6 Sol（最高品質）/ Kimi K2.5（高速）
+                                              │   SolのみBedrock Mantle Responses APIを使用
                                               │   Sonnet 5 / GLM-5 / Opus 4.6は設定保持・無効化中
                                               └── Marp CLI (PDF/PPTX/編集可能PPTX変換)
 ```

@@ -17,12 +17,14 @@ MODEL_ENVIRONMENT_VARIABLES = {
     "kimi": "BEDROCK_KIMI_MODEL_ID",
     "glm": "BEDROCK_GLM_MODEL_ID",
     "opus": "BEDROCK_OPUS_MODEL_ID",
+    "sol": "BEDROCK_SOL_MODEL_ID",
 }
 
 # UIのMODEL_OPTIONSと同じモデルだけを有効化する。
 ENABLED_MODEL_TYPES = {
     "sonnet",
     "kimi",
+    "sol",
     # "sonnet5",
     # "glm",
     # "opus",
@@ -37,8 +39,18 @@ def normalize_model_type(model_type: str | None) -> str:
 def get_model_config(model_type: str = "sonnet") -> dict:
     """有効化されているモデルの設定を返す。"""
     normalized_model_type = normalize_model_type(model_type)
+
+    if normalized_model_type == "sol":
+        return {
+            "provider": "mantle",
+            "model_id": _get_required_model_id("BEDROCK_SOL_MODEL_ID"),
+            "region": os.getenv("BEDROCK_MANTLE_REGION", "us-east-1"),
+            "max_output_tokens": 32768,
+        }
+
     uses_prompt_cache = normalized_model_type in {"sonnet", "sonnet5", "opus"}
     return {
+        "provider": "bedrock",
         "model_id": _get_required_model_id(
             MODEL_ENVIRONMENT_VARIABLES[normalized_model_type]
         ),

@@ -12,9 +12,10 @@ from config import (
 from tools.http_request import _get_haiku_model_id
 
 
-def test_sonnet_and_kimi_are_enabled():
-    assert ENABLED_MODEL_TYPES == {"sonnet", "kimi"}
+def test_public_models_are_enabled():
+    assert ENABLED_MODEL_TYPES == {"sonnet", "kimi", "sol"}
     assert normalize_model_type("kimi") == "kimi"
+    assert normalize_model_type("sol") == "sol"
 
 
 @pytest.mark.parametrize(
@@ -44,9 +45,24 @@ def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
     model_config = get_model_config("kimi")
 
     assert model_config == {
+        "provider": "bedrock",
         "model_id": "moonshotai.kimi-k2.5",
         "cache_prompt": None,
         "cache_tools": None,
+    }
+
+
+def test_get_model_config_uses_sol_through_mantle(monkeypatch):
+    monkeypatch.setenv("BEDROCK_SOL_MODEL_ID", "openai.gpt-5.6-sol")
+    monkeypatch.setenv("BEDROCK_MANTLE_REGION", "us-east-1")
+
+    model_config = get_model_config("sol")
+
+    assert model_config == {
+        "provider": "mantle",
+        "model_id": "openai.gpt-5.6-sol",
+        "region": "us-east-1",
+        "max_output_tokens": 32768,
     }
 
 
@@ -57,6 +73,7 @@ def test_get_model_config_uses_sonnet5_with_prompt_cache(monkeypatch):
     model_config = get_model_config("sonnet5")
 
     assert model_config == {
+        "provider": "bedrock",
         "model_id": "sonnet5-profile-arn",
         "cache_prompt": "default",
         "cache_tools": "default",
@@ -70,6 +87,7 @@ def test_get_model_config_uses_glm_without_prompt_cache(monkeypatch):
     model_config = get_model_config("glm")
 
     assert model_config == {
+        "provider": "bedrock",
         "model_id": "zai.glm-5",
         "cache_prompt": None,
         "cache_tools": None,
@@ -95,6 +113,13 @@ def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch)
 
     with pytest.raises(RuntimeError, match="BEDROCK_KIMI_MODEL_ID"):
         get_model_config("kimi")
+
+
+def test_get_model_config_rejects_missing_sol_environment_variable(monkeypatch):
+    monkeypatch.delenv("BEDROCK_SOL_MODEL_ID", raising=False)
+
+    with pytest.raises(RuntimeError, match="BEDROCK_SOL_MODEL_ID"):
+        get_model_config("sol")
 
 
 def test_get_model_config_rejects_missing_sonnet5_environment_variable(monkeypatch):

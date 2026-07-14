@@ -59,11 +59,12 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    it('品質と速度の違いが分かる2モデルだけを選択肢に表示する', () => {
+    it('用途の違いが分かる3モデルだけを選択肢に表示する', () => {
       render(<ChatInput {...defaultProps} />);
       const select = screen.getByTitle('使用するAIモデルを選択');
       expect(select).toBeInTheDocument();
       expect(screen.getByRole('option', { name: '高品質（Claude Sonnet 4.6）' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: '最高品質（GPT-5.6 Sol）' })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: '高速（Kimi K2.5）' })).toBeInTheDocument();
       expect(screen.queryByRole('option', { name: 'Claude Sonnet 5' })).not.toBeInTheDocument();
       expect(screen.queryByRole('option', { name: 'GLM 5' })).not.toBeInTheDocument();
@@ -75,6 +76,9 @@ describe('ChatInput', () => {
 
       rerender(<ChatInput {...defaultProps} modelType="kimi" />);
       expect(screen.getByText('高速')).toBeInTheDocument();
+
+      rerender(<ChatInput {...defaultProps} modelType="sol" />);
+      expect(screen.getByText('最高品質')).toBeInTheDocument();
     });
 
     it('会話中はモデルセレクターが無効になる', () => {

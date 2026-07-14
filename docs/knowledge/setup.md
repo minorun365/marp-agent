@@ -16,7 +16,7 @@
 - @aws-amplify/ui-react
 
 ### エージェント・インフラ
-- strands-agents>=1.23.0（Python >=3.13）
+- strands-agents[openai,otel]>=1.47.0（Python >=3.13、Mantle Responses APIとOTEL対応）
 - strands-agents-tools>=0.1.0（ビルトインツール群）
 - bedrock-agentcore>=1.2.0（AgentCore SDK）
 - botocore[crt]>=1.42.34（AWS CLI login認証用）

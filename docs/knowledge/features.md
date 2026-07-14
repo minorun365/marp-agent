@@ -43,9 +43,12 @@ Accept: text/event-stream
 ```json
 {
   "prompt": "ユーザーの入力",
-  "markdown": "現在のスライド（編集時）"
+  "markdown": "現在のスライド（編集時）",
+  "model_type": "sol"
 }
 ```
+
+`model_type`の有効値は`sonnet`（デフォルト）、`sol`、`kimi`。SolはBedrock MantleのResponses APIへルーティングされる。
 
 #### 認証問題の解決
 

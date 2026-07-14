@@ -2,7 +2,8 @@
 
 from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
-from strands.models import BedrockModel
+from strands.models import BedrockModel, Model
+from strands.models.openai_responses import OpenAIResponsesModel
 
 from config import get_model_config, get_system_prompt, normalize_model_type
 from tools import web_search, output_slide, generate_tweet_url, http_request
@@ -14,9 +15,17 @@ _agent_sessions: dict[str, Agent] = {}
 _conversation_manager = SlidingWindowConversationManager(window_size=6)
 
 
-def _create_bedrock_model(model_type: str = "sonnet") -> BedrockModel:
-    """モデル設定に基づいてBedrockModelを作成"""
+def _create_model(model_type: str = "sonnet") -> Model:
+    """モデル設定に基づいてStrandsのモデルプロバイダーを作成"""
     config = get_model_config(model_type)
+
+    if config["provider"] == "mantle":
+        return OpenAIResponsesModel(
+            model_id=config["model_id"],
+            bedrock_mantle_config={"region": config["region"]},
+            params={"max_output_tokens": config["max_output_tokens"]},
+        )
+
     if config["cache_prompt"] is None:
         return BedrockModel(model_id=config["model_id"])
     else:
@@ -38,7 +47,7 @@ def get_or_create_agent(session_id: str | None, model_type: str = "sonnet", them
     # セッションIDがない場合は新規Agentを作成（履歴なし）
     if not cache_key:
         return Agent(
-            model=_create_bedrock_model(model_type),
+            model=_create_model(model_type),
             system_prompt=system_prompt,
             tools=[web_search, output_slide, generate_tweet_url, http_request],
             conversation_manager=_conversation_manager,
@@ -50,7 +59,7 @@ def get_or_create_agent(session_id: str | None, model_type: str = "sonnet", them
 
     # 新規セッションの場合はAgentを作成して保存
     agent = Agent(
-        model=_create_bedrock_model(model_type),
+        model=_create_model(model_type),
         system_prompt=system_prompt,
         tools=[web_search, output_slide, generate_tweet_url, http_request],
         conversation_manager=_conversation_manager,

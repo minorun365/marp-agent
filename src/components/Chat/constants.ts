@@ -4,7 +4,7 @@ export const TIPS = [
   'このアプリはAWSのBedrock AgentCoreとAmplify Gen2でフルサーバーレス構築されています。',
   'このアプリの裏では、Strands Agentsフレームワークで構築されたAIエージェントが稼働しています。',
   'このアプリはサーバーレス構成なので維持費が激安！かかる費用はほぼ推論時のAPI料金のみです。',
-  'AIモデルは、Amazon BedrockのClaude Sonnet 4.6とKimi K2.5から選べます。',
+  'AIモデルは、Amazon BedrockのClaude Sonnet 4.6、GPT-5.6 Sol、Kimi K2.5から選べます。',
   'このアプリはOSSとして、GitHub上でコードと構築方法を公開しています！',
   'みのるんのQiitaブログで、このアプリと似た構成をAWS CDKで構築する手順も紹介しています！',
   'このアプリへの感想や要望は、Xで #パワポ作るマン のハッシュタグを付けてフィードバックください！',

@@ -298,7 +298,7 @@ does not provide an export named 'ModelType'
 1. **型をローカルで定義**（シンプル、2-3箇所でしか使わない場合に推奨）
    ```typescript
    // types.ts 内で直接定義
-   type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus';  // MODEL_OPTIONS で実際に有効な選択肢を管理
+   type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus' | 'sol';  // MODEL_OPTIONS で実際に有効な選択肢を管理
    ```
 
 2. **`import type` を使う**（多くのファイルで使う場合）

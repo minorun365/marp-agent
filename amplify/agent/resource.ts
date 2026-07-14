@@ -15,6 +15,7 @@ const __dirname = path.dirname(__filename);
 const BEDROCK_REGION = 'us-east-1';
 const BEDROCK_KIMI_MODEL_ID = 'moonshotai.kimi-k2.5';
 const BEDROCK_GLM_MODEL_ID = 'zai.glm-5';
+const BEDROCK_SOL_MODEL_ID = 'openai.gpt-5.6-sol';
 const BEDROCK_SONNET_PROFILE_ID = 'xmbdb94a4tsr';
 const BEDROCK_SONNET5_PROFILE_ID = '31gwo1r9cl3s';
 const BEDROCK_OPUS_PROFILE_ID = '07dhj89poos0';
@@ -48,6 +49,8 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
     || BEDROCK_KIMI_MODEL_ID;
   const bedrockGlmModelId = process.env.BEDROCK_GLM_MODEL_ID?.trim()
     || BEDROCK_GLM_MODEL_ID;
+  const bedrockSolModelId = process.env.BEDROCK_SOL_MODEL_ID?.trim()
+    || BEDROCK_SOL_MODEL_ID;
   const bedrockOpusModelId = process.env.BEDROCK_OPUS_MODEL_ID?.trim()
     || applicationInferenceProfileArn(BEDROCK_OPUS_PROFILE_ID);
   const bedrockHaikuModelId = process.env.BEDROCK_HAIKU_MODEL_ID?.trim()
@@ -113,6 +116,8 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
       BEDROCK_SONNET5_MODEL_ID: bedrockSonnet5ModelId,
       BEDROCK_KIMI_MODEL_ID: bedrockKimiModelId,
       BEDROCK_GLM_MODEL_ID: bedrockGlmModelId,
+      BEDROCK_SOL_MODEL_ID: bedrockSolModelId,
+      BEDROCK_MANTLE_REGION: BEDROCK_REGION,
       BEDROCK_OPUS_MODEL_ID: bedrockOpusModelId,
       BEDROCK_HAIKU_MODEL_ID: bedrockHaikuModelId,
       // Observability（OTEL）設定
@@ -139,6 +144,17 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
       'arn:aws:bedrock:*:*:inference-profile/*',
       'arn:aws:bedrock:*:*:application-inference-profile/*',
     ],
+  }));
+
+  // Bedrock Mantle（OpenAI Responses API）の呼び出し権限
+  runtime.addToRolePolicy(new iam.PolicyStatement({
+    actions: [
+      'bedrock-mantle:CreateInference',
+      'bedrock-mantle:GetProject',
+      'bedrock-mantle:ListProjects',
+      'bedrock-mantle:ListTagsForResources',
+    ],
+    resources: ['*'],
   }));
 
   // Marketplaceサブスクリプション権限（新モデル初回利用時に自動サブスクライブが必要）

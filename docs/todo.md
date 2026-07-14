@@ -29,7 +29,7 @@
 | #63 | テンプレの画像をCSSから分離する | 3h | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #6 | Tavilyレートリミット枯渇通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #7 | エラー監視・通知 | 3-4h | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
-| #48 | GPTを実装してみる | 2日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
+| #48 | GPTを実装してみる | 2日 | ✅ 完了 | GPT-5.6 SolをMantle経由で追加 | ✅ | ✅ | ➖ | ➖ |
 | #16 | スライド編集（マークダウンエディタ） | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ⬜ | ➖ |
 | #62 | 企業ブランドテンプレ版を作る | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
 | #60 | リピーター率などを分析したい | 3-5日 | ⬜ 未着手 | | ⬜ | ⬜ | ➖ | ➖ |
@@ -426,39 +426,31 @@ if (!isSandbox) {
 
 ### #48 GPTを実装してみる
 
-**概要**: OpenAI GPTモデルを選択肢として追加したい。
+**状態**: ✅ 2026-07-14完了
 
-**Strands AgentsのOpenAIサポート**: ✅ 完全サポート
+**実装結果**: OpenAI GPT-5.6 Solを「最高品質」モデルとして追加。Amazon Bedrock MantleのResponses APIを、Strands Agentsの`OpenAIResponsesModel`から呼び出す。
 
 **インストール**:
 ```bash
 pip install 'strands-agents[openai]'
 ```
 
-**実装例**:
+**実装概要**:
 ```python
-from strands.models.openai import OpenAIModel
+from strands.models.openai_responses import OpenAIResponsesModel
 
-openai_model = OpenAIModel(
-    client_args={"api_key": openai_api_key},
-    model_id="gpt-4o",
-    params={
-        "max_tokens": 4000,
-        "temperature": 0.7,
-    }
+sol_model = OpenAIResponsesModel(
+    model_id="openai.gpt-5.6-sol",
+    bedrock_mantle_config={"region": "us-east-1"},
+    params={"max_output_tokens": 32768},
 )
-
-agent = Agent(model=openai_model, tools=[...])
 ```
 
-**追加作業**:
-- Secrets ManagerにOpenAI APIキー登録
-- Lambda実行ロールにSecrets Manager読み取り権限追加
-- フロントエンドにモデル選択オプション追加
+**認証**: AgentCore実行ロールから短期Bearerトークンを都度生成する。OpenAI APIキーやSecrets Managerは不要。Responses APIのサーバー側保存は無効。
 
-**参照**: [Strands Agents - OpenAI Provider](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/model-providers/openai/)
+**参照**: [Strands Agents - OpenAI Responses API](https://strandsagents.com/docs/user-guide/concepts/model-providers/openai-responses/)
 
-**工数**: 2日（最小構成1日 + UI対応1日）
+**検証**: Mantle Models APIで`openai.gpt-5.6-sol`を確認し、実推論のストリーミング完了まで確認済み。
 
 ---
 

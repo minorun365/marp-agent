@@ -1,5 +1,5 @@
 // バックエンドが認識できるモデル型。現在無効なモデルも型からは削除しない。
-export type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus';
+export type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus' | 'sol';
 
 export interface ModelOption {
   value: ModelType;
@@ -10,6 +10,7 @@ export interface ModelOption {
 // UIで有効なモデル一覧。2件以上になるとChatInputのセレクターが自動表示される。
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'sonnet', label: '高品質（Claude Sonnet 4.6）', shortLabel: '高品質' },
+  { value: 'sol', label: '最高品質（GPT-5.6 Sol）', shortLabel: '最高品質' },
   { value: 'kimi', label: '高速（Kimi K2.5）', shortLabel: '高速' },
   // 再検証時は、以下の行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
   // { value: 'sonnet5', label: 'Claude Sonnet 5', shortLabel: 'Sonnet 5' },

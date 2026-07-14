@@ -1,5 +1,5 @@
 bedrock-agentcore
-strands-agents[otel]>=1.47.0
+strands-agents[openai,otel]>=1.47.0
 strands-agents-tools
 aws-opentelemetry-distro
 tavily-python
