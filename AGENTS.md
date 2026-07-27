@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This file provides guidance to coding agents (Claude Code / Codex) when working with code in this repository.
 
 ## プロジェクト概要
 
@@ -177,7 +177,7 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 ## Git コミットルール
 
 - コミットメッセージは **1行の日本語でシンプルに**
-- `Co-Authored-By: Codex` などの **AI協働の痕跡は入れない**
+- `Co-Authored-By: Claude` `Co-Authored-By: Codex` などの **AI協働の痕跡は入れない**
 
 ## KAG社内版環境（別リポジトリ）
 
