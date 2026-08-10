@@ -33,7 +33,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
   // 環境判定: sandbox（ローカル）vs 本番（Amplify Console）
   const isSandbox = !process.env.AWS_BRANCH;
   const bedrockSonnetModelId = process.env.BEDROCK_SONNET_MODEL_ID?.trim()
-    || 'global.anthropic.claude-sonnet-4-6-v1:0';
+    || 'us.anthropic.claude-sonnet-4-6';
   const bedrockSonnet5ModelId = process.env.BEDROCK_SONNET5_MODEL_ID?.trim()
     || '';
   const bedrockKimiModelId = process.env.BEDROCK_KIMI_MODEL_ID?.trim()
@@ -45,7 +45,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
   const bedrockOpusModelId = process.env.BEDROCK_OPUS_MODEL_ID?.trim()
     || '';
   const bedrockHaikuModelId = process.env.BEDROCK_HAIKU_MODEL_ID?.trim()
-    || 'global.anthropic.claude-haiku-4-5-20251001-v1:0';
+    || 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
   const tavilySecretId = process.env.TAVILY_API_KEYS_SECRET_ID?.trim();
 
   let agentRuntimeArtifact: agentcore.AgentRuntimeArtifact;
