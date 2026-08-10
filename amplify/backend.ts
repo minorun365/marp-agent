@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
-import { isUserMigrationEnabled } from './auth/user-migration/config';
+import { getMigrationSources, isUserMigrationEnabled } from './auth/user-migration/config';
 import { userMigration } from './auth/user-migration/resource';
 import { createMarpAgent } from './agent/resource';
 import { SharedSlidesConstruct } from './storage/resource';
@@ -46,9 +46,10 @@ if (enableUserMigration) {
     };
   }).userMigration.resources;
 
+  const migrationRoleArns = [...new Set(getMigrationSources().map((source) => source.roleArn))];
   migrationResources.lambda.addToRolePolicy(new iam.PolicyStatement({
     actions: ['sts:AssumeRole'],
-    resources: [process.env.OLD_ACCOUNT_ROLE_ARN!],
+    resources: migrationRoleArns,
   }));
 
   // Migration Triggerにパスワードを渡すため、新UserPool側だけ一時的に有効化する。

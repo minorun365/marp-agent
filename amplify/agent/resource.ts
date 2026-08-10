@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
 import { ContainerImageBuild } from 'deploy-time-build';
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
@@ -16,10 +17,6 @@ const BEDROCK_REGION = 'us-east-1';
 const BEDROCK_KIMI_MODEL_ID = 'moonshotai.kimi-k2.5';
 const BEDROCK_GLM_MODEL_ID = 'zai.glm-5';
 const BEDROCK_SOL_MODEL_ID = 'openai.gpt-5.6-sol';
-const BEDROCK_SONNET_PROFILE_ID = 'xmbdb94a4tsr';
-const BEDROCK_SONNET5_PROFILE_ID = '31gwo1r9cl3s';
-const BEDROCK_OPUS_PROFILE_ID = '07dhj89poos0';
-const BEDROCK_HAIKU_PROFILE_ID = 'pv7yoax0edh3';
 
 interface MarpAgentProps {
   stack: cdk.Stack;
@@ -35,16 +32,10 @@ interface MarpAgentProps {
 export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, runtimeNamePrefix, sharedSlidesBucket, sharedSlidesDistributionDomain, sharedSlidesPublicDomain }: MarpAgentProps) {
   // 環境判定: sandbox（ローカル）vs 本番（Amplify Console）
   const isSandbox = !process.env.AWS_BRANCH;
-  const applicationInferenceProfileArn = (profileId: string) => stack.formatArn({
-    service: 'bedrock',
-    region: BEDROCK_REGION,
-    resource: 'application-inference-profile',
-    resourceName: profileId,
-  });
   const bedrockSonnetModelId = process.env.BEDROCK_SONNET_MODEL_ID?.trim()
-    || applicationInferenceProfileArn(BEDROCK_SONNET_PROFILE_ID);
+    || 'global.anthropic.claude-sonnet-4-6-v1:0';
   const bedrockSonnet5ModelId = process.env.BEDROCK_SONNET5_MODEL_ID?.trim()
-    || applicationInferenceProfileArn(BEDROCK_SONNET5_PROFILE_ID);
+    || '';
   const bedrockKimiModelId = process.env.BEDROCK_KIMI_MODEL_ID?.trim()
     || BEDROCK_KIMI_MODEL_ID;
   const bedrockGlmModelId = process.env.BEDROCK_GLM_MODEL_ID?.trim()
@@ -52,9 +43,10 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
   const bedrockSolModelId = process.env.BEDROCK_SOL_MODEL_ID?.trim()
     || BEDROCK_SOL_MODEL_ID;
   const bedrockOpusModelId = process.env.BEDROCK_OPUS_MODEL_ID?.trim()
-    || applicationInferenceProfileArn(BEDROCK_OPUS_PROFILE_ID);
+    || '';
   const bedrockHaikuModelId = process.env.BEDROCK_HAIKU_MODEL_ID?.trim()
-    || applicationInferenceProfileArn(BEDROCK_HAIKU_PROFILE_ID);
+    || 'global.anthropic.claude-haiku-4-5-20251001-v1:0';
+  const tavilySecretId = process.env.TAVILY_API_KEYS_SECRET_ID?.trim();
 
   let agentRuntimeArtifact: agentcore.AgentRuntimeArtifact;
   let containerImageBuild: ContainerImageBuild | undefined;
@@ -107,6 +99,7 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
     authorizerConfiguration: authConfig,
     environmentVariables: {
       TAVILY_API_KEYS: process.env.TAVILY_API_KEYS || '',
+      TAVILY_API_KEYS_SECRET_ID: tavilySecretId || '',
       BYPASS_TOOL_CONSENT: 'true',
       // 共有スライド用S3/CloudFront設定
       SHARED_SLIDES_BUCKET: sharedSlidesBucket?.bucketName || '',
@@ -173,6 +166,13 @@ export function createMarpAgent({ stack, userPool, userPoolClient, nameSuffix, r
       actions: ['s3:PutObject'],
       resources: [`${sharedSlidesBucket.bucketArn}/*`],
     }));
+  }
+
+  if (tavilySecretId) {
+    const tavilySecret = tavilySecretId.startsWith('arn:')
+      ? secretsmanager.Secret.fromSecretCompleteArn(stack, 'TavilyApiKeysSecret', tavilySecretId)
+      : secretsmanager.Secret.fromSecretNameV2(stack, 'TavilyApiKeysSecret', tavilySecretId);
+    tavilySecret.grantRead(runtime.role);
   }
 
   // エンドポイントはDEFAULTを使用（runtime.addEndpoint不要）

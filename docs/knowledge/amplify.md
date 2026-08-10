@@ -66,6 +66,14 @@ npm install --save-dev @types/aws-lambda
 | `OLD_USER_POOL_CLIENT_ID` | 移行元 App Client ID |
 | `OLD_ACCOUNT_ROLE_ARN` | 移行元 Cognito を読むために AssumeRole する IAM Role ARN |
 
+2世代の移行元を順番に参照する場合は、`MIGRATION_PRIMARY_*` と
+`MIGRATION_SECONDARY_*` にそれぞれ同じ3項目を設定する。利用者がPRIMARYに
+存在する場合はPRIMARYだけでパスワードを検証し、不一致でもSECONDARYへ戻らない。
+これにより、過去のUser Poolに残る古いパスワードが復活するのを防ぐ。
+
+`OLD_*` は既存環境との互換用であり、`MIGRATION_PRIMARY_*` が設定されている場合は
+新しい設定を優先する。
+
 未設定の環境ではトリガーを作らないため、通常の新規デプロイやローカル sandbox には影響しない。
 
 ### 認証フロー
