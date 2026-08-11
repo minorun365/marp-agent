@@ -3,6 +3,7 @@ import pytest
 
 from tools.output_slide import (
     configure_slide_validation,
+    mark_web_search_executed,
     output_slide,
     get_generated_markdown,
     reset_generated_markdown,
@@ -411,10 +412,20 @@ class TestOutputSlideStructureValidation:
         assert "11枚（指定は10枚）" in result
         assert get_generated_markdown() is None
 
-    @pytest.mark.parametrize("model_type", ["kimi", "sol"])
-    def test_non_sonnet_models_limit_unspecified_count_to_ten_slides(self, model_type):
+    def test_kimi_limits_unspecified_count_to_twenty_slides(self):
         reset_generated_markdown()
-        configure_slide_validation("AWS AgentCore", model_type)
+        configure_slide_validation("AWS AgentCore", "kimi")
+        slides = [f"## スライド{i}\n\n- 項目" for i in range(1, 22)]
+        md = "---\nmarp: true\n---\n" + "\n---\n".join(slides)
+
+        result = output_slide(markdown=md)
+
+        assert "21枚（上限は20枚）" in result
+        assert get_generated_markdown() is None
+
+    def test_sol_keeps_ten_slide_limit_when_count_is_unspecified(self):
+        reset_generated_markdown()
+        configure_slide_validation("AWS AgentCore", "sol")
         slides = [f"## スライド{i}\n\n- 項目" for i in range(1, 12)]
         md = "---\nmarp: true\n---\n" + "\n---\n".join(slides)
 
@@ -424,9 +435,7 @@ class TestOutputSlideStructureValidation:
         assert get_generated_markdown() is None
 
     @pytest.mark.parametrize("model_type", ["kimi", "sol"])
-    def test_non_sonnet_models_accept_nine_slides_when_count_is_unspecified(
-        self, model_type
-    ):
+    def test_non_sonnet_models_accept_nine_slides_when_count_is_unspecified(self, model_type):
         reset_generated_markdown()
         configure_slide_validation("AWS AgentCore", model_type)
         slides = [
@@ -468,8 +477,8 @@ class TestOutputSlideStructureValidation:
 
         assert result == "スライドを出力しました。"
 
-    def test_rejects_kimi_bold_overuse_but_allows_sonnet(self):
-        md = "---\nmarp: true\n---\n## 課題\n\n- **項目1**：説明\n- **項目2**：説明"
+    def test_rejects_three_kimi_bold_areas_but_allows_sonnet(self):
+        md = "---\nmarp: true\n---\n## 課題\n\n- **項目1**：説明\n- **項目2**：説明\n- **項目3**：説明"
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "kimi")
         kimi_result = output_slide(markdown=md)
@@ -478,8 +487,248 @@ class TestOutputSlideStructureValidation:
         configure_slide_validation("資料を作って", "sonnet")
         sonnet_result = output_slide(markdown=md)
 
-        assert "太字が2か所" in kimi_result
+        assert "太字が3か所" in kimi_result
         assert sonnet_result == "スライドを出力しました。"
+
+    def test_allows_two_kimi_bold_areas(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi")
+        md = "---\nmarp: true\n---\n## 課題\n\n- **項目1**：説明\n- **項目2**：説明"
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
+    def test_web_search_requires_source_slide_with_three_urls(self):
+        reset_generated_markdown()
+        configure_slide_validation("最新情報を調べて資料を作って", "kimi")
+        mark_web_search_executed()
+        md = "---\nmarp: true\n---\n## 最新情報\n\n- 項目"
+
+        result = output_slide(markdown=md)
+
+        assert "実在URLを最低3件" in result
+
+    def test_web_search_accepts_source_slide_with_three_urls(self):
+        reset_generated_markdown()
+        configure_slide_validation("最新情報を調べて資料を作って", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## 最新情報
+<!-- source: https://example.com/1 -->
+
+- 項目
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://example.com/1
+- https://example.com/2
+- https://example.com/3
+"""
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
+    def test_web_search_requires_source_comment_on_each_content_slide(self):
+        reset_generated_markdown()
+        configure_slide_validation("最新情報を調べて資料を作って", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## 最新情報
+
+- 項目
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://example.com/1
+- https://example.com/2
+- https://example.com/3
+"""
+
+        result = output_slide(markdown=md)
+
+        assert "根拠URLコメントがない本文スライド: [1]" in result
+
+    def test_web_search_rejects_source_comment_missing_from_references(self):
+        reset_generated_markdown()
+        configure_slide_validation("最新情報を調べて資料を作って", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## 最新情報
+<!-- source: https://example.com/unlisted -->
+
+- 項目
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://example.com/1
+- https://example.com/2
+- https://example.com/3
+"""
+
+        result = output_slide(markdown=md)
+
+        assert "本文の根拠URLが参考文献に未掲載" in result
+
+    def test_kimi_web_search_requires_official_source_for_named_product(self):
+        reset_generated_markdown()
+        configure_slide_validation("AgentCoreの最新情報を調べて", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## AgentCore
+<!-- source: https://example.com/1 -->
+
+- 最新情報
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://example.com/1
+- https://example.com/2
+- https://example.com/3
+"""
+
+        result = output_slide(markdown=md)
+
+        assert "公式情報が参考文献にない製品: Amazon Bedrock AgentCore" in result
+
+    def test_kimi_product_slide_requires_its_official_source_comment(self):
+        reset_generated_markdown()
+        configure_slide_validation("AgentCoreの最新情報を調べて", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## AgentCore
+<!-- source: https://example.com/analysis -->
+
+- 最新情報
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://example.com/analysis
+- https://aws.amazon.com/bedrock/agentcore/
+- https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/
+"""
+
+        result = output_slide(markdown=md)
+
+        assert "スライド1=Amazon Bedrock AgentCore" in result
+
+    def test_kimi_rejects_unrelated_page_on_official_domain(self):
+        reset_generated_markdown()
+        configure_slide_validation("Codexの最新情報を調べて", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## Codex
+<!-- source: https://openai.com/index/cisco -->
+
+- 最新情報
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://openai.com/index/cisco
+- https://openai.com/pricing
+- https://openai.com/careers/software-engineer
+"""
+
+        result = output_slide(markdown=md)
+
+        assert "公式情報が参考文献にない製品: Codex" in result
+
+    def test_kimi_rejects_unrelated_extra_source_on_product_slide(self):
+        reset_generated_markdown()
+        configure_slide_validation("Codexの最新情報を調べて", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## Codex
+<!-- source: https://help.openai.com/en/articles/20001107-codex-security -->
+<!-- source: https://openai.com/index/cisco -->
+
+- セキュリティ
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://help.openai.com/en/articles/20001107-codex-security
+- https://openai.com/index/codex-flexible-pricing-for-teams/
+- https://openai.com/index/introducing-codex/
+- https://openai.com/index/cisco
+"""
+
+        result = output_slide(markdown=md)
+
+        assert "対象製品ページではない根拠URL" in result
+        assert "https://openai.com/index/cisco" in result
+
+    def test_kimi_comparison_accepts_both_vendors_official_sources(self):
+        reset_generated_markdown()
+        configure_slide_validation("Claude CodeとCodexを最新情報で比較して", "kimi")
+        mark_web_search_executed()
+        md = """---
+marp: true
+---
+## Claude CodeとCodex
+<!-- source: https://docs.anthropic.com/en/docs/claude-code -->
+<!-- source: https://developers.openai.com/codex/ -->
+
+- 公式情報に基づく比較
+
+---
+<!-- _class: tinytext -->
+## 参考文献
+
+- https://docs.anthropic.com/en/docs/claude-code
+- https://developers.openai.com/codex/
+- https://openai.com/codex/
+"""
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
+    def test_kimi_rejects_ungrounded_numbers_without_web_search(self):
+        reset_generated_markdown()
+        configure_slide_validation("定性的な提案資料を作って", "kimi")
+        md = "---\nmarp: true\n---\n## 効果\n\n- 投資回収は18ヶ月"
+
+        result = output_slide(markdown=md)
+
+        assert "根拠のない数値表現: 18ヶ月" in result
+
+    def test_kimi_allows_numbers_provided_by_user(self):
+        reset_generated_markdown()
+        configure_slide_validation("投資回収18ヶ月の提案資料を作って", "kimi")
+        md = "---\nmarp: true\n---\n## 効果\n\n- 投資回収は18ヶ月"
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
 
     def test_rejects_three_consecutive_kimi_bullet_slides(self):
         reset_generated_markdown()
@@ -501,3 +750,14 @@ class TestOutputSlideStructureValidation:
         result = output_slide(markdown=md)
 
         assert result == "スライドを出力しました。"
+
+    def test_kimi_never_accepts_wrong_slide_count_after_retry_limit(self):
+        reset_generated_markdown()
+        configure_slide_validation("10枚で作って", "kimi")
+        md = "---\nmarp: true\n---\n## 1枚だけ"
+
+        for _ in range(5):
+            result = output_slide(markdown=md)
+
+        assert "総枚数: 1枚（指定は10枚）" in result
+        assert get_generated_markdown() is None

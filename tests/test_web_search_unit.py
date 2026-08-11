@@ -1,11 +1,20 @@
 """web_search ツールのユニットテスト（外部API不要）"""
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 from tools.web_search import (
     web_search,
     get_last_search_result,
     reset_last_search_result,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_search_state():
+    reset_last_search_result()
+    yield
+    reset_last_search_result()
 
 
 def test_reset_last_search_result():
@@ -77,3 +86,19 @@ def test_web_search_rate_limit_fallback():
 
     assert "OK" in result
     assert "Fallback" in result
+
+
+def test_web_search_stops_after_six_calls():
+    """1依頼で7回目以降は外部検索を実行しない"""
+    mock_client = MagicMock()
+    mock_client.search.return_value = {
+        "results": [{"title": "OK", "content": "Result", "url": "https://example.com"}]
+    }
+
+    with patch("tools.web_search.tavily_clients", [mock_client]):
+        for index in range(6):
+            assert "OK" in web_search(query=f"query {index}")
+        result = web_search(query="query 7")
+
+    assert "上限6回" in result
+    assert mock_client.search.call_count == 6

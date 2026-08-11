@@ -155,18 +155,27 @@ def test_get_haiku_model_id_rejects_missing_environment_variable(monkeypatch):
 def test_kimi_system_prompt_adds_slide_balance_rules():
     prompt = get_system_prompt("speee", "kimi")
 
-    assert "Kimi K2.5向けの実行指示" in prompt
-    assert "テーマが判別できれば新規スライド作成" in prompt
-    assert "スライド枚数を質問しない" in prompt
-    assert "原則8枚" in prompt
-    assert "最大10枚" in prompt
-    assert "同じ応答内でoutput_slideまで実行" in prompt
-    assert "何枚にしますか" in prompt
+    assert "Kimi K2.5実行契約" in prompt
+    assert "狭いテーマは10〜12枚" in prompt
+    assert "複数の機能や論点を扱うテーマは14〜18枚" in prompt
+    assert "最大20枚" in prompt
+    assert "論点を分けて4〜6回検索" in prompt
+    assert "最初の可視応答" in prompt
+    assert "修正します。" in prompt
     assert "指定枚数を増減しない" in prompt
     assert "合計10" in prompt
+    assert "参考文献1" in prompt
     assert "中タイトルを最大2枚" in prompt
     assert "アジェンダ・目次・まとめ" in prompt
-    assert "根拠が与えられていない割合" in prompt
+    assert "検索結果やユーザー入力にない日付" in prompt
+    assert "実在したURLを3件以上" in prompt
+    assert "製品名の境界を厳密に守る" in prompt
+    assert "対象製品名をURLまたはページタイトルに含むページだけ" in prompt
+    assert "site:help.openai.com Codex rate card" in prompt
+    assert "http_requestでページ本文を再取得しない" in prompt
+    assert "確認できないセルは「公式情報で要確認」" in prompt
+    assert "比較の穴埋めとして追加しない" in prompt
+    assert "<!-- source: https://... -->" in prompt
 
 
 def test_sonnet_system_prompt_does_not_add_kimi_rules():
@@ -187,7 +196,7 @@ def test_glm_system_prompt_adds_oss_slide_rules():
     prompt = get_system_prompt("speee", "glm")
 
     assert "OSS系モデル向け" in prompt
-    assert "合計8" in prompt
+    assert "参考文献1" in prompt
 
 
 def test_disabled_sol_uses_the_same_system_prompt_as_sonnet46():

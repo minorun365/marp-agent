@@ -13,6 +13,7 @@ from tools import (
     web_search,
     output_slide,
     configure_slide_validation,
+    mark_web_search_executed,
     generate_tweet_url,
     get_generated_markdown,
     reset_generated_markdown,
@@ -207,6 +208,9 @@ async def invoke(payload, context=None):
     slide_outputted = False
     suppress_text = False
     stream_error = False
+    kimi_text_buffer: list[str] = []
+    kimi_slide_workflow_started = False
+    web_search_event_count = 0
 
     try:
         stream = agent.stream_async(user_message)
@@ -233,12 +237,19 @@ async def invoke(payload, context=None):
                         suppress_text = True
                     else:
                         chunk = event["data"]
-                        yield {"type": "text", "data": chunk}
+                        if model_type == "kimi":
+                            kimi_text_buffer.append(chunk)
+                        else:
+                            yield {"type": "text", "data": chunk}
 
             elif "current_tool_use" in event:
                 tool_info = event["current_tool_use"]
                 tool_name = tool_info.get("name", "unknown")
                 tool_input = tool_info.get("input", {})
+
+                if model_type == "kimi" and tool_name in {"web_search", "output_slide"}:
+                    kimi_slide_workflow_started = True
+                    kimi_text_buffer.clear()
 
                 # 文字列の場合はJSONパースを試みる
                 if isinstance(tool_input, str):
@@ -249,7 +260,13 @@ async def invoke(payload, context=None):
 
                 if tool_name == "web_search":
                     web_search_executed = True
-                    if isinstance(tool_input, dict) and "query" in tool_input:
+                    mark_web_search_executed()
+                    web_search_event_count += 1
+                    if (
+                        web_search_event_count <= 6
+                        and isinstance(tool_input, dict)
+                        and "query" in tool_input
+                    ):
                         yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
                 elif tool_name == "http_request":
                     if isinstance(tool_input, dict) and "url" in tool_input:
@@ -264,7 +281,11 @@ async def invoke(payload, context=None):
                 if hasattr(result, 'message') and result.message:
                     for content in getattr(result.message, 'content', []):
                         if hasattr(content, 'text') and content.text:
-                            yield {"type": "text", "data": content.text}
+                            if model_type == "kimi":
+                                if not kimi_slide_workflow_started:
+                                    kimi_text_buffer.append(content.text)
+                            else:
+                                yield {"type": "text", "data": content.text}
 
                 # ツール完了直後にマークダウンを送信（スピナーを即座に停止）
                 generated_markdown = get_generated_markdown()
@@ -281,14 +302,74 @@ async def invoke(payload, context=None):
         print(f"[ERROR] Stream failed (model_type={model_type}): {e}")
         yield {"type": "error", "error": str(e)}
 
+    # Kimiが検索結果の要約だけで停止した場合は、同じ履歴を使って出力を1回だけ完遂させる。
+    if (
+        model_type == "kimi"
+        and web_search_executed
+        and not slide_outputted
+        and not stream_error
+    ):
+        print("[INFO] Kimi stopped after web search; retrying output_slide once")
+        retry_instruction = (
+            "直前のWeb検索結果と元のユーザー指示を使って、完成スライドを今すぐ作成してください。"
+            "検索・説明・確認質問は追加せず、指定枚数と出典ルールを守ったMarkdownを"
+            "output_slideで出力してください。"
+        )
+        try:
+            retry_stream = agent.stream_async(retry_instruction)
+            retry_iter = retry_stream.__aiter__()
+            retry_pending = asyncio.ensure_future(_safe_anext(retry_iter))
+            retry_output_status_sent = False
+
+            while True:
+                retry_done, _ = await asyncio.wait(
+                    {retry_pending}, timeout=STREAM_KEEPALIVE_INTERVAL
+                )
+                if not retry_done:
+                    yield {"type": "progress", "message": "スライドを仕上げています..."}
+                    continue
+
+                retry_event = retry_pending.result()
+                if retry_event is _STREAM_SENTINEL:
+                    break
+
+                if "current_tool_use" in retry_event:
+                    retry_tool = retry_event["current_tool_use"].get("name", "unknown")
+                    if retry_tool == "output_slide" and not retry_output_status_sent:
+                        yield {"type": "tool_use", "data": "output_slide"}
+                        retry_output_status_sent = True
+
+                generated_markdown = get_generated_markdown()
+                if generated_markdown and not slide_outputted:
+                    yield {"type": "markdown", "data": generated_markdown}
+                    reset_generated_markdown()
+                    slide_outputted = True
+                    suppress_text = True
+
+                retry_pending = asyncio.ensure_future(_safe_anext(retry_iter))
+        except Exception as e:
+            stream_error = True
+            print(f"[ERROR] Kimi output retry failed: {e}")
+            yield {"type": "error", "error": str(e)}
+
     # マークダウン出力
     generated_markdown = get_generated_markdown()
     if generated_markdown:
         yield {"type": "markdown", "data": generated_markdown}
 
+    if model_type == "kimi" and not slide_outputted and not web_search_executed and kimi_text_buffer:
+        yield {"type": "text", "data": "".join(kimi_text_buffer)}
+
     # Web検索後にスライドが生成されなかった場合のフォールバック
     last_search_result = get_last_search_result()
     if web_search_executed and not slide_outputted and last_search_result:
+        if model_type == "kimi":
+            yield {
+                "type": "error",
+                "error": "検索は完了しましたが、スライド生成を完遂できませんでした。もう一度お試しください。",
+            }
+            yield {"type": "done"}
+            return
         truncated_result = last_search_result[:500]
         if len(last_search_result) > 500:
             truncated_result += "..."

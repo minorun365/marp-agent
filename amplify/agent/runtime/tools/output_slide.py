@@ -3,6 +3,7 @@
 import math
 import re
 import unicodedata
+from urllib.parse import urlparse
 
 from strands import tool
 
@@ -14,6 +15,30 @@ _expected_slide_count: int | None = None
 _maximum_slide_count: int | None = None
 _agenda_requested: bool = False
 _active_model_type: str = "sonnet"
+_web_search_executed: bool = False
+_user_quantified_claims: set[str] = set()
+_required_official_source_rules: list[dict] = []
+
+OFFICIAL_SOURCE_RULES = (
+    {
+        'name': 'Amazon Bedrock AgentCore',
+        'markers': ('AgentCore', 'Bedrock AgentCore'),
+        'domains': ('aws.amazon.com', 'docs.aws.amazon.com'),
+        'url_keywords': ('agentcore',),
+    },
+    {
+        'name': 'Claude Code',
+        'markers': ('Claude Code',),
+        'domains': ('anthropic.com', 'claude.com'),
+        'url_keywords': ('claude-code',),
+    },
+    {
+        'name': 'Codex',
+        'markers': ('Codex',),
+        'domains': ('openai.com',),
+        'url_keywords': ('codex',),
+    },
+)
 
 MAX_OVERFLOW_RETRIES = 2
 MAX_LINES_PER_SLIDE = 9
@@ -25,6 +50,26 @@ MAX_DISPLAY_WIDTH_PER_LINE = 48
 # テーブルはテキスト折り返しされず横にはみ出すため、行全体の幅をチェック
 # Marp 16:9での実測: 3列テーブルで全角10文字/セル程度が上限
 MAX_TABLE_ROW_WIDTH = 64
+
+QUANTIFIED_CLAIM_PATTERN = re.compile(
+    r'(?:\$\s*\d[\d,.]*|\d[\d,.]*\s*(?:%|％|円|ドル|USD|万円|億円|ヶ月|か月|カ月|年|日|時間|人|倍))',
+    re.IGNORECASE,
+)
+
+
+def _url_matches_domains(url: str, domains: tuple[str, ...]) -> bool:
+    """URLが指定した公式ドメインまたはそのサブドメインかを判定する。"""
+    hostname = (urlparse(url).hostname or '').lower()
+    return any(hostname == domain or hostname.endswith(f'.{domain}') for domain in domains)
+
+
+def _url_matches_official_rule(url: str, rule: dict) -> bool:
+    """公式ドメインかつ対象製品を明示するURLかを判定する。"""
+    normalized_url = url.lower()
+    return (
+        _url_matches_domains(url, rule['domains'])
+        and any(keyword in normalized_url for keyword in rule['url_keywords'])
+    )
 
 
 def _get_display_width(text: str) -> int:
@@ -165,13 +210,17 @@ def _check_slide_overflow(markdown: str) -> list[dict]:
 def configure_slide_validation(user_message: str, model_type: str) -> None:
     """ユーザー指示とモデル種別に応じた出力検証を設定する。"""
     global _expected_slide_count, _maximum_slide_count
-    global _agenda_requested, _active_model_type
+    global _agenda_requested, _active_model_type, _user_quantified_claims
+    global _required_official_source_rules
     slide_counts = re.findall(r'(\d{1,2})\s*枚', user_message)
     if slide_counts:
         _expected_slide_count = int(slide_counts[-1])
         _maximum_slide_count = None
-    elif model_type in {'kimi', 'sol'}:
-        # 枚数確認で会話を止めず、モデル別プロンプトの上限だけを確実に守らせる。
+    elif model_type == 'kimi':
+        # Sonnet実測と同等の情報量を許容しつつ、際限なく増えないようにする。
+        _expected_slide_count = None
+        _maximum_slide_count = 20
+    elif model_type == 'sol':
         _expected_slide_count = None
         _maximum_slide_count = 10
     else:
@@ -181,6 +230,19 @@ def configure_slide_validation(user_message: str, model_type: str) -> None:
         re.search(r'(アジェンダ|目次).{0,12}(作|追加|含)', user_message)
     )
     _active_model_type = model_type
+    _user_quantified_claims = set(QUANTIFIED_CLAIM_PATTERN.findall(user_message))
+    _required_official_source_rules = [
+        rule
+        for rule in OFFICIAL_SOURCE_RULES
+        if model_type == 'kimi'
+        and any(marker.lower() in user_message.lower() for marker in rule['markers'])
+    ]
+
+
+def mark_web_search_executed() -> None:
+    """Web検索後の出典検証を有効化する。"""
+    global _web_search_executed
+    _web_search_executed = True
 
 
 def _check_slide_structure(markdown: str) -> list[dict]:
@@ -223,6 +285,115 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                 'slides': agenda_slides,
             })
 
+    if _web_search_executed:
+        source_slides = [
+            slide
+            for slide in slides
+            if re.search(r'_class:\s*tinytext', slide)
+            and re.search(r'^#{1,3}\s+.*(参考文献|出典|Sources?)', slide, re.MULTILINE | re.IGNORECASE)
+        ]
+        source_urls = re.findall(r'https?://[^\s)>]+', '\n'.join(source_slides))
+        if not source_slides or len(source_urls) < 3:
+            violations.append({
+                'type': 'missing_sources',
+                'url_count': len(source_urls),
+                'minimum': 3,
+            })
+        source_url_set = {url.rstrip('.,、。') for url in source_urls}
+        missing_official_sources = [
+            rule['name']
+            for rule in _required_official_source_rules
+            if not any(
+                _url_matches_official_rule(url, rule)
+                for url in source_url_set
+            )
+        ]
+        if missing_official_sources:
+            violations.append({
+                'type': 'missing_official_sources',
+                'products': missing_official_sources,
+            })
+        missing_slide_sources = []
+        unlisted_slide_sources = []
+        non_official_slide_sources = []
+        irrelevant_slide_sources = []
+        for index, slide in enumerate(slides, start=1):
+            if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
+                continue
+            slide_source_urls = [
+                url.rstrip('.,、。')
+                for url in re.findall(
+                    r'<!--\s*source:\s*(https?://[^\s>]+)\s*-->',
+                    slide,
+                    re.IGNORECASE,
+                )
+            ]
+            if not slide_source_urls:
+                missing_slide_sources.append(index)
+            else:
+                unlisted_slide_sources.extend(
+                    {'slide': index, 'url': url}
+                    for url in slide_source_urls
+                    if url not in source_url_set
+                )
+                active_slide_rules = [
+                    rule
+                    for rule in _required_official_source_rules
+                    if any(marker.lower() in slide.lower() for marker in rule['markers'])
+                ]
+                for rule in active_slide_rules:
+                    if (
+                        not any(
+                            _url_matches_official_rule(url, rule)
+                            for url in slide_source_urls
+                        )
+                    ):
+                        non_official_slide_sources.append({
+                            'slide': index,
+                            'product': rule['name'],
+                        })
+                if active_slide_rules:
+                    irrelevant_slide_sources.extend(
+                        {'slide': index, 'url': url}
+                        for url in slide_source_urls
+                        if not any(
+                            _url_matches_official_rule(url, rule)
+                            for rule in active_slide_rules
+                        )
+                    )
+        if missing_slide_sources:
+            violations.append({
+                'type': 'missing_slide_sources',
+                'slides': missing_slide_sources,
+            })
+        if unlisted_slide_sources:
+            violations.append({
+                'type': 'unlisted_slide_sources',
+                'sources': unlisted_slide_sources,
+            })
+        if non_official_slide_sources:
+            violations.append({
+                'type': 'non_official_slide_sources',
+                'sources': non_official_slide_sources,
+            })
+        if irrelevant_slide_sources:
+            violations.append({
+                'type': 'irrelevant_slide_sources',
+                'sources': irrelevant_slide_sources,
+            })
+
+    if _active_model_type == 'kimi' and not _web_search_executed:
+        unsupported_claims = sorted(
+            claim
+            for claim in set(QUANTIFIED_CLAIM_PATTERN.findall(markdown))
+            if claim not in _user_quantified_claims
+        )
+        if unsupported_claims:
+            violations.append({
+                'type': 'unsupported_quantified_claims',
+                'claims': unsupported_claims,
+            })
+
     if _active_model_type in {'kimi', 'glm'}:
         previous_pattern = None
         consecutive_pattern_count = 0
@@ -232,7 +403,7 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                 consecutive_pattern_count = 0
                 continue
             bold_count = len(re.findall(r'\*\*.+?\*\*', slide))
-            if bold_count > 1:
+            if bold_count > 2:
                 violations.append({
                     'type': 'bold_overuse',
                     'slide_number': index,
@@ -271,12 +442,17 @@ def reset_generated_markdown() -> None:
     global _generated_markdown, _overflow_retry_count
     global _expected_slide_count, _maximum_slide_count
     global _agenda_requested, _active_model_type
+    global _web_search_executed, _user_quantified_claims
+    global _required_official_source_rules
     _generated_markdown = None
     _overflow_retry_count = 0
     _expected_slide_count = None
     _maximum_slide_count = None
     _agenda_requested = False
     _active_model_type = "sonnet"
+    _web_search_executed = False
+    _user_quantified_claims = set()
+    _required_official_source_rules = []
 
 
 @tool
@@ -323,7 +499,24 @@ def output_slide(markdown: str) -> str:
     violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 
     retry_limit = 4 if _active_model_type in {'kimi', 'glm'} else MAX_OVERFLOW_RETRIES
-    if violations and _overflow_retry_count < retry_limit:
+    blocking_kimi_types = {
+        'slide_count',
+        'slide_count_max',
+        'missing_sources',
+        'missing_slide_sources',
+        'unlisted_slide_sources',
+        'missing_official_sources',
+        'non_official_slide_sources',
+        'irrelevant_slide_sources',
+        'unsupported_quantified_claims',
+    }
+    has_blocking_kimi_violation = (
+        _active_model_type == 'kimi'
+        and any(v['type'] in blocking_kimi_types for v in violations)
+    )
+    if violations and (
+        _overflow_retry_count < retry_limit or has_blocking_kimi_violation
+    ):
         _overflow_retry_count += 1
         details = []
         for v in violations:
@@ -353,11 +546,55 @@ def output_slide(markdown: str) -> str:
                 )
             elif v['type'] == 'bold_overuse':
                 details.append(
-                    f"  - スライド{v['slide_number']}: 太字が{v['count']}か所。太字ラベルを外し、太字は最大1か所にする"
+                    f"  - スライド{v['slide_number']}: 太字が{v['count']}か所。太字ラベルを外し、太字は最大2か所にする"
                 )
             elif v['type'] == 'pattern_repetition':
                 details.append(
                     f"  - スライド{v['slide_number']}: {v['pattern']}型が3枚連続。表・小見出し・本文型のいずれかへ変更する"
+                )
+            elif v['type'] == 'missing_sources':
+                details.append(
+                    f"  - Web検索を使ったため参考文献スライドが必要。実在URLを最低{v['minimum']}件記載する（現在{v['url_count']}件）"
+                )
+            elif v['type'] == 'unsupported_quantified_claims':
+                details.append(
+                    f"  - 根拠のない数値表現: {', '.join(v['claims'])}。ユーザー入力にも検索結果にもないため削除し、定性的に言い換える"
+                )
+            elif v['type'] == 'missing_slide_sources':
+                details.append(
+                    f"  - 根拠URLコメントがない本文スライド: {v['slides']}。見出し直下に <!-- source: 検索結果URL --> を追加する"
+                )
+            elif v['type'] == 'unlisted_slide_sources':
+                details.append(
+                    "  - 本文の根拠URLが参考文献に未掲載: "
+                    + ", ".join(
+                        f"スライド{source['slide']}={source['url']}"
+                        for source in v['sources']
+                    )
+                )
+            elif v['type'] == 'missing_official_sources':
+                details.append(
+                    "  - 公式情報が参考文献にない製品: "
+                    + ", ".join(v['products'])
+                    + "。各ベンダーの公式ドメインを検索し、参考文献へ追加する"
+                )
+            elif v['type'] == 'non_official_slide_sources':
+                details.append(
+                    "  - 公式URLを根拠にしていない製品スライド: "
+                    + ", ".join(
+                        f"スライド{source['slide']}={source['product']}"
+                        for source in v['sources']
+                    )
+                    + "。該当製品の公式URLを source コメントへ指定する"
+                )
+            elif v['type'] == 'irrelevant_slide_sources':
+                details.append(
+                    "  - 対象製品ページではない根拠URL: "
+                    + ", ".join(
+                        f"スライド{source['slide']}={source['url']}"
+                        for source in v['sources']
+                    )
+                    + "。顧客事例・採用・汎用ページを外し、該当製品名を含む公式URLだけにする"
                 )
         violation_details = "\n".join(details)
         return (

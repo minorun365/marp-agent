@@ -37,6 +37,8 @@ tavily_clients: tuple[TavilyClient, ...] | list[TavilyClient] | None = None
 # Web検索結果用のグローバル変数
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
 _last_search_result: str | None = None
+_search_call_count: int = 0
+MAX_SEARCH_CALLS = 6
 
 
 def get_last_search_result() -> str | None:
@@ -46,8 +48,9 @@ def get_last_search_result() -> str | None:
 
 def reset_last_search_result() -> None:
     """検索結果をリセット"""
-    global _last_search_result
+    global _last_search_result, _search_call_count
     _last_search_result = None
+    _search_call_count = 0
 
 
 @tool
@@ -56,7 +59,8 @@ def web_search(query: str) -> str:
 
     ## 使い方のルール
 
-    - 検索結果が不十分な場合は異なるクエリで再検索してOK
+    - 検索結果が不十分な場合は異なるクエリで再検索してOK。ただし1回の依頼につき最大6回まで
+    - 製品仕様・料金・セキュリティ・提供状況は、ベンダー公式ドメインを `site:` で指定して先に検索する。公式情報がある重要事実を第三者ブログだけで断定しない
     - Web検索時は最後のスライドに `<!-- _class: tinytext -->` 付きの参考文献スライドを追加すること
     - エラー時（APIキー未設定・rate limit・usage limit等）はスライドを作成せず、「利用殺到でみのるんの検索API無料枠が枯渇したようです。Xで本人（@minorun365）に教えてあげてください。修正をお待ちください」と案内する
     - 検索結果のsnippetだけでスライドは十分作れる。検索結果のURLにhttp_requestでアクセスしてはいけない
@@ -67,6 +71,11 @@ def web_search(query: str) -> str:
     Returns:
         検索結果のテキスト
     """
+    global _search_call_count
+    if _search_call_count >= MAX_SEARCH_CALLS:
+        return "Web検索は上限6回に達しました。これまでの検索結果だけを使ってスライドを作成してください。"
+    _search_call_count += 1
+
     try:
         clients = tavily_clients if tavily_clients is not None else _get_tavily_clients()
     except Exception:
