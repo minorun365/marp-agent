@@ -14,6 +14,7 @@ openai_responses_module.OpenAIResponsesModel = MagicMock()
 sys.modules["strands.models.openai_responses"] = openai_responses_module
 
 import session.manager as manager
+import config
 
 
 def test_create_model_uses_bedrock_provider_for_sonnet(monkeypatch):
@@ -30,7 +31,8 @@ def test_create_model_uses_bedrock_provider_for_sonnet(monkeypatch):
     )
 
 
-def test_create_model_uses_mantle_responses_provider_for_sol(monkeypatch):
+def test_sol_model_factory_is_ready_for_reenable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sol"})
     monkeypatch.setenv("BEDROCK_SOL_MODEL_ID", "openai.gpt-5.6-sol")
     monkeypatch.setenv("BEDROCK_MANTLE_REGION", "us-east-1")
     responses_model = MagicMock()

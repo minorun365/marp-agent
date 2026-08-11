@@ -14,7 +14,7 @@
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search, output_slide, generate_tweet_url |
 | インフラ | リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
-| インフラ | モデル | Claude Sonnet 4.6（デフォルト）/ GPT-5.6 Sol（最高品質）/ Kimi K2.5（高速） |
+| インフラ | モデル | Claude Sonnet 4.6（デフォルト）/ Kimi K2.5（高速） |
 | 認証 | スコープ | 誰でもサインアップ可能（本番時） |
 
 ---
@@ -94,7 +94,7 @@
 
 ### モデル選択
 
-Sonnet 4.6をデフォルトとし、GPT-5.6 Solを最高品質、Kimi K2.5を高速オプションとして提供する。選択肢は「高品質（Claude Sonnet 4.6）」「最高品質（GPT-5.6 Sol）」「高速（Kimi K2.5）」と表示する。会話開始後は履歴とモデルの不整合を避けるため切り替えできない。SolはBedrock MantleのResponses API、ほかの有効モデルはBedrock native APIを使う。Sonnet 5、GLM-5、Opus 4.6は設定を保持しているが、品質を再評価するまで無効とする。
+Sonnet 4.6をデフォルトとし、Kimi K2.5を高速オプションとして提供する。選択肢は「高品質（Claude Sonnet 4.6）」「高速（Kimi K2.5）」と表示する。会話開始後は履歴とモデルの不整合を避けるため切り替えできない。GPT-5.6 Sol、Sonnet 5、GLM-5、Opus 4.6は設定を保持しているが、再評価するまで無効とし、APIへ指定されてもSonnet 4.6へフォールバックする。
 
 **カーソル制御**: ツール使用開始時にストリーミングカーソル（▌）を非表示にする
 
@@ -261,7 +261,7 @@ web_searchツールがエラーを返した場合（「検索エラー」「API�
 - ユーザーから「PDFをダウンロードできない」旨の質問があったら、ブラウザでポップアップがブロックされていないか確認してください。
 ```
 
-共通プロンプトは全モデルで共有し、Sonnet 4.6は共通プロンプトだけを使用する。Kimi K2.5とGPT-5.6 Solには、短いキーワードでも対象読者・目的・構成・デザイン・枚数を聞き返さず、必要なWeb検索から`output_slide`まで同じ応答内で完了する自律実行ルールを追加する。枚数未指定時は原則8枚、最大10枚とする。Kimiにはさらに、指定枚数の厳守、中タイトル数、文章量、太字、見出し階層、根拠のない数値、同一表現の連続を制御する追加ルールを連結する。
+共通プロンプトは全モデルで共有し、Sonnet 4.6は共通プロンプトだけを使用する。Kimi K2.5には、短いキーワードでも対象読者・目的・構成・デザイン・枚数を聞き返さず、必要なWeb検索から`output_slide`まで同じ応答内で完了する自律実行ルールを追加する。枚数未指定時は原則8枚、最大10枚とする。Kimiにはさらに、指定枚数の厳守、中タイトル数、文章量、太字、見出し階層、根拠のない数値、同一表現の連続を制御する追加ルールを連結する。GPT-5.6 Sol用のプロンプトは再有効化に備えて保持する。
 
 ### レスポンス例
 
@@ -292,7 +292,7 @@ theme: gradient
                                               │
                                               ├── Strands Agent (Python)
                                               ├── Claude Sonnet 4.6 / Kimi K2.5（Bedrock native）
-                                              ├── GPT-5.6 Sol（Bedrock Mantle Responses API）
+                                              ├── GPT-5.6 Sol（設定保持・現在無効）
                                               └── Marp CLI (PDF変換)
 ```
 
@@ -304,7 +304,7 @@ theme: gradient
 | AgentCore Runtime | ARM64コンテナ |
 | Bedrockモデル | SonnetはAIP、KimiはモデルID、Solは`openai.gpt-5.6-sol` |
 | Mantleリージョン | `us-east-1`（`BEDROCK_MANTLE_REGION`で設定可能） |
-| プロンプトキャッシュ | Sonnetは`cache_prompt="default"`, `cache_tools="default"`。SolはStrandsのキャッシュ引数なし |
+| プロンプトキャッシュ | Sonnetは`cache_prompt="default"`, `cache_tools="default"`。Kimiはキャッシュなし |
 | 認証 | Cognito（本番のみ） |
 | 共有スライド | S3 + CloudFront OAC（7日後自動削除） |
 
@@ -621,7 +621,7 @@ Amplify Console → **Environment variables** で設定:
 - [x] チャット応答のマークダウンレンダリング（react-markdown）
 - [ ] マークダウン編集機能（シンタックスハイライト付き）
 - [x] テーマ選択（Border / Gradient / Beam の3種類）
-- [x] モデル表示/選択基盤（高品質のSonnet 4.6 / 最高品質のGPT-5.6 Sol / 高速なKimi K2.5。Sonnet 5、GLM-5、Opus 4.6は設定保持・無効）
+- [x] モデル表示/選択基盤（高品質のSonnet 4.6 / 高速なKimi K2.5。GPT-5.6 Sol、Sonnet 5、GLM-5、Opus 4.6は設定保持・無効）
 - [ ] 画像アップロード・挿入
 - [ ] スライド履歴管理
 - [x] PPTX 出力対応（ドロップダウンでPDF/PPTX選択）
