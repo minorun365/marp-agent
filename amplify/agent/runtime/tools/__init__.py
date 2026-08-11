@@ -3,6 +3,7 @@
 from .web_search import web_search, tavily_clients
 from .output_slide import (
     configure_slide_validation,
+    mark_web_search_executed,
     output_slide,
     get_generated_markdown,
     reset_generated_markdown,
@@ -15,6 +16,7 @@ __all__ = [
     "tavily_clients",
     "output_slide",
     "configure_slide_validation",
+    "mark_web_search_executed",
     "get_generated_markdown",
     "reset_generated_markdown",
     "generate_tweet_url",

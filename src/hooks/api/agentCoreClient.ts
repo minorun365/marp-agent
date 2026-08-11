@@ -10,6 +10,76 @@ import type { ModelType, ReferenceFile } from '../../components/Chat/types';
 const SSE_IDLE_TIMEOUT_MS = 30_000;         // 初回イベント前: 30秒
 const SSE_ONGOING_IDLE_TIMEOUT_MS = 60_000;  // イベント間: 60秒
 
+interface EvaluationTraceEvent {
+  elapsedMs: number;
+  type: string;
+  toolName?: string;
+  query?: string;
+  contentLength?: number;
+}
+
+interface EvaluationTrace {
+  startedAt: string;
+  modelType: ModelType;
+  prompt: string;
+  events: EvaluationTraceEvent[];
+  markdown: string;
+}
+
+declare global {
+  interface Window {
+    __MARPA_EVALUATION_TRACE__?: EvaluationTrace;
+  }
+}
+
+let evaluationStartedAt = 0;
+const EVALUATION_TRACE_ELEMENT_ID = 'marpa-evaluation-trace';
+
+function isLocalEvaluation() {
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+}
+
+function persistEvaluationTrace() {
+  if (!window.__MARPA_EVALUATION_TRACE__) return;
+
+  let traceElement = document.getElementById(EVALUATION_TRACE_ELEMENT_ID);
+  if (!traceElement) {
+    traceElement = document.createElement('script');
+    traceElement.id = EVALUATION_TRACE_ELEMENT_ID;
+    traceElement.setAttribute('type', 'application/json');
+    document.head.appendChild(traceElement);
+  }
+  traceElement.textContent = JSON.stringify(window.__MARPA_EVALUATION_TRACE__);
+}
+
+function startEvaluationTrace(modelType: ModelType, prompt: string) {
+  if (!isLocalEvaluation()) return;
+
+  evaluationStartedAt = performance.now();
+  window.__MARPA_EVALUATION_TRACE__ = {
+    startedAt: new Date().toISOString(),
+    modelType,
+    prompt,
+    events: [{ elapsedMs: 0, type: 'invoke_start' }],
+    markdown: '',
+  };
+  persistEvaluationTrace();
+}
+
+function recordEvaluationEvent(
+  type: string,
+  details: Omit<EvaluationTraceEvent, 'elapsedMs' | 'type'> = {},
+) {
+  if (!isLocalEvaluation() || !window.__MARPA_EVALUATION_TRACE__) return;
+
+  window.__MARPA_EVALUATION_TRACE__.events.push({
+    elapsedMs: Math.round(performance.now() - evaluationStartedAt),
+    type,
+    ...details,
+  });
+  persistEvaluationTrace();
+}
+
 export interface AgentCoreCallbacks {
   onText: (text: string) => void;
   onStatus: (status: string) => void;
@@ -58,6 +128,17 @@ function handleEvent(
 ) {
   const textValue = event.content || event.data;
 
+  recordEvaluationEvent(event.type || 'unknown', {
+    ...(event.type === 'tool_use' && textValue ? { toolName: textValue } : {}),
+    ...(event.query ? { query: event.query } : {}),
+    ...(textValue ? { contentLength: textValue.length } : {}),
+  });
+
+  if (event.type === 'markdown' && textValue && window.__MARPA_EVALUATION_TRACE__) {
+    window.__MARPA_EVALUATION_TRACE__.markdown = textValue;
+    persistEvaluationTrace();
+  }
+
   switch (event.type) {
     case 'text':
       if (textValue) callbacks.onText(textValue);
@@ -100,6 +181,8 @@ export async function invokeAgent(
   modelType: ModelType = 'sonnet',
   referenceFile?: ReferenceFile
 ): Promise<void> {
+  startEvaluationTrace(modelType, prompt);
+
   try {
     const { url, accessToken } = await getAgentCoreConfig();
 
@@ -124,6 +207,8 @@ export async function invokeAgent(
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
+    recordEvaluationEvent('response_open');
+
     const reader = response.body?.getReader();
     if (!reader) {
       throw new Error('Response body is not readable');
@@ -132,11 +217,15 @@ export async function invokeAgent(
     await readSSEStream(
       reader,
       (event) => handleEvent(event as Parameters<typeof handleEvent>[0], callbacks),
-      () => callbacks.onComplete(),
+      () => {
+        recordEvaluationEvent('stream_done');
+        callbacks.onComplete();
+      },
       SSE_IDLE_TIMEOUT_MS,
       SSE_ONGOING_IDLE_TIMEOUT_MS,
     );
   } catch (error) {
+    recordEvaluationEvent('invocation_error');
     // ストリーム切断エラーは呼び出し元のcatchで処理
     // （ストリーム中のエラーイベントはhandleEvent→onErrorで処理済み）
     throw error instanceof Error ? error : new Error(String(error));
