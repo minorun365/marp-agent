@@ -148,14 +148,14 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 
 ## E2Eテスト手順
 
-コード変更後のE2Eテストは以下の手順で実施する。Chrome DevTools MCPを使用してブラウザ操作を自動化する。
+コード変更後のE2Eテストは以下の手順で実施する。公式 Chrome 拡張と専用 profile `AIエージェント`（実ディレクトリ `AI Agent - KAG`）を使用してブラウザ操作を自動化する。
 
 ### 手順
 
 1. **SSOセッション確認**: `aws sts get-caller-identity --profile sandbox`
 2. **サンドボックス起動**: `npm run sandbox` をバックグラウンド実行（`--profile sandbox` はスクリプトに内蔵済み）
 3. **フロントエンド起動**: `npm run dev`（別プロセスでバックグラウンド実行）
-4. **Chrome DevTools MCPで確認**:
+4. **公式 Chrome 拡張で確認**:
    - `localhost:5173` にアクセス
    - ログインページの表示確認
    - テスト用ユーザーでログイン（`.env`のTEST_USER_EMAIL/TEST_USER_PASSWORD使用）

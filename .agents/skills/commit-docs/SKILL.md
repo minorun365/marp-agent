@@ -16,7 +16,7 @@ argument-hint: [コミットメッセージ（省略可）]
 | パス | 内容 |
 |------|------|
 | `docs/` | ドキュメント |
-| `.Codex/` | Codex設定・スキル |
+| `.agents/` | Codex設定・スキル |
 | `.github/` | GitHub Actions・テンプレート |
 | `.vscode/` | エディタ設定 |
 | `*.md`（ルート） | README.md など |
@@ -52,7 +52,7 @@ argument-hint: [コミットメッセージ（省略可）]
 git status --short
 
 # 対象ファイルをステージング（存在するもののみ）
-git add docs/ .Codex/ .github/ .vscode/ README.md AGENTS.md .gitignore 2>/dev/null || true
+git add docs/ .agents/ .github/ .vscode/ README.md AGENTS.md .gitignore 2>/dev/null || true
 
 # コミット
 git commit -m "${ARGUMENTS:-ドキュメント・設定更新} [skip-cd]"
