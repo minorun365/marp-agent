@@ -13,14 +13,13 @@ from tools.http_request import _get_haiku_model_id
 
 
 def test_public_models_are_enabled():
-    assert ENABLED_MODEL_TYPES == {"sonnet", "kimi", "sol"}
+    assert ENABLED_MODEL_TYPES == {"sonnet", "kimi"}
     assert normalize_model_type("kimi") == "kimi"
-    assert normalize_model_type("sol") == "sol"
 
 
 @pytest.mark.parametrize(
     "requested_model",
-    [None, "sonnet5", "glm", "opus", "opus4.7", "unknown"],
+    [None, "sonnet5", "glm", "opus", "opus4.7", "sol", "unknown"],
 )
 def test_disabled_model_falls_back_to_sonnet(requested_model):
     assert normalize_model_type(requested_model) == "sonnet"
@@ -52,7 +51,8 @@ def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
     }
 
 
-def test_get_model_config_uses_sol_through_mantle(monkeypatch):
+def test_sol_config_is_ready_for_reenable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sol"})
     monkeypatch.setenv("BEDROCK_SOL_MODEL_ID", "openai.gpt-5.6-sol")
     monkeypatch.setenv("BEDROCK_MANTLE_REGION", "us-east-1")
 
@@ -116,6 +116,7 @@ def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch)
 
 
 def test_get_model_config_rejects_missing_sol_environment_variable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sol"})
     monkeypatch.delenv("BEDROCK_SOL_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_SOL_MODEL_ID"):
@@ -189,14 +190,10 @@ def test_glm_system_prompt_adds_oss_slide_rules():
     assert "合計8" in prompt
 
 
-def test_sol_system_prompt_runs_research_and_slide_creation_without_questions():
-    prompt = get_system_prompt("speee", "sol")
+def test_disabled_sol_uses_the_same_system_prompt_as_sonnet46():
+    normalized_model_type = normalize_model_type("sol")
+    prompt = get_system_prompt("speee", normalized_model_type)
 
-    assert "GPT-5.6 Sol向けの実行指示" in prompt
-    assert "対象読者・利用目的・構成・デザイン・スライド枚数を質問しない" in prompt
-    assert "原則8枚" in prompt
-    assert "最大10枚" in prompt
-    assert "web_search" in prompt
-    assert "同じ応答内でoutput_slideまで実行" in prompt
-    assert "作成しますか" in prompt
+    assert "GPT-5.6 Sol向けの実行指示" not in prompt
     assert "OSS系モデル向け" not in prompt
+    assert prompt == get_system_prompt("speee", "sonnet")

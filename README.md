@@ -14,7 +14,7 @@
 
 ## アーキテクチャ
 
-AWSの最新サービスを活用して、フルサーバーレスで構築。Claude Sonnet 4.6、GPT-5.6 Sol、Kimi K2.5を用途に応じて選べます。維持費の中心はAmazon Bedrockのモデル推論料金です。
+AWSの最新サービスを活用して、フルサーバーレスで構築。Claude Sonnet 4.6とKimi K2.5を用途に応じて選べます。維持費の中心はAmazon Bedrockのモデル推論料金です。
 
 <img width="1362" height="759" alt="アーキテクチャ図" src="https://github.com/user-attachments/assets/21c580e9-6c09-4ef8-ba82-90014522871b" />
 
@@ -29,7 +29,7 @@ AWSの最新サービスを活用して、フルサーバーレスで構築。Cl
 - Node.js 18以上
 - Docker Desktop（起動しておく）
 - AWSアカウント
-  - リージョンはバージニア/オレゴン/東京のいずれか（GPT-5.6 SolのMantle接続先はバージニア北部）
+  - リージョンはバージニア/オレゴン/東京のいずれか
   - BedrockプレイグランドからClaudeのユースケース送信をしておく
 - [Tavily](https://tavily.com/) APIキー（無料、Web検索機能に必要）
 

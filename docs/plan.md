@@ -15,7 +15,7 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 | PDFダウンロード | 日本語対応のPDFを生成・ダウンロード |
 | Web検索 | Tavilyで最新情報を調べてスライドに反映 |
 | Xシェア | PDFダウンロード後にツイートURLを自動生成 |
-| モデル選択 | 高品質のSonnet 4.6、最高品質のGPT-5.6 Sol、高速なKimi K2.5を用途に応じて切り替え |
+| モデル選択 | 高品質のSonnet 4.6、高速なKimi K2.5を用途に応じて切り替え |
 
 ## 命名規則
 
@@ -36,7 +36,7 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 | フロントエンド | React + TypeScript (Vite) + Tailwind CSS v4 |
 | 認証UI | Amplify UI React |
 | AIエージェント | Strands Agents (Python) |
-| LLM | Bedrock Claude Sonnet 4.6（デフォルト）/ Mantle GPT-5.6 Sol（最高品質）/ Kimi K2.5（高速） |
+| LLM | Bedrock Claude Sonnet 4.6（デフォルト）/ Kimi K2.5（高速）。Mantle GPT-5.6 Solは設定保持・無効 |
 | スライド変換 | Marp Core（プレビュー）/ Marp CLI（PDF生成） |
 | 認証 | Amplify Auth (Cognito) |
 | インフラ | AWS CDK + Amplify Gen2 |
@@ -145,7 +145,7 @@ marp-agent/
 |------|------|
 | 認証 | 本番のみCognito認証 |
 | テーマ | borderテーマ（コミュニティテーマ） |
-| モデル | Sonnet 4.6がデフォルト。GPT-5.6 SolとKimi K2.5を選択可能。SolはMantle Responses APIを使用。Sonnet 5、GLM-5、Opus 4.6は設定保持・無効 |
+| モデル | Sonnet 4.6がデフォルトで、Kimi K2.5を選択可能。GPT-5.6 Sol、Sonnet 5、GLM-5、Opus 4.6は設定保持・無効 |
 | リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
 
 ## 参考リンク

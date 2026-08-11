@@ -24,10 +24,10 @@ MODEL_ENVIRONMENT_VARIABLES = {
 ENABLED_MODEL_TYPES = {
     "sonnet",
     "kimi",
-    "sol",
     # "sonnet5",
     # "glm",
     # "opus",
+    # "sol",
 }
 
 
