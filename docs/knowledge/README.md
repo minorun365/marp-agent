@@ -20,6 +20,12 @@
 |----------|------|
 | [temp-improvement.md](../temp/temp-improvement.md) | セッション単価改善（分析・施策・効果測定） |
 
+## 検討メモ
+
+| ファイル | 内容 |
+|----------|------|
+| [authentication-options.md](../authentication-options.md) | パスキー、Googleログイン、既存ユーザーと将来のCognito移行 |
+
 ## 参考リンク
 
 - [Marp公式](https://marp.app/)
