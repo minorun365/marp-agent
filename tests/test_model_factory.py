@@ -18,6 +18,7 @@ import config
 
 
 def test_create_model_uses_bedrock_provider_for_sonnet(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"kimi", "sonnet"})
     monkeypatch.setenv("BEDROCK_SONNET_MODEL_ID", "sonnet-profile-arn")
     bedrock_model = MagicMock()
     monkeypatch.setattr(manager, "BedrockModel", bedrock_model)

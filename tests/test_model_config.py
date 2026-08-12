@@ -12,30 +12,29 @@ from config import (
 from tools.http_request import _get_haiku_model_id
 
 
-def test_public_models_are_enabled():
-    assert ENABLED_MODEL_TYPES == {"sonnet", "kimi"}
+def test_only_kimi_is_enabled():
+    assert ENABLED_MODEL_TYPES == {"kimi"}
     assert normalize_model_type("kimi") == "kimi"
 
 
 @pytest.mark.parametrize(
     "requested_model",
-    [None, "sonnet5", "glm", "opus", "opus4.7", "sol", "unknown"],
+    [None, "sonnet", "sonnet5", "glm", "opus", "opus4.7", "sol", "unknown"],
 )
-def test_disabled_model_falls_back_to_sonnet(requested_model):
-    assert normalize_model_type(requested_model) == "sonnet"
+def test_disabled_model_falls_back_to_kimi(requested_model):
+    assert normalize_model_type(requested_model) == "kimi"
 
 
 @pytest.mark.parametrize(
     "requested_model", ["sonnet", "sonnet5", "glm", "opus", "opus4.7"]
 )
-def test_get_model_config_uses_sonnet_while_opus_is_disabled(
+def test_get_model_config_uses_kimi_for_disabled_models(
     monkeypatch,
     requested_model,
 ):
-    monkeypatch.setenv("BEDROCK_SONNET_MODEL_ID", "sonnet-profile-arn")
-    monkeypatch.setenv("BEDROCK_OPUS_MODEL_ID", "opus-profile-arn")
+    monkeypatch.setenv("BEDROCK_KIMI_MODEL_ID", "moonshotai.kimi-k2.5")
 
-    assert get_model_config(requested_model)["model_id"] == "sonnet-profile-arn"
+    assert get_model_config(requested_model)["model_id"] == "moonshotai.kimi-k2.5"
 
 
 def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
@@ -102,10 +101,11 @@ def test_opus_profile_is_ready_for_reenable(monkeypatch):
 
 
 def test_get_model_config_rejects_missing_sonnet_environment_variable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"kimi", "sonnet"})
     monkeypatch.delenv("BEDROCK_SONNET_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_SONNET_MODEL_ID"):
-        get_model_config("opus")
+        get_model_config("sonnet")
 
 
 def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch):
@@ -199,10 +199,10 @@ def test_glm_system_prompt_adds_oss_slide_rules():
     assert "参考文献1" in prompt
 
 
-def test_disabled_sol_uses_the_same_system_prompt_as_sonnet46():
+def test_disabled_sol_uses_the_kimi_system_prompt():
     normalized_model_type = normalize_model_type("sol")
     prompt = get_system_prompt("speee", normalized_model_type)
 
     assert "GPT-5.6 Sol向けの実行指示" not in prompt
-    assert "OSS系モデル向け" not in prompt
-    assert prompt == get_system_prompt("speee", "sonnet")
+    assert "Kimi K2.5実行契約" in prompt
+    assert prompt == get_system_prompt("speee", "kimi")

@@ -178,7 +178,7 @@ export async function invokeAgent(
   theme: string,
   callbacks: AgentCoreCallbacks,
   sessionId?: string,
-  modelType: ModelType = 'sonnet',
+  modelType: ModelType = 'kimi',
   referenceFile?: ReferenceFile
 ): Promise<void> {
   startEvaluationTrace(modelType, prompt);

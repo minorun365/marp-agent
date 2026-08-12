@@ -104,7 +104,9 @@ export function ChatInput({
                     title={hasUserMessage ? '会話中はモデルを変更できません' : '使用するAIモデルを選択'}
                   >
                     {MODEL_OPTIONS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                        {opt.label}
+                      </option>
                     ))}
                   </select>
                 </div>

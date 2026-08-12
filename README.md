@@ -14,7 +14,7 @@
 
 ## アーキテクチャ
 
-AWSの最新サービスを活用して、フルサーバーレスで構築。Claude Sonnet 4.6とKimi K2.5を用途に応じて選べます。維持費の中心はAmazon Bedrockのモデル推論料金です。
+AWSの最新サービスを活用して、フルサーバーレスで構築。現在はKimi K2.5を標準モデルとして試験運用し、Claude Sonnet 4.6は一時停止しています。維持費の中心はAmazon Bedrockのモデル推論料金です。
 
 <img width="1362" height="759" alt="アーキテクチャ図" src="https://github.com/user-attachments/assets/21c580e9-6c09-4ef8-ba82-90014522871b" />
 

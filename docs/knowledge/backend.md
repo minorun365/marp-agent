@@ -60,10 +60,10 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Claude Sonnet 4.6（デフォルト）
+# Claude Sonnet 4.6（設定保持・現在無効）
 "arn:aws:bedrock:us-east-1:<account-id>:application-inference-profile/<sonnet-profile-id>"
 
-# Kimi K2.5（高速オプション）
+# Kimi K2.5（試験運用中の標準）
 "moonshotai.kimi-k2.5"
 
 # GPT-5.6 Sol（最高品質、Bedrock Mantle Responses API）
@@ -79,14 +79,14 @@ tavily-python
 
 | モデル | Strands provider / API | キャッシュ | 備考 |
 |--------|-------------------------|-----------|------|
-| Claude Sonnet 4.6 | `BedrockModel` / native | `cache_prompt="default"`, `cache_tools="default"` | デフォルト |
+| Claude Sonnet 4.6 | `BedrockModel` / native | `cache_prompt="default"`, `cache_tools="default"` | 設定保持・現在無効 |
 | GPT-5.6 Sol | `OpenAIResponsesModel` / Mantle Responses | Strandsのキャッシュ引数なし、`stateful=False` | 設定保持・現在無効 |
-| Kimi K2.5 | `BedrockModel` / native | なし | 高速オプション |
+| Kimi K2.5 | `BedrockModel` / native | なし | 試験運用中の標準 |
 | Claude Sonnet 5 | `BedrockModel` / native | Sonnetと同じ | 設定保持・現在無効 |
 | GLM-5 | `BedrockModel` / native | なし | 設定保持・現在無効 |
 | Claude Opus 4.6 | `BedrockModel` / native | Sonnetと同じ | 設定保持・現在無効 |
 
-Sonnet 4.6をデフォルトとし、Kimi K2.5を選択可能にしている。GPT-5.6 SolのMantle接続設定は再有効化に備えて保持するが、UIと`ENABLED_MODEL_TYPES`では無効化している。`sol`を含む無効なモデルがAPIへ指定された場合はSonnetへ正規化する。
+試験運用中はKimi K2.5のみを有効にしている。Sonnet 4.6は停止理由を付けてUIへ残すが選択不可とし、GPT-5.6 Solなどと同様に接続設定だけを保持する。無効なモデルがAPIへ指定された場合はKimi K2.5へ正規化する。
 
 ### フロントエンドからのモデル切り替え
 
@@ -94,7 +94,7 @@ Sonnet 4.6をデフォルトとし、Kimi K2.5を選択可能にしている。G
 
 #### フロントエンド（types.ts / ChatInput.tsx）
 
-モデル選択肢は `types.ts` の `MODEL_OPTIONS` で一元管理。選択肢が1つならセレクターを非表示にし、2つ以上なら同じUIを自動表示する。`shortLabel` でセレクター閉じた状態の短いラベルを指定できる。
+モデル選択肢は `types.ts` の `MODEL_OPTIONS` で一元管理。選択肢が1つならセレクターを非表示にし、2つ以上なら同じUIを自動表示する。`shortLabel` でセレクター閉じた状態の短いラベル、`disabled` で表示を残したまま選択不可にできる。
 
 ```typescript
 // types.ts - モデル選択肢の定義（ここを増減するだけでUIが自動対応）
@@ -104,11 +104,12 @@ export interface ModelOption {
   value: ModelType;
   label: string;       // ドロップダウンに表示
   shortLabel?: string;  // セレクター閉じた状態で表示
+  disabled?: boolean;   // 停止中は表示だけ残して選択不可
 }
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'sonnet', label: '高品質（Claude Sonnet 4.6）', shortLabel: '高品質' },
-  { value: 'kimi', label: '高速（Kimi K2.5）', shortLabel: '高速' },
+  { value: 'kimi', label: '標準（Kimi K2.5）', shortLabel: '標準' },
+  { value: 'sonnet', label: '高品質（Claude Sonnet 4.6） ※資金不足により停止中', shortLabel: '高品質', disabled: true },
   // { value: 'sonnet5', label: 'Claude Sonnet 5', shortLabel: 'Sonnet 5' },
   // { value: 'glm', label: 'GLM 5', shortLabel: 'GLM 5' },
   // { value: 'opus', label: 'Claude Opus 4.6', shortLabel: 'Opus 4.6' },
@@ -158,7 +159,7 @@ body: JSON.stringify({
 
 #### バックエンド（config.py）
 ```python
-def get_model_config(model_type: str = "sonnet") -> dict:
+def get_model_config(model_type: str = "kimi") -> dict:
     normalized_model_type = normalize_model_type(model_type)
     if normalized_model_type == "sol":
         return {
@@ -176,27 +177,27 @@ def get_model_config(model_type: str = "sonnet") -> dict:
     }
 
 ENABLED_MODEL_TYPES = {
-    "sonnet",
     "kimi",
+    # "sonnet",
     # "sonnet5",
     # "glm",
     # "opus",
     # "sol",
 }
 
-def get_system_prompt(theme: str = "speee", model_type: str = "sonnet") -> str:
+def get_system_prompt(theme: str = "speee", model_type: str = "kimi") -> str:
     model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
     return f"""共通プロンプト
     {model_prompt}"""
 
 @app.entrypoint
 async def invoke(payload, context=None):
-    model_type = payload.get("model_type", "sonnet")
+    model_type = payload.get("model_type", "kimi")
     theme = payload.get("theme", "border")
     agent = get_or_create_agent(session_id, model_type, theme)
 ```
 
-`session/manager.py`の`_create_model()`は`provider`で分岐し、再有効化した場合はSolだけ`OpenAIResponsesModel`へ`bedrock_mantle_config`と`max_output_tokens`を渡す。現在有効なSonnet 4.6は共通プロンプトだけを使用し、Kimi K2.5には短いキーワードでも要件確認を挟まず、原則Web検索から`output_slide`まで同じ応答内で完了する自律実行ルールを追加する。枚数未指定時は原則8枚、最大10枚とし、Kimiには従来の文章量・見出し・表現パターン調整も併用する。
+`session/manager.py`の`_create_model()`は`provider`で分岐し、再有効化した場合はSolだけ`OpenAIResponsesModel`へ`bedrock_mantle_config`と`max_output_tokens`を渡す。現在有効なKimi K2.5には短いキーワードでも要件確認を挟まず、原則Web検索から`output_slide`まで同じ応答内で完了する自律実行ルールを追加する。枚数未指定時は原則8枚、最大10枚とし、従来の文章量・見出し・表現パターン調整も併用する。
 
 `output_slide.configure_slide_validation()`でも、KimiとSolの枚数未指定時は10枚を上限として検証する。プロンプトだけで上限を超えた場合は、ツールからの修正指示を受けてモデル自身が内容を統合し、ユーザーへ枚数確認を戻さない。
 

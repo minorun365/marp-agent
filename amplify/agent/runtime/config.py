@@ -20,10 +20,10 @@ MODEL_ENVIRONMENT_VARIABLES = {
     "sol": "BEDROCK_SOL_MODEL_ID",
 }
 
-# UIのMODEL_OPTIONSと同じモデルだけを有効化する。
+# UIのMODEL_OPTIONSでdisabledではないモデルだけを有効化する。
 ENABLED_MODEL_TYPES = {
-    "sonnet",
     "kimi",
+    # "sonnet",
     # "sonnet5",
     # "glm",
     # "opus",
@@ -32,11 +32,11 @@ ENABLED_MODEL_TYPES = {
 
 
 def normalize_model_type(model_type: str | None) -> str:
-    """未有効のモデル指定をSonnetへ安全にフォールバックする。"""
-    return model_type if model_type in ENABLED_MODEL_TYPES else "sonnet"
+    """未有効のモデル指定をKimiへ安全にフォールバックする。"""
+    return model_type if model_type in ENABLED_MODEL_TYPES else "kimi"
 
 
-def get_model_config(model_type: str = "sonnet") -> dict:
+def get_model_config(model_type: str = "kimi") -> dict:
     """有効化されているモデルの設定を返す。"""
     normalized_model_type = normalize_model_type(model_type)
 
@@ -141,7 +141,7 @@ MODEL_SPECIFIC_PROMPTS = {
 }
 
 
-def get_system_prompt(theme: str = "speee", model_type: str = "sonnet") -> str:
+def get_system_prompt(theme: str = "speee", model_type: str = "kimi") -> str:
     """テーマに応じたシステムプロンプトを生成"""
     model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
     return f"""あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。
