@@ -106,6 +106,16 @@ Invalid MFA Configuration given. SMS MFA, Email MFA, or Software Token MFA must 
 
 パスキーを第1認証要素として使う構成では、`MfaConfiguration`の既定値は`OFF`である必要がある。現在の回避策は、CDKで`mfa: cognito.Mfa.OFF`を明示すること。upstreamでは、WebAuthnだけを指定した場合の補完値を`OFF`にする修正と回帰テストを検討する。
 
+## Outputsだけの変更を差分・デプロイへ反映しない
+
+- 確認日: 2026年8月14日
+- 実環境で確認したバージョン: CDKD 0.282.5
+- 状態: upstreamへのIssue・Pull Requestは未作成
+
+既存スタックのリソースを別スタックから新たに参照すると、CDKは参照元スタックへ`Export.Name`付きのOutputを追加する。ところがリソース本体に差分がない場合、`cdkd diff`は「No changes detected」と判定し、`cdkd deploy`も新しいOutputをstateへ保存しなかった。その後、参照先スタックのデプロイは`Fn::ImportValue: export ... not found`で失敗した。
+
+現在の回避策は、参照元スタックの既存リソースへ説明文などの安全な更新を同時に加え、通常のリソース更新としてデプロイしてOutputもstateへ保存させること。upstreamでは、Outputの追加・更新・削除を差分対象に含め、リソース差分が0件でもstateへ反映する修正と回帰テストを検討する。
+
 ## コンテナイメージLambdaで非対応設定をドリフト警告として表示する
 
 - 確認日: 2026年8月14日
@@ -120,3 +130,13 @@ GetFunctionCodeSigningConfig failed ... Code signing is not supported for functi
 ```
 
 どちらもコンテナイメージ形式ではAWS側が対応していない設定であり、取得失敗は実リソースの異常ではない。CDKD自身も「差分上の誤った削除として見える可能性がある」と警告している。upstreamでは、Lambdaの`PackageType`が`Image`の場合にこの2項目をドリフト取得対象から外し、不要な警告と誤差分を出さない回帰テストを検討する。
+
+## Cognito IDプロバイダーのクライアントシークレットをstateへ平文保存する
+
+- 確認日: 2026年8月14日
+- 実環境で確認したバージョン: CDKD 0.282.5
+- 状態: upstreamへのIssue・Pull Requestは未作成
+
+Secrets Managerの動的参照を`AWS::Cognito::UserPoolIdentityProvider.ProviderDetails.client_secret`へ指定してデプロイすると、CDKDは参照を解決した実値をstateの`Properties`と`Attributes.ProviderDetails`へ保存した。`cdkd state show`もマスクせず表示するため、AWS側で秘匿されるべきOAuthクライアントシークレットがstateとターミナルへ露出する。
+
+現在の回避策は、CDKD管理リソースのプロパティへ秘密値を渡さないこと。カスタムリソースのLambdaが実行時にSecrets Managerから値を取得し、CognitoのIDプロバイダーを作成・更新する構成へ変更した。upstreamでは、リソース型ごとの機密プロパティをstate保存前とCLI表示前にマスクし、動的参照を解決した秘密値が永続化されない回帰テストを追加する必要がある。

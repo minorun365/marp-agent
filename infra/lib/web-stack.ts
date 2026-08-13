@@ -47,7 +47,9 @@ export class WebStack extends cdk.Stack {
         region: this.region,
         userPoolId: props.auth.userPool.userPoolId,
         userPoolClientId: props.auth.userPoolClient.userPoolClientId,
-        cognitoDomain: props.auth.cognitoDomain?.domainName ?? '',
+        cognitoDomain: props.auth.cognitoDomain
+          ? `${props.auth.cognitoDomain.domainName}.auth.${this.region}.amazoncognito.com`
+          : '',
       },
       agent: {
         runtimeArn: props.agent.runtime.attrAgentRuntimeArn,

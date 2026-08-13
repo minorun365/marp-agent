@@ -113,19 +113,33 @@ export class AuthStack extends cdk.Stack {
       },
     });
 
-    let googleProvider: cognito.UserPoolIdentityProviderGoogle | undefined;
+    let googleProvider: cdk.CustomResource | undefined;
     if (googleEnabled) {
-      googleProvider = new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleIdentityProvider', {
-        userPool: this.userPool,
-        clientId: googleClientId!,
-        clientSecretValue: cdk.SecretValue.secretsManager('pawapo/google-oauth-client-secret'),
-        scopes: ['openid', 'email', 'profile'],
-        attributeMapping: {
-          email: cognito.ProviderAttribute.GOOGLE_EMAIL,
-          givenName: cognito.ProviderAttribute.GOOGLE_GIVEN_NAME,
-          familyName: cognito.ProviderAttribute.GOOGLE_FAMILY_NAME,
+      const googleIdpManagerFunction = new lambdaNodejs.NodejsFunction(this, 'GoogleIdpManagerFunction', {
+        functionName: 'pawapo-google-idp-manager',
+        entry: path.join(currentDir, '../../amplify/auth/google-idp-manager/handler.ts'),
+        runtime: lambda.Runtime.NODEJS_24_X,
+        architecture: lambda.Architecture.ARM_64,
+        timeout: cdk.Duration.seconds(30),
+        role: props.authAccess.googleIdpManagerRole,
+        logGroup: props.authAccess.googleIdpManagerLogGroup,
+        bundling: { minify: true, sourceMap: true },
+      });
+
+      googleProvider = new cdk.CustomResource(this, 'GoogleIdentityProvider', {
+        serviceToken: googleIdpManagerFunction.functionArn,
+        properties: {
+          UserPoolId: this.userPool.userPoolId,
+          ClientId: googleClientId!,
+          SecretName: 'pawapo/google-oauth-client-secret',
+          Scopes: 'openid email profile',
+          ConfigurationVersion: '2',
         },
       });
+      // 既存のL2リソースと同じ論理IDにして、旧IDプロバイダーの削除後に
+      // 秘密値をstateへ残さないカスタムリソースを作る置換として扱う。
+      const googleProviderResource = googleProvider.node.defaultChild as cdk.CfnResource;
+      googleProviderResource.overrideLogicalId('GoogleIdentityProvider5AA1A9DD');
 
       this.cognitoDomain = this.userPool.addDomain('CognitoDomain', {
         cognitoDomain: { domainPrefix: cognitoDomainPrefix! },

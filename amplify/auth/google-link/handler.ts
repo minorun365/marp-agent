@@ -41,8 +41,11 @@ export const handler: PreSignUpTriggerHandler = async (event) => {
   if (event.triggerSource !== 'PreSignUp_ExternalProvider') return event;
 
   const email = event.request.userAttributes.email;
-  const emailVerified = event.request.userAttributes.email_verified === 'true';
-  if (!email || !emailVerified) throw new Error('Googleで確認済みのメールアドレスが必要です。');
+  // CognitoのPreSignUp_ExternalProviderでは、Googleが検証済みメールだけを返しても
+  // email_verifiedがトリガー属性へ含まれないことがある。Google IdPから届いた
+  // メールアドレスの存在を必須とし、Cognito側ではその値を検証済みとして確定する。
+  if (!email) throw new Error('Googleアカウントのメールアドレスが必要です。');
+  event.response.autoVerifyEmail = true;
 
   const users = await cognito.send(new ListUsersCommand({
     UserPoolId: event.userPoolId,

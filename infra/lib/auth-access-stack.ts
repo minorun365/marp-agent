@@ -13,6 +13,8 @@ export class AuthAccessStack extends cdk.Stack {
   readonly userMigrationLogGroup: logs.LogGroup;
   readonly googleLinkRole: iam.Role;
   readonly googleLinkLogGroup: logs.LogGroup;
+  readonly googleIdpManagerRole: iam.Role;
+  readonly googleIdpManagerLogGroup: logs.LogGroup;
 
   constructor(scope: Construct, id: string, props: AuthAccessStackProps) {
     super(scope, id, props);
@@ -37,6 +39,28 @@ export class AuthAccessStack extends cdk.Stack {
       actions: ['sts:AssumeRole'],
       resources: [props.legacyGoogleCheckRoleArn],
     }));
+
+    this.googleIdpManagerLogGroup = this.createLogGroup('GoogleIdpManager', 'pawapo-google-idp-manager');
+    this.googleIdpManagerRole = this.createLambdaRole(
+      'GoogleIdpManager',
+      'pawapo-google-idp-manager',
+      this.googleIdpManagerLogGroup,
+    );
+    this.googleIdpManagerRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        'cognito-idp:CreateIdentityProvider',
+        'cognito-idp:UpdateIdentityProvider',
+        'cognito-idp:DeleteIdentityProvider',
+      ],
+      resources: [`arn:${this.partition}:cognito-idp:${this.region}:${this.account}:userpool/*`],
+      conditions: {
+        StringEquals: { 'aws:ResourceTag/Project': 'pawapo' },
+      },
+    }));
+    this.googleIdpManagerRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [`arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret:pawapo/google-oauth-client-secret-*`],
+    }));
   }
 
   private createLogGroup(id: string, functionName: string) {
@@ -50,6 +74,7 @@ export class AuthAccessStack extends cdk.Stack {
   private createLambdaRole(id: string, roleName: string, logGroup: logs.ILogGroup) {
     const role = new iam.Role(this, `${id}Role`, {
       roleName,
+      description: `${roleName} Lambda execution role`,
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
     role.addToPolicy(new iam.PolicyStatement({
