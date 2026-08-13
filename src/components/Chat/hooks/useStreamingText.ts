@@ -26,15 +26,18 @@ export function useStreamingText(): UseStreamingTextReturn {
   ) => {
     const delay = options?.delay ?? 30;
     const appendToLast = options?.appendToLast ?? false;
+    let targetMessageId: string | undefined;
 
     if (!appendToLast) {
       // 新しいメッセージを追加
+      const targetMessage = createMessage({ role: 'assistant', content: '', isStreaming: true });
+      targetMessageId = targetMessage.id;
       setMessages(prev => {
         let filtered = prev;
         if (options?.filterPredicate) {
           filtered = prev.filter(msg => !options.filterPredicate!(msg));
         }
-        return [...filtered, createMessage({ role: 'assistant', content: '', isStreaming: true })];
+        return [...filtered, targetMessage];
       });
     }
 
@@ -44,7 +47,7 @@ export function useStreamingText(): UseStreamingTextReturn {
       await new Promise(resolve => setTimeout(resolve, delay));
       setMessages(prev =>
         prev.map((msg, idx) =>
-          idx === prev.length - 1 && msg.role === 'assistant'
+          (targetMessageId ? msg.id === targetMessageId : idx === prev.length - 1 && msg.role === 'assistant')
             ? { ...msg, content: msg.content + char }
             : msg
         )
@@ -54,7 +57,7 @@ export function useStreamingText(): UseStreamingTextReturn {
     // ストリーミング完了
     setMessages(prev =>
       prev.map((msg, idx) =>
-        idx === prev.length - 1 && msg.role === 'assistant'
+        (targetMessageId ? msg.id === targetMessageId : idx === prev.length - 1 && msg.role === 'assistant')
           ? { ...msg, isStreaming: false }
           : msg
       )

@@ -31,6 +31,7 @@ export const MESSAGES = {
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',
   SLIDE_GENERATING: 'スライドを作成中...',
+  SLIDE_CHECK_COMPLETED: 'スライドを確認しました',
   SLIDE_COMPLETED: 'スライドを作成しました',
 
   // ステータス - Web検索

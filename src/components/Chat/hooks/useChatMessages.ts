@@ -18,11 +18,75 @@ interface UseChatMessagesProps {
 
 export function appendSlideProgress(messages: Message[], message: string): Message[] {
   return [
-    ...messages.map(item =>
-      item.isStreaming ? { ...item, isStreaming: false } : item
-    ),
+    ...messages.map(item => {
+      if (item.isStreaming) {
+        return { ...item, isStreaming: false };
+      }
+      if (item.isStatus && item.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+        return { ...item, statusText: MESSAGES.SLIDE_CHECK_COMPLETED, tipIndex: undefined };
+      }
+      return item;
+    }),
     createMessage({ role: 'assistant', content: message }),
   ];
+}
+
+function completeActiveWebStatuses(messages: Message[]): Message[] {
+  return messages.map(message => {
+    if (message.isStatus && message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
+      return { ...message, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
+    }
+    if (message.isStatus && message.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
+      return { ...message, statusText: MESSAGES.WEB_FETCH_COMPLETED };
+    }
+    return message;
+  });
+}
+
+export function applyToolUse(messages: Message[], toolName: string, query?: string): Message[] {
+  const settledMessages = messages.map(message =>
+    message.isStreaming ? { ...message, isStreaming: false } : message
+  );
+
+  if (toolName === 'output_slide') {
+    const hasActiveSlide = settledMessages.some(
+      message => message.isStatus && message.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
+    );
+    if (hasActiveSlide) return settledMessages;
+
+    return [
+      ...completeActiveWebStatuses(settledMessages),
+      createMessage({ role: 'assistant', content: '', isStatus: true, statusText: MESSAGES.SLIDE_GENERATING, tipIndex: undefined }),
+    ];
+  }
+
+  if (toolName === 'web_search') {
+    const searchStatus = getWebSearchStatus(query);
+    const hasActiveSearch = settledMessages.some(
+      message => message.isStatus && message.statusText === searchStatus
+    );
+    if (hasActiveSearch) return settledMessages;
+
+    return [
+      ...completeActiveWebStatuses(settledMessages),
+      createMessage({ role: 'assistant', content: '', isStatus: true, statusText: searchStatus }),
+    ];
+  }
+
+  if (toolName === 'http_request') {
+    const fetchStatus = getWebFetchStatus(query);
+    const hasActiveFetch = settledMessages.some(
+      message => message.isStatus && message.statusText === fetchStatus
+    );
+    if (hasActiveFetch) return settledMessages;
+
+    return [
+      ...completeActiveWebStatuses(settledMessages),
+      createMessage({ role: 'assistant', content: '', isStatus: true, statusText: fetchStatus }),
+    ];
+  }
+
+  return settledMessages;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -241,69 +305,17 @@ export function useChatMessages({
         },
         onSlideProgress: (message) => {
           setStatus('');
+          stopTipRotation();
           setMessages(prev => appendSlideProgress(prev, message));
         },
         onStatus: (newStatus) => {
           setStatus(newStatus);
         },
         onToolUse: (toolName, query) => {
-          setMessages(prev =>
-            prev.map(msg =>
-              msg.isStreaming ? { ...msg, isStreaming: false } : msg
-            )
-          );
+          setMessages(prev => applyToolUse(prev, toolName, query));
 
           if (toolName === 'output_slide') {
-            setMessages(prev => {
-              const hasExisting = prev.some(
-                msg => msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
-              );
-              if (hasExisting) return prev;
-
-              const updated = prev.map(msg =>
-                msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)
-                  ? { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED }
-                  : msg
-              );
-              return [
-                ...updated,
-                createMessage({ role: 'assistant', content: '', isStatus: true, statusText: MESSAGES.SLIDE_GENERATING, tipIndex: undefined }),
-              ];
-            });
-
             startTipRotation(setMessages);
-          } else if (toolName === 'web_search') {
-            const searchStatus = getWebSearchStatus(query);
-            setMessages(prev => {
-              const hasInProgress = prev.some(
-                msg => msg.isStatus && msg.statusText === searchStatus
-              );
-              if (hasInProgress) return prev;
-
-              const filtered = prev.filter(
-                msg => !(msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX) && msg.statusText !== MESSAGES.WEB_SEARCH_COMPLETED)
-              );
-              return [
-                ...filtered,
-                createMessage({ role: 'assistant', content: '', isStatus: true, statusText: searchStatus }),
-              ];
-            });
-          } else if (toolName === 'http_request') {
-            const fetchStatus = getWebFetchStatus(query);
-            setMessages(prev => {
-              const hasInProgress = prev.some(
-                msg => msg.isStatus && msg.statusText === fetchStatus
-              );
-              if (hasInProgress) return prev;
-
-              const filtered = prev.filter(
-                msg => !(msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX) && msg.statusText !== MESSAGES.WEB_FETCH_COMPLETED)
-              );
-              return [
-                ...filtered,
-                createMessage({ role: 'assistant', content: '', isStatus: true, statusText: fetchStatus }),
-              ];
-            });
           }
         },
         onMarkdown: (markdown) => {

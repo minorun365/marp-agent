@@ -12,13 +12,18 @@ export function StatusMessage({ message, index }: StatusMessageProps) {
   const isWebFetching = message.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX) && message.statusText !== MESSAGES.WEB_FETCH_COMPLETED;
   const currentTip = isSlideGenerating && message.tipIndex !== undefined ? TIPS[message.tipIndex] : null;
 
-  const isCompleted = message.statusText === MESSAGES.SLIDE_COMPLETED ||
+  const isCompleted = message.statusText === MESSAGES.SLIDE_CHECK_COMPLETED ||
+    message.statusText === MESSAGES.SLIDE_COMPLETED ||
     message.statusText === MESSAGES.WEB_SEARCH_COMPLETED ||
     message.statusText === MESSAGES.WEB_FETCH_COMPLETED ||
     message.statusText === MESSAGES.TWEET_COMPLETED;
 
   return (
-    <div key={isWebSearching || isWebFetching ? `web-${message.statusText}` : index} className="flex justify-start">
+    <div
+      key={isWebSearching || isWebFetching ? `web-${message.statusText}` : index}
+      className="flex justify-start"
+      data-chat-status={isCompleted ? 'completed' : 'active'}
+    >
       <div className={`bg-blue-50 text-blue-700 rounded-lg px-4 py-2 border border-blue-200 ${isWebSearching || isWebFetching ? 'animate-fade-in' : ''}`}>
         <span className="text-sm flex items-center gap-2">
           {isCompleted ? (
