@@ -24,6 +24,7 @@
 
 | ファイル | 内容 |
 |----------|------|
+| [migration-architecture.md](../migration-architecture.md) | Amplify 卒業後の AWS 構成、CDKD 運用、ローカル開発、移行手順 |
 | [authentication-options.md](../authentication-options.md) | パスキー、Googleログイン、既存ユーザーと将来のCognito移行 |
 
 ## 参考リンク
