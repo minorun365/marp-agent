@@ -21,6 +21,9 @@
       --white: #fff;
       --danger: #b24b4b;
       --shadow: 0 18px 55px rgba(11, 35, 68, .12);
+      --brand-gradient: linear-gradient(118deg, #1a3a6e 0%, #3d79a8 48%, #75afd2 72%, #f3f8fb 126%);
+      --button-gradient: linear-gradient(to right, #1a3a6e 0%, #5ba4d9 100%);
+      --button-gradient-hover: linear-gradient(to right, #142d54 0%, #4a93c8 100%);
     }
 
     * { box-sizing: border-box; }
@@ -53,7 +56,7 @@
       min-height: 100dvh;
       overflow: hidden;
       color: var(--white);
-      background: linear-gradient(142deg, var(--navy-deep) 0%, var(--navy) 46%, var(--blue) 76%, var(--sky) 140%);
+      background: var(--brand-gradient);
     }
 
     .brand::after {
@@ -130,7 +133,7 @@
     }
 
     .brand-note {
-      color: rgba(255, 255, 255, .48);
+      color: rgba(12, 35, 68, .58);
       font-size: 11px;
       letter-spacing: .04em;
     }
@@ -202,11 +205,11 @@
 
     .action-primary {
       color: var(--white);
-      background: var(--navy);
+      background: var(--button-gradient);
       box-shadow: 0 7px 20px rgba(20, 47, 87, .16);
     }
 
-    .action-primary:hover { background: var(--navy-deep); }
+    .action-primary:hover { background: var(--button-gradient-hover); }
 
     .action-secondary {
       color: var(--ink);
@@ -432,11 +435,12 @@
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
     @media (max-width: 840px) {
-      .page { display: block; min-height: 100dvh; }
+      body { background: linear-gradient(to bottom, #1a3a6e 0 214px, var(--white) 214px); }
+      .page { display: block; min-height: 100dvh; background: transparent; }
 
       .brand {
         min-height: 214px;
-        background: linear-gradient(138deg, var(--navy-deep), var(--navy) 58%, var(--blue) 115%);
+        background: linear-gradient(112deg, #1a3a6e 0%, #4d8fbd 64%, #edf5fa 150%);
       }
 
       .brand::after {
@@ -503,10 +507,10 @@
           <span>パワポ作るマン by みのるん</span>
         </div>
         <div class="brand-copy">
-          <h1>伝えたいことを、<br>スライドに。</h1>
+          <h1>チャット一言で、<br>スライド完成！</h1>
           <p>テーマを伝えるだけで、構成からデザインまで。AIと会話しながらプレゼン資料を仕上げられます。</p>
         </div>
-        <div class="brand-note">POWERED BY AWS &amp; GENERATIVE AI</div>
+        <div class="brand-note">Powered by Strands &amp; AgentCore</div>
       </div>
     </section>
 
@@ -515,7 +519,7 @@
         <section class="state active" data-state="initial">
           <p class="eyebrow">Welcome back</p>
           <h2>続きをはじめましょう</h2>
-          <p class="lead">登録とログインを分けず、いつもの方法でそのまま続けられます。</p>
+          <p class="lead">ログイン方法を選んでください。初めての方は、Googleまたはメールから始められます。</p>
 
           <div class="stack">
             <button class="action action-primary" type="button" data-demo="passkey">
