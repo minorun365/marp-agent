@@ -83,7 +83,6 @@ export const handler: UserMigrationTriggerHandler = async (event) => {
       }));
 
       event.response.userAttributes = toUserAttributes(userInfo.UserAttributes, event.userName);
-      event.response.messageAction = 'SUPPRESS';
     } catch {
       throw new Error('User not found');
     }

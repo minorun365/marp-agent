@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getCurrentUser, signOut as amplifySignOut } from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
 import { AuthScreen } from './components/Auth/AuthScreen';
 import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
@@ -24,9 +25,18 @@ function AuthenticatedApp() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
+    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      if (payload.event === 'signedIn' || payload.event === 'signInWithRedirect') {
+        setAuthenticated(true);
+      }
+      if (payload.event === 'signInWithRedirect_failure') {
+        setAuthenticated(false);
+      }
+    });
     void getCurrentUser()
       .then(() => setAuthenticated(true))
       .catch(() => setAuthenticated(false));
+    return unsubscribe;
   }, []);
 
   if (authenticated === null) return null;

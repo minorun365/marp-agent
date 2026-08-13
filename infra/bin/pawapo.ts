@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
 import { AgentStack } from '../lib/agent-stack.js';
+import { AuthAccessStack } from '../lib/auth-access-stack.js';
 import { AuthStack } from '../lib/auth-stack.js';
 import { FoundationStack } from '../lib/foundation-stack.js';
 import { WebStack } from '../lib/web-stack.js';
@@ -12,6 +13,12 @@ const env = {
   region,
 };
 const appDomain = app.node.getContext('appDomain') as string;
+const oldMigrationRoleArn = app.node.tryGetContext('oldMigrationRoleArn') as string | undefined;
+const oldGoogleCheckRoleArn = app.node.tryGetContext('oldGoogleCheckRoleArn') as string | undefined;
+
+if (!oldMigrationRoleArn || !oldGoogleCheckRoleArn) {
+  throw new Error('oldMigrationRoleArn と oldGoogleCheckRoleArn のcontextが必要です');
+}
 
 const foundation = new FoundationStack(app, 'PawapoFoundation', {
   env,
@@ -19,9 +26,19 @@ const foundation = new FoundationStack(app, 'PawapoFoundation', {
   description: 'パワポ作るマンの永続データとドメイン基盤',
 });
 
+const authAccess = new AuthAccessStack(app, 'PawapoAuthAccess', {
+  env,
+  legacyMigrationRoleArn: oldMigrationRoleArn,
+  legacyGoogleCheckRoleArn: oldGoogleCheckRoleArn,
+  description: 'パワポ作るマンの認証Lambda実行ロールとログ',
+});
+
 const auth = new AuthStack(app, 'PawapoAuth', {
   env,
   appDomain,
+  authAccess,
+  legacyMigrationRoleArn: oldMigrationRoleArn,
+  legacyGoogleCheckRoleArn: oldGoogleCheckRoleArn,
   description: 'パワポ作るマンのCognito認証基盤',
 });
 
@@ -43,6 +60,7 @@ const web = new WebStack(app, 'PawapoWeb', {
 });
 
 auth.addStackDependency(foundation);
+auth.addStackDependency(authAccess);
 agent.addStackDependency(auth);
 agent.addStackDependency(foundation);
 web.addStackDependency(agent);

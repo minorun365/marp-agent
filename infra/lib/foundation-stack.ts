@@ -10,6 +10,7 @@ export interface FoundationStackProps extends cdk.StackProps {
 
 export class FoundationStack extends cdk.Stack {
   readonly tavilySecret: secretsmanager.Secret;
+  readonly googleOAuthClientSecret: secretsmanager.Secret;
   readonly hostedZone: route53.PublicHostedZone;
 
   constructor(scope: Construct, id: string, props: FoundationStackProps) {
@@ -18,6 +19,12 @@ export class FoundationStack extends cdk.Stack {
     this.tavilySecret = new secretsmanager.Secret(this, 'TavilyApiKeys', {
       secretName: 'pawapo/tavily-api-keys',
       description: 'パワポ作るマンのWeb検索APIキー',
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    this.googleOAuthClientSecret = new secretsmanager.Secret(this, 'GoogleOAuthClientSecret', {
+      secretName: 'pawapo/google-oauth-client-secret',
+      description: 'パワポ作るマンのGoogle OAuthクライアントシークレット',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 

@@ -2,15 +2,18 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import type { Construct } from 'constructs';
+import type { AuthAccessStack } from './auth-access-stack.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 export interface AuthStackProps extends cdk.StackProps {
   readonly appDomain: string;
+  readonly authAccess: AuthAccessStack;
+  readonly legacyMigrationRoleArn: string;
+  readonly legacyGoogleCheckRoleArn: string;
 }
 
 export class AuthStack extends cdk.Stack {
@@ -21,62 +24,64 @@ export class AuthStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
 
-    const oldAccountRoleArn = this.node.tryGetContext('oldAccountRoleArn') as string | undefined;
     const oldUserPoolId = this.node.tryGetContext('oldUserPoolId') as string | undefined;
     const oldUserPoolClientId = this.node.tryGetContext('oldUserPoolClientId') as string | undefined;
-    const migrationEnabled = Boolean(oldAccountRoleArn && oldUserPoolId && oldUserPoolClientId);
+    const migrationValues = [oldUserPoolId, oldUserPoolClientId];
+    const migrationEnabled = migrationValues.every(Boolean);
+    if (migrationValues.some(Boolean) && !migrationEnabled) {
+      throw new Error('既存ユーザー移行には oldUserPoolId と oldUserPoolClientId の両方が必要です');
+    }
     const googleClientId = this.node.tryGetContext('googleClientId') as string | undefined;
-    const googleClientSecretId = this.node.tryGetContext('googleClientSecretId') as string | undefined;
-    const googleEnabled = Boolean(googleClientId && googleClientSecretId);
-
+    const cognitoDomainPrefix = this.node.tryGetContext('cognitoDomainPrefix') as string | undefined;
+    const googleEnabled = Boolean(googleClientId);
+    if (googleEnabled && !cognitoDomainPrefix) {
+      throw new Error('Googleログインを有効にする場合は cognitoDomainPrefix が必要です');
+    }
     let migrationFunction: lambdaNodejs.NodejsFunction | undefined;
     if (migrationEnabled) {
+      const functionName = 'pawapo-user-migration';
       migrationFunction = new lambdaNodejs.NodejsFunction(this, 'UserMigrationFunction', {
+        functionName,
         entry: path.join(currentDir, '../../amplify/auth/user-migration/handler.ts'),
         runtime: lambda.Runtime.NODEJS_24_X,
         architecture: lambda.Architecture.ARM_64,
         timeout: cdk.Duration.seconds(15),
+        role: props.authAccess.userMigrationRole,
+        logGroup: props.authAccess.userMigrationLogGroup,
         environment: {
-          OLD_ACCOUNT_ROLE_ARN: oldAccountRoleArn!,
+          OLD_ACCOUNT_ROLE_ARN: props.legacyMigrationRoleArn,
           OLD_USER_POOL_ID: oldUserPoolId!,
           OLD_USER_POOL_CLIENT_ID: oldUserPoolClientId!,
         },
         bundling: { minify: true, sourceMap: true },
       });
-      migrationFunction.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['sts:AssumeRole'],
-        resources: [oldAccountRoleArn!],
-      }));
     }
 
     let googleLinkFunction: lambdaNodejs.NodejsFunction | undefined;
     if (googleEnabled) {
+      const functionName = 'pawapo-google-link';
       googleLinkFunction = new lambdaNodejs.NodejsFunction(this, 'GoogleLinkFunction', {
+        functionName,
         entry: path.join(currentDir, '../../amplify/auth/google-link/handler.ts'),
         runtime: lambda.Runtime.NODEJS_24_X,
         architecture: lambda.Architecture.ARM_64,
         timeout: cdk.Duration.seconds(15),
+        role: props.authAccess.googleLinkRole,
+        logGroup: props.authAccess.googleLinkLogGroup,
         environment: {
-          OLD_ACCOUNT_ROLE_ARN: oldAccountRoleArn ?? '',
+          OLD_ACCOUNT_ROLE_ARN: props.legacyGoogleCheckRoleArn,
           OLD_USER_POOL_ID: oldUserPoolId ?? '',
         },
         bundling: { minify: true, sourceMap: true },
       });
-      googleLinkFunction.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['cognito-idp:ListUsers', 'cognito-idp:AdminLinkProviderForUser'],
-        resources: [`arn:${this.partition}:cognito-idp:${this.region}:${this.account}:userpool/*`],
-      }));
-      if (oldAccountRoleArn) {
-        googleLinkFunction.addToRolePolicy(new iam.PolicyStatement({
-          actions: ['sts:AssumeRole'],
-          resources: [oldAccountRoleArn],
-        }));
-      }
     }
 
     this.userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: 'pawapo-users',
       featurePlan: cognito.FeaturePlan.ESSENTIALS,
+      // パスキーは第1認証要素として使い、従来ユーザーへMFAは強制しない。
+      // CDKDがWebAuthn設定だけのときにOPTIONALへ補完しないよう明示する。
+      mfa: cognito.Mfa.OFF,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
       signInCaseSensitive: false,
@@ -113,7 +118,7 @@ export class AuthStack extends cdk.Stack {
       googleProvider = new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleIdentityProvider', {
         userPool: this.userPool,
         clientId: googleClientId!,
-        clientSecretValue: cdk.SecretValue.secretsManager(googleClientSecretId!),
+        clientSecretValue: cdk.SecretValue.secretsManager('pawapo/google-oauth-client-secret'),
         scopes: ['openid', 'email', 'profile'],
         attributeMapping: {
           email: cognito.ProviderAttribute.GOOGLE_EMAIL,
@@ -122,12 +127,8 @@ export class AuthStack extends cdk.Stack {
         },
       });
 
-      const domainPrefix = this.node.tryGetContext('cognitoDomainPrefix') as string | undefined;
-      if (!domainPrefix) {
-        throw new Error('Googleログインを有効にする場合は -c cognitoDomainPrefix=<一意な名前> が必要です');
-      }
       this.cognitoDomain = this.userPool.addDomain('CognitoDomain', {
-        cognitoDomain: { domainPrefix },
+        cognitoDomain: { domainPrefix: cognitoDomainPrefix! },
       });
     }
 
