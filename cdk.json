@@ -18,6 +18,7 @@
   },
   "context": {
     "appDomain": "pawapo.minoruonda.com",
+    "previewDomain": "preview.pawapo.minoruonda.com",
     "@aws-cdk/core:validateAgainstDefaultRules": true,
     "@aws-cdk/core:defaultCrossStackReferences": "strong",
     "cdkd": {

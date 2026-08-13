@@ -14,6 +14,7 @@ const env = {
   region,
 };
 const appDomain = app.node.getContext('appDomain') as string;
+const previewDomain = app.node.tryGetContext('previewDomain') as string | undefined;
 const oldMigrationRoleArn = app.node.tryGetContext('oldMigrationRoleArn') as string | undefined;
 const oldGoogleCheckRoleArn = app.node.tryGetContext('oldGoogleCheckRoleArn') as string | undefined;
 
@@ -24,6 +25,7 @@ if (!oldMigrationRoleArn || !oldGoogleCheckRoleArn) {
 const foundation = new FoundationStack(app, 'PawapoFoundation', {
   env,
   appDomain,
+  previewDomain,
   description: 'パワポ作るマンの永続データとドメイン基盤',
 });
 
@@ -37,6 +39,7 @@ const authAccess = new AuthAccessStack(app, 'PawapoAuthAccess', {
 const auth = new AuthStack(app, 'PawapoAuth', {
   env,
   appDomain,
+  previewDomain,
   authAccess,
   legacyMigrationRoleArn: oldMigrationRoleArn,
   legacyGoogleCheckRoleArn: oldGoogleCheckRoleArn,
@@ -61,6 +64,7 @@ const agent = new AgentStack(app, 'PawapoAgent', {
 const web = new WebStack(app, 'PawapoWeb', {
   env,
   appDomain,
+  previewDomain,
   auth,
   agent,
   foundation,

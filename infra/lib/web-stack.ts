@@ -1,9 +1,9 @@
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as cdk from 'aws-cdk-lib';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
@@ -18,6 +18,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 export interface WebStackProps extends cdk.StackProps {
   readonly appDomain: string;
+  readonly previewDomain?: string;
   readonly auth: AuthStack;
   readonly agent: AgentStack;
   readonly foundation: FoundationStack;
@@ -124,12 +125,11 @@ export class WebStack extends cdk.Stack {
 
     const domainReady = this.node.tryGetContext('domainReady') === true
       || this.node.tryGetContext('domainReady') === 'true';
-    const certificate = domainReady
-      ? new acm.Certificate(this, 'Certificate', {
-          domainName: props.appDomain,
-          validation: acm.CertificateValidation.fromDns(props.foundation.hostedZone),
-        })
-      : undefined;
+    const distributionDomains = [
+      ...(props.previewDomain ? [props.previewDomain] : []),
+      ...(domainReady ? [props.appDomain] : []),
+    ];
+    const certificate = distributionDomains.length > 0 ? props.foundation.certificate : undefined;
 
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: 'パワポ作るマン Web・共有スライド統合配信',
@@ -159,11 +159,26 @@ export class WebStack extends cdk.Stack {
           }],
         },
       },
-      domainNames: certificate ? [props.appDomain] : undefined,
+      domainNames: distributionDomains.length > 0 ? distributionDomains : undefined,
       certificate,
       enableIpv6: true,
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
+    });
+
+    // Since October 2025, Lambda Function URLs protected by AWS_IAM require
+    // both InvokeFunctionUrl and InvokeFunction. FunctionUrlOrigin creates the
+    // URL permission; add the second, distribution-scoped permission here.
+    webFunction.addPermission('CloudFrontInvokeFunction', {
+      principal: new iam.ServicePrincipal('cloudfront.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: cdk.Stack.of(this).formatArn({
+        service: 'cloudfront',
+        region: '',
+        resource: 'distribution',
+        resourceName: distribution.distributionId,
+      }),
+      invokedViaFunctionUrl: true,
     });
 
     if (domainReady) {
@@ -185,7 +200,7 @@ export class WebStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'ApplicationUrl', {
       value: certificate
-        ? `https://${props.appDomain}`
+        ? `https://${domainReady ? props.appDomain : props.previewDomain}`
         : `https://${distribution.distributionDomainName}`,
     });
   }

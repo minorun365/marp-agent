@@ -11,6 +11,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 export interface AuthStackProps extends cdk.StackProps {
   readonly appDomain: string;
+  readonly previewDomain?: string;
   readonly authAccess: AuthAccessStack;
   readonly legacyMigrationRoleArn: string;
   readonly legacyGoogleCheckRoleArn: string;
@@ -161,8 +162,16 @@ export class AuthStack extends cdk.Stack {
       oAuth: googleEnabled ? {
         flows: { authorizationCodeGrant: true },
         scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE],
-        callbackUrls: [`https://${props.appDomain}/`, 'http://localhost:5173/'],
-        logoutUrls: [`https://${props.appDomain}/`, 'http://localhost:5173/'],
+        callbackUrls: [
+          `https://${props.appDomain}/`,
+          ...(props.previewDomain ? [`https://${props.previewDomain}/`] : []),
+          'http://localhost:5173/',
+        ],
+        logoutUrls: [
+          `https://${props.appDomain}/`,
+          ...(props.previewDomain ? [`https://${props.previewDomain}/`] : []),
+          'http://localhost:5173/',
+        ],
       } : undefined,
       accessTokenValidity: cdk.Duration.minutes(60),
       idTokenValidity: cdk.Duration.minutes(60),
