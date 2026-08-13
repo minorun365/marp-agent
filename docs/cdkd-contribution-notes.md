@@ -65,7 +65,3 @@ aws route53 get-hosted-zone --id <hosted-zone-id> --profile pawapo
 4. `Fn::Join` を含むOutput解決の回帰テストを追加する。
 5. 既存CDKD stateが文字列を保持している場合の後方互換を確認する。
 6. IssueまたはPull RequestにはAWSアカウントID、Hosted Zone ID、Secret ARNを載せない。
-
-### リマインダー
-
-2026年8月20日 10:00 JSTに、最新版での再現確認とupstreamへのIssue／修正Pull Requestを検討するリマインダーを設定済み。
