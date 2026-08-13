@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0d6a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>モデル速度比較｜Sonnet 4.6 vs Kimi K2.5</title>
+  <style>
+    :root{
+      --blue-deep:#0e0d6a;--blue:#0a4695;--blue-mid:#0862aa;--blue-bright:#0aa0dc;
+      --blue-soft:#eaf2fb;--blue-line:#cfe0f2;
+      --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+      --ink:#15151a;--sub:#4a4a54;--mut:#767680;--line:#e8e8ee;--soft:#f7f8fa;
+      --gold:#f0b21f;--gold-deep:#8a5a00;--gold-soft:#fdf5e0;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff;overflow-x:clip}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;color:var(--ink);line-height:1.85;font-size:15.5px;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;font-feature-settings:"palt" 1}
+    .wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+    p{margin:10px 0}
+    .hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+    .hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+    .hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+    .hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+    .hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+    .hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+    .hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+    .toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+    .toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+    .toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+    .toc li{margin:0}.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;color:var(--sub);font-size:14px;padding:5px 0}
+    .toc a:hover{color:var(--blue-deep)}.toc .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+    section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+    section:first-of-type{border-top:0}section::before{content:"";position:absolute;top:-1px;left:0;width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+    section:first-of-type::before{display:none}
+    .eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);font-weight:700;letter-spacing:.005em}
+    h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+    .lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));margin:20px 0}
+    .card{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:#fff;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;min-width:0}
+    .card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+    .card h4{margin:0 0 8px;font-size:15px;color:var(--blue-deep);font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--line)}
+    .card p{margin:6px 0;font-size:14px;color:var(--sub);line-height:1.8}
+    .metric{font-size:30px;font-weight:800;line-height:1.25;color:var(--blue-deep);font-variant-numeric:tabular-nums}
+    .metric.gold{color:var(--gold-deep)}
+    .callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+    .callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+    .callout b{color:var(--gold-deep)}.callout>:first-child{margin-top:0}.callout>:last-child{margin-bottom:0}
+    .callout.blue{background:var(--blue-soft)}.callout.blue::before{background:var(--blue-grad)}.callout.blue b{color:var(--blue-deep)}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;border:1px solid var(--line);border-radius:16px}
+    table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:720px}
+    thead{background-image:var(--blue-grad)}th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;text-align:left;white-space:nowrap;letter-spacing:.02em;border:0}
+    td{padding:13px 16px;text-align:left;vertical-align:top;border:0;border-bottom:1px solid var(--line);line-height:1.75;font-variant-numeric:tabular-nums}
+    tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fbfcfe}td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+    .winner{background:var(--blue-soft);color:var(--blue-deep);font-weight:800}.slower{color:var(--gold-deep);font-weight:800}
+    .bars{display:grid;gap:18px;margin:24px 0}.bar-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:18px;align-items:start}
+    .bar-label{font-weight:700;color:var(--blue-deep);font-size:14px;padding-top:3px}.bar-pair{display:grid;gap:7px}.bar-line{display:grid;grid-template-columns:72px minmax(0,1fr) 56px;gap:10px;align-items:center;font-size:12.5px;color:var(--sub)}
+    .track{height:12px;background:var(--soft);border-radius:99px;overflow:hidden}.fill{height:100%;border-radius:99px;background:var(--blue)}.fill.kimi{background:var(--gold)}
+    .value{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
+    ul,ol{margin:12px 0;padding-left:23px}li{margin:7px 0}
+    .note{font-size:12.5px;color:var(--mut);margin:10px 0 0;line-height:1.8}
+    code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+    footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut);line-height:1.9}
+    @media(max-width:620px){body{font-size:15px}.hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}.hero h1{font-size:23px}h2{font-size:20px}section{padding-top:38px}.callout{padding:16px 18px 16px 22px}.toc{padding:18px 20px}.bar-row{grid-template-columns:1fr;gap:7px}.bar-line{grid-template-columns:64px minmax(0,1fr) 50px}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-in">
+      <span class="kicker">パワポ作るマン ／ 実モデル速度検証</span>
+      <h1>Sonnet 4.6 と Kimi K2.5<br>生成速度の比較</h1>
+      <p class="sub">同じプロンプト・同じMarp生成ツール・同じ検証器で、完成Markdownまでを計測</p>
+      <div class="meta">計測日：2026年8月13日 ／ リージョン：米国東部 ／ Web検索時間は除外</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav class="toc" aria-label="目次">
+      <h2>目次</h2>
+      <ol>
+        <li><a href="#conclusion"><span class="num">01</span>結論</a></li>
+        <li><a href="#results"><span class="num">02</span>計測結果</a></li>
+        <li><a href="#why"><span class="num">03</span>差が生まれる理由</a></li>
+        <li><a href="#conditions"><span class="num">04</span>条件と注意点</a></li>
+      </ol>
+    </nav>
+
+    <section id="conclusion">
+      <span class="eyebrow">01</span>
+      <h2>Kimiは平均では遅い。ただし、常に遅いわけではない</h2>
+      <p class="lead">完成スライドまで同じ仕事をさせた4回の合計では、Kimi K2.5が約13%遅い結果でした。一方、10枚の重い条件ではKimiの方が約17%速く、モデル単体の一律な速度差では説明できません。</p>
+      <div class="grid">
+        <article class="card">
+          <h4>同条件4回の合計</h4>
+          <div class="metric gold">+12.7%</div>
+          <p>Kimi 243.9秒 ／ Sonnet 216.4秒</p>
+        </article>
+        <article class="card">
+          <h4>初回動作まで</h4>
+          <div class="metric">約2〜3秒</div>
+          <p>多くのケースでほぼ同等。初動はKimiの弱点ではない</p>
+        </article>
+        <article class="card">
+          <h4>自動修正回数</h4>
+          <div class="metric gold">4〜5回</div>
+          <p>Kimi。Sonnetは全ケース3回で打ち切り</p>
+        </article>
+      </div>
+      <div class="callout">
+        <p><b>体感どおり遅くなりやすい本命は、自動修正の多さです。</b> Kimiは現行実装で検証項目と再試行上限が多く、短い3枚条件ではSonnetの約2.1倍かかりました。</p>
+      </div>
+    </section>
+
+    <section id="results">
+      <span class="eyebrow">02</span>
+      <h2>同じ枚数を指定した結果</h2>
+      <p class="lead">8枚だけ2回計測し、ばらつきを確認しました。時間はリクエスト開始から完了イベントまでです。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>条件</th><th>Sonnet 4.6</th><th>Kimi K2.5</th><th>Kimiの差</th><th>出力試行</th></tr></thead>
+          <tbody>
+            <tr><td>短い3枚</td><td class="winner">21.5秒</td><td>45.1秒</td><td class="slower">+109.9%</td><td>3回 ／ 5回</td></tr>
+            <tr><td>通常8枚・1回目</td><td class="winner">61.3秒</td><td>67.2秒</td><td class="slower">+9.6%</td><td>3回 ／ 4回</td></tr>
+            <tr><td>通常8枚・2回目</td><td class="winner">52.5秒</td><td>64.5秒</td><td class="slower">+23.0%</td><td>3回 ／ 5回</td></tr>
+            <tr><td>通常8枚・平均</td><td class="winner">56.9秒</td><td>65.9秒</td><td class="slower">+15.8%</td><td>3回 ／ 4.5回</td></tr>
+            <tr><td>重い10枚</td><td>81.1秒</td><td class="winner">67.1秒</td><td>−17.3%</td><td>3回 ／ 5回</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bars" aria-label="生成時間の棒グラフ">
+        <div class="bar-row">
+          <div class="bar-label">短い3枚</div>
+          <div class="bar-pair">
+            <div class="bar-line"><span>Sonnet</span><div class="track"><div class="fill" style="width:26.5%"></div></div><span class="value">21.5秒</span></div>
+            <div class="bar-line"><span>Kimi</span><div class="track"><div class="fill kimi" style="width:55.6%"></div></div><span class="value">45.1秒</span></div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">通常8枚・平均</div>
+          <div class="bar-pair">
+            <div class="bar-line"><span>Sonnet</span><div class="track"><div class="fill" style="width:70.2%"></div></div><span class="value">56.9秒</span></div>
+            <div class="bar-line"><span>Kimi</span><div class="track"><div class="fill kimi" style="width:81.3%"></div></div><span class="value">65.9秒</span></div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">重い10枚</div>
+          <div class="bar-pair">
+            <div class="bar-line"><span>Sonnet</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="value">81.1秒</span></div>
+            <div class="bar-line"><span>Kimi</span><div class="track"><div class="fill kimi" style="width:82.7%"></div></div><span class="value">67.1秒</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>枚数未指定は、比較できる仕事量にならない</h3>
+      <div class="grid">
+        <article class="card"><h4>Sonnet 4.6</h4><div class="metric">5.9秒</div><p>会社規模・用途・枚数を質問して終了。スライドは0枚</p></article>
+        <article class="card"><h4>Kimi K2.5</h4><div class="metric gold">54.4秒</div><p>確認せず10枚を自律生成。完成まで5回試行</p></article>
+      </div>
+      <p class="note">枚数未指定時の差は速度差ではなく、Sonnetが質問だけ、Kimiが完成品まで作るという作業量の差です。</p>
+    </section>
+
+    <section id="why">
+      <span class="eyebrow">03</span>
+      <h2>Kimiが遅く感じられる3つの理由</h2>
+      <div class="grid">
+        <article class="card">
+          <h4>自動修正が多い</h4>
+          <p>Kimiは最大5回まで出力し直します。Sonnetは最大3回です。Kimiだけに太字過多・表現パターン連続・根拠のない数値などの追加検証もあります。</p>
+        </article>
+        <article class="card">
+          <h4>未指定時の資料が長い</h4>
+          <p>Kimiは狭いテーマで10〜12枚、広いテーマで14〜18枚を目安にします。短い依頼でも自動的に仕事量が膨らみます。</p>
+        </article>
+        <article class="card">
+          <h4>途中の文章を見せない</h4>
+          <p>Kimiの生成テキストは完成まで画面へ流さない実装です。処理中表示は出ますが、Sonnetより「待っている」感覚が強くなります。</p>
+        </article>
+      </div>
+      <div class="callout blue">
+        <p><b>モデルの初動は遅くありません。</b> 最初のツール動作は多くのケースで2〜3秒台でした。差が広がるのは、その後の長文生成と修正ループです。</p>
+      </div>
+      <p>補助的な差として、Sonnetはプロンプトとツールのキャッシュを有効にできますが、Kimiはキャッシュ非対応です。今回の新規セッション中心の計測だけでは、キャッシュが何秒効いたかまでは分離していません。</p>
+    </section>
+
+    <section id="conditions">
+      <span class="eyebrow">04</span>
+      <h2>計測条件と、別途見つかった注意点</h2>
+      <ul>
+        <li>実際のAmazon Bedrock上の <code>global.anthropic.claude-sonnet-4-6</code> と <code>moonshotai.kimi-k2.5</code> を使用</li>
+        <li>現行のシステムプロンプト、Marp生成ツール、出力検証、Kimi向け再試行処理を使用</li>
+        <li>検索APIの揺れを除くため、全比較ケースで「Web検索不要」と指定</li>
+        <li>現行APIはSonnet指定をKimiへ置き換えるため、ローカルの隔離実行でモデル許可リストだけ一時的に広げて計測。リポジトリとAWS環境は未変更</li>
+        <li>速度だけを比較し、内容品質は採点していない。両モデルとも一部ケースでレイアウト違反を残したまま再試行上限に到達</li>
+      </ul>
+      <div class="callout">
+        <p><b>枚数抽出に別の不具合があります。</b> 「10枚で作り、比較表を1枚」のように複数の「◯枚」があると、最後の1枚を総枚数として採用します。今回の10枚比較では「比較表も入れて」に直して、この影響を除外しました。</p>
+      </div>
+      <p class="note">判断：Kimiを速度だけで外す根拠には弱い一方、Kimi向けの自動修正回数と未指定時の枚数は、体感速度を改善できる余地が大きいです。</p>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <p>パワポ作るマン モデル生成速度検証 ／ 2026年8月13日</p>
+  </footer>
+</body>
+</html>
