@@ -19,6 +19,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 export interface WebStackProps extends cdk.StackProps {
   readonly appDomain: string;
   readonly previewDomain?: string;
+  readonly cutoverWildcardDomain?: string;
   readonly auth: AuthStack;
   readonly agent: AgentStack;
   readonly foundation: FoundationStack;
@@ -78,6 +79,7 @@ export class WebStack extends cdk.Stack {
           'cdk.out',
           'dist',
           'docs',
+          'infra/scripts',
           'tests',
           'amplify/agent/runtime/.venv',
           '**/__pycache__',
@@ -125,10 +127,15 @@ export class WebStack extends cdk.Stack {
 
     const domainReady = this.node.tryGetContext('domainReady') === true
       || this.node.tryGetContext('domainReady') === 'true';
-    const distributionDomains = [
-      ...(props.previewDomain ? [props.previewDomain] : []),
-      ...(domainReady ? [props.appDomain] : []),
-    ];
+    // 別アカウントの旧CloudFrontが本番ドメインを保持したままでも、親ドメインの
+    // ワイルドカードは共存できる。DNS変更後も旧側の完全一致が優先され、旧設定を
+    // 外した瞬間に新側へ移るため、切替中の空白時間を作らない。
+    const distributionDomains = domainReady
+      ? [props.appDomain, ...(props.previewDomain ? [props.previewDomain] : [])]
+      : [
+          ...(props.previewDomain ? [props.previewDomain] : []),
+          ...(props.cutoverWildcardDomain ? [props.cutoverWildcardDomain] : []),
+        ];
     const certificate = distributionDomains.length > 0 ? props.foundation.certificate : undefined;
 
     const distribution = new cloudfront.Distribution(this, 'Distribution', {

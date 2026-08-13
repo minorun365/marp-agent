@@ -8,6 +8,7 @@ import type { Construct } from 'constructs';
 export interface FoundationStackProps extends cdk.StackProps {
   readonly appDomain: string;
   readonly previewDomain?: string;
+  readonly cutoverWildcardDomain?: string;
 }
 
 export class FoundationStack extends cdk.Stack {
@@ -40,7 +41,10 @@ export class FoundationStack extends cdk.Stack {
     // ACMが提示するCNAMEだけを親ゾーンへ登録して切替前に検証を完了する。
     this.certificate = new acm.Certificate(this, 'Certificate', {
       domainName: props.appDomain,
-      subjectAlternativeNames: props.previewDomain ? [props.previewDomain] : undefined,
+      subjectAlternativeNames: [
+        ...(props.previewDomain ? [props.previewDomain] : []),
+        ...(props.cutoverWildcardDomain ? [props.cutoverWildcardDomain] : []),
+      ],
       validation: acm.CertificateValidation.fromDns(),
     });
 

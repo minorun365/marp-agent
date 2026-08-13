@@ -15,6 +15,7 @@ const env = {
 };
 const appDomain = app.node.getContext('appDomain') as string;
 const previewDomain = app.node.tryGetContext('previewDomain') as string | undefined;
+const cutoverWildcardDomain = app.node.tryGetContext('cutoverWildcardDomain') as string | undefined;
 const oldMigrationRoleArn = app.node.tryGetContext('oldMigrationRoleArn') as string | undefined;
 const oldGoogleCheckRoleArn = app.node.tryGetContext('oldGoogleCheckRoleArn') as string | undefined;
 
@@ -26,6 +27,7 @@ const foundation = new FoundationStack(app, 'PawapoFoundation', {
   env,
   appDomain,
   previewDomain,
+  cutoverWildcardDomain,
   description: 'パワポ作るマンの永続データとドメイン基盤',
 });
 
@@ -65,6 +67,7 @@ const web = new WebStack(app, 'PawapoWeb', {
   env,
   appDomain,
   previewDomain,
+  cutoverWildcardDomain,
   auth,
   agent,
   foundation,

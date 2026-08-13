@@ -140,3 +140,12 @@ GetFunctionCodeSigningConfig failed ... Code signing is not supported for functi
 Secrets Managerの動的参照を`AWS::Cognito::UserPoolIdentityProvider.ProviderDetails.client_secret`へ指定してデプロイすると、CDKDは参照を解決した実値をstateの`Properties`と`Attributes.ProviderDetails`へ保存した。`cdkd state show`もマスクせず表示するため、AWS側で秘匿されるべきOAuthクライアントシークレットがstateとターミナルへ露出する。
 
 現在の回避策は、CDKD管理リソースのプロパティへ秘密値を渡さないこと。カスタムリソースのLambdaが実行時にSecrets Managerから値を取得し、CognitoのIDプロバイダーを作成・更新する構成へ変更した。upstreamでは、リソース型ごとの機密プロパティをstate保存前とCLI表示前にマスクし、動的参照を解決した秘密値が永続化されない回帰テストを追加する必要がある。
+
+## 証明書置換時に利用中の旧証明書の削除を試みる
+
+- 確認日: 2026年8月14日
+- 実環境で確認したバージョン: CDKD 0.282.5
+- 状態: upstreamへのIssue・Pull Requestは未作成
+- 症状: 証明書を別スタックのCloudFrontが利用中のまま置換すると、新証明書の作成後に旧証明書の削除を試み、`ResourceInUseException` の警告が出る。デプロイ状態は新証明書を指すが、旧証明書は残る。
+- 回避策: 証明書スタック、利用側スタックの順に完全待機でデプロイし、最後に `InUseBy` が空になった旧証明書だけを削除する。
+- コントリビュート候補: スタック間の利用関係がある置換では削除を遅延するか、未削除リソースを後続のcleanup対象として記録する。
