@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#142f57">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="パワポ作るマンのパスキー・Google・メール認証をまとめたログイン画面デザインモック">
+  <title>ログイン画面デザインモック｜パワポ作るマン</title>
+  <style>
+    :root {
+      --navy: #142f57;
+      --navy-deep: #0c2344;
+      --blue: #315f8e;
+      --sky: #79b4dc;
+      --ink: #17202c;
+      --muted: #687483;
+      --line: #dce3ea;
+      --soft: #f4f7fa;
+      --white: #fff;
+      --danger: #b24b4b;
+      --shadow: 0 18px 55px rgba(11, 35, 68, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; min-height: 100%; background: var(--white); }
+
+    html { background: var(--navy); }
+
+    body {
+      min-height: 100dvh;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: clip;
+    }
+
+    button, input { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .page {
+      display: grid;
+      grid-template-columns: minmax(340px, 44%) minmax(480px, 56%);
+      min-height: 100dvh;
+      background: var(--white);
+    }
+
+    .brand {
+      position: relative;
+      display: flex;
+      min-height: 100dvh;
+      overflow: hidden;
+      color: var(--white);
+      background: linear-gradient(142deg, var(--navy-deep) 0%, var(--navy) 46%, var(--blue) 76%, var(--sky) 140%);
+    }
+
+    .brand::after {
+      content: "";
+      position: absolute;
+      right: -13rem;
+      bottom: -12rem;
+      width: 31rem;
+      height: 31rem;
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 50%;
+      box-shadow: 0 0 0 5rem rgba(255, 255, 255, .025), 0 0 0 10rem rgba(255, 255, 255, .018);
+      pointer-events: none;
+    }
+
+    .brand-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      width: 100%;
+      max-width: 620px;
+      margin-left: auto;
+      padding: max(54px, env(safe-area-inset-top)) 58px max(54px, env(safe-area-inset-bottom));
+      flex-direction: column;
+    }
+
+    .wordmark {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      color: rgba(255, 255, 255, .86);
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .06em;
+    }
+
+    .mark {
+      position: relative;
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(255, 255, 255, .48);
+      border-radius: 8px;
+    }
+
+    .mark::before, .mark::after {
+      content: "";
+      position: absolute;
+      left: 7px;
+      width: 14px;
+      height: 1px;
+      background: rgba(255, 255, 255, .82);
+    }
+
+    .mark::before { top: 10px; }
+    .mark::after { top: 17px; width: 9px; }
+
+    .brand-copy { margin-top: auto; margin-bottom: auto; padding: 72px 0 96px; }
+
+    .brand-copy h1 {
+      max-width: 520px;
+      margin: 0;
+      font-size: clamp(38px, 4vw, 62px);
+      font-weight: 720;
+      letter-spacing: -.045em;
+      line-height: 1.18;
+    }
+
+    .brand-copy p {
+      max-width: 430px;
+      margin: 22px 0 0;
+      color: rgba(255, 255, 255, .72);
+      font-size: 15px;
+      line-height: 1.9;
+    }
+
+    .brand-note {
+      color: rgba(255, 255, 255, .48);
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+
+    .auth {
+      position: relative;
+      display: grid;
+      min-height: 100dvh;
+      padding: max(42px, env(safe-area-inset-top)) 40px max(88px, calc(42px + env(safe-area-inset-bottom)));
+      place-items: center;
+      background: var(--white);
+    }
+
+    .auth-shell { width: min(100%, 410px); }
+
+    .state { display: none; animation: enter .28s ease both; }
+    .state.active { display: block; }
+
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .auth h2 {
+      margin: 0;
+      color: var(--navy-deep);
+      font-size: clamp(28px, 3vw, 35px);
+      font-weight: 720;
+      letter-spacing: -.035em;
+      line-height: 1.28;
+    }
+
+    .lead {
+      margin: 12px 0 30px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .stack { display: grid; gap: 11px; }
+
+    .action {
+      display: flex;
+      width: 100%;
+      min-height: 50px;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 660;
+      transition: transform .16s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .action:hover { transform: translateY(-1px); }
+    .action:active { transform: translateY(0); }
+    .action:focus-visible { outline: 3px solid rgba(49, 95, 142, .23); outline-offset: 2px; }
+
+    .action-primary {
+      color: var(--white);
+      background: var(--navy);
+      box-shadow: 0 7px 20px rgba(20, 47, 87, .16);
+    }
+
+    .action-primary:hover { background: var(--navy-deep); }
+
+    .action-secondary {
+      color: var(--ink);
+      border-color: var(--line);
+      background: var(--white);
+    }
+
+    .action-secondary:hover { border-color: #bac8d6; background: #fbfcfd; }
+
+    .icon {
+      display: grid;
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      place-items: center;
+    }
+
+    .divider {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 13px;
+      align-items: center;
+      margin: 22px 0;
+      color: #8b95a1;
+      font-size: 11px;
+    }
+
+    .divider::before, .divider::after { content: ""; height: 1px; background: var(--line); }
+
+    .field { display: grid; gap: 8px; margin-bottom: 14px; }
+
+    .field label {
+      color: #344253;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .input-wrap { position: relative; }
+
+    .field input {
+      width: 100%;
+      height: 50px;
+      padding: 0 45px 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      outline: none;
+      color: var(--ink);
+      background: var(--white);
+      transition: border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .field input::placeholder { color: #a0a9b3; }
+    .field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(49, 95, 142, .11); }
+
+    .field-symbol {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      color: #8793a0;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .legacy-entry {
+      margin-top: 21px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .text-button {
+      padding: 3px 2px;
+      border: 0;
+      color: var(--navy);
+      background: transparent;
+      cursor: pointer;
+      font-size: inherit;
+      font-weight: 680;
+      text-decoration: underline;
+      text-decoration-color: rgba(20, 47, 87, .28);
+      text-underline-offset: 3px;
+    }
+
+    .text-button:hover { text-decoration-color: currentColor; }
+    .text-button:focus-visible { outline: 2px solid rgba(49, 95, 142, .28); outline-offset: 2px; }
+
+    .privacy {
+      margin: 28px 0 0;
+      color: #8b95a1;
+      font-size: 10.5px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .privacy a { color: inherit; text-underline-offset: 2px; }
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 0 24px;
+      padding: 4px 0;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .back:hover { color: var(--navy); }
+
+    .mail-address {
+      display: inline-block;
+      margin-top: 6px;
+      color: var(--ink);
+      font-weight: 680;
+    }
+
+    .code-field {
+      width: 100%;
+      height: 58px;
+      margin: 3px 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      outline: none;
+      color: var(--navy-deep);
+      background: var(--white);
+      font-size: 24px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      letter-spacing: .42em;
+      text-align: center;
+    }
+
+    .code-field:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(49, 95, 142, .11); }
+
+    .sub-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 17px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .migration-note {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 11px;
+      margin: 0 0 24px;
+      padding: 13px 14px;
+      border-left: 3px solid var(--sky);
+      color: #536171;
+      background: var(--soft);
+      font-size: 11.5px;
+      line-height: 1.65;
+    }
+
+    .migration-note svg { color: var(--blue); }
+
+    .mock-controls {
+      position: fixed;
+      z-index: 10;
+      right: 18px;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      display: flex;
+      padding: 4px;
+      gap: 3px;
+      border: 1px solid rgba(255, 255, 255, .24);
+      border-radius: 12px;
+      background: rgba(8, 24, 44, .88);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(13px);
+    }
+
+    .mock-controls::before {
+      content: "MOCK";
+      display: grid;
+      padding: 0 8px;
+      place-items: center;
+      color: rgba(255, 255, 255, .48);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .12em;
+    }
+
+    .mock-controls button {
+      min-height: 34px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, .62);
+      background: transparent;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 650;
+    }
+
+    .mock-controls button[aria-pressed="true"] { color: var(--navy-deep); background: var(--white); }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      top: 18px;
+      left: 50%;
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 9px;
+      color: var(--white);
+      background: rgba(8, 24, 44, .92);
+      box-shadow: var(--shadow);
+      font-size: 11px;
+      transform: translate(-50%, -20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 840px) {
+      .page { display: block; min-height: 100dvh; }
+
+      .brand {
+        min-height: 214px;
+        background: linear-gradient(138deg, var(--navy-deep), var(--navy) 58%, var(--blue) 115%);
+      }
+
+      .brand::after {
+        right: -11rem;
+        bottom: -17rem;
+        width: 28rem;
+        height: 28rem;
+      }
+
+      .brand-inner {
+        min-height: 214px;
+        padding: calc(25px + env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) 27px max(22px, env(safe-area-inset-left));
+      }
+
+      .wordmark { font-size: 11px; }
+      .mark { width: 26px; height: 26px; }
+      .mark::before { top: 8px; left: 6px; width: 12px; }
+      .mark::after { top: 14px; left: 6px; width: 8px; }
+
+      .brand-copy { margin: auto 0 0; padding: 34px 0 0; }
+      .brand-copy h1 { max-width: 320px; font-size: 29px; line-height: 1.24; }
+      .brand-copy p, .brand-note { display: none; }
+
+      .auth {
+        display: block;
+        min-height: calc(100dvh - 214px);
+        padding: 37px max(22px, env(safe-area-inset-right)) max(96px, calc(82px + env(safe-area-inset-bottom))) max(22px, env(safe-area-inset-left));
+      }
+
+      .auth-shell { max-width: 430px; margin: 0 auto; }
+      .auth h2 { font-size: 27px; }
+      .lead { margin-bottom: 25px; }
+      .privacy { margin-top: 23px; }
+
+      .mock-controls {
+        right: 10px;
+        left: 10px;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        justify-content: center;
+      }
+
+      .mock-controls::before { display: none; }
+      .mock-controls button { flex: 1; padding: 0 6px; }
+    }
+
+    @media (max-width: 380px) {
+      .brand { min-height: 194px; }
+      .brand-inner { min-height: 194px; }
+      .brand-copy h1 { font-size: 26px; }
+      .auth { min-height: calc(100dvh - 194px); padding-top: 30px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="brand" aria-label="パワポ作るマン">
+      <div class="brand-inner">
+        <div class="wordmark">
+          <span class="mark" aria-hidden="true"></span>
+          <span>パワポ作るマン by みのるん</span>
+        </div>
+        <div class="brand-copy">
+          <h1>伝えたいことを、<br>スライドに。</h1>
+          <p>テーマを伝えるだけで、構成からデザインまで。AIと会話しながらプレゼン資料を仕上げられます。</p>
+        </div>
+        <div class="brand-note">POWERED BY AWS &amp; GENERATIVE AI</div>
+      </div>
+    </section>
+
+    <section class="auth" aria-label="ログイン">
+      <div class="auth-shell">
+        <section class="state active" data-state="initial">
+          <p class="eyebrow">Welcome back</p>
+          <h2>続きをはじめましょう</h2>
+          <p class="lead">登録とログインを分けず、いつもの方法でそのまま続けられます。</p>
+
+          <div class="stack">
+            <button class="action action-primary" type="button" data-demo="passkey">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8" cy="9" r="4"></circle><path d="M11.1 11.5 20 20.4M16 16.4l2-2M13.5 13.9l2-2"></path>
+                </svg>
+              </span>
+              パスキーで続ける
+            </button>
+            <button class="action action-secondary" type="button" data-demo="google">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="19" height="19" aria-label="Google">
+                  <path fill="#4285F4" d="M21.4 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.3a4.5 4.5 0 0 1-2 3v2.5h3.2c1.9-1.8 2.9-4.3 2.9-7.3Z"/>
+                  <path fill="#34A853" d="M12 21.7c2.7 0 5-.9 6.6-2.3l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 21.7Z"/>
+                  <path fill="#FBBC05" d="M6.4 13.8a6 6 0 0 1 0-3.6V7.6H3.1a10 10 0 0 0 0 8.8l3.3-2.6Z"/>
+                  <path fill="#EA4335" d="M12 6.1c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0 0 3.1 7.6l3.3 2.6c.8-2.3 3-4.1 5.6-4.1Z"/>
+                </svg>
+              </span>
+              Googleで続ける
+            </button>
+          </div>
+
+          <div class="divider">または</div>
+
+          <form data-email-form>
+            <div class="field">
+              <label for="email">メールアドレス</label>
+              <div class="input-wrap">
+                <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+                <svg class="field-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>
+              </div>
+            </div>
+            <button class="action action-secondary" type="submit">メールで続ける</button>
+          </form>
+
+          <div class="legacy-entry">
+            以前からご利用の方は
+            <button class="text-button" type="button" data-go="legacy">従来のパスワードで移行</button>
+          </div>
+
+          <p class="privacy">続けることで、<a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意したものとみなされます。</p>
+        </section>
+
+        <section class="state" data-state="otp">
+          <button class="back" type="button" data-go="initial" aria-label="戻る">
+            <span aria-hidden="true">←</span> 戻る
+          </button>
+          <p class="eyebrow">Email verification</p>
+          <h2>メールを確認してください</h2>
+          <p class="lead">6桁の確認コードを送りました。<br><span class="mail-address" data-email-label>you@example.com</span></p>
+          <label class="field" for="code"><span>確認コード</span></label>
+          <input class="code-field" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+          <button class="action action-primary" type="button" data-demo="verify">確認して続ける</button>
+          <div class="sub-actions">
+            <button class="text-button" type="button" data-demo="resend">コードを再送</button>
+            <button class="text-button" type="button" data-go="initial">メールを変更</button>
+          </div>
+          <p class="privacy">初めての方は、確認後にパスキーを登録できます。</p>
+        </section>
+
+        <section class="state" data-state="legacy">
+          <button class="back" type="button" data-go="initial" aria-label="戻る">
+            <span aria-hidden="true">←</span> 戻る
+          </button>
+          <p class="eyebrow">Account migration</p>
+          <h2>これまでのアカウントを移行</h2>
+          <p class="lead">今までと同じメールアドレスとパスワードを、一度だけ入力してください。</p>
+
+          <div class="migration-note">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 4.5 6v5c0 5.1 3.2 8.1 7.5 10 4.3-1.9 7.5-4.9 7.5-10V6L12 3Z"></path><path d="m9.4 12 1.7 1.7 3.6-4"></path></svg>
+            <span>移行後は、パスキー・Google・メールコードから好きな方法を選べます。</span>
+          </div>
+
+          <form data-legacy-form>
+            <div class="field">
+              <label for="legacy-email">メールアドレス</label>
+              <div class="input-wrap">
+                <input id="legacy-email" type="email" autocomplete="username" placeholder="you@example.com" required>
+                <svg class="field-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>
+              </div>
+            </div>
+            <div class="field">
+              <label for="legacy-password">現在のパスワード</label>
+              <div class="input-wrap">
+                <input id="legacy-password" type="password" autocomplete="current-password" placeholder="パスワード" required>
+                <svg class="field-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+              </div>
+            </div>
+            <button class="action action-primary" type="submit">ログインして移行</button>
+          </form>
+          <p class="privacy">パスワードは新しい環境へ保存せず、安全な移行処理にだけ使用します。</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="mock-controls" aria-label="モックの表示状態">
+    <button type="button" data-control="initial" aria-pressed="true">初期画面</button>
+    <button type="button" data-control="otp" aria-pressed="false">メール確認</button>
+    <button type="button" data-control="legacy" aria-pressed="false">旧ユーザー</button>
+  </div>
+
+  <div class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const states = [...document.querySelectorAll('[data-state]')];
+      const controls = [...document.querySelectorAll('[data-control]')];
+      const toast = document.querySelector('.toast');
+      let toastTimer;
+
+      const showState = (name) => {
+        states.forEach((node) => node.classList.toggle('active', node.dataset.state === name));
+        controls.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.control === name)));
+        history.replaceState(null, '', `#${name}`);
+        document.querySelector(`[data-state="${name}"] input`)?.focus({ preventScroll: true });
+      };
+
+      const showToast = (message) => {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add('show');
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 1900);
+      };
+
+      controls.forEach((button) => button.addEventListener('click', () => showState(button.dataset.control)));
+      document.querySelectorAll('[data-go]').forEach((button) => button.addEventListener('click', () => showState(button.dataset.go)));
+
+      document.querySelector('[data-email-form]').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const email = new FormData(event.currentTarget).get('email');
+        document.querySelector('[data-email-label]').textContent = email || 'you@example.com';
+        showState('otp');
+      });
+
+      document.querySelector('[data-legacy-form]').addEventListener('submit', (event) => {
+        event.preventDefault();
+        showToast('モック：この操作でアカウントを移行します');
+      });
+
+      document.querySelectorAll('[data-demo]').forEach((button) => button.addEventListener('click', () => {
+        const messages = {
+          passkey: 'モック：端末のパスキー認証を開始します',
+          google: 'モック：Googleの認証画面へ移動します',
+          verify: 'モック：確認後、アプリまたはパスキー登録へ進みます',
+          resend: '確認コードを再送しました'
+        };
+        showToast(messages[button.dataset.demo]);
+      }));
+
+      const initial = location.hash.slice(1);
+      if (['initial', 'otp', 'legacy'].includes(initial)) showState(initial);
+    })();
+  </script>
+</body>
+</html>
