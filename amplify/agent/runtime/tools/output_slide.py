@@ -133,10 +133,72 @@ def _estimate_visual_lines(text: str) -> int:
 
 
 def _parse_slides(markdown: str) -> list[str]:
-    """Marpマークダウンをスライドごとに分割（フロントマター除外）"""
-    content = re.sub(r'^---\s*\n.*?\n---\s*\n', '', markdown, count=1, flags=re.DOTALL)
-    slides = re.split(r'\n---\s*\n', content)
-    return [s.strip() for s in slides if s.strip()]
+    """Marpと同じ水平線ルールでスライドを分割する。"""
+    lines = markdown.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+
+    # 先頭のYAMLフロントマターはスライド本文に含めない。
+    if lines and re.fullmatch(r'[ \t]{0,3}---[ \t]*', lines[0]):
+        for index in range(1, len(lines)):
+            if re.fullmatch(r'[ \t]{0,3}(?:---|\.\.\.)[ \t]*', lines[index]):
+                lines = lines[index + 1:]
+                break
+
+    slides: list[str] = []
+    current_slide: list[str] = []
+    fence_char: str | None = None
+    fence_length = 0
+    fence_pattern = re.compile(r'^[ \t]{0,3}(`{3,}|~{3,})(.*)$')
+    thematic_break_pattern = re.compile(
+        r'^[ \t]{0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$'
+    )
+
+    for line in lines:
+        fence_match = fence_pattern.match(line)
+        if fence_match:
+            marker = fence_match.group(1)
+            if fence_char is None:
+                # バッククォートの情報文字列に同じ記号がある場合はフェンスではない。
+                if marker[0] != '`' or '`' not in fence_match.group(2):
+                    fence_char = marker[0]
+                    fence_length = len(marker)
+            elif (
+                marker[0] == fence_char
+                and len(marker) >= fence_length
+                and not fence_match.group(2).strip()
+            ):
+                fence_char = None
+                fence_length = 0
+            current_slide.append(line)
+            continue
+
+        if fence_char is None and thematic_break_pattern.fullmatch(line):
+            # 直前の通常テキストに続く連続ハイフンはSetext見出しであり、
+            # Marpでもページ区切りにならない。
+            previous_line = current_slide[-1] if current_slide else ''
+            is_setext_heading = bool(
+                re.fullmatch(r'[ \t]{0,3}-+[ \t]*', line)
+                and previous_line.strip()
+                and not re.match(
+                    r'^[ \t]{0,3}(?:#{1,6}(?:[ \t]|$)|[-+*][ \t]+|\d+[.)][ \t]+|>|<)',
+                    previous_line,
+                )
+            )
+            if is_setext_heading:
+                current_slide.append(line)
+                continue
+
+            slide = '\n'.join(current_slide).strip()
+            if slide:
+                slides.append(slide)
+            current_slide = []
+            continue
+
+        current_slide.append(line)
+
+    final_slide = '\n'.join(current_slide).strip()
+    if final_slide:
+        slides.append(final_slide)
+    return slides
 
 
 def _count_content_lines(slide_content: str) -> int:
