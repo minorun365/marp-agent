@@ -37,6 +37,66 @@ def test_get_generated_markdown_initial_none():
     assert get_generated_markdown() is None
 
 
+def test_parse_slides_matches_marp_thematic_breaks():
+    """3本超のハイフンなど、Marpがページ区切りにする水平線も数える"""
+    markdown = """---
+marp: true
+---
+# 1
+
+----
+
+# 2
+
+* * *
+
+# 3
+
+___
+
+# 4
+"""
+
+    assert len(_parse_slides(markdown)) == 4
+
+
+def test_parse_slides_ignores_thematic_break_inside_code_fence():
+    markdown = """---
+marp: true
+---
+# コード
+
+````markdown
+---
+````
+
+---
+
+# 次のスライド
+"""
+
+    assert len(_parse_slides(markdown)) == 2
+
+
+def test_parse_slides_keeps_setext_heading_on_same_slide():
+    markdown = "---\nmarp: true\n---\nタイトル\n----\n本文"
+
+    assert len(_parse_slides(markdown)) == 1
+
+
+def test_slide_count_validation_matches_marp_for_four_hyphen_separator():
+    """Marpが9枚と描画するMarkdownを検査側も9枚として扱う"""
+    reset_generated_markdown()
+    configure_slide_validation("8枚で作って", "kimi")
+    slides = [f"## スライド{i}\n\n本文" for i in range(1, 10)]
+    markdown = "---\nmarp: true\n---\n" + "\n\n----\n\n".join(slides)
+
+    result = output_slide(markdown=markdown)
+
+    assert "総枚数: 9枚（指定は8枚）" in result
+    assert get_generated_markdown() is None
+
+
 def test_slide_validation_progress_is_consumed_once():
     """検査結果は簡潔な進捗として1回だけ取得できる"""
     reset_generated_markdown()
