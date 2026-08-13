@@ -82,6 +82,7 @@ function recordEvaluationEvent(
 
 export interface AgentCoreCallbacks {
   onText: (text: string) => void;
+  onSlideProgress?: (message: string) => void;
   onStatus: (status: string) => void;
   onMarkdown: (markdown: string) => void;
   onTweetUrl?: (url: string) => void;
@@ -122,7 +123,7 @@ export async function getAgentCoreConfig() {
 /**
  * イベントをコールバックに振り分け
  */
-function handleEvent(
+export function handleEvent(
   event: { type?: string; content?: string; data?: string; error?: string; message?: string; query?: string },
   callbacks: AgentCoreCallbacks
 ) {
@@ -145,6 +146,9 @@ function handleEvent(
       break;
     case 'status':
       if (textValue) callbacks.onStatus(textValue);
+      break;
+    case 'slide_progress':
+      if (textValue) callbacks.onSlideProgress?.(textValue);
       break;
     case 'markdown':
       if (textValue) callbacks.onMarkdown(textValue);

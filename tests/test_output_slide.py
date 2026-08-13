@@ -3,6 +3,7 @@ import pytest
 
 from tools.output_slide import (
     configure_slide_validation,
+    consume_slide_progress,
     mark_web_search_executed,
     output_slide,
     get_generated_markdown,
@@ -33,6 +34,21 @@ def test_get_generated_markdown_initial_none():
     """初期状態ではNone"""
     reset_generated_markdown()
     assert get_generated_markdown() is None
+
+
+def test_slide_validation_progress_is_consumed_once():
+    """検査結果は簡潔な進捗として1回だけ取得できる"""
+    reset_generated_markdown()
+    lines = ["## 見出し"] + [f"- 項目{i}" for i in range(1, 11)]
+    markdown = "---\nmarp: true\n---\n\n" + "\n".join(lines)
+
+    output_slide(markdown=markdown)
+
+    assert consume_slide_progress() == (
+        "1回目の確認で、文字や表のはみ出しを検出しました。"
+        "内容を調整して再チェックします。"
+    )
+    assert consume_slide_progress() is None
 
 
 def test_reset_generated_markdown():

@@ -16,6 +16,15 @@ interface UseChatMessagesProps {
   theme?: string;
 }
 
+export function appendSlideProgress(messages: Message[], message: string): Message[] {
+  return [
+    ...messages.map(item =>
+      item.isStreaming ? { ...item, isStreaming: false } : item
+    ),
+    createMessage({ role: 'assistant', content: message }),
+  ];
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -229,6 +238,10 @@ export function useChatMessages({
             }
             return [...msgs, createMessage({ role: 'assistant', content: text, isStreaming: true })];
           });
+        },
+        onSlideProgress: (message) => {
+          setStatus('');
+          setMessages(prev => appendSlideProgress(prev, message));
         },
         onStatus: (newStatus) => {
           setStatus(newStatus);

@@ -15,6 +15,7 @@ from tools import (
     configure_slide_validation,
     mark_web_search_executed,
     generate_tweet_url,
+    consume_slide_progress,
     get_generated_markdown,
     reset_generated_markdown,
     get_generated_tweet_url,
@@ -212,6 +213,15 @@ async def invoke(payload, context=None):
     kimi_slide_workflow_started = False
     web_search_event_count = 0
 
+    def get_slide_progress_event():
+        """Kimiの内部文ではなく、検査ツールが確定した進捗だけを返す。"""
+        if model_type != "kimi":
+            return None
+        progress_message = consume_slide_progress()
+        if not progress_message:
+            return None
+        return {"type": "slide_progress", "data": progress_message}
+
     try:
         stream = agent.stream_async(user_message)
         stream_iter = stream.__aiter__()
@@ -225,6 +235,11 @@ async def invoke(payload, context=None):
             event = pending.result()
             if event is _STREAM_SENTINEL:
                 break
+
+            slide_progress_event = get_slide_progress_event()
+            if slide_progress_event:
+                yield slide_progress_event
+
             if "data" in event:
                 # output_slide完了後はテキスト送信を抑制
                 if not suppress_text:
@@ -332,6 +347,10 @@ async def invoke(payload, context=None):
                 retry_event = retry_pending.result()
                 if retry_event is _STREAM_SENTINEL:
                     break
+
+                slide_progress_event = get_slide_progress_event()
+                if slide_progress_event:
+                    yield slide_progress_event
 
                 if "current_tool_use" in retry_event:
                     retry_tool = retry_event["current_tool_use"].get("name", "unknown")

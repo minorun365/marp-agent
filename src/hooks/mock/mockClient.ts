@@ -33,6 +33,10 @@ export async function invokeAgentMock(
   // ツール使用開始
   callbacks.onToolUse('output_slide');
   await sleep(1000);
+  callbacks.onSlideProgress?.(
+    '1回目の確認で、文字や表のはみ出しを検出しました。内容を調整して再チェックします。'
+  );
+  await sleep(500);
 
   // サンプルマークダウンを生成
   const sampleMarkdown = `---

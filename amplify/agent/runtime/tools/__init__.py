@@ -5,6 +5,7 @@ from .output_slide import (
     configure_slide_validation,
     mark_web_search_executed,
     output_slide,
+    consume_slide_progress,
     get_generated_markdown,
     reset_generated_markdown,
 )
@@ -15,6 +16,7 @@ __all__ = [
     "web_search",
     "tavily_clients",
     "output_slide",
+    "consume_slide_progress",
     "configure_slide_validation",
     "mark_web_search_executed",
     "get_generated_markdown",

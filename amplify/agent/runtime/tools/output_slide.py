@@ -18,6 +18,7 @@ _active_model_type: str = "sonnet"
 _web_search_executed: bool = False
 _user_quantified_claims: set[str] = set()
 _required_official_source_rules: list[dict] = []
+_slide_progress_message: str | None = None
 
 OFFICIAL_SOURCE_RULES = (
     {
@@ -437,6 +438,48 @@ def get_generated_markdown() -> str | None:
     return _generated_markdown
 
 
+def consume_slide_progress() -> str | None:
+    """直近の検査結果をユーザー向け進捗として1回だけ取得する。"""
+    global _slide_progress_message
+    message = _slide_progress_message
+    _slide_progress_message = None
+    return message
+
+
+def _format_slide_progress(violations: list[dict], attempt: int) -> str:
+    """詳細な内部指示を出さず、検査で確定した問題の種類だけを要約する。"""
+    violation_types = {violation['type'] for violation in violations}
+    categories = []
+
+    if violation_types & {'line_overflow', 'table_overflow'}:
+        categories.append('文字や表のはみ出し')
+    if violation_types & {
+        'slide_count',
+        'slide_count_max',
+        'lead_count',
+        'unrequested_agenda',
+    }:
+        categories.append('枚数・構成のずれ')
+    if violation_types & {
+        'missing_sources',
+        'missing_slide_sources',
+        'unlisted_slide_sources',
+        'missing_official_sources',
+        'non_official_slide_sources',
+        'irrelevant_slide_sources',
+        'unsupported_quantified_claims',
+    }:
+        categories.append('出典・根拠の不足')
+    if violation_types & {'bold_overuse', 'pattern_repetition'}:
+        categories.append('見せ方の偏り')
+
+    summary = '、'.join(categories) if categories else '調整が必要な箇所'
+    return (
+        f'{attempt}回目の確認で、{summary}を検出しました。'
+        '内容を調整して再チェックします。'
+    )
+
+
 def reset_generated_markdown() -> None:
     """マークダウンをリセット"""
     global _generated_markdown, _overflow_retry_count
@@ -444,6 +487,7 @@ def reset_generated_markdown() -> None:
     global _agenda_requested, _active_model_type
     global _web_search_executed, _user_quantified_claims
     global _required_official_source_rules
+    global _slide_progress_message
     _generated_markdown = None
     _overflow_retry_count = 0
     _expected_slide_count = None
@@ -453,6 +497,7 @@ def reset_generated_markdown() -> None:
     _web_search_executed = False
     _user_quantified_claims = set()
     _required_official_source_rules = []
+    _slide_progress_message = None
 
 
 @tool
@@ -494,7 +539,7 @@ def output_slide(markdown: str) -> str:
     Returns:
         出力完了メッセージ（行数超過時はエラーメッセージ）
     """
-    global _generated_markdown, _overflow_retry_count
+    global _generated_markdown, _overflow_retry_count, _slide_progress_message
 
     violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 
@@ -518,6 +563,10 @@ def output_slide(markdown: str) -> str:
         _overflow_retry_count < retry_limit or has_blocking_kimi_violation
     ):
         _overflow_retry_count += 1
+        _slide_progress_message = _format_slide_progress(
+            violations,
+            _overflow_retry_count,
+        )
         details = []
         for v in violations:
             if v['type'] == 'line_overflow':
