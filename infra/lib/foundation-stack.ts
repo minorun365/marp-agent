@@ -51,9 +51,5 @@ export class FoundationStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'DelegatedZoneId', {
       value: this.hostedZone.hostedZoneId,
     });
-    new cdk.CfnOutput(this, 'DelegatedZoneNameServers', {
-      value: cdk.Fn.join(',', this.hostedZone.hostedZoneNameServers ?? []),
-      description: '親ゾーンに登録するNSレコード。Foundation初回デプロイ後に使用する',
-    });
   }
 }
