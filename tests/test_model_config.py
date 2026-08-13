@@ -155,6 +155,7 @@ def test_get_haiku_model_id_rejects_missing_environment_variable(monkeypatch):
 def test_kimi_system_prompt_adds_slide_balance_rules():
     prompt = get_system_prompt("speee", "kimi")
 
+    assert "現在は2026年です。" in prompt
     assert "Kimi K2.5実行契約" in prompt
     assert "狭いテーマは10〜12枚" in prompt
     assert "複数の機能や論点を扱うテーマは14〜18枚" in prompt
@@ -181,6 +182,7 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
 def test_sonnet_system_prompt_does_not_add_kimi_rules():
     prompt = get_system_prompt("speee", "sonnet")
 
+    assert "現在は2026年です。" not in prompt
     assert "OSS系モデル向け" not in prompt
     assert "自律実行ルール（最優先）" not in prompt
     assert "theme: speee" in prompt
