@@ -178,13 +178,6 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 - コミットメッセージは **1行の日本語でシンプルに**
 - `Co-Authored-By: Claude` `Co-Authored-By: Codex` などの **AI協働の痕跡は入れない**
 
-### main への push 前に、送信コミットを固定する
-
-- `git status` だけでは、別セッションが作った未 push コミットの混入を検出できない。main へ push する直前は、必ず `npm run push:approve -- <今回のコミットSHA>...` を実行する。
-- `push:approve` は `origin/main..HEAD` の全コミットを取得し、引数で明示した今回のコミットと完全一致した場合だけ push を許可する。別コミットが1件でも混ざっていれば承認せず、現在の作業コミットだけを安全なブランチへ切り出す。
-- 承認後に `git push origin main` を実行する。`.githooks/pre-push` を `--no-verify` で回避してはならない。
-- `git config --local core.hooksPath` が `.githooks` でなければ、push 前に `npm run setup:git-hooks` を実行する。
-
 ## KAG社内版環境（別リポジトリ）
 
 KAG社内版は完全に別のGitHubリポジトリ（`minorun365/marp-agent-kag`）で管理されている（ローカル: `../marp-agent-kag`）。

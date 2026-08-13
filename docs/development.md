@@ -168,6 +168,8 @@ git push origin main
 
 GitHubにプッシュすると、Amplify Consoleが自動でビルド・デプロイを実行。
 
+複数セッションで作業している場合は、push 前に `git log --oneline origin/main..HEAD` で送信対象を確認する。今回の作業と無関係なコミットが含まれていれば push しない。
+
 ```bash
 git push origin main  # mainブランチにデプロイ
 ```
