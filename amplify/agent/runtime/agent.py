@@ -4,7 +4,6 @@ import asyncio
 import base64
 import json
 import os
-from urllib.parse import urlsafe_b64decode
 
 import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
@@ -34,21 +33,6 @@ MAX_EXTRACTED_CHARS = 50000  # 約25,000トークン
 STREAM_KEEPALIVE_INTERVAL = 10.0  # ストリーミング中のkeep-alive間隔（秒）
 
 _STREAM_SENTINEL = object()
-
-
-def _actor_id_from_context(context) -> str:
-    """JWTのsubをMemoryの利用者IDとして使う。署名検証はRuntimeの認証層が担当する。"""
-    headers = getattr(context, "request_headers", None) or {}
-    authorization = headers.get("authorization", "")
-    if not authorization.startswith("Bearer "):
-        return "anonymous"
-    try:
-        payload = authorization.removeprefix("Bearer ").split(".")[1]
-        padding = "=" * (-len(payload) % 4)
-        claims = json.loads(urlsafe_b64decode(payload + padding))
-        return str(claims.get("sub") or "anonymous")
-    except (IndexError, ValueError, json.JSONDecodeError):
-        return "anonymous"
 
 
 async def _safe_anext(aiter):
@@ -212,8 +196,7 @@ async def invoke(payload, context=None):
             yield {"type": "text", "data": f"PDFの読み取りに失敗しました: {e}\nテキスト情報なしでスライドを作成します。\n\n"}
 
     # セッションIDとモデルタイプとテーマに対応するAgentを取得
-    actor_id = _actor_id_from_context(context)
-    agent = get_or_create_agent(session_id, model_type, theme, actor_id)
+    agent = get_or_create_agent(session_id, model_type, theme)
 
     # 既存セッション（Agent履歴にスライド内容が残っている）ではMarkdown付加をスキップ
     # 新規セッションまたは履歴がない場合のみ、フロントからのMarkdownをメッセージに結合

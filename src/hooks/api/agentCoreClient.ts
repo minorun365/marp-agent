@@ -3,7 +3,7 @@
  */
 
 import { fetchAuthSession } from 'aws-amplify/auth';
-import { getRuntimeConfig } from '../../runtimeConfig';
+import outputs from '../../../amplify_outputs.json';
 import { readSSEStream } from '../streaming/sseParser';
 import type { ModelType, ReferenceFile } from '../../components/Chat/types';
 
@@ -97,8 +97,7 @@ export type { ModelType } from '../../components/Chat/types';
  * AgentCore APIのベースURL・認証情報を取得
  */
 export async function getAgentCoreConfig() {
-  const agentConfig = getRuntimeConfig().agent;
-  const runtimeArn = agentConfig.runtimeArn;
+  const runtimeArn = outputs.custom?.agentRuntimeArn;
   if (!runtimeArn) {
     throw new Error('AgentCore runtime ARN not configured');
   }
@@ -108,9 +107,7 @@ export async function getAgentCoreConfig() {
   const region = arnParts[3];
   const encodedArn = encodeURIComponent(runtimeArn);
 
-  const url = import.meta.env.VITE_AGENT_ENDPOINT
-    || agentConfig.endpoint
-    || `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
+  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
 
   // Cognito認証トークンを取得
   const session = await fetchAuthSession();

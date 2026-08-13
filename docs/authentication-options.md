@@ -1,102 +1,109 @@
-# 認証方式と Cognito 移行の設計
+# 認証方式と Cognito 移行の検討メモ
 
 最終確認日: 2026年8月13日
 
-パワポ作るマンの認証と Cognito 移行の確定方針を記録する。移行後は Amplify Hosting と Amplify Gen 2 を使わず、Amazon Cognito User Pools を CDK で構築する。フロントエンドでは `aws-amplify` の Auth クライアントを使用し、認証画面はアプリ専用 UI として実装する。
+パワポ作るマンの認証を見直す際に、パスキー、ソーシャルログイン、既存ユーザー移行をまとめて判断できるように記録する。移行後は Amplify Hosting と Amplify Gen 2 を使わず、Amazon Cognito User Pools を CDK で構築する。フロントエンドでは `aws-amplify` の Auth クライアントと Amplify UI React を必要な範囲で継続利用する。
 
-## 結論
+## 現在の構成
 
-- 既存のメールアドレスとパスワードは、移行後もそのまま使える。
-- パスワードを廃止せず、パスキーは希望者だけが追加する。
-- Google ログインを追加する。Google 利用者へ Cognito のパスキー登録は勧めない。
-- メールによるワンタイムコードログインは採用しない。SES の本番利用申請を認証の前提にしない。
-- Cognito の標準メールは、新規登録時のメール確認とパスワード再設定だけに使う。
-- 新旧の Cognito User Pool は、既存ユーザーが初めてパスワードでログインした時点で段階移行する。
+- 新規登録とログインはメールアドレスとパスワードを使用している。
+- 新しい Cognito User Pool に存在しない既存ユーザーは、初回のパスワードログイン時に User Migration Trigger で旧 User Pool から移す。
+- 移行中のログインでは、旧パスワードを検証できる `USER_PASSWORD_AUTH` を使用する。
+- 2026年8月11日時点の導入版は `@aws-amplify/backend 1.20.0`、`aws-amplify 6.16.0`、`@aws-amplify/ui-react 6.13.2`。
 
-## 利用者ごとの動線
+## 認証方式の比較
 
-| 利用者 | 最初の操作 | 次回以降 |
+| 方式 | 新規登録 | 2回目以降 | 新しい User Pool への移行 |
+|---|---|---|---|
+| メールとパスワード | 登録時から使用可能 | メールとパスワードでログイン | User Migration Trigger で旧パスワードを引き継げる |
+| メール OTP | 登録時から使用可能 | メールで受け取ったコードを入力 | メール属性を移せば、移行先で本人確認に使用可能 |
+| パスキー | 単独では登録不可 | Face ID、指紋、端末の認証などでログイン | 登録情報を移せないため、利用者が再登録する |
+| Google | 初回の Google ログインで Cognito プロフィールを作成 | Google 経由でログイン | 新環境で Google に再ログインすればプロフィールを再作成できる |
+
+パスキーはアカウント作成後に登録する認証情報であり、最初の本人確認には使えない。新規ユーザーへパスキーを提供する場合は、メール OTP などで最初の登録を完了させ、その直後にパスキー登録を案内する。
+
+Google ログインでは登録とログインが同じ操作になる。初回は Google が返した情報から Cognito がプロフィールを作り、次回から同じ Google アカウントでログインする。
+
+## Cognito が対応する外部認証
+
+Cognito と Amplify のクライアントライブラリが標準対応するソーシャルログインは、次の4種類がある。
+
+- Google
+- Facebook
+- Login with Amazon
+- Sign in with Apple
+
+このほか、OpenID Connect または SAML に対応した Microsoft Entra ID や Okta なども接続できる。GitHub の一般ユーザー向け OAuth は OpenID Connect の ID トークンを発行しないため、Cognito の標準機能では直接接続できない。GitHub ログインを追加するには、外部の認証仲介サービスか独自の OAuth 連携が必要になる。
+
+## 既存ユーザーと Google の統合
+
+Cognito は、メールアドレスが同じでも、ローカルユーザーと Google ユーザーを自動的には統合しない。何も対策せずに既存ユーザーが Google で初回ログインすると、別の Cognito プロフィールが作られる可能性がある。
+
+既存プロフィールへ Google を追加する場合は、`AdminLinkProviderForUser` を使用する。初回の Google ログイン前または Pre Sign-up Trigger の処理中に、Google の確認済みメールアドレスと既存ユーザーを照合してリンクする。
+
+現在の段階移行と併用する場合、旧 User Pool にしか存在しないユーザーは先にパスワードで新 User Pool へ移す必要がある。パスワードレス認証とソーシャルログインでは User Migration Trigger が起動しないため、移行期間中は既存ユーザー向けのパスワードログインを残す。既存ユーザーへメール OTP を強制するのではなく、従来と同じメールアドレスとパスワードで一度ログインしてもらう。
+
+## Google ユーザーとパスキーの関係
+
+Google だけで作られたフェデレーションユーザーへ、Cognito のパスキーをそのまま追加する構成は採らない。パスキーなどの Cognito 側の認証方式を併用するには、Google ユーザーをローカルプロフィールへリンクする必要がある。
+
+Google ログインを継続して使う利用者に、パワポ作るマン専用のパスキーまで登録してもらう利点は小さい。Google 側ですでにパスキーや多要素認証を使用している場合は、Google が安全な本人確認を担当している。
+
+パスキーは、Google を使わない利用者がメール OTP のコード入力を毎回行わずに済む選択肢として提供する。想定する利用経路は次のとおり。
+
+| 利用者 | 初回 | 2回目以降 |
 |---|---|---|
-| 既存ユーザー | 従来と同じメールアドレスとパスワードでログイン。裏側で新 User Pool へ移行する | パスワードを継続。希望すればパスキーも使える |
-| メールを使う新規ユーザー | メールアドレスとパスワードで登録し、Cognito の確認コードでメールを確認する | パスワード。希望すればパスキーも使える |
-| Google を使う新規ユーザー | Google で登録とログインを同時に完了する | Google |
+| Google を使う新規ユーザー | Google で登録とログイン | Google でログイン |
+| Google を使わない新規ユーザー | メール OTP で登録後、パスキーを登録 | パスキーでログイン |
+| 既存ユーザー | 従来と同じパスワードで移行後、パスキーを登録 | パスキー、Google、または移行済みのパスワードでログイン |
 
-メール確認コードは新規登録時のメールアドレス確認であり、毎回のログインには使わない。既存ユーザーの操作は移行前と変わらず、プラットフォーム移行の都合で追加操作を強制しない。
+## AWS アカウントを再移行する場合
 
-## パスキーの位置づけ
+Web の配置先だけを変更し、同じ Cognito User Pool を参照し続ける場合は、パスキーも Google のリンクも維持される。新しい AWS アカウントに新しい User Pool を作る場合は、認証方式ごとに扱いが変わる。
 
-パスキーはパスワードの強制的な置き換えではなく、端末の Face ID、Touch ID、Windows Hello などで素早くログインしたい利用者向けの追加手段である。
+### パスキー
 
-Cognito では、利用者が一度ログインした後でパスキーを登録する。ログイン時も最初にメールアドレスを入力し、次の画面で「パスキーでログイン」と「パスワードでログイン」を常に表示する。パスキーの登録有無で画面を出し分けないため、第三者へアカウントの状態を知らせない。
+Cognito にはパスキー認証情報のエクスポートとインポートの機能がない。新しい User Pool では、同じ独自ドメインを使っても旧パスキーを検証できない。利用者はメール OTP などで新環境へログインし、新しい User Pool にパスキーを登録し直す。
 
-パスワードでログインした利用者には、ログイン成功後に一度だけパスキー登録を案内する。
+将来の移行とアカウント復旧に備えて、パスキーを導入した後もメール OTP を残す。ユーザー情報は CSV で一括インポートできるが、パスワードハッシュは移せない。メール OTP を有効にした User Pool では、メール属性を持つインポート済みユーザーがパスワードを再設定せずログインできる。一方、今回の移行では従来のパスワードをそのまま使える体験を優先し、User Migration Trigger を主経路にする。
 
-- 案内は小さな確認画面にとどめる。
-- 「パスキーを登録」と「あとで」の2つだけを表示する。
-- 「あとで」を選んだ利用者へ毎回表示せず、30日間は再案内しない。
-- 専用の設定画面は作らず、ログイン後のメイン画面も変更しない。
-- パスキーを登録しなくても、パスワードログインを期限なく利用できる。
+### Google
 
-Google ログインは Google 側が本人確認を担当するため、Google 利用者へパワポ作るマン専用のパスキー登録は案内しない。
+Google の認証情報は Google 側にある。新しい User Pool に Google プロバイダーを設定し、Google 側に新しい Cognito のリダイレクト URL を追加すれば、利用者は Google に再ログインできる。
 
-## ログイン画面
+ただし、新しい User Pool では Cognito の `sub` が新しく発行される。Google ユーザーのカスタム属性やグループも自動では移らない。スライド履歴、利用権限、契約状態などを将来ユーザーに結び付ける場合は、Cognito の `sub` を永続的な利用者 ID として使わず、アプリ側で固定の利用者 ID を発行して対応関係を管理する。
 
-最初の画面は、Google とメールの2経路だけに絞る。
+## 現時点の推奨構成
 
-1. 「Googleで続ける」
-2. メールアドレス入力と「メールで続ける」
+認証画面には、Google とメールの2経路を置く。
 
-メールを入力した次の画面では、青いグラデーションの「パスキーでログイン」を置き、その下にパスワード入力を常設する。パスキー未登録時や利用できない端末では、アカウントの状態を明かさない共通エラーを出してパスワードへ戻せるようにする。新規登録は同じメール画面の短い補助リンクから進める。
+- Google を使う利用者は、初回から Google で登録して以後も Google でログインする。
+- メールを選ぶ新規ユーザーは、メール OTP で登録した後にパスキーを登録する。
+- 既存ユーザーは、移行期間中だけ旧パスワードで初回ログインし、その後はパスキーを登録できる。
+- GitHub ログインは実装と運用が増えるため、現段階では追加しない。
 
-登録済みかどうかを第三者へ知らせないよう、存在しないメールアドレスや認証失敗時の表示は「メールアドレスまたは認証情報を確認してください」に統一する。
+新規ユーザーのメール経路は、登録とログインを画面上で分けない。入力されたメールアドレスが未登録なら Cognito にプロフィールを作り、登録済みなら OTP またはパスキーで認証する。違いは Cognito 内のプロフィールの有無であり、利用者へ「新規登録」と「ログイン」を選ばせない。
 
-## 既存ユーザーの段階移行
+ただし既存ユーザーの初回だけは別である。新 User Pool に存在しないメールアドレスが旧 User Pool に存在する可能性があるため、移行用のパスワード入力を案内する。ログイン成功後は新規ユーザーと同じ認証方式になる。
 
-新しい User Pool にユーザーが存在しない状態でパスワードログインを受けると、User Migration Trigger が旧 User Pool でパスワードを検証する。成功した利用者だけを新 User Pool に作成し、その後は新 User Pool が認証する。
+パスキーを導入する前に、Relying Party ID を固定する。SDK ベースの認証画面で本番アプリの独自ドメインを使う構成を第一候補とし、Cognito のドメイン設定と Google OAuth を含む実装スパイクを通してから確定する。Relying Party ID を後から変更すると、利用者はパスキーを再登録する必要がある。
 
-この方式には次の性質がある。
+Cognito User Pool は Essentials プラン以上にする。パスキー対応の認証画面を使用するため、`@aws-amplify/ui-react` は 6.14.0 以上へ更新する。メール OTP を本番で使う場合は、Amazon SES の送信設定も用意する。
 
-- 利用者は従来と同じパスワードを使える。
-- パスワードそのものやハッシュを一括で取り出す必要がない。
-- CSV 一括インポートは属性だけを移せるが、従来のパスワードは移せないため主経路にしない。
-- Google ログインやパスキーでは User Migration Trigger が起動しない。既存ユーザーの初回移行はパスワード経路で行う。
-- 旧 User Pool への照会権限は移行 Lambda だけに与え、移行後に削除できる境界を保つ。
+## 実装前に決めること
 
-## Google ユーザーとの統合
-
-Cognito は、メールアドレスが同じでもローカルユーザーと Google ユーザーを自動統合しない。既存ユーザーが移行前に Google を選ぶと、別プロフィールが作られる可能性がある。
-
-初期リリースでは安全性を優先し、既存のメール利用者は一度パスワードで移行してから Google を連携する。確認済みメールアドレスだけを照合し、`AdminLinkProviderForUser` で新 User Pool 内のプロフィールへリンクする。Google アカウントだけで新規登録した利用者は、そのまま Google 専用プロフィールとして扱う。
-
-既存 User Pool にだけ存在するメールアドレスで先に Google を選んだ場合は、別プロフィールを作らず「最初の一度だけ従来のパスワードでログイン」と案内する。パスワードログインで新 User Pool へ移行した後は、同じ確認済みメールアドレスの Google アカウントを既存プロフィールへ連携できる。
-
-## メール送信と SES の扱い
-
-SES は、毎回のログインコードを送るためには使わない。Cognito の標準メール送信を、新規登録時のメール確認とパスワード再設定に限定して使う。
-
-Cognito の標準メール送信は、AWS アカウントあたり1日50通が上限である。初期の利用規模ではこの構成で開始し、実測で不足する段階になったら SES の本番利用申請または別のメール配信サービスを検討する。メール配信基盤の変更は認証方式の変更と切り離す。
-
-## 将来もう一度 User Pool を移す場合
-
-- パスワードは今回と同様に User Migration Trigger で段階移行できる。
-- パスキー認証情報はエクスポートできないため、新しい User Pool で再登録が必要になる。
-- Google の認証情報は Google 側にあるため、新しいリダイレクト URL を設定すれば再ログインできる。
-- Cognito の `sub` は変わる。スライド履歴、契約、利用枠など永続データを持つ時点で、Cognito と別の固定利用者 ID を導入する。
-
-## 実装条件
-
-- Cognito User Pool は Essentials プラン以上にする。
-- パスキーの Relying Party ID は本番ドメイン `pawapo.minoruonda.com` に固定する。
-- App Client は `USER_PASSWORD_AUTH` と、パスキーを含む選択型認証 `USER_AUTH` を許可する。
-- AgentCore Runtime へ渡すのは Cognito のアクセストークンとする。
-- パスワード再設定と新規登録時の確認メールが、Cognito 標準メールの上限内で届くことを本番切り替え前に確認する。
-- パスキーの登録、ログイン、削除、別端末での利用、パスワードへのフォールバックを PC と iPhone で確認する。
+1. SDK ベースのパスキーと Google OAuth を同じ User Pool で使う場合の Relying Party ID と Cognito ドメイン構成。
+2. 既存ユーザーと Google を自動リンクするか、それとも既存ユーザーには先にパスワード移行を求めるか。
+3. 将来のユーザーデータに備えて、Cognito の `sub` と別の固定利用者 ID を導入する時期。
 
 ## 公式資料
 
-- [Cognito の認証フローとパスキー](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-authentication-flow-methods.html)
-- [Cognito のメール設定と標準送信上限](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-email.html)
+- [Amplify のパスワードレス認証](https://docs.amplify.aws/react/build-a-backend/auth/concepts/passwordless/)
+- [Amplify のパスキー管理](https://docs.amplify.aws/react/build-a-backend/auth/manage-users/manage-webauthn-credentials/)
+- [Amplify の外部認証プロバイダー](https://docs.amplify.aws/react/build-a-backend/auth/concepts/external-identity-providers/)
+- [Cognito の外部プロバイダー連携](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-provider.html)
+- [Cognito のフェデレーションユーザー統合](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-federation-consolidate-users.html)
 - [Cognito の User Migration Trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-migrate-user.html)
 - [Cognito のユーザーインポート](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-using-import-tool.html)
-- [Amplify のパスキー管理](https://docs.amplify.aws/react/build-a-backend/auth/manage-users/manage-webauthn-credentials/)
-- [Cognito のフェデレーションユーザー統合](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-identity-federation-consolidate-users.html)
+- [Cognito User Pool のエクスポートと復旧に関する制約](https://docs.aws.amazon.com/solutions/latest/cognito-user-profiles-export-reference-architecture/overview.html)
+- [GitHub の認証ディスカバリー仕様](https://docs.github.com/en/apps/github-authentication-discovery-endpoints)
