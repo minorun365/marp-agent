@@ -16,6 +16,7 @@ from tools.output_slide import (
     _estimate_visual_lines,
     MAX_LINES_PER_SLIDE,
     MAX_DISPLAY_WIDTH_PER_LINE,
+    KIMI_MAX_VALIDATION_RETRIES,
 )
 
 
@@ -475,14 +476,14 @@ class TestOutputSlideStructureValidation:
 
         assert result == "スライドを出力しました。"
 
-    def test_rejects_unrequested_agenda(self):
+    def test_kimi_accepts_unrequested_agenda_as_warning(self):
         reset_generated_markdown()
         configure_slide_validation("提案資料を作って", "kimi")
         md = "---\nmarp: true\n---\n## 本日のアジェンダ\n\n- 項目"
 
         result = output_slide(markdown=md)
 
-        assert "アジェンダ・目次は指定されていません" in result
+        assert result == "スライドを出力しました。"
 
     def test_allows_explicitly_requested_agenda(self):
         reset_generated_markdown()
@@ -493,17 +494,18 @@ class TestOutputSlideStructureValidation:
 
         assert result == "スライドを出力しました。"
 
-    def test_rejects_three_kimi_bold_areas_but_allows_sonnet(self):
+    def test_kimi_accepts_bold_warning_without_regeneration(self):
         md = "---\nmarp: true\n---\n## 課題\n\n- **項目1**：説明\n- **項目2**：説明\n- **項目3**：説明"
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "kimi")
         kimi_result = output_slide(markdown=md)
+        assert kimi_result == "スライドを出力しました。"
+        assert consume_slide_progress() is None
 
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "sonnet")
         sonnet_result = output_slide(markdown=md)
 
-        assert "太字が3か所" in kimi_result
         assert sonnet_result == "スライドを出力しました。"
 
     def test_allows_two_kimi_bold_areas(self):
@@ -550,7 +552,7 @@ marp: true
 
         assert result == "スライドを出力しました。"
 
-    def test_web_search_requires_source_comment_on_each_content_slide(self):
+    def test_kimi_accepts_missing_source_comment_as_warning(self):
         reset_generated_markdown()
         configure_slide_validation("最新情報を調べて資料を作って", "kimi")
         mark_web_search_executed()
@@ -572,9 +574,9 @@ marp: true
 
         result = output_slide(markdown=md)
 
-        assert "根拠URLコメントがない本文スライド: [1]" in result
+        assert result == "スライドを出力しました。"
 
-    def test_web_search_rejects_source_comment_missing_from_references(self):
+    def test_kimi_accepts_unlisted_source_comment_as_warning(self):
         reset_generated_markdown()
         configure_slide_validation("最新情報を調べて資料を作って", "kimi")
         mark_web_search_executed()
@@ -597,7 +599,7 @@ marp: true
 
         result = output_slide(markdown=md)
 
-        assert "本文の根拠URLが参考文献に未掲載" in result
+        assert result == "スライドを出力しました。"
 
     def test_kimi_web_search_requires_official_source_for_named_product(self):
         reset_generated_markdown()
@@ -624,7 +626,7 @@ marp: true
 
         assert "公式情報が参考文献にない製品: Amazon Bedrock AgentCore" in result
 
-    def test_kimi_product_slide_requires_its_official_source_comment(self):
+    def test_kimi_accepts_non_official_slide_comment_when_references_are_valid(self):
         reset_generated_markdown()
         configure_slide_validation("AgentCoreの最新情報を調べて", "kimi")
         mark_web_search_executed()
@@ -647,7 +649,7 @@ marp: true
 
         result = output_slide(markdown=md)
 
-        assert "スライド1=Amazon Bedrock AgentCore" in result
+        assert result == "スライドを出力しました。"
 
     def test_kimi_rejects_unrelated_page_on_official_domain(self):
         reset_generated_markdown()
@@ -674,7 +676,7 @@ marp: true
 
         assert "公式情報が参考文献にない製品: Codex" in result
 
-    def test_kimi_rejects_unrelated_extra_source_on_product_slide(self):
+    def test_kimi_accepts_unrelated_extra_source_comment_as_warning(self):
         reset_generated_markdown()
         configure_slide_validation("Codexの最新情報を調べて", "kimi")
         mark_web_search_executed()
@@ -699,8 +701,7 @@ marp: true
 
         result = output_slide(markdown=md)
 
-        assert "対象製品ページではない根拠URL" in result
-        assert "https://openai.com/index/cisco" in result
+        assert result == "スライドを出力しました。"
 
     def test_kimi_comparison_accepts_both_vendors_official_sources(self):
         reset_generated_markdown()
@@ -728,14 +729,14 @@ marp: true
 
         assert result == "スライドを出力しました。"
 
-    def test_kimi_rejects_ungrounded_numbers_without_web_search(self):
+    def test_kimi_accepts_ungrounded_number_as_non_blocking_warning(self):
         reset_generated_markdown()
         configure_slide_validation("定性的な提案資料を作って", "kimi")
         md = "---\nmarp: true\n---\n## 効果\n\n- 投資回収は18ヶ月"
 
         result = output_slide(markdown=md)
 
-        assert "根拠のない数値表現: 18ヶ月" in result
+        assert result == "スライドを出力しました。"
 
     def test_kimi_allows_numbers_provided_by_user(self):
         reset_generated_markdown()
@@ -746,7 +747,7 @@ marp: true
 
         assert result == "スライドを出力しました。"
 
-    def test_rejects_three_consecutive_kimi_bullet_slides(self):
+    def test_kimi_accepts_repeated_pattern_without_regeneration(self):
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "kimi")
         slide = "## 見出し\n\n- 項目1\n- 項目2\n- 項目3"
@@ -754,7 +755,7 @@ marp: true
 
         result = output_slide(markdown=md)
 
-        assert "bullets型が3枚連続" in result
+        assert result == "スライドを出力しました。"
 
     def test_sonnet_keeps_existing_two_retry_limit(self):
         reset_generated_markdown()
@@ -767,13 +768,19 @@ marp: true
 
         assert result == "スライドを出力しました。"
 
-    def test_kimi_never_accepts_wrong_slide_count_after_retry_limit(self):
+    def test_kimi_accepts_after_two_repairs_even_if_count_is_still_wrong(self):
         reset_generated_markdown()
         configure_slide_validation("10枚で作って", "kimi")
         md = "---\nmarp: true\n---\n## 1枚だけ"
 
-        for _ in range(5):
+        for _ in range(KIMI_MAX_VALIDATION_RETRIES):
             result = output_slide(markdown=md)
+            assert "総枚数: 1枚（指定は10枚）" in result
+            assert get_generated_markdown() is None
+            assert consume_slide_progress() is not None
 
-        assert "総枚数: 1枚（指定は10枚）" in result
-        assert get_generated_markdown() is None
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+        assert get_generated_markdown() == md
+        assert consume_slide_progress() is None

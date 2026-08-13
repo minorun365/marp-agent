@@ -42,6 +42,13 @@ OFFICIAL_SOURCE_RULES = (
 )
 
 MAX_OVERFLOW_RETRIES = 2
+KIMI_MAX_VALIDATION_RETRIES = 2
+KIMI_RETRY_VIOLATION_TYPES = frozenset({
+    'slide_count',
+    'slide_count_max',
+    'missing_sources',
+    'missing_official_sources',
+})
 MAX_LINES_PER_SLIDE = 9
 # 1行あたりの最大表示幅（半角換算）
 # Marp 16:9スライドでの実測値: 箇条書き行で半角約54文字分で折り返し発生
@@ -517,7 +524,7 @@ def output_slide(markdown: str) -> str:
     ## 構成テクニック
 
     - **アジェンダ・目次**: ユーザーが明示した場合だけ作る。短い資料へ自動追加しない
-    - **セクション区切り【必須】**: 3〜4枚ごとに `<!-- _class: lead -->` の中タイトルスライドを挿入
+    - **セクション区切り**: 8枚以下では原則作らない。10枚以上で必要な場合だけ `<!-- _class: lead -->` の中タイトルスライドを最大2枚挿入
     - **スライドの表現パターン【重要】**: 同じパターンが2枚連続しないよう、以下A〜Eをローテーションする:
       - A. **箇条書き型**: `##` + 箇条書き5〜6項目
       - B. **小見出し型**: `##` + `###` + 説明文2〜3行 + 箇条書き2〜3項目
@@ -543,32 +550,27 @@ def output_slide(markdown: str) -> str:
 
     violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 
-    retry_limit = 4 if _active_model_type in {'kimi', 'glm'} else MAX_OVERFLOW_RETRIES
-    blocking_kimi_types = {
-        'slide_count',
-        'slide_count_max',
-        'missing_sources',
-        'missing_slide_sources',
-        'unlisted_slide_sources',
-        'missing_official_sources',
-        'non_official_slide_sources',
-        'irrelevant_slide_sources',
-        'unsupported_quantified_claims',
-    }
-    has_blocking_kimi_violation = (
-        _active_model_type == 'kimi'
-        and any(v['type'] in blocking_kimi_types for v in violations)
-    )
-    if violations and (
-        _overflow_retry_count < retry_limit or has_blocking_kimi_violation
-    ):
+    if _active_model_type == 'kimi':
+        # Kimiは軽微な見た目の指摘でも全文を作り直しやすい。再生成は
+        # 総枚数と参考文献の欠落だけに限定し、初回後の修正は最大2回にする。
+        retry_limit = KIMI_MAX_VALIDATION_RETRIES
+        retry_violations = [
+            violation
+            for violation in violations
+            if violation['type'] in KIMI_RETRY_VIOLATION_TYPES
+        ]
+    else:
+        retry_limit = 4 if _active_model_type == 'glm' else MAX_OVERFLOW_RETRIES
+        retry_violations = violations
+
+    if retry_violations and _overflow_retry_count < retry_limit:
         _overflow_retry_count += 1
         _slide_progress_message = _format_slide_progress(
-            violations,
+            retry_violations,
             _overflow_retry_count,
         )
         details = []
-        for v in violations:
+        for v in retry_violations:
             if v['type'] == 'line_overflow':
                 details.append(
                     f"  - スライド{v['slide_number']}: 実質{v['line_count']}行（{v['excess']}行超過）"
