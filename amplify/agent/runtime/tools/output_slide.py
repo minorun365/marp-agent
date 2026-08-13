@@ -44,6 +44,8 @@ OFFICIAL_SOURCE_RULES = (
 MAX_OVERFLOW_RETRIES = 2
 KIMI_MAX_VALIDATION_RETRIES = 2
 KIMI_RETRY_VIOLATION_TYPES = frozenset({
+    'line_overflow',
+    'table_overflow',
     'slide_count',
     'slide_count_max',
     'missing_sources',
@@ -552,7 +554,8 @@ def output_slide(markdown: str) -> str:
 
     if _active_model_type == 'kimi':
         # Kimiは軽微な見た目の指摘でも全文を作り直しやすい。再生成は
-        # 総枚数と参考文献の欠落だけに限定し、初回後の修正は最大2回にする。
+        # 実際のはみ出し・総枚数・参考文献の欠落だけに限定し、
+        # 初回後の修正は最大2回にする。
         retry_limit = KIMI_MAX_VALIDATION_RETRIES
         retry_violations = [
             violation

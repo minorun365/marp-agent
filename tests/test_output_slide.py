@@ -508,6 +508,24 @@ class TestOutputSlideStructureValidation:
 
         assert sonnet_result == "スライドを出力しました。"
 
+    def test_kimi_repairs_overflow_but_stops_after_two_attempts(self):
+        reset_generated_markdown()
+        configure_slide_validation("詳しい資料を作って", "kimi")
+        long_line = "- " + "長い説明文" * 20
+        md = "---\nmarp: true\n---\n## 詳細\n\n" + "\n".join([long_line] * 5)
+
+        for _ in range(KIMI_MAX_VALIDATION_RETRIES):
+            result = output_slide(markdown=md)
+            assert "実質" in result
+            assert get_generated_markdown() is None
+            assert consume_slide_progress() is not None
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+        assert get_generated_markdown() == md
+        assert consume_slide_progress() is None
+
     def test_allows_two_kimi_bold_areas(self):
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "kimi")
