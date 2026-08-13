@@ -30,13 +30,24 @@ export async function invokeAgentMock(
     await sleep(20);
   }
 
+  const sourceUrl = prompt.match(/https?:\/\/[^\s]+/)?.[0];
+  const transitionDelay = sourceUrl ? 2500 : 800;
+  if (sourceUrl) {
+    callbacks.onToolUse('web_search', prompt);
+    await sleep(transitionDelay);
+    callbacks.onToolUse('http_request', sourceUrl);
+    await sleep(transitionDelay);
+  }
+
   // ツール使用開始
   callbacks.onToolUse('output_slide');
-  await sleep(1000);
+  await sleep(transitionDelay);
   callbacks.onSlideProgress?.(
     '1回目の確認で、文字や表のはみ出しを検出しました。内容を調整して再チェックします。'
   );
-  await sleep(500);
+  await sleep(transitionDelay);
+  callbacks.onToolUse('output_slide');
+  await sleep(transitionDelay);
 
   // サンプルマークダウンを生成
   const sampleMarkdown = `---
