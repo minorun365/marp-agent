@@ -12,6 +12,7 @@ import type { Construct } from 'constructs';
 import type { AgentStack } from './agent-stack.js';
 import type { AuthStack } from './auth-stack.js';
 import type { FoundationStack } from './foundation-stack.js';
+import type { WorkloadAccessStack } from './workload-access-stack.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +21,7 @@ export interface WebStackProps extends cdk.StackProps {
   readonly auth: AuthStack;
   readonly agent: AgentStack;
   readonly foundation: FoundationStack;
+  readonly workloadAccess: WorkloadAccessStack;
 }
 
 export class WebStack extends cdk.Stack {
@@ -82,6 +84,8 @@ export class WebStack extends cdk.Stack {
       architecture: lambda.Architecture.ARM_64,
       memorySize: 1024,
       timeout: cdk.Duration.seconds(30),
+      role: props.workloadAccess.webRole,
+      logGroup: props.workloadAccess.webLogGroup,
       environment: {
         AWS_LWA_PORT: '8080',
         RUNTIME_CONFIG_JSON: runtimeConfig,

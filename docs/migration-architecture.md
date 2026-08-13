@@ -22,7 +22,7 @@
 | LLM | Kimi K2.5 を標準モデルにする |
 | 認証 | Cognito User Pools。既存のメール＋パスワードを維持し、Google と任意のパスキーを追加する |
 | 既存ユーザー | User Migration Trigger で、従来のパスワードを使った初回ログイン時に段階移行する |
-| 会話履歴 | AgentCore Memory の短期メモリを使用する |
+| 会話履歴 | AgentCore Runtimeの同一セッション内で保持する。外部メモリは初期構成に入れない |
 | DynamoDB | 初期構成には入れない |
 | デプロイ運用 | Git への push と AWS へのデプロイを分離し、エージェント用スキルで手動実行する |
 
@@ -36,7 +36,6 @@ flowchart LR
     COG --> GOOGLE["Google"]
     COG --> MAIL["メール＋パスワード・パスキー"]
     U --> AC["スライド生成エージェント<br>AgentCore Runtime / AG-UI"]
-    AC --> MEM["会話履歴<br>AgentCore Memory"]
     AC --> BR["文章生成<br>Bedrock Kimi K2.5"]
     AC --> SEC["検索APIの鍵<br>Secrets Manager"]
     AC --> ART["生成物と共有スライド<br>S3"]
@@ -85,10 +84,11 @@ Google やパスキーのログインでは User Migration Trigger が起動し�
 
 - AgentCore Runtime は画面向けの標準イベント形式である AG-UI を使用する。
 - Runtime の受信認証には Cognito の JWT オーソライザーを必須とする。
-- 会話はセッション単位で AgentCore Memory の短期メモリへ保存する。
-- 長期記憶は初期構成に含めない。利用者の好みを別セッションへ持ち越す要件が出た時点で追加する。
+- 同じRuntime Session IDを指定した呼び出しは同じコンテナへ送られ、コンテナ内のStrands Agentが会話履歴を保持する。アイドル約15分、最大約8時間を上限とする一時的な履歴である。
+- AgentCore Memoryや長期記憶は初期構成に含めない。15分を越えた会話の復元や、利用者の好みを別セッションへ持ち越す要件が出た時点で追加する。
 - OpenTelemetry の入力、出力、ツール呼び出し、処理時間を記録し、AgentCore Evaluations で評価できる形にする。
 - Tavily などの API キーは実行環境変数へ直接入れず、Secrets Manager または AgentCore Identity から取得する。
+- 新しいAWSアカウントでは、AgentCoreの初回デプロイ前にCloudWatch Transaction Searchを有効化し、トレースの1%を索引化する。ログのリソースポリシー、X-Rayの保存先、索引化率はアカウント単位の初期設定として管理する。
 - コンテナは ARM64 でビルドし、ECR の不変タグまたはダイジェストで Runtime の版を特定する。
 
 現在の独自 SSE は一度に置き換えず、既存イベントを AG-UI の型付きイベントへ対応付けるアダプターを先に入れる。画面側と Runtime 側を別々に移行できる状態にする。
@@ -100,7 +100,7 @@ DynamoDB は初期構成には不要である。現在必要な状態は次の A
 | データ | 保存先 |
 |---|---|
 | Cognito の利用者 | Cognito User Pool |
-| 会話履歴 | AgentCore Memory |
+| 会話履歴 | AgentCore Runtimeの同一セッション内（外部永続化なし） |
 | 共有スライドとダウンロード用生成物 | S3 |
 | インフラの状態 | CDKD の S3 状態バケット |
 | 秘密情報 | Secrets Manager または AgentCore Identity |
@@ -117,8 +117,10 @@ PDF や PowerPoint の大きなファイルは、最終的に SSE の Base64 へ
 | スタック | 主なリソース | 更新頻度 |
 |---|---|---|
 | Foundation | 専用サブドメインのHosted Zone、Secrets Manager、予算通知 | 低い |
+| Auth Access | 認証Lambdaの実行ロールとログ | 低い |
 | Auth | Cognito User Pool、App Client、Google、移行 Lambda | 低い |
-| Agent | ECR、AgentCore Runtime、Memory、評価、実行ロール | 高い |
+| Workload Access | AgentCoreとWeb Lambdaの実行ロール、Webログ | 低い |
+| Agent | ECR、AgentCore Runtime、評価 | 高い |
 | Web | Web Lambda、Function URL、CloudFront、証明書、DNS、共有用 S3 | 高い |
 
 削除保護や保持方針はリソースごとに設定する。Cognito User Pool、生成物バケット、CDKD の状態バケットは、通常のスタック削除で消えない設定にする。
@@ -213,7 +215,7 @@ Amplify が暗黙に担当していた機能を次のように置き換える。
 - 旧アカウントには移行 Lambda が AssumeRole する最小権限ロールを残す。
 - 既存ユーザーと Google ユーザーを、確認済みメールアドレスだけで安全にリンクする。
 - WAF、利用回数の予算通知、AgentCore と Bedrock のエラー率・遅延・トークン量のアラームを設定する。
-- ログと AgentCore Memory に会話内容が残る前提で、暗号化、保存期間、削除方針を決める。
+- ログに会話内容が残る前提で、暗号化、保存期間、削除方針を決める。
 - 旧環境の共有 URL をいつまで維持するか決め、切り替え直後に消さない。
 - 切り戻し時、新環境で新規登録した利用者は旧 User Pool に存在しないことを運用手順へ書く。
 - DNS の TTL を事前に下げ、切り替え後は旧環境を読み取り可能な状態で残す。
@@ -222,10 +224,10 @@ Amplify が暗黙に担当していた機能を次のように置き換える。
 ## 移行順序
 
 1. 専用 AWS アカウントを作成し、請求、監査、緊急アクセス、CDKD の状態保全を設定する。
-2. CDKD が Cognito、AgentCore、CloudFront、Lambda、Memory などの必要なリソースを扱えるか、最小スタックで確認する。
+2. CDKD が Cognito、AgentCore、CloudFront、Lambda などの必要なリソースを扱えるか、最小スタックで確認する。
 3. ローカル起動を先に完成させる。
 4. Cognito と User Migration Trigger を構築し、既存ユーザー、新規ユーザー、Google、パスワード、パスキーを確認する。
-5. AgentCore Runtime を AG-UI、Memory、Observability 対応で移す。
+5. AgentCore Runtime を AG-UI、Runtime Session、Observability 対応で移す。
 6. Web Lambda と CloudFront を構築し、現在の画面を接続する。
 7. 共有スライドと生成物の保存先を移し、既存 URL の維持方法を確認する。
 8. PC と iPhone で E2E テストを行う。
@@ -236,7 +238,7 @@ Amplify が暗黙に担当していた機能を次のように置き換える。
 
 1. Lambda Web Adapter で静的 SPA を配信し、初回応答、キャッシュ、実行時設定の差し込みを測る。
 2. Cognito の SDK ベースのパスキー、Google OAuth、既存ユーザー移行を同じ User Pool で通す。
-3. CDKD で AgentCore Runtime、Memory、CloudFront、Cognito を作成・更新・ロールバックし、対応状況と状態復旧を確認する。
+3. CDKD で AgentCore Runtime、CloudFront、Cognito を作成・更新・ロールバックし、対応状況と状態復旧を確認する。
 
 この3点が通ってから本体の移植へ進む。実装の途中で CDKD の未対応項目が見つかった場合は、無理に回避せずスタック分離または CloudFormation 管理への切り替えを判断する。
 

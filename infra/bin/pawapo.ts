@@ -5,6 +5,7 @@ import { AuthAccessStack } from '../lib/auth-access-stack.js';
 import { AuthStack } from '../lib/auth-stack.js';
 import { FoundationStack } from '../lib/foundation-stack.js';
 import { WebStack } from '../lib/web-stack.js';
+import { WorkloadAccessStack } from '../lib/workload-access-stack.js';
 
 const app = new cdk.App();
 const region = 'us-east-1';
@@ -42,11 +43,18 @@ const auth = new AuthStack(app, 'PawapoAuth', {
   description: 'パワポ作るマンのCognito認証基盤',
 });
 
+const workloadAccess = new WorkloadAccessStack(app, 'PawapoWorkloadAccess', {
+  env,
+  foundation,
+  description: 'パワポ作るマンのAgentCore・Web実行ロールとログ',
+});
+
 const agent = new AgentStack(app, 'PawapoAgent', {
   env,
   appDomain,
   auth,
   foundation,
+  workloadAccess,
   description: 'パワポ作るマンのAgentCore実行基盤',
 });
 
@@ -56,16 +64,20 @@ const web = new WebStack(app, 'PawapoWeb', {
   auth,
   agent,
   foundation,
+  workloadAccess,
   description: 'パワポ作るマンのWeb配信と共有スライド配信',
 });
 
 auth.addStackDependency(foundation);
 auth.addStackDependency(authAccess);
+workloadAccess.addStackDependency(foundation);
 agent.addStackDependency(auth);
 agent.addStackDependency(foundation);
+agent.addStackDependency(workloadAccess);
 web.addStackDependency(agent);
 web.addStackDependency(auth);
 web.addStackDependency(foundation);
+web.addStackDependency(workloadAccess);
 
 cdk.Tags.of(app).add('Project', 'pawapo');
 cdk.Tags.of(app).add('ManagedBy', 'cdk-cdkd');

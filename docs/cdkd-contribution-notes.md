@@ -105,3 +105,18 @@ Invalid MFA Configuration given. SMS MFA, Email MFA, or Software Token MFA must 
 ```
 
 パスキーを第1認証要素として使う構成では、`MfaConfiguration`の既定値は`OFF`である必要がある。現在の回避策は、CDKで`mfa: cognito.Mfa.OFF`を明示すること。upstreamでは、WebAuthnだけを指定した場合の補完値を`OFF`にする修正と回帰テストを検討する。
+
+## コンテナイメージLambdaで非対応設定をドリフト警告として表示する
+
+- 確認日: 2026年8月14日
+- 実環境で確認したバージョン: CDKD 0.282.5
+- 状態: upstreamへのIssue・Pull Requestは未作成
+
+Lambda Web Adapterを入れたコンテナイメージ形式のLambdaをデプロイしたところ、作成自体は成功したが、ドリフト用スナップショットの取得時に次の警告が出た。
+
+```text
+GetRuntimeManagementConfig failed ... container image function
+GetFunctionCodeSigningConfig failed ... Code signing is not supported for functions created with container images
+```
+
+どちらもコンテナイメージ形式ではAWS側が対応していない設定であり、取得失敗は実リソースの異常ではない。CDKD自身も「差分上の誤った削除として見える可能性がある」と警告している。upstreamでは、Lambdaの`PackageType`が`Image`の場合にこの2項目をドリフト取得対象から外し、不要な警告と誤差分を出さない回帰テストを検討する。

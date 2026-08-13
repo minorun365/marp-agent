@@ -1,14 +1,34 @@
 """Web検索ツール（Tavily API）"""
 
 import os
+import json
+
+import boto3
 from strands import tool
 from tavily import TavilyClient
 
-# Tavilyクライアント初期化（カンマ区切りで複数キー対応、枯渇時は自動フォールバック）
+
+def _load_tavily_api_keys() -> list[str]:
+    """環境変数、またはSecrets ManagerからTavily APIキーを読み込む。"""
+    raw_value = os.environ.get("TAVILY_API_KEYS", "").strip()
+    secret_arn = os.environ.get("TAVILY_SECRET_ARN", "").strip()
+    if not raw_value and secret_arn:
+        try:
+            response = boto3.client("secretsmanager").get_secret_value(SecretId=secret_arn)
+            raw_value = response.get("SecretString", "").strip()
+            if raw_value.startswith("{"):
+                secret_json = json.loads(raw_value)
+                raw_value = str(secret_json.get("TAVILY_API_KEYS", "")).strip()
+        except Exception as error:
+            print(f"[ERROR] Tavily APIキーをSecrets Managerから取得できませんでした: {type(error).__name__}")
+
+    return [key.strip() for key in raw_value.split(",") if key.strip()]
+
+
+# カンマ区切りで複数キー対応、枯渇時は自動フォールバック
 tavily_clients: list[TavilyClient] = [
-    TavilyClient(api_key=key.strip())
-    for key in os.environ.get("TAVILY_API_KEYS", "").split(",")
-    if key.strip()
+    TavilyClient(api_key=key)
+    for key in _load_tavily_api_keys()
 ]
 
 # Web検索結果用のグローバル変数
