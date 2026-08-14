@@ -198,6 +198,14 @@ async def invoke(payload, context=None):
     # セッションIDとモデルタイプとテーマに対応するAgentを取得
     agent = get_or_create_agent(session_id, model_type, theme)
 
+    # 意図しないスライドが返る事象を追えるよう、どのセッションがどの状態で
+    # 実行に入ったかを残す。プロンプト本文は出さず長さだけにする。
+    print(
+        f"[INFO] invoke started (session={session_id}, model={model_type}, "
+        f"action={action}, history={len(agent.messages)}, "
+        f"prompt_len={len(user_message)}, markdown_len={len(current_markdown)})"
+    )
+
     # 既存セッション（Agent履歴にスライド内容が残っている）ではMarkdown付加をスキップ
     # 新規セッションまたは履歴がない場合のみ、フロントからのMarkdownをメッセージに結合
     if current_markdown and not agent.messages:

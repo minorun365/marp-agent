@@ -20,6 +20,11 @@ RUN npm install -g @marp-team/marp-cli
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
+# printの出力をバッファせず即座にCloudWatch Logsへ流す。
+# 未設定だとstdoutがブロックバッファされ、agent.pyのINFO/ERRORログが
+# 障害調査時に一切残らない（logging経由のライブラリログだけが出る）。
+ENV PYTHONUNBUFFERED=1
+
 # Python 依存関係をインストール
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
