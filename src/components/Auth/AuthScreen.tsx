@@ -193,7 +193,7 @@ export function AuthScreen({ demoMode = false, onAuthenticated }: AuthScreenProp
     <main className="auth-page" data-auth-state={state}>
       <section className="auth-brand" aria-label="パワポ作るマン">
         <div className="auth-brand-inner">
-          <div className="auth-wordmark"><span className="auth-mark" />パワポ作るマン by みのるん</div>
+          <div className="auth-wordmark">パワポ作るマン by みのるん</div>
           <div className="auth-copy">
             <h1>チャット一言で、<br />スライド完成！</h1>
             <p>テーマを伝えるだけで、構成からデザインまで。AIと会話しながらプレゼン資料を仕上げられます。</p>
@@ -312,7 +312,7 @@ export function AuthScreen({ demoMode = false, onAuthenticated }: AuthScreenProp
           )}
 
           {error && <p className="auth-error" role="alert">{error}</p>}
-          {state === 'initial' && <p className="auth-privacy">続けることで、利用規約とプライバシーポリシーに同意したものとみなされます。</p>}
+          {state === 'initial' && <p className="auth-privacy">登録されたメールアドレスは認証目的でのみ使用します。</p>}
         </div>
       </section>
     </main>

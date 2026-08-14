@@ -51,25 +51,16 @@
 .auth-wordmark {
   display: flex;
   align-items: center;
-  gap: 11px;
   color: rgb(255 255 255 / 86%);
   font-size: 13px;
   font-weight: 650;
   letter-spacing: .06em;
 }
 
-.auth-mark {
-  display: block;
-  width: 30px;
-  height: 30px;
-  border: 1px solid rgb(255 255 255 / 48%);
-  border-radius: 8px;
-}
-
 .auth-copy { margin: auto 0; padding: 72px 0 96px; }
 .auth-copy h1 { margin: 0; font-size: clamp(38px, 4vw, 62px); font-weight: 720; letter-spacing: -.045em; line-height: 1.18; }
 .auth-copy p { max-width: 430px; margin: 22px 0 0; color: rgb(255 255 255 / 72%); font-size: 15px; line-height: 1.9; }
-.auth-powered { color: rgb(12 35 68 / 58%); font-size: 11px; letter-spacing: .04em; }
+.auth-powered { color: rgb(255 255 255 / 78%); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 
 .auth-panel {
   display: grid;
@@ -132,7 +123,6 @@
   .auth-brand { min-height: 214px; background: linear-gradient(112deg, #1a3a6e 0%, #4d8fbd 64%, #edf5fa 150%); }
   .auth-brand-inner { min-height: 214px; padding: calc(25px + env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) 27px max(22px, env(safe-area-inset-left)); }
   .auth-wordmark { font-size: 11px; }
-  .auth-mark { width: 26px; height: 26px; }
   .auth-copy { margin: auto 0 0; padding: 34px 0 0; }
   .auth-copy h1 { max-width: 320px; font-size: 29px; line-height: 1.24; }
   .auth-copy p, .auth-powered { display: none; }

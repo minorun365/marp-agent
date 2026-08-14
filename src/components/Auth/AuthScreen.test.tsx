@@ -8,11 +8,14 @@ describe('AuthScreen', () => {
   });
 
   it('Googleとメールだけを最初の選択肢として表示する', () => {
-    render(<AuthScreen demoMode onAuthenticated={vi.fn()} />);
+    const { container } = render(<AuthScreen demoMode onAuthenticated={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: /Googleで続ける/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'メールで続ける' })).toBeInTheDocument();
     expect(screen.queryByLabelText('パスワード')).not.toBeInTheDocument();
+    expect(screen.getByText('登録されたメールアドレスは認証目的でのみ使用します。')).toBeInTheDocument();
+    expect(screen.queryByText(/利用規約/)).not.toBeInTheDocument();
+    expect(container.querySelector('.auth-mark')).not.toBeInTheDocument();
   });
 
   it('メール入力後はパスキーと従来のパスワードを選べる', () => {

@@ -93,26 +93,6 @@
       letter-spacing: .06em;
     }
 
-    .mark {
-      position: relative;
-      width: 30px;
-      height: 30px;
-      border: 1px solid rgba(255, 255, 255, .48);
-      border-radius: 8px;
-    }
-
-    .mark::before, .mark::after {
-      content: "";
-      position: absolute;
-      left: 7px;
-      width: 14px;
-      height: 1px;
-      background: rgba(255, 255, 255, .82);
-    }
-
-    .mark::before { top: 10px; }
-    .mark::after { top: 17px; width: 9px; }
-
     .brand-copy { margin-top: auto; margin-bottom: auto; padding: 72px 0 96px; }
 
     .brand-copy h1 {
@@ -133,8 +113,9 @@
     }
 
     .brand-note {
-      color: rgba(12, 35, 68, .58);
+      color: rgba(255, 255, 255, .78);
       font-size: 11px;
+      font-weight: 600;
       letter-spacing: .04em;
     }
 
@@ -540,7 +521,6 @@
     <section class="brand" aria-label="パワポ作るマン">
       <div class="brand-inner">
         <div class="wordmark">
-          <span class="mark" aria-hidden="true"></span>
           <span>パワポ作るマン by みのるん</span>
         </div>
         <div class="brand-copy">
@@ -585,7 +565,7 @@
             <button class="action action-primary" type="submit">メールで続ける</button>
           </form>
 
-          <p class="privacy">続けることで、<a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意したものとみなされます。</p>
+          <p class="privacy">登録されたメールアドレスは認証目的でのみ使用します。</p>
         </section>
 
         <section class="state" data-state="email">
