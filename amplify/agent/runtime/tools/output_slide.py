@@ -205,6 +205,63 @@ def _parse_slides(markdown: str) -> list[str]:
     return slides
 
 
+def _extract_frontmatter(markdown: str) -> str:
+    """先頭のYAMLフロントマターを区切り行ごと取得する。"""
+    normalized = markdown.replace('\r\n', '\n').replace('\r', '\n')
+    lines = normalized.split('\n')
+    if not lines or not re.fullmatch(r'[ \t]{0,3}---[ \t]*', lines[0]):
+        return ''
+
+    for index in range(1, len(lines)):
+        if re.fullmatch(r'[ \t]{0,3}(?:---|\.\.\.)[ \t]*', lines[index]):
+            return '\n'.join(lines[:index + 1]).strip()
+    return ''
+
+
+def _select_evenly(indices: list[int], count: int) -> list[int]:
+    """先頭と末尾を含むように、指定数のインデックスを均等に選ぶ。"""
+    if count <= 0:
+        return []
+    if count >= len(indices):
+        return indices
+    if count == 1:
+        return [indices[len(indices) // 2]]
+
+    last_position = len(indices) - 1
+    selected_positions = [
+        round(i * last_position / (count - 1)) for i in range(count)
+    ]
+    return [indices[position] for position in selected_positions]
+
+
+def _trim_excess_slides(markdown: str, expected_count: int) -> str:
+    """Kimiの過剰な本文スライドを、特殊スライドを残して指定枚数へ整える。"""
+    slides = _parse_slides(markdown)
+    if len(slides) <= expected_count:
+        return markdown
+
+    protected_indices = {0, len(slides) - 1}
+    protected_indices.update(
+        index
+        for index, slide in enumerate(slides)
+        if re.search(r'_class:\s*(?:top|tinytext|end)', slide)
+    )
+    if len(protected_indices) >= expected_count:
+        return markdown
+
+    body_indices = [
+        index for index in range(len(slides)) if index not in protected_indices
+    ]
+    body_slots = expected_count - len(protected_indices)
+    selected_indices = sorted(
+        protected_indices | set(_select_evenly(body_indices, body_slots))
+    )
+    selected_slides = [slides[index] for index in selected_indices]
+    frontmatter = _extract_frontmatter(markdown)
+    content = '\n\n---\n\n'.join(selected_slides)
+    return f'{frontmatter}\n\n{content}\n' if frontmatter else f'{content}\n'
+
+
 def _count_content_lines(slide_content: str) -> int:
     """スライド内のコンテンツ行数をカウント（折り返し考慮）"""
     lines = slide_content.split('\n')
@@ -744,6 +801,16 @@ def output_slide(markdown: str) -> str:
             f"修正してから再度 output_slide を呼んでください。"
             f"（行数超過→内容を減らすか分割。表の横幅超過→列数を減らすかセル内容を短くする）"
         )
+
+    if (
+        _active_model_type == 'kimi'
+        and _expected_slide_count is not None
+        and any(violation['type'] == 'slide_count' for violation in violations)
+    ):
+        normalized_markdown = _trim_excess_slides(markdown, _expected_slide_count)
+        if normalized_markdown != markdown:
+            markdown = normalized_markdown
+            violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 
     if violations:
         print(f"[WARN] Slide overflow: max retries exceeded, accepting with violations: {violations}")

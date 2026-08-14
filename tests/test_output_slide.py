@@ -9,6 +9,7 @@ from tools.output_slide import (
     get_generated_markdown,
     reset_generated_markdown,
     _parse_slides,
+    _trim_excess_slides,
     _count_content_lines,
     _check_slide_overflow,
     _get_display_width,
@@ -95,6 +96,26 @@ def test_slide_count_validation_matches_marp_for_four_hyphen_separator():
 
     assert "総枚数: 9枚（指定は8枚）" in result
     assert get_generated_markdown() is None
+
+
+def test_trim_excess_slides_preserves_special_slides_and_distributes_body():
+    slides = [
+        '<!-- _class: top -->\n# 表紙',
+        *[f'## 本文{i}\n\n- 項目' for i in range(1, 8)],
+        '<!-- _class: tinytext -->\n## 参考文献\n\n- https://example.com',
+        '<!-- _class: end -->\n# Thank you!',
+    ]
+    markdown = '---\nmarp: true\n---\n\n' + '\n\n---\n\n'.join(slides)
+
+    trimmed = _trim_excess_slides(markdown, 8)
+    trimmed_slides = _parse_slides(trimmed)
+
+    assert len(trimmed_slides) == 8
+    assert '# 表紙' in trimmed_slides[0]
+    assert '## 本文1' in trimmed
+    assert '## 本文7' in trimmed
+    assert '## 参考文献' in trimmed_slides[-2]
+    assert '# Thank you!' in trimmed_slides[-1]
 
 
 def test_slide_validation_progress_is_consumed_once():
@@ -882,7 +903,25 @@ marp: true
 
         assert result == "スライドを出力しました。"
 
-    def test_kimi_accepts_after_one_repair_even_if_count_is_still_wrong(self):
+    def test_kimi_trims_excess_slides_after_one_repair(self):
+        reset_generated_markdown()
+        configure_slide_validation("8枚で作って", "kimi")
+        slides = [
+            '<!-- _class: top -->\n# 表紙',
+            *[f'## 本文{i}\n\n- 項目' for i in range(1, 8)],
+            '<!-- _class: tinytext -->\n## 参考文献\n\n- https://example.com',
+            '<!-- _class: end -->\n# Thank you!',
+        ]
+        md = '---\nmarp: true\n---\n\n' + '\n\n---\n\n'.join(slides)
+
+        first_result = output_slide(markdown=md)
+        second_result = output_slide(markdown=md)
+
+        assert "総枚数: 10枚（指定は8枚）" in first_result
+        assert second_result == "スライドを出力しました。"
+        assert len(_parse_slides(get_generated_markdown() or '')) == 8
+
+    def test_kimi_accepts_undercount_after_one_repair(self):
         reset_generated_markdown()
         configure_slide_validation("10枚で作って", "kimi")
         md = "---\nmarp: true\n---\n## 1枚だけ"
