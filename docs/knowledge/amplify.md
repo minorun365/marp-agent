@@ -1,5 +1,7 @@
 # Amplify Gen2・Cognito認証
 
+> **現行の本番手順ではない。** 公開アプリは CDK / CDKD（`infra/`）で動いている。Git push では AWS は変わらない。Amplify Gen2 の自己ホストは [`legacy/amplify`](https://github.com/minorun365/marp-agent/tree/legacy/amplify)。この文書は Gen2 時代に得た Cognito とビルドの知見。
+
 ## Cognito Pre Sign-up Trigger
 
 ### メールドメイン制限

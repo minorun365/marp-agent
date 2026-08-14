@@ -11,9 +11,9 @@
 - Tailwind CSS v4（ゼロコンフィグ、@theme でカスタムカラー定義）
 - Vitest + React Testing Library（テスト）
 
-### AWS Amplify
-- @aws-amplify/backend
-- @aws-amplify/ui-react
+### AWS
+- aws-amplify（ブラウザの Cognito Auth クライアント）
+- @aws-amplify/backend（Amplify Gen2 時代の残。現行インフラは `infra/` の CDK）
 
 ### エージェント・インフラ
 - strands-agents[openai,otel]>=1.47.0（Python >=3.13、Mantle Responses APIとOTEL対応）

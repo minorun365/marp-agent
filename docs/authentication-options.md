@@ -2,6 +2,8 @@
 
 最終確認日: 2026年8月13日
 
+公開本番の認証基盤切替は 2026-08-14 に完了した。この文書はその方針の記録。
+
 パワポ作るマンの認証と Cognito 移行の確定方針を記録する。移行後は Amplify Hosting と Amplify Gen 2 を使わず、Amazon Cognito User Pools を CDK で構築する。フロントエンドでは `aws-amplify` の Auth クライアントを使用し、認証画面はアプリ専用 UI として実装する。
 
 ## 結論

@@ -2,6 +2,8 @@
 
 > 集計日: 2026-03-28（JST）
 > 対象期間: 2026-01-24（プロジェクト開始）〜 2026-03-28
+>
+> この文書は Amplify Gen2 が公開本番だった時点のスナップショットです。2026-08 以降の公開本番は CloudFront + AgentCore（CDK / CDKD）です。Git push では AWS は変わりません。KAG 社内版は当面 Amplify のままです。
 
 ---
 
@@ -244,6 +246,7 @@
 │  │   ├── Cognito: 839ユーザー                           │
 │  │   ├── AgentCore Runtime (Sonnet 4.6)                 │
 │  │   ├── Amplify Hosting + S3/CloudFront（共有機能）    │
+│  │   └── ※ 2026-08 以降の公開本番は CloudFront + AgentCore（CDK） │
 │  │   └── Marp CLI (PDF/PPTX変換)                        │
 │  └── dev環境: 開発テスト用（現在は非活性）              │
 └─────────────────────────────────────────────────────────┘
@@ -267,8 +270,8 @@
 | AIモデル | Claude Sonnet 4.6（Bedrock クロスリージョン推論） |
 | Web検索 | Tavily API |
 | スライド変換 | Marp CLI（PDF/PPTX/編集可能PPTX） |
-| IaC | AWS CDK（Amplify Gen2経由） |
-| CI/CD | AWS Amplify（Git push → 自動デプロイ） |
+| IaC | 集計時点: AWS CDK（Amplify Gen2経由）。2026-08以降の公開本番: CDK + CDKD |
+| CI/CD | 集計時点: AWS Amplify（Git push → 自動デプロイ）。2026-08以降の公開本番: Git push と AWS デプロイは分離 |
 
 ---
 

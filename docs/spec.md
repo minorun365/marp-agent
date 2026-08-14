@@ -13,7 +13,7 @@
 | スライド | 出力形式 | PDF / PPTX |
 | エージェント | 性格 | プロフェッショナル |
 | エージェント | ツール | web_search, output_slide, generate_tweet_url |
-| インフラ | リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
+| インフラ | リージョン | 本番は us-east-1 |
 | インフラ | モデル | Kimi K2.5（試験運用中の標準）/ Claude Sonnet 4.6（停止中） |
 | 認証 | スコープ | 誰でもサインアップ可能（本番時） |
 
@@ -509,7 +509,7 @@ data: {"type": "done"}
 | 選択肢 | フロントエンドのみ / バックエンドでセッション管理 |
 | 実装方針 | バックエンド（agent.py）でセッションID別にメモリ管理（コンテナ再起動で消える） |
 
-### 7.5 本番デプロイ（解決済み）
+### 7.5 本番デプロイ（Amplify Console・解決済み・旧）
 
 | 項目 | 内容 |
 |------|------|
@@ -540,7 +540,7 @@ FROM public.ecr.aws/docker/library/python:3.13-slim-bookworm
 |------|------|
 | 問題 | ローカルsandbox環境でダウンロードしたPDFにカスタムテーマ（border）が適用されない |
 | 原因 | Dockerイメージがキャッシュされており、`border.css`追加前の古いイメージが使われている |
-| 解決策 | sandboxを削除して再起動（Dockerイメージを再ビルド） |
+| 解決策 | sandboxを削除して再起動（Dockerイメージを再ビルド）。現行は `npm run copy-themes` のあと CDKD / `npm run dev` |
 
 ```bash
 # sandbox削除
@@ -573,46 +573,17 @@ npx ampx sandbox
 
 ## 7.9 本番デプロイ手順
 
-### 1. package.json overrides追加
+現行の本番は CDK / CDKD です。Git へ push しても AWS は変わりません。
 
-```json
-{
-  "overrides": {
-    "@aws-cdk/toolkit-lib": "1.14.0",
-    "@smithy/core": "^3.21.0"
-  }
-}
+```bash
+npm run infra:synth
+npm run infra:diff
+npm run infra:dry-run
 ```
 
-### 2. Amplify Console設定
+反映するときは対象スタックを明示して CDKD を実行します。ドメインなどの context は `cdk.json`。詳細は [開発ガイド](./development.md) と [新基盤のアーキテクチャ](./new-architecture.html)。
 
-1. Amplify Console → 対象アプリを作成
-2. **Hosting** → **Build settings** → **Build image settings** → **Edit**
-3. **Build image** → **Custom Build Image** を選択
-4. イメージ名: `public.ecr.aws/codebuild/amazonlinux-x86_64-standard:5.0`
-5. **Save**
-
-### 3. 環境変数設定
-
-Amplify Console → **Environment variables** で設定:
-
-| 変数名 | 説明 |
-|--------|------|
-| `TAVILY_API_KEYS` | Web検索API用。カンマ区切りで複数指定するとフォールバックする |
-| `SHARED_SLIDES_PUBLIC_DOMAIN` | 共有スライドの公開用独自ドメイン（任意） |
-| `SHARED_SLIDES_CERTIFICATE_ARN` | 共有スライド用 CloudFront 証明書ARN（任意、`us-east-1`） |
-| `OLD_USER_POOL_ID` / `OLD_USER_POOL_CLIENT_ID` / `OLD_ACCOUNT_ROLE_ARN` | Cognito User Migration Trigger 用（任意） |
-
-**Amplify環境変数の更新時の注意事項**:
-- CLIで更新する場合、`--environment-variables` は**全変数を指定する必要がある**（指定しなかった変数は削除される）
-- 環境変数の更新は**コードプッシュ（デプロイ）より先に実行**すること（デプロイ時にCDKが環境変数を参照するため）
-- 共有スライドの独自ドメインを使う場合、公開用ドメインと証明書ARNは必ず両方設定する
-
-### 4. ブランチ連携
-
-- GitHubリポジトリを連携
-- `main` ブランチをデプロイ対象に設定
-- 自動ビルド有効化
+Amplify Console への接続、カスタムビルドイメージ、`[skip-cd]` は Gen2 時代の手順で、[`legacy/amplify`](https://github.com/minorun365/marp-agent/tree/legacy/amplify) に残しています。
 
 ---
 

@@ -34,12 +34,13 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 | レイヤー | 技術 |
 |---------|------|
 | フロントエンド | React + TypeScript (Vite) + Tailwind CSS v4 |
-| 認証UI | Amplify UI React |
+| 認証UI | アプリ内 Auth 画面（Amplify Auth クライアント） |
 | AIエージェント | Strands Agents (Python) |
 | LLM | Bedrock Kimi K2.5（試験運用中の標準）。Sonnet 4.6とMantle GPT-5.6 Solは設定保持・無効 |
 | スライド変換 | Marp Core（プレビュー）/ Marp CLI（PDF生成） |
-| 認証 | Amplify Auth (Cognito) |
-| インフラ | AWS CDK + Amplify Gen2 |
+| 認証 | Cognito User Pools |
+| インフラ | AWS CDK + CDKD |
+| Web配信 | CloudFront + Lambda Web Adapter |
 | ランタイム | Bedrock AgentCore |
 | Observability | OpenTelemetry (ADOT) → CloudWatch |
 
@@ -47,8 +48,10 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 
 | 環境 | ビルド方式 |
 |------|-----------|
-| sandbox（ローカル） | `fromAsset()` + ローカルARM64ビルド |
-| 本番（Amplify Console） | `deploy-time-build` + CodeBuild ARM64 |
+| ローカル | `npm run dev` / `npm run copy-themes` + CDKD local |
+| 本番 | CDKD がコンテナイメージをビルドして AgentCore / Web に載せる |
+
+Amplify Console の `deploy-time-build` は Gen2 時代の手段。自己ホストは [`legacy/amplify`](https://github.com/minorun365/marp-agent/tree/legacy/amplify)。
 
 ## KAG社内版運用
 
@@ -65,7 +68,7 @@ MarpでスライドをAI生成するWebアプリケーション。非エンジ�
 
 | 変更内容 | 作業場所 | 反映方法 |
 |---------|----------|---------|
-| 共通のバグ修正・機能追加 | 一般公開版 | KAG社内版へ cherry-pick |
+| 共通のバグ修正・機能追加 | 一般公開版 | `src/` と `amplify/agent/runtime/` を選んで cherry-pick。`infra/` と `cdk.json` は持っていかない |
 | 一般公開版のドキュメント更新 | 一般公開版 | 公開してよい内容のみ記載 |
 | KAG社内版固有（テーマ、ドメイン、認証制限） | KAG社内版 | KAG社内版のみに保持 |
 
@@ -90,7 +93,9 @@ git push
 
 - KAG社内版固有の設定を一般公開版へ混ぜない
 - 公開ドキュメントには、実際のAWSアカウントID、User Pool ID、証明書ARN、デプロイ先名などを書かない
-- 共通機能は一般公開版で開発し、必要に応じてKAG社内版へ cherry-pick する
+- 共通のアプリコードは一般公開版で開発し、必要に応じて KAG社内版へ cherry-pick する
+- 公開版 `main` は CDK、KAG 社内版は当面 Amplify のまま。インフラ定義を丸ごと混ぜない
+- KAG の CDK 移行は公開版が安定してから、公開版と同じ切替手順を会社アカウント向けにやり直す
 
 ## タスク管理
 
@@ -101,41 +106,16 @@ git push
 | 問題 | 解決策 |
 |------|--------|
 | Docker Hubレート制限（429エラー） | ECR Public Gallery使用（`public.ecr.aws/docker/library/python:...`） |
-| Amplify ConsoleにDockerがない | カスタムビルドイメージ設定 |
+| Amplify ConsoleにDockerがない | カスタムビルドイメージ設定（旧）。現行は CDKD |
 
 ## ディレクトリ構成
 
 ```
 marp-agent/
 ├── docs/                        # ドキュメント
-│   ├── PLAN.md                  # 実装計画
-│   ├── TODO.md                  # タスク管理
-│   ├── SPEC.md                  # 仕様書
-│   └── KNOWLEDGE.md             # ナレッジベース
-├── public/
-│   ├── agentcore.png            # ファビコン
-│   ├── ogp.jpg                  # OGP画像
-│   └── robots.txt               # クローラー制御
-├── amplify/
-│   ├── auth/resource.ts         # Cognito認証設定
-│   ├── agent/
-│   │   ├── resource.ts          # AgentCore CDK定義
-│   │   └── runtime/
-│   │       ├── Dockerfile       # エージェントコンテナ
-│   │       ├── agent.py         # Strands Agent実装
-│   │       └── border.css       # カスタムテーマ（PDF用）
-│   └── backend.ts               # バックエンド統合
-├── tests/
-│   └── e2e-test.md              # E2Eテストチェックリスト
-├── src/
-│   ├── main.tsx                 # Viteエントリーポイント
-│   ├── App.tsx                  # メインアプリ
-│   ├── index.css                # グローバルスタイル
-│   ├── components/
-│   │   ├── Chat.tsx             # チャットUI
-│   │   └── SlidePreview.tsx     # スライドプレビュー
-│   ├── hooks/useAgentCore.ts    # AgentCore API呼び出し
-│   └── themes/border.css        # カスタムテーマ（プレビュー用）
+├── infra/                       # 現行の CDK（Foundation / Auth / Agent / Web）
+├── amplify/agent/runtime/       # Python エージェント本体
+├── src/                         # React フロントエンド
 └── package.json
 ```
 
@@ -146,12 +126,12 @@ marp-agent/
 | 認証 | 本番のみCognito認証 |
 | テーマ | borderテーマ（コミュニティテーマ） |
 | モデル | Kimi K2.5のみ有効。Sonnet 4.6は停止理由を表示して選択不可。GPT-5.6 Sol、Sonnet 5、GLM-5、Opus 4.6も設定保持・無効 |
-| リージョン | us-east-1 / us-west-2 / ap-northeast-1 |
+| リージョン | 本番は us-east-1。Amplify 時代はバージニア / オレゴン / 東京も可だった |
 
 ## 参考リンク
 
 - [Marp公式](https://marp.app/)
 - [Strands Agents](https://github.com/strands-agents/strands-agents)
-- [Amplify Gen2](https://docs.amplify.aws/gen2/)
+- [CDKD](https://github.com/go-to-k/cdkd)
 - [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html)
 - [deploy-time-build](https://github.com/tmokmss/deploy-time-build)

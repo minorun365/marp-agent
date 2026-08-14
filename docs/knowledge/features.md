@@ -1,5 +1,7 @@
 # 機能実装（API・シェア・共有）
 
+現行のローカル起動は `npm run dev:ui` / `npm run dev`。共有スライドの配信は `infra/` の Web スタック。下記の Amplify Gen2 カスタムリソース追加は旧手順で、自己ホストは [`legacy/amplify`](https://github.com/minorun365/marp-agent/tree/legacy/amplify)。
+
 ## API接続実装
 
 ### 概要
@@ -233,9 +235,9 @@ if (useMock) {
 
 参考: [AWS re:Post - S3 Presigned URL Limitations](https://repost.aws/questions/QUxaEYVXbVREamltPSmKRotg/s3-presignedurl-limitations)
 
-### Amplify Gen2でのカスタムリソース追加
+### Amplify Gen2でのカスタムリソース追加（旧）
 
-Amplify Gen2では `defineStorage` でS3をネイティブに作成できるが、CloudFrontとの連携が必要な場合はカスタムCDKリソースを使う方が柔軟。
+Amplify Gen2 では `defineStorage` で S3 をネイティブに作成できたが、CloudFront 連携はカスタム CDK の方が柔軟だった。現行の共有配信は `infra/lib/web-stack.ts`。
 
 ```typescript
 // amplify/backend.ts

@@ -1,5 +1,7 @@
 # AgentCore CDK・Hotswap・デプロイ
 
+> **現行**: 本番とローカルのインフラ操作は `infra/` を CDKD で扱う。`npm run infra:synth` / `infra:diff` / `infra:dry-run`。Git push では AWS は変わらない。下記の Amplify sandbox / Amplify Console の記述は Gen2 時代の知見で、自己ホストは [`legacy/amplify`](https://github.com/minorun365/marp-agent/tree/legacy/amplify)。
+
 ## AgentCore Runtime CDK（TypeScript）
 
 ### パッケージ
@@ -327,16 +329,13 @@ Amplify の公式アップデートを待たずに試す場合、`package.json` 
 | `@aws-cdk/toolkit-lib` | `1.14.0` | AgentCore Hotswap 対応版 |
 | `@smithy/core` | `^3.21.0` | AWS SDK のリグレッションバグ対応 |
 
-**注意**: 正攻法ではないのでお試し用途。Amplify の公式アップデートが来たら overrides を削除する。
+**注意**: 正攻法ではないのでお試し用途。Amplify の公式アップデートが来たら overrides を削除する。現行本番は CDKD なので、この Workaround は `legacy/amplify` 向け。
 
 参考: [go-to-k/amplify-agentcore-cdk](https://github.com/go-to-k/amplify-agentcore-cdk)
 
-#### 本番環境（Amplify Console）
-- Docker build 未サポートのため工夫が必要
-- 選択肢：
-  1. GitHub Actions で ECR プッシュ → CDK で ECR 参照
-  2. sandbox と main でビルド方法を分岐
-  3. Amplify Console の Docker 対応を待つ
+#### 本番環境（Amplify Console・旧）
+- Docker build 未サポートのため工夫が必要だった
+- 現行本番は CDKD がコンテナイメージをビルドする。Amplify Console は使わない
 
 ---
 
@@ -344,7 +343,7 @@ Amplify の公式アップデートを待たずに試す場合、`package.json` 
 
 ### 概要
 
-sandbox環境ではローカルでDockerビルドできるが、本番環境（Amplify Console）ではCodeBuildでビルドする必要がある。`deploy-time-build` パッケージを使用してビルドをCDK deploy時に実行する。
+sandbox環境ではローカルでDockerビルドできるが、Amplify Console 時代の本番では CodeBuild でビルドする必要があった。`deploy-time-build` はそのときの手段。現行本番は CDKD がイメージをビルドする。
 
 ### 環境分岐
 

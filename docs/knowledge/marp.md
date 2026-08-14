@@ -108,7 +108,7 @@ ul ul, ul ol, ol ul, ol ol {
 
 ### ブランチ別テーマ切り替え
 
-環境変数でテーマを切り替える実装パターン：
+環境変数でテーマを切り替える実装パターン（Amplify Gen2 時代）:
 
 ```typescript
 // amplify/backend.ts
@@ -117,9 +117,10 @@ const themeName = process.env.MARP_THEME || 'border';
 
 | 環境 | コマンド | テーマ |
 |------|---------|--------|
-| sandbox | `npx ampx sandbox` | border |
-| sandbox | `MARP_THEME=speee npx ampx sandbox` | speee |
-| 本番 | Amplify Console | 環境変数で指定 |
+| 現行ローカル | `npm run copy-themes` のあと `npm run dev` | `src/themes/` |
+| 現行本番 | CDKD デプロイ時に `copy-themes` | 同上 |
+| 旧 sandbox | `npx ampx sandbox`（`legacy/amplify`） | border |
+| 旧本番 | Amplify Console の環境変数（`legacy/amplify`） | 環境変数で指定 |
 
 **フロントエンド側**:
 ```typescript

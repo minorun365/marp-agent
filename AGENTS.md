@@ -88,10 +88,10 @@ npm run infra:dry-run
 |----------|------|
 | [setup.md](docs/knowledge/setup.md) | 使用ライブラリ、Python環境管理（uv） |
 | [backend.md](docs/knowledge/backend.md) | AgentCore SDK、Strands Agents、セッション管理、Observability |
-| [cdk.md](docs/knowledge/cdk.md) | AgentCore CDK、Hotswap、deploy-time-build |
+| [cdk.md](docs/knowledge/cdk.md) | AgentCore CDK。現行の CDKD と Amplify 時代の Hotswap 知見 |
 | [marp.md](docs/knowledge/marp.md) | Marp CLI、テーマ、Marp Core |
 | [frontend.md](docs/knowledge/frontend.md) | React、Tailwind CSS、フロントエンド構成 |
-| [amplify.md](docs/knowledge/amplify.md) | Amplify Gen2、Cognito認証、ビルド設定 |
+| [amplify.md](docs/knowledge/amplify.md) | Amplify Gen2 時代の Cognito・ビルド知見（現行本番の手順ではない） |
 | [features.md](docs/knowledge/features.md) | API接続、シェア機能、共有機能、ローカル開発 |
 | [temp-improvement.md](docs/temp/temp-improvement.md) | セッション単価改善（分析・施策・効果測定） |
 
