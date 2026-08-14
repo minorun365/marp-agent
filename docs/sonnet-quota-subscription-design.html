@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0e0d6a">
+  <title>Sonnet月2回枠｜将来サブスクの設計</title>
+  <style>
+    :root{
+      --blue-deep:#0e0d6a;--blue:#0a4695;--blue-mid:#0862aa;--blue-bright:#0aa0dc;
+      --blue-soft:#eaf2fb;--blue-line:#cfe0f2;
+      --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+      --ink:#15151a;--sub:#4a4a54;--mut:#767680;--line:#e8e8ee;--soft:#f7f8fa;
+      --gold:#f0b21f;--gold-deep:#8a5a00;--gold-soft:#fdf5e0;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;color:var(--ink);line-height:1.85;font-size:15.5px;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;font-feature-settings:"palt" 1}
+    .wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+    p{margin:10px 0}
+    .hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+    .hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+    .hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+    .hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+    .hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+    .hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+    .hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+    .hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+    .toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+    .toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+    .toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+    .toc li{margin:0}.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;color:var(--sub);font-size:14px;padding:5px 0}.toc a:hover{color:var(--blue-deep)}
+    .toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+    section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+    section:first-of-type{border-top:0}section::before{content:"";position:absolute;top:-1px;left:0;width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}section:first-of-type::before{display:none}
+    .eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);font-weight:700;letter-spacing:.005em}
+    h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+    .lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));margin:20px 0}
+    .card{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:#fff;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+    .card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+    .card h4{margin:0 0 8px;font-size:15px;color:var(--blue-deep);font-weight:700;padding-bottom:8px;border-bottom:1px solid var(--line)}
+    .card p{margin:6px 0;font-size:14px;color:var(--sub);line-height:1.8}
+    .callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+    .callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}.callout b{color:var(--gold-deep)}.callout>:first-child{margin-top:0}.callout>:last-child{margin-bottom:0}
+    .callout.blue{background:var(--blue-soft)}.callout.blue::before{background:var(--blue-grad)}.callout.blue b{color:var(--blue-deep)}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;border:1px solid var(--line);border-radius:16px}
+    table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:600px}thead{background-image:var(--blue-grad)}
+    th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;text-align:left;white-space:nowrap;letter-spacing:.02em;border:0}
+    td{padding:13px 16px;text-align:left;vertical-align:top;border:0;border-bottom:1px solid var(--line);line-height:1.75}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fbfcfe}td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+    .note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
+    ul,ol{margin:12px 0;padding-left:23px}li{margin:7px 0}
+    svg{width:100%;height:auto;display:block}.fig{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff;margin:24px 0}.fig figcaption{font-size:12.5px;color:var(--mut);margin-top:12px;text-align:center;line-height:1.7}
+    footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut);line-height:1.9}footer p{margin:8px 0}
+    code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+    a{color:var(--blue);text-underline-offset:3px}
+    @media(max-width:620px){body{font-size:15px}.hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}.hero h1{font-size:23px}h2{font-size:20px}section{padding-top:38px}.callout{padding:16px 18px 16px 22px}.toc{padding:18px 20px}}
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-in">
+      <span class="kicker">パワポ作るマン ／ 設計方針</span>
+      <h1>Sonnet 4.6を月2回提供し<br>将来のサブスクへつなぐ設計</h1>
+      <p class="sub">初回は利用枠だけを追加し、決済機能は実測後に判断する</p>
+      <div class="meta">設計方針を合意済み ／ 実装は未着手 ／ 2026年8月14日</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <nav class="toc">
+      <h2>目次</h2>
+      <ol>
+        <li><a href="#s1"><span class="num">01</span>決定事項と現在との差分</a></li>
+        <li><a href="#s2"><span class="num">02</span>利用単位と呼び出し経路</a></li>
+        <li><a href="#s3"><span class="num">03</span>データ設計と画面表示</a></li>
+        <li><a href="#s4"><span class="num">04</span>将来のサブスクリプション</a></li>
+        <li><a href="#s5"><span class="num">05</span>月額150円の採算</a></li>
+        <li><a href="#s6"><span class="num">06</span>実装順と完了条件</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <span class="eyebrow">01</span>
+      <h2>月2回枠を先に提供する</h2>
+      <p class="lead">Claude Sonnet 4.6を1アカウントにつき月2セッションまで利用可能にする。Kimi K2.5はこれまでどおり利用できる。初回リリースには決済を含めない。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>項目</th><th>Before</th><th>After</th></tr></thead>
+          <tbody>
+            <tr><td>Sonnet</td><td>資金不足により停止中</td><td>今月の残数を表示して選択可能</td></tr>
+            <tr><td>利用回数</td><td>記録なし</td><td>アカウントごとに月2セッション</td></tr>
+            <tr><td>利用判定</td><td>画面の選択肢だけ</td><td>AgentCore Runtimeで必ず判定</td></tr>
+            <tr><td>月次更新</td><td>なし</td><td>年月をデータのキーに含め、定期処理を不要にする</td></tr>
+            <tr><td>有料プラン</td><td>なし</td><td>利用権限の項目だけ先に用意</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s2">
+      <span class="eyebrow">02</span>
+      <h2>1回分は1つの作業セッション</h2>
+      <p class="lead">新しいAgentCoreセッションで最初にSonnetを呼び出したときに1回消費する。同じセッション内の修正依頼は追加で消費しない。</p>
+      <div class="grid">
+        <article class="card"><h4>回数を消費する</h4><p>新しいセッションでSonnetのモデル呼び出しを始めた場合。画面の再読み込みで新しいセッションになった場合も対象になる。</p></article>
+        <article class="card"><h4>回数を増やさない</h4><p>同じセッション内の修正依頼、Kimiの利用、X共有文などの補助処理、モデルを呼ぶ前に止まった処理。</p></article>
+      </div>
+      <figure class="fig">
+        <svg viewBox="0 0 860 250" role="img" aria-label="利用画面、AgentCore Runtime、DynamoDB、2つのAIモデルの接続図">
+          <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0e0d6a"/><stop offset="1" stop-color="#01b6ec"/></linearGradient><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#a8a8b2"/></marker></defs>
+          <rect x="20" y="82" width="170" height="86" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/><text x="105" y="116" text-anchor="middle" font-size="16" font-weight="700" fill="#0e0d6a">利用画面</text><text x="105" y="144" text-anchor="middle" font-size="13" fill="#4a4a54">残数を表示</text>
+          <rect x="290" y="70" width="220" height="110" rx="14" fill="url(#g)"/><text x="400" y="112" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">AI実行基盤</text><text x="400" y="140" text-anchor="middle" font-size="13" fill="#fff">認証と利用枠を判定</text>
+          <rect x="635" y="18" width="200" height="70" rx="14" fill="#eaf2fb" stroke="#cfe0f2"/><text x="735" y="48" text-anchor="middle" font-size="15" font-weight="700" fill="#0a4695">利用権限・月間利用数</text><text x="735" y="71" text-anchor="middle" font-size="12" fill="#4a4a54">DynamoDB</text>
+          <rect x="635" y="102" width="200" height="60" rx="14" fill="#fdf5e0" stroke="#f0b21f"/><text x="735" y="138" text-anchor="middle" font-size="14" font-weight="700" fill="#8a5a00">高品質モデル Sonnet</text>
+          <rect x="635" y="176" width="200" height="60" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/><text x="735" y="212" text-anchor="middle" font-size="14" font-weight="700" fill="#0a4695">標準モデル Kimi</text>
+          <path d="M190 125 H282" stroke="#a8a8b2" stroke-width="2" marker-end="url(#arrow)"/><path d="M510 105 C560 105 575 53 627 53" fill="none" stroke="#a8a8b2" stroke-width="2" marker-end="url(#arrow)"/><path d="M510 125 H627" stroke="#a8a8b2" stroke-width="2" marker-end="url(#arrow)"/><path d="M510 145 C560 145 575 206 627 206" fill="none" stroke="#a8a8b2" stroke-width="2" marker-end="url(#arrow)"/>
+        </svg>
+        <figcaption>既存の直接呼び出しを維持し、AgentCore Runtimeの中で利用枠を確認する</figcaption>
+      </figure>
+    </section>
+
+    <section id="s3">
+      <span class="eyebrow">03</span>
+      <h2>DynamoDBで二重消費を防ぐ</h2>
+      <p class="lead">Cognitoが検証したトークンのユーザーIDをキーに使う。ブラウザから送信されたユーザーIDは信用しない。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>項目</th><th>保存内容</th><th>役割</th></tr></thead>
+          <tbody>
+            <tr><td>プラン</td><td><code>PLAN</code></td><td>無料・有料、契約状態、有効期限</td></tr>
+            <tr><td>月間利用数</td><td><code>MONTH#2026-08</code></td><td>その月に開始したSonnetセッション数</td></tr>
+            <tr><td>セッション</td><td><code>SESSION#&lt;sessionId&gt;</code></td><td>同じ作業で回数を重ねて消費しないための記録</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout blue"><p><b>並行呼び出しにも対応。</b> 月間利用数の更新とセッション記録の追加をDynamoDBのトランザクションで同時に行い、3回目はSonnetを呼ぶ前に拒否する。</p></div>
+      <h3>画面の表示</h3>
+      <ul>
+        <li>残数あり: 高品質（Claude Sonnet 4.6・今月あと2回）</li>
+        <li>残数なし: 高品質（Claude Sonnet 4.6・今月分を利用済み）</li>
+        <li>有料プラン: 高品質（Claude Sonnet 4.6・使い放題）</li>
+      </ul>
+      <p>画面の無効化は案内用であり、APIを直接呼ばれてもAgentCore Runtimeが同じ利用枠を判定する。</p>
+    </section>
+
+    <section id="s4">
+      <span class="eyebrow">04</span>
+      <h2>決済画面はStripeに任せる</h2>
+      <p class="lead">将来の有料化ではStripe Checkoutと顧客ポータルを使い、カード入力、解約、請求履歴の画面を自作しない。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>経路</th><th>認証</th><th>役割</th></tr></thead>
+          <tbody>
+            <tr><td>Checkout</td><td>Cognito</td><td>ログイン中のユーザー用の申込画面を作成</td></tr>
+            <tr><td>顧客ポータル</td><td>Cognito</td><td>支払方法の変更と解約</td></tr>
+            <tr><td>Webhook</td><td>Stripe署名</td><td>契約開始、更新、支払い失敗、解約をDynamoDBへ反映</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>決済後の戻り先画面では利用権限を付与しない。署名を確認したWebhookだけがプランを変更する。利用権限はCognitoのカスタム属性ではなくDynamoDBを正本とする。</p>
+    </section>
+
+    <section id="s5">
+      <span class="eyebrow">05</span>
+      <h2>150円では使い放題の原価を賄えない</h2>
+      <p class="lead">既存実績と公開料金を使った概算では、月額150円で賄えるSonnet利用は約1.6回から2.8回である。</p>
+      <div class="grid">
+        <article class="card"><h4>Sonnet 1セッション</h4><p>既存実績は約0.34ドルから0.59ドル。1ドル150円の計画値では約51円から89円。</p></article>
+        <article class="card"><h4>月額150円の手取り概算</h4><p>Stripeの国内カード3.6%とBilling 0.7%を差し引くと約144円。税金やその他の運用費は含めていない。</p></article>
+      </div>
+      <div class="callout"><p><b>150円を維持する場合は支援者向けベータとして扱う。</b> 正式な使い放題の価格は、月2回枠を1か月から2か月運用し、セッション原価と上位利用者の回数を確認してから決める。</p></div>
+    </section>
+
+    <section id="s6">
+      <span class="eyebrow">06</span>
+      <h2>利用枠、原価測定、決済の順に進める</h2>
+      <div class="grid">
+        <article class="card"><h4>第1段階 月2回枠</h4><p>DynamoDB、JWTのユーザー識別、残数取得、画面表示、並行呼び出しテストを実装する。補助処理はKimi固定にする。</p></article>
+        <article class="card"><h4>第2段階 原価測定</h4><p>1か月から2か月運用し、セッション原価、2回とも使う割合、ユーザーごとの利用回数を確認する。</p></article>
+        <article class="card"><h4>第3段階 サブスク</h4><p>Stripe Checkout、顧客ポータル、Webhookを追加し、既存のプラン項目を更新する。</p></article>
+      </div>
+      <h3>初回実装の完了条件</h3>
+      <ul>
+        <li>月2つまで新しいSonnetセッションを開始でき、同じセッションの修正では回数が増えない</li>
+        <li>3つ目と並行呼び出しをモデル実行前に拒否できる</li>
+        <li>残数を画面へ表示し、Kimiと補助処理はSonnet枠を消費しない</li>
+        <li>月が変わると定期処理なしで新しい2回分を利用できる</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>正本: <code>docs/sonnet-quota-subscription-design.md</code></p>
+      <p>参考: <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-oauth.html">AgentCore JWT認証</a> ／ <a href="https://aws.amazon.com/marketplace/pp/prodview-o6w4hyizv7g64">Sonnet 4.6料金</a> ／ <a href="https://stripe.com/jp/pricing">Stripe料金</a></p>
+    </footer>
+  </div>
+</body>
+</html>
