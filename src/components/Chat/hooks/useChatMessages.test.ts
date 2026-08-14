@@ -14,7 +14,7 @@ describe('appendSlideProgress', () => {
       }),
       createMessage({ role: 'assistant', content: '', isStreaming: true }),
     ];
-    const progress = '1回目の確認で、文字や表のはみ出しを検出しました。内容を調整して再チェックします。';
+    const progress = '文字や表のはみ出しを検知したので、スライドを修正します';
 
     const result = appendSlideProgress(messages, progress);
 
@@ -44,7 +44,7 @@ describe('applyToolUse', () => {
 
   it('検査結果の吹き出しの後へ再生成ステータスを追加する', () => {
     const firstAttempt = applyToolUse([], 'output_slide');
-    const progress = 'はみ出しを検出しました。調整して再チェックします。';
+    const progress = '文字や表のはみ出しを検知したので、スライドを修正します';
     const checked = appendSlideProgress(firstAttempt, progress);
     const retrying = applyToolUse(checked, 'output_slide');
 

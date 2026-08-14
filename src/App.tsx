@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
-import { Authenticator } from '@aws-amplify/ui-react';
-import { signIn } from 'aws-amplify/auth';
-import '@aws-amplify/ui-react/styles.css';
+import { useEffect, useRef, useState } from 'react';
+import { getCurrentUser, signOut as amplifySignOut } from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
+import { AuthScreen } from './components/Auth/AuthScreen';
 import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
 import type { ThemeId } from './components/SlidePreview';
@@ -12,7 +12,7 @@ import type { ShareResult } from './hooks/useAgentCore';
 
 // モック使用フラグ（ローカル開発用：認証スキップ＆モックAPI）
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
-const useUserPasswordAuth = import.meta.env.VITE_USE_USER_PASSWORD_AUTH === 'true';
+const showAuthDemo = import.meta.env.VITE_SHOW_AUTH === 'true';
 
 type Tab = 'chat' | 'preview';
 
@@ -21,71 +21,51 @@ const mockSignOut = () => {
   console.log('Mock signOut called');
 };
 
-const authComponents = {
-  Header() {
-    return (
-      <div className="text-center py-4">
-        <h1 className="text-2xl font-bold text-white">
-          パワポ作るマン by みのるん
-        </h1>
-        <p className="text-sm text-white/80 mt-1">
-          誰でもアカウントを作って利用できます！<br/>
-          （1日50名超えるとエラー）
-        </p>
-      </div>
-    );
-  },
-  Footer() {
-    return (
-      <div className="text-center py-3 px-4">
-        <p className="text-xs text-white/70 leading-relaxed">
-          登録されたメールアドレスは認証目的でのみ使用します。
-        </p>
-        <p className="text-xs text-white/70 mt-2">
-          <a
-            href="https://github.com/minorun365/marp-agent"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-white transition-colors"
-          >
-            GitHub
-          </a>
-          {' / '}
-          <a
-            href="https://x.com/minorun365"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-white transition-colors"
-          >
-            X
-          </a>
-        </p>
-      </div>
-    );
-  },
-};
+function redirectErrorMessage(data: unknown) {
+  const error = (data as { error?: unknown } | undefined)?.error;
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string' && error) return error;
+  return 'Googleログインを完了できませんでした。時間をおいてもう一度お試しください。';
+}
+
+function AuthenticatedApp() {
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [redirectError, setRedirectError] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      if (payload.event === 'signedIn' || payload.event === 'signInWithRedirect') {
+        setRedirectError('');
+        setAuthenticated(true);
+      }
+      if (payload.event === 'signInWithRedirect_failure') {
+        // 失敗を黙って握りつぶすと、ログイン画面が再表示されるだけに見えて原因が追えない。
+        setRedirectError(redirectErrorMessage(payload.data));
+        setAuthenticated(false);
+      }
+    });
+    void getCurrentUser()
+      .then(() => setAuthenticated(true))
+      .catch(() => setAuthenticated(false));
+    return unsubscribe;
+  }, []);
+
+  if (authenticated === null) return null;
+  if (!authenticated) {
+    return <AuthScreen initialError={redirectError} onAuthenticated={() => setAuthenticated(true)} />;
+  }
+
+  return <MainApp signOut={() => void amplifySignOut().finally(() => setAuthenticated(false))} />;
+}
 
 function App() {
-  // モックモード時は認証をスキップ（ローカル開発用）
+  if (useMock && showAuthDemo) {
+    return <AuthScreen demoMode onAuthenticated={() => undefined} />;
+  }
   if (useMock) {
     return <MainApp signOut={mockSignOut} />;
   }
-
-  return (
-    <Authenticator
-      components={authComponents}
-      services={useUserPasswordAuth
-        ? {
-            handleSignIn: (input) => signIn({
-              ...input,
-              options: { authFlowType: 'USER_PASSWORD_AUTH' },
-            }),
-          }
-        : undefined}
-    >
-      {({ signOut }) => <MainApp signOut={signOut} />}
-    </Authenticator>
-  );
+  return <AuthenticatedApp />;
 }
 
 function MainApp({ signOut }: { signOut?: () => void }) {
@@ -194,15 +174,15 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* ヘッダー */}
-      <header className="bg-brand-gradient text-white px-4 md:px-6 py-3 md:py-4 shadow-md">
+    <div className="h-[100dvh] flex flex-col bg-gray-50">
+      {/* ヘッダー: 余白はapp-header側でセーフエリアを足し込む */}
+      <header className="app-header bg-brand-gradient text-white shadow-md">
         <div className="max-w-3xl mx-auto flex justify-between items-center gap-2">
           <div className="min-w-0">
             <h1 className="text-lg md:text-2xl font-bold truncate">
               パワポ作るマン <span className="text-base md:text-lg font-normal ml-1">by みのるん</span>
             </h1>
-            <p className="text-xs md:text-sm text-white/50 truncate">AgentCore ＆ Amplifyでフルサーバーレス構築！</p>
+            <p className="text-xs md:text-sm text-white/50 truncate">Strands ＆ AgentCoreでフルサーバーレス構築！</p>
           </div>
           <button
             onClick={signOut}

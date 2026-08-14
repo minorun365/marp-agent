@@ -4,23 +4,25 @@ This file provides guidance to coding agents (Claude Code / Codex) when working 
 
 ## プロジェクト概要
 
-「パワポ作るマン」- AIがMarp形式でスライドを自動生成するWebアプリ。AWS AmplifyとBedrock AgentCoreでフルサーバーレス構築。
+「パワポ作るマン」- AIがMarp形式でスライドを自動生成するWebアプリ。CloudFront から画面を配信し、ブラウザが Amazon Bedrock AgentCore Runtime へ直接つながる。インフラは AWS CDK を CDKD でデプロイする。
 
 ## 開発コマンド
 
 ```bash
-# AWS認証（サンドボックス起動前に必要）
+# AWS認証（バックエンド付きのローカル起動前に必要）
 aws login
 
-# フロントエンド起動（ローカル開発）
+# メイン画面だけ（AWS不要）
+npm run dev:ui
+
+# 普段の機能開発（Cognito / AgentCore ローカル）
 npm run dev
 
-# サンドボックス起動（バックエンド込み、ブランチ名が識別子になる）
-# ⚠️ 必ず .env を読み込んでから実行すること（TAVILY_API_KEYS等がCDKビルド時に必要）
-export $(grep -v '^#' .env | grep -v '^$' | xargs) && npm run sandbox
+# 配信経路まで含めた確認
+npm run dev:full
 
 # 認証スキップでUIのみ確認
-VITE_USE_MOCK=true npm run dev
+npm run dev:ui
 
 # リント
 npm run lint
@@ -33,6 +35,11 @@ npm run test
 
 # テスト（バックエンド）
 python -m pytest tests/
+
+# インフラ
+npm run infra:synth
+npm run infra:diff
+npm run infra:dry-run
 ```
 
 ## アーキテクチャ
@@ -57,23 +64,21 @@ python -m pytest tests/
 | `src/components/Chat/` | チャットUI（index, ChatInput, ChatInput.test, MessageList, MessageBubble, StatusMessage, constants, types） |
 | `src/components/Chat/hooks/` | Chat専用フック（useChatMessages, useStreamingText, useTipRotation） |
 | `src/components/` | その他UIコンポーネント（SlidePreview, ShareConfirmModal, ShareResultModal） |
-| `amplify/` | バックエンド定義（CDK） |
-| `amplify/backend.ts` | エントリポイント（Auth, AgentCore, S3統合） |
-| `amplify/agent/resource.ts` | AgentCore Runtime定義 |
-| `amplify/agent/runtime/` | Pythonエージェント本体 |
+| `infra/` | CDK アプリ（Foundation / Auth / Agent / Web） |
+| `amplify/agent/runtime/` | Pythonエージェント本体（現行本番もこのパス） |
 | `amplify/agent/runtime/tools/` | ツール定義（output_slide, web_search, generate_tweet_url, http_request） |
 | `amplify/agent/runtime/exports/` | PDF/PPTX変換（slide_exporter） |
 | `amplify/agent/runtime/session/` | セッション管理（manager） |
 | `amplify/agent/runtime/sharing/` | 共有機能（s3_uploader） |
-| `amplify/storage/resource.ts` | 共有スライド用S3+CloudFront |
 | `docs/knowledge/` | 詳細なナレッジベース（下記参照） |
 
 ### 主要な技術スタック
 
 - **フロントエンド**: React 19 + Vite + Tailwind CSS v4
 - **バックエンド**: Bedrock AgentCore + Strands Agents (Python)
-- **認証**: Cognito（Amplify UI React）
-- **IaC**: AWS CDK（Amplify経由）
+- **認証**: Cognito User Pools（ブラウザは Amplify Auth クライアント）
+- **IaC**: AWS CDK + CDKD
+- **Web配信**: CloudFront + Lambda Web Adapter
 
 ## ナレッジベース
 
@@ -108,79 +113,38 @@ MCP サーバーが利用できない場合のみ、Bash で `aws logs` コマ�
 - **1つの Bash 呼び出しに1つの aws コマンド**（複数コマンドを `&&` や改行で繋げない）
 - 理由: 自動承認パターン `Bash(aws:*)` は、コマンドの**先頭が `aws` で始まる単一行コマンド**にのみマッチする。複数行コマンドやコメント付きコマンドはマッチせず手動承認になる
 
-## AWS Amplify 環境変数の更新
-
-**重要**: AWS CLI で Amplify のブランチ環境変数を更新する際、`--environment-variables` パラメータは**上書き**であり**マージではない**。
-
-### 正しい手順
-
-1. **既存の環境変数を取得**
-   ```bash
-   aws amplify get-branch --app-id {appId} --branch-name {branch} --region {region} \
-     --query 'branch.environmentVariables' --output json
-   ```
-
-2. **既存 + 新規をすべて指定して更新**
-   ```bash
-   aws amplify update-branch --app-id {appId} --branch-name {branch} --region {region} \
-     --environment-variables KEY1=value1,KEY2=value2,NEW_KEY=new_value
-   ```
-
-### NG例（既存変数が消える）
-
-```bash
-# これだと既存の環境変数がすべて消えてNEW_KEY=valueだけになる
-aws amplify update-branch --environment-variables NEW_KEY=value
-```
-
-### 補足
-
-- **アプリレベルの環境変数**（`aws amplify get-app`）はブランチ更新で消えない
-- **ブランチレベルの環境変数**（`aws amplify get-branch`）は上書きされる
-
 ## デプロイ先情報の取り扱い
 
 - このリポジトリが公開されていることと、本番環境のAWSアカウント所有者は別の情報として扱う。
-- ローカル開発用のAWS profile名、`package.json` のsandboxコマンド、または残存する旧リソースから、現行の本番デプロイ先を推測しない。
-- 本番環境を調査するときは、Git追跡対象外の運用設定を使い、AmplifyアプリのリポジトリURL・ブランチ・現行Runtimeを照合して対象を特定する。
+- ローカル開発用のAWS profile名、残存する旧リソースから、現行の本番デプロイ先を推測しない。
+- 本番環境を調査するときは、Git追跡対象外の運用設定を使い、リポジトリURL・ブランチ・現行Runtimeを照合して対象を特定する。
 - AWSアカウントID、profile対応表、組織名とデプロイ先の関係、実リソースIDは、公開ファイル・コミットメッセージ・リリースノートへ記載しない。
 - これらの対応表を含む運用スキルはローカル専用とし、Gitへ追加しない。
 
-### ⚠️ 移行期間中は main が本番ではない（2026-08 時点）
+### Git push と AWS デプロイは分ける
 
-Amplify から新環境（CDKD / `infra/`）への移行中で、**本番の中身は `codex/pawapo-rearchitecture` ブランチ**。
-`main` へコミットしても本番には反映されないので、バグ修正は本番ブランチへも適用する（cherry-pick）。
-新環境の作業ツリーは `git worktree list` で確認する。移行が完了したらこの節を削除する。
+`main` への push は公開リポジトリの正本を更新するだけで、本番 AWS は自動では変わらない。本番反映は CDKD を明示実行する。
 
-- 新環境には旧 `amplify.yml` のようなCIが無い。テーマCSS（`amplify/agent/runtime/*.css` は `.gitignore` 対象のコピー）は
-  `npm run infra:synth` / `infra:diff` / `infra:dry-run` / `infra:deploy` が `copy-themes` を実行して配る。
-  手で `cdkd` を直接叩くときは、先に `npm run copy-themes` を実行する（忘れるとプレビューだけ直って書き出しが古いままになる）。
+旧 Amplify Gen2 の自己ホスト手順と `amplify.yml` は `legacy/amplify` ブランチに残してある。旧 Amplify アプリは切り戻し用に残し、`main` の自動ビルドは止めてある。
+
+テーマCSS（`amplify/agent/runtime/*.css` は `.gitignore` 対象のコピー）は
+`npm run infra:synth` / `infra:diff` / `infra:dry-run` / `infra:deploy` が `copy-themes` を実行して配る。
+手で `cdkd` を直接叩くときは、先に `npm run copy-themes` を実行する（忘れるとプレビューだけ直って書き出しが古いままになる）。
 
 ## E2Eテスト手順
 
-コード変更後のE2Eテストは、ログイン済みのブラウザで `localhost:5173` を開いて確認する。
+コード変更後のE2Eテストは、ログイン済みのブラウザでローカルURLを開いて確認する。
 
 ### 手順
 
 1. **AWSセッション確認**: `aws sts get-caller-identity`
-2. **サンドボックス起動**: `npm run sandbox` をバックグラウンド実行
-3. **フロントエンド起動**: `npm run dev`（別プロセスでバックグラウンド実行）
-4. **ブラウザで確認**:
-   - `localhost:5173` にアクセス
+2. **起動**: 目的に合わせて `npm run dev:ui` / `npm run dev` / `npm run dev:full`
+3. **ブラウザで確認**:
    - ログインページの表示確認
    - テスト用ユーザーでログイン（`.env`のTEST_USER_EMAIL/TEST_USER_PASSWORD使用）
    - モデルセレクターの表示・選択肢確認
    - スライド生成の動作確認（必要に応じて）
-5. **テスト完了後**: 起動したプロセスを停止
-
-### 注意事項
-
-- サンドボックスのデプロイには3-5分かかる（Hotswap時は30秒程度）
-- **⚠️ 環境変数の読み込み【必須】**: `npm run sandbox` は `.env` を自動読み込みしない。**サンドボックス起動時は必ず以下のワンライナーを使うこと**（`npm run sandbox` を単体で実行してはならない）：
-  ```bash
-  export $(grep -v '^#' .env | grep -v '^$' | xargs) && npm run sandbox
-  ```
-- **デプロイ完了の確認**: サンドボックスをバックグラウンド起動した後は、`tail -3` で**10〜15秒間隔**でこまめにポーリングし、`Watching for file changes...` が表示されるまで確認すること。**`TaskOutput` のブロッキング待機は使わない**（ユーザーが待たされるため）
+4. **テスト完了後**: 起動したプロセスを停止
 
 ## Git コミットルール
 

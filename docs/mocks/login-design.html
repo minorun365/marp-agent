@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#142f57">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="パワポ作るマンのパスキー・Google・メール認証をまとめたログイン画面デザインモック">
+  <meta name="description" content="パワポ作るマンのGoogle・パスワード・パスキー認証をまとめたログイン画面デザインモック">
   <title>ログイン画面デザインモック｜パワポ作るマン</title>
   <style>
     :root {
@@ -93,26 +93,6 @@
       letter-spacing: .06em;
     }
 
-    .mark {
-      position: relative;
-      width: 30px;
-      height: 30px;
-      border: 1px solid rgba(255, 255, 255, .48);
-      border-radius: 8px;
-    }
-
-    .mark::before, .mark::after {
-      content: "";
-      position: absolute;
-      left: 7px;
-      width: 14px;
-      height: 1px;
-      background: rgba(255, 255, 255, .82);
-    }
-
-    .mark::before { top: 10px; }
-    .mark::after { top: 17px; width: 9px; }
-
     .brand-copy { margin-top: auto; margin-bottom: auto; padding: 72px 0 96px; }
 
     .brand-copy h1 {
@@ -133,8 +113,9 @@
     }
 
     .brand-note {
-      color: rgba(12, 35, 68, .58);
+      color: rgba(255, 255, 255, .78);
       font-size: 11px;
+      font-weight: 600;
       letter-spacing: .04em;
     }
 
@@ -374,6 +355,43 @@
 
     .migration-note svg { color: var(--blue); }
 
+    .email-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 0 0 22px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: var(--soft);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .email-summary .text-button { flex: 0 0 auto; font-size: 11px; }
+
+    .helper {
+      margin: 11px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.65;
+      text-align: center;
+    }
+
+    .offer-icon {
+      display: grid;
+      width: 54px;
+      height: 54px;
+      margin: 0 0 22px;
+      border-radius: 17px;
+      place-items: center;
+      color: var(--white);
+      background: var(--button-gradient);
+      box-shadow: 0 10px 26px rgba(20, 47, 87, .18);
+    }
+
     .mock-controls {
       position: fixed;
       z-index: 10;
@@ -503,7 +521,6 @@
     <section class="brand" aria-label="パワポ作るマン">
       <div class="brand-inner">
         <div class="wordmark">
-          <span class="mark" aria-hidden="true"></span>
           <span>パワポ作るマン by みのるん</span>
         </div>
         <div class="brand-copy">
@@ -519,17 +536,9 @@
         <section class="state active" data-state="initial">
           <p class="eyebrow">Welcome back</p>
           <h2>続きをはじめましょう</h2>
-          <p class="lead">ログイン方法を選んでください。初めての方は、Googleまたはメールから始められます。</p>
+          <p class="lead">Googleまたはメールアドレスで続けられます。</p>
 
           <div class="stack">
-            <button class="action action-primary" type="button" data-demo="passkey">
-              <span class="icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="8" cy="9" r="4"></circle><path d="M11.1 11.5 20 20.4M16 16.4l2-2M13.5 13.9l2-2"></path>
-                </svg>
-              </span>
-              パスキーで続ける
-            </button>
             <button class="action action-secondary" type="button" data-demo="google">
               <span class="icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="19" height="19" aria-label="Google">
@@ -553,65 +562,112 @@
                 <svg class="field-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>
               </div>
             </div>
-            <button class="action action-secondary" type="submit">メールで続ける</button>
+            <button class="action action-primary" type="submit">メールで続ける</button>
           </form>
 
-          <div class="legacy-entry">
-            以前からご利用の方は
-            <button class="text-button" type="button" data-go="legacy">従来のパスワードで移行</button>
-          </div>
-
-          <p class="privacy">続けることで、<a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意したものとみなされます。</p>
+          <p class="privacy">登録されたメールアドレスは認証目的でのみ使用します。</p>
         </section>
 
-        <section class="state" data-state="otp">
+        <section class="state" data-state="email">
           <button class="back" type="button" data-go="initial" aria-label="戻る">
             <span aria-hidden="true">←</span> 戻る
           </button>
-          <p class="eyebrow">Email verification</p>
-          <h2>メールを確認してください</h2>
-          <p class="lead">6桁の確認コードを送りました。<br><span class="mail-address" data-email-label>you@example.com</span></p>
-          <label class="field" for="code"><span>確認コード</span></label>
-          <input class="code-field" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
-          <button class="action action-primary" type="button" data-demo="verify">確認して続ける</button>
-          <div class="sub-actions">
-            <button class="text-button" type="button" data-demo="resend">コードを再送</button>
-            <button class="text-button" type="button" data-go="initial">メールを変更</button>
-          </div>
-          <p class="privacy">初めての方は、確認後にパスキーを登録できます。</p>
-        </section>
+          <p class="eyebrow">Sign in</p>
+          <h2>メールでログイン</h2>
+          <p class="lead">登録済みのパスキーか、これまでのパスワードを使えます。</p>
 
-        <section class="state" data-state="legacy">
-          <button class="back" type="button" data-go="initial" aria-label="戻る">
-            <span aria-hidden="true">←</span> 戻る
+          <div class="email-summary">
+            <span data-email-label>you@example.com</span>
+            <button class="text-button" type="button" data-go="initial">変更</button>
+          </div>
+
+          <button class="action action-primary" type="button" data-demo="passkey">
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="9" r="4"></circle><path d="M11.1 11.5 20 20.4M16 16.4l2-2M13.5 13.9l2-2"></path>
+              </svg>
+            </span>
+            パスキーでログイン
           </button>
-          <p class="eyebrow">Account migration</p>
-          <h2>これまでのアカウントを移行</h2>
-          <p class="lead">今までと同じメールアドレスとパスワードを、一度だけ入力してください。</p>
 
-          <div class="migration-note">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 4.5 6v5c0 5.1 3.2 8.1 7.5 10 4.3-1.9 7.5-4.9 7.5-10V6L12 3Z"></path><path d="m9.4 12 1.7 1.7 3.6-4"></path></svg>
-            <span>移行後は、パスキー・Google・メールコードから好きな方法を選べます。</span>
-          </div>
+          <div class="divider">または</div>
 
-          <form data-legacy-form>
+          <form data-password-form>
             <div class="field">
-              <label for="legacy-email">メールアドレス</label>
+              <label for="password">パスワード</label>
               <div class="input-wrap">
-                <input id="legacy-email" type="email" autocomplete="username" placeholder="you@example.com" required>
+                <input id="password" type="password" autocomplete="current-password" placeholder="パスワード" required>
+                <svg class="field-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+              </div>
+            </div>
+            <button class="action action-secondary" type="submit">パスワードでログイン</button>
+          </form>
+          <p class="helper"><button class="text-button" type="button" data-demo="reset">パスワードを忘れた方</button></p>
+
+          <div class="legacy-entry">
+            初めてご利用の方は
+            <button class="text-button" type="button" data-go="signup">アカウントを作成</button>
+          </div>
+        </section>
+
+        <section class="state" data-state="signup">
+          <button class="back" type="button" data-go="email" aria-label="戻る">
+            <span aria-hidden="true">←</span> 戻る
+          </button>
+          <p class="eyebrow">Create account</p>
+          <h2>アカウントを作成</h2>
+          <p class="lead">メールアドレスとパスワードで始められます。</p>
+
+          <form data-signup-form>
+            <div class="field">
+              <label for="signup-email">メールアドレス</label>
+              <div class="input-wrap">
+                <input id="signup-email" type="email" autocomplete="email" placeholder="you@example.com" required>
                 <svg class="field-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>
               </div>
             </div>
             <div class="field">
-              <label for="legacy-password">現在のパスワード</label>
+              <label for="new-password">パスワード</label>
               <div class="input-wrap">
-                <input id="legacy-password" type="password" autocomplete="current-password" placeholder="パスワード" required>
+                <input id="new-password" type="password" autocomplete="new-password" placeholder="8文字以上" minlength="8" required>
                 <svg class="field-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
               </div>
             </div>
-            <button class="action action-primary" type="submit">ログインして移行</button>
+            <button class="action action-primary" type="submit">アカウントを作成</button>
           </form>
-          <p class="privacy">パスワードは新しい環境へ保存せず、安全な移行処理にだけ使用します。</p>
+          <p class="privacy">登録後、メールアドレス確認のために一度だけ確認コードをお送りします。</p>
+        </section>
+
+        <section class="state" data-state="verify">
+          <button class="back" type="button" data-go="signup" aria-label="戻る">
+            <span aria-hidden="true">←</span> 戻る
+          </button>
+          <p class="eyebrow">Email verification</p>
+          <h2>メールを確認してください</h2>
+          <p class="lead">新規登録を完了するため、6桁の確認コードを入力してください。<br><span class="mail-address" data-signup-email-label>you@example.com</span></p>
+          <label class="field" for="code"><span>確認コード</span></label>
+          <input class="code-field" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+          <button class="action action-primary" type="button" data-demo="verify">確認してはじめる</button>
+          <div class="sub-actions">
+            <button class="text-button" type="button" data-demo="resend">コードを再送</button>
+            <button class="text-button" type="button" data-go="signup">メールを変更</button>
+          </div>
+        </section>
+
+        <section class="state" data-state="offer">
+          <div class="offer-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="9" r="4"></circle><path d="M11.1 11.5 20 20.4M16 16.4l2-2M13.5 13.9l2-2"></path>
+            </svg>
+          </div>
+          <p class="eyebrow">Optional</p>
+          <h2>次回は、もっとかんたんに</h2>
+          <p class="lead">パスキーを登録すると、次回から端末の顔認証や指紋認証だけでログインできます。</p>
+          <div class="stack">
+            <button class="action action-primary" type="button" data-demo="register-passkey">パスキーを登録</button>
+            <button class="action action-secondary" type="button" data-demo="later">あとで</button>
+          </div>
+          <p class="privacy">登録しなくても、これまでのパスワードを引き続き使えます。</p>
         </section>
       </div>
     </section>
@@ -619,8 +675,9 @@
 
   <div class="mock-controls" aria-label="モックの表示状態">
     <button type="button" data-control="initial" aria-pressed="true">初期画面</button>
-    <button type="button" data-control="otp" aria-pressed="false">メール確認</button>
-    <button type="button" data-control="legacy" aria-pressed="false">旧ユーザー</button>
+    <button type="button" data-control="email" aria-pressed="false">ログイン</button>
+    <button type="button" data-control="signup" aria-pressed="false">新規登録</button>
+    <button type="button" data-control="offer" aria-pressed="false">パスキー案内</button>
   </div>
 
   <div class="toast" role="status" aria-live="polite"></div>
@@ -653,26 +710,37 @@
         event.preventDefault();
         const email = new FormData(event.currentTarget).get('email');
         document.querySelector('[data-email-label]').textContent = email || 'you@example.com';
-        showState('otp');
+        document.querySelector('#signup-email').value = email || '';
+        showState('email');
       });
 
-      document.querySelector('[data-legacy-form]').addEventListener('submit', (event) => {
+      document.querySelector('[data-password-form]').addEventListener('submit', (event) => {
         event.preventDefault();
-        showToast('モック：この操作でアカウントを移行します');
+        showState('offer');
+      });
+
+      document.querySelector('[data-signup-form]').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const email = document.querySelector('#signup-email').value;
+        document.querySelector('[data-signup-email-label]').textContent = email || 'you@example.com';
+        showState('verify');
       });
 
       document.querySelectorAll('[data-demo]').forEach((button) => button.addEventListener('click', () => {
         const messages = {
           passkey: 'モック：端末のパスキー認証を開始します',
           google: 'モック：Googleの認証画面へ移動します',
-          verify: 'モック：確認後、アプリまたはパスキー登録へ進みます',
-          resend: '確認コードを再送しました'
+          verify: 'モック：登録を完了してアプリへ進みます',
+          resend: '確認コードを再送しました',
+          reset: 'モック：パスワード再設定メールを送ります',
+          'register-passkey': 'モック：パスキー登録を開始します',
+          later: 'モック：そのままアプリへ進みます'
         };
         showToast(messages[button.dataset.demo]);
       }));
 
       const initial = location.hash.slice(1);
-      if (['initial', 'otp', 'legacy'].includes(initial)) showState(initial);
+      if (['initial', 'email', 'signup', 'verify', 'offer'].includes(initial)) showState(initial);
     })();
   </script>
 </body>

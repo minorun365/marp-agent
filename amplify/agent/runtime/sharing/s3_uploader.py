@@ -65,7 +65,7 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
 
     # スライドID生成（UUID v4）
     slide_id = str(uuid.uuid4())
-    slide_path = slide_id
+    slide_path = f"slides/{slide_id}"
     s3_client = _get_s3_client()
 
     # サムネイル生成・アップロード
@@ -86,7 +86,7 @@ def share_slide(markdown: str, theme: str = 'border') -> dict:
         print(f"[WARN] Thumbnail generation failed: {e}")
 
     # 共有URL（OGPタグ挿入前に決定）
-    share_url = f"https://{public_domain}/{slide_path}/index.html"
+    share_url = f"https://{public_domain}/{slide_path}/"
 
     # HTML生成
     html_content = generate_standalone_html(markdown, theme)

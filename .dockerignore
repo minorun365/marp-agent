@@ -1,0 +1,14 @@
+.git
+.github
+.agents
+.claude
+.codex
+cdk.out
+dist
+node_modules
+coverage
+.env
+.env.*
+amplify_outputs.json
+docs
+tests

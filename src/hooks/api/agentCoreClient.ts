@@ -3,7 +3,7 @@
  */
 
 import { fetchAuthSession } from 'aws-amplify/auth';
-import outputs from '../../../amplify_outputs.json';
+import { getRuntimeConfig } from '../../runtimeConfig';
 import { readSSEStream } from '../streaming/sseParser';
 import type { ModelType, ReferenceFile } from '../../components/Chat/types';
 
@@ -97,7 +97,8 @@ export type { ModelType } from '../../components/Chat/types';
  * AgentCore APIのベースURL・認証情報を取得
  */
 export async function getAgentCoreConfig() {
-  const runtimeArn = outputs.custom?.agentRuntimeArn;
+  const agentConfig = getRuntimeConfig().agent;
+  const runtimeArn = agentConfig.runtimeArn;
   if (!runtimeArn) {
     throw new Error('AgentCore runtime ARN not configured');
   }
@@ -107,7 +108,9 @@ export async function getAgentCoreConfig() {
   const region = arnParts[3];
   const encodedArn = encodeURIComponent(runtimeArn);
 
-  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
+  const url = import.meta.env.VITE_AGENT_ENDPOINT
+    || agentConfig.endpoint
+    || `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
 
   // Cognito認証トークンを取得
   const session = await fetchAuthSession();
@@ -118,6 +121,34 @@ export async function getAgentCoreConfig() {
   }
 
   return { url, accessToken };
+}
+
+async function refreshAccessToken() {
+  const session = await fetchAuthSession({ forceRefresh: true });
+  const accessToken = session.tokens?.accessToken?.toString();
+
+  if (!accessToken) {
+    throw new Error('認証セッションを更新できませんでした。再度ログインしてください。');
+  }
+
+  return accessToken;
+}
+
+function createInvokeRequest(
+  accessToken: string,
+  body: string,
+  sessionId?: string,
+): RequestInit {
+  return {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+      'Authorization': `Bearer ${accessToken}`,
+      ...(sessionId && { 'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId }),
+    },
+    body,
+  };
 }
 
 /**
@@ -190,22 +221,24 @@ export async function invokeAgent(
   try {
     const { url, accessToken } = await getAgentCoreConfig();
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-        'Authorization': `Bearer ${accessToken}`,
-        ...(sessionId && { 'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId }),
-      },
-      body: JSON.stringify({
-        prompt,
-        markdown: currentMarkdown,
-        model_type: modelType,
-        theme,
-        ...(referenceFile && { reference_file: referenceFile }),
-      }),
+    const requestBody = JSON.stringify({
+      prompt,
+      markdown: currentMarkdown,
+      model_type: modelType,
+      theme,
+      ...(referenceFile && { reference_file: referenceFile }),
     });
+
+    let response = await fetch(url, createInvokeRequest(accessToken, requestBody, sessionId));
+
+    // Cognitoのセッションが更新境界にあると、画面上はログイン済みでも
+    // AgentCoreが古いJWTを拒否することがある。認証エラー時だけ強制更新し、
+    // 同じリクエストを1回だけ再送する。
+    if (response.status === 401 || response.status === 403) {
+      await response.body?.cancel();
+      const refreshedAccessToken = await refreshAccessToken();
+      response = await fetch(url, createInvokeRequest(refreshedAccessToken, requestBody, sessionId));
+    }
 
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);

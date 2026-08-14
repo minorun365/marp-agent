@@ -1,0 +1,29 @@
+{
+  "app": "npx tsx infra/bin/pawapo.ts",
+  "output": "cdk.out",
+  "watch": {
+    "include": [
+      "infra/**/*.ts",
+      "infra/web/**",
+      "amplify/agent/runtime/**",
+      "amplify/auth/user-migration/**",
+      "src/**"
+    ],
+    "exclude": [
+      "node_modules",
+      "cdk.out",
+      "dist",
+      ".git"
+    ]
+  },
+  "context": {
+    "appDomain": "pawapo.minoruonda.com",
+    "previewDomain": "preview.pawapo.minoruonda.com",
+    "cutoverWildcardDomain": "*.minoruonda.com",
+    "@aws-cdk/core:validateAgainstDefaultRules": true,
+    "@aws-cdk/core:defaultCrossStackReferences": "strong",
+    "cdkd": {
+      "statePrefix": "pawapo"
+    }
+  }
+}

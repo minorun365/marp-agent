@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+approval_file=$(git rev-parse --git-path push-scope-approved)
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "$remote_ref" != "refs/heads/main" ]]; then
+    continue
+  fi
+
+  if [[ ! -f "$approval_file" ]]; then
+    echo "main への push は、送信コミットの事前承認が必要です。" >&2
+    echo "npm run push:approve -- <今回のコミットSHA>... を先に実行してください。" >&2
+    exit 1
+  fi
+
+  approved_remote_sha=$(sed -n '1p' "$approval_file")
+  approved_local_sha=$(sed -n '2p' "$approval_file")
+  approved_commits=$(sed -n '3,$p' "$approval_file")
+
+  if [[ "$remote_sha" != "$approved_remote_sha" || "$local_sha" != "$approved_local_sha" ]]; then
+    echo "承認後に送信元または送信先が変わったため、push を中止しました。" >&2
+    echo "push:approve をやり直してください。" >&2
+    exit 1
+  fi
+
+  outgoing_commits=$(git rev-list --reverse "${remote_sha}..${local_sha}")
+  if [[ "$outgoing_commits" != "$approved_commits" ]]; then
+    echo "承認済みの一覧と実際の push 対象が一致しないため、push を中止しました。" >&2
+    exit 1
+  fi
+done

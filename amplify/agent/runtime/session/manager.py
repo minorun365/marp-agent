@@ -36,7 +36,11 @@ def _create_model(model_type: str = "kimi") -> Model:
         )
 
 
-def get_or_create_agent(session_id: str | None, model_type: str = "kimi", theme: str = "border") -> Agent:
+def get_or_create_agent(
+    session_id: str | None,
+    model_type: str = "kimi",
+    theme: str = "border",
+) -> Agent:
     """セッションIDとモデルタイプとテーマに対応するAgentを取得または作成"""
     model_type = normalize_model_type(model_type)
     system_prompt = get_system_prompt(theme, model_type)
