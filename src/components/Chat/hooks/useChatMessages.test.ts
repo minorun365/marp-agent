@@ -27,6 +27,24 @@ describe('appendSlideProgress', () => {
     });
     expect(result[2].isStatus).toBeUndefined();
   });
+
+  it('検査結果の直後に修正中ステータスを立てて無言の間を作らない', () => {
+    const messages = [
+      createMessage({
+        role: 'assistant',
+        content: '',
+        isStatus: true,
+        statusText: MESSAGES.SLIDE_GENERATING,
+      }),
+    ];
+
+    const result = appendSlideProgress(messages, '文字や表のはみ出しを検知したので、スライドを修正します');
+
+    expect(result[result.length - 1]).toMatchObject({
+      isStatus: true,
+      statusText: MESSAGES.SLIDE_FIXING,
+    });
+  });
 });
 
 describe('applyToolUse', () => {
@@ -48,10 +66,12 @@ describe('applyToolUse', () => {
     const checked = appendSlideProgress(firstAttempt, progress);
     const retrying = applyToolUse(checked, 'output_slide');
 
+    // 修正中ステータスは検査結果の直後に立っているので、2回目のoutput_slideでは
+    // 新しい作成中ステータスを重ねず、そのまま回し続ける
     expect(retrying.map(message => message.statusText ?? message.content)).toEqual([
       MESSAGES.SLIDE_CHECK_COMPLETED,
       progress,
-      MESSAGES.SLIDE_GENERATING,
+      MESSAGES.SLIDE_FIXING,
     ]);
   });
 

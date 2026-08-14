@@ -31,6 +31,7 @@ export const MESSAGES = {
   // ステータス - スライド生成
   SLIDE_GENERATING_PREFIX: 'スライドを作成中...',
   SLIDE_GENERATING: 'スライドを作成中...',
+  SLIDE_FIXING: 'スライドを修正中...',
   SLIDE_CHECK_COMPLETED: 'スライドを確認しました',
   SLIDE_COMPLETED: 'スライドを作成しました',
 
@@ -48,6 +49,14 @@ export const MESSAGES = {
   TWEET_GENERATING: 'ツイート案を作成中...',
   TWEET_COMPLETED: 'ツイート案を作成しました',
 } as const;
+
+// スライド生成が進行中のステータスか（作成中・修正中の両方）
+// はみ出し検知後の修正待ちも「進行中」として扱い、スピナーを止めない
+export const isSlideInProgressStatus = (statusText?: string) =>
+  !!statusText && (
+    statusText.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX) ||
+    statusText.startsWith(MESSAGES.SLIDE_FIXING)
+  );
 
 // 検索クエリ付きのステータスを生成
 export const getWebSearchStatus = (query?: string) =>

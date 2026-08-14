@@ -1,4 +1,4 @@
-import { TIPS, MESSAGES } from './constants';
+import { TIPS, MESSAGES, isSlideInProgressStatus } from './constants';
 import type { Message } from './types';
 
 interface StatusMessageProps {
@@ -7,7 +7,7 @@ interface StatusMessageProps {
 }
 
 export function StatusMessage({ message, index }: StatusMessageProps) {
-  const isSlideGenerating = message.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX);
+  const isSlideGenerating = isSlideInProgressStatus(message.statusText);
   const isWebSearching = message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX) && message.statusText !== MESSAGES.WEB_SEARCH_COMPLETED;
   const isWebFetching = message.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX) && message.statusText !== MESSAGES.WEB_FETCH_COMPLETED;
   const currentTip = isSlideGenerating && message.tipIndex !== undefined ? TIPS[message.tipIndex] : null;

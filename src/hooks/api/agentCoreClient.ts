@@ -178,6 +178,11 @@ export function handleEvent(
     case 'status':
       if (textValue) callbacks.onStatus(textValue);
       break;
+    // バックエンドのkeep-alive（agent.pyの{type:"progress", message:...}）。
+    // dataではなくmessageに文言が入るため、textValueだけを見ると取りこぼす。
+    case 'progress':
+      if (event.message) callbacks.onStatus(event.message);
+      break;
     case 'slide_progress':
       if (textValue) callbacks.onSlideProgress?.(textValue);
       break;

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { invokeAgent, invokeAgentMock } from '../../../hooks/useAgentCore';
 import { SSEIdleTimeoutError } from '../../../hooks/streaming/sseParser';
-import { MESSAGES, getWebSearchStatus, getWebFetchStatus, getShareMessage, useMock } from '../constants';
+import { MESSAGES, getWebSearchStatus, getWebFetchStatus, getShareMessage, isSlideInProgressStatus, useMock } from '../constants';
 import type { ModelType, Message, ReferenceFile } from '../types';
 import { createMessage } from '../types';
 import { useTipRotation } from './useTipRotation';
@@ -22,12 +22,15 @@ export function appendSlideProgress(messages: Message[], message: string): Messa
       if (item.isStreaming) {
         return { ...item, isStreaming: false };
       }
-      if (item.isStatus && item.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+      if (item.isStatus && isSlideInProgressStatus(item.statusText)) {
         return { ...item, statusText: MESSAGES.SLIDE_CHECK_COMPLETED, tipIndex: undefined };
       }
       return item;
     }),
     createMessage({ role: 'assistant', content: message }),
+    // 検査結果を伝えた直後に修正中の表示を立てる。次のoutput_slideが届くまで
+    // Kimiはスライド全文を作り直すため、ここを空けると画面が無言のまま止まる。
+    createMessage({ role: 'assistant', content: '', isStatus: true, statusText: MESSAGES.SLIDE_FIXING, tipIndex: undefined }),
   ];
 }
 
@@ -50,7 +53,7 @@ export function applyToolUse(messages: Message[], toolName: string, query?: stri
 
   if (toolName === 'output_slide') {
     const hasActiveSlide = settledMessages.some(
-      message => message.isStatus && message.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
+      message => message.isStatus && isSlideInProgressStatus(message.statusText)
     );
     if (hasActiveSlide) return settledMessages;
 
@@ -277,7 +280,7 @@ export function useChatMessages({
               if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
                 return { ...msg, statusText: MESSAGES.WEB_FETCH_COMPLETED };
               }
-              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+              if (msg.isStatus && isSlideInProgressStatus(msg.statusText)) {
                 return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
               }
               return msg;
@@ -307,6 +310,8 @@ export function useChatMessages({
           setStatus('');
           stopTipRotation();
           setMessages(prev => appendSlideProgress(prev, message));
+          // 修正中の待ち時間もTipsを回す。Kimiはスライド全文を作り直すので長い
+          startTipRotation(setMessages);
         },
         onStatus: (newStatus) => {
           setStatus(newStatus);
@@ -323,7 +328,7 @@ export function useChatMessages({
           stopTipRotation();
           setMessages(prev =>
             prev.map(msg =>
-              msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
+              msg.isStatus && isSlideInProgressStatus(msg.statusText)
                 ? { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined }
                 : msg
             )
@@ -402,7 +407,7 @@ export function useChatMessages({
           if (msg.isStreaming) {
             return { ...msg, isStreaming: false };
           }
-          if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)) {
+          if (msg.isStatus && isSlideInProgressStatus(msg.statusText)) {
             return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
           }
           return msg;

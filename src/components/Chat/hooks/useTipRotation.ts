@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { TIPS, MESSAGES } from '../constants';
+import { TIPS, isSlideInProgressStatus } from '../constants';
 import type { Message } from '../types';
 
 interface UseTipRotationReturn {
@@ -57,7 +57,7 @@ export function useTipRotation(): UseTipRotationReturn {
       tipTimeoutRef.current = null;
       setMessages(prev =>
         prev.map(msg =>
-          msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
+          msg.isStatus && isSlideInProgressStatus(msg.statusText)
             ? { ...msg, tipIndex: getNextTipIndex() }
             : msg
         )
@@ -67,7 +67,7 @@ export function useTipRotation(): UseTipRotationReturn {
       tipIntervalRef.current = setInterval(() => {
         setMessages(prev =>
           prev.map(msg =>
-            msg.isStatus && msg.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
+            msg.isStatus && isSlideInProgressStatus(msg.statusText)
               ? { ...msg, tipIndex: getNextTipIndex() }
               : msg
           )
