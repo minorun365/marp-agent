@@ -42,15 +42,19 @@ OFFICIAL_SOURCE_RULES = (
 )
 
 MAX_OVERFLOW_RETRIES = 2
-KIMI_MAX_VALIDATION_RETRIES = 2
+KIMI_MAX_VALIDATION_RETRIES = 1
 KIMI_RETRY_VIOLATION_TYPES = frozenset({
     'line_overflow',
     'table_overflow',
     'slide_count',
     'slide_count_max',
-    'missing_sources',
-    'missing_official_sources',
 })
+KIMI_RETRY_PRIORITY = {
+    'line_overflow': 0,
+    'table_overflow': 0,
+    'slide_count': 1,
+    'slide_count_max': 1,
+}
 MAX_LINES_PER_SLIDE = 9
 # 1行あたりの最大表示幅（半角換算）
 # Marp 16:9スライドでの実測値: 箇条書き行で半角約54文字分で折り返し発生
@@ -545,9 +549,16 @@ def _format_slide_progress(violations: list[dict], attempt: int) -> str:
         categories.append('見せ方の偏り')
 
     summary = '、'.join(categories) if categories else '調整が必要な箇所'
+    if _active_model_type == 'kimi':
+        if violation_types & {'line_overflow', 'table_overflow'}:
+            action = 'はみ出しを最優先で調整し、1回だけ再チェックします。'
+        else:
+            action = '内容を調整し、1回だけ再チェックします。'
+    else:
+        action = '内容を調整して再チェックします。'
     return (
         f'{attempt}回目の確認で、{summary}を検出しました。'
-        '内容を調整して再チェックします。'
+        f'{action}'
     )
 
 
@@ -616,14 +627,17 @@ def output_slide(markdown: str) -> str:
 
     if _active_model_type == 'kimi':
         # Kimiは軽微な見た目の指摘でも全文を作り直しやすい。再生成は
-        # 実際のはみ出し・総枚数・参考文献の欠落だけに限定し、
-        # 初回後の修正は最大2回にする。
+        # 実際のはみ出し・総枚数だけに限定し、初回後の修正は1回にする。
+        # 参考文献や根拠の不足は警告に留め、再生成理由にはしない。
         retry_limit = KIMI_MAX_VALIDATION_RETRIES
-        retry_violations = [
-            violation
-            for violation in violations
-            if violation['type'] in KIMI_RETRY_VIOLATION_TYPES
-        ]
+        retry_violations = sorted(
+            (
+                violation
+                for violation in violations
+                if violation['type'] in KIMI_RETRY_VIOLATION_TYPES
+            ),
+            key=lambda violation: KIMI_RETRY_PRIORITY[violation['type']],
+        )
     else:
         retry_limit = 4 if _active_model_type == 'glm' else MAX_OVERFLOW_RETRIES
         retry_violations = violations
@@ -713,8 +727,19 @@ def output_slide(markdown: str) -> str:
                     + "。顧客事例・採用・汎用ページを外し、該当製品名を含む公式URLだけにする"
                 )
         violation_details = "\n".join(details)
+        overflow_is_present = any(
+            violation['type'] in {'line_overflow', 'table_overflow'}
+            for violation in retry_violations
+        )
+        priority_instruction = (
+            "【最優先】はみ出しをこの1回の修正で完全に解消してください。"
+            "該当スライドの文章を削るか短くし、新しい説明・数値・出典は追加しないでください。\n"
+            if overflow_is_present
+            else ""
+        )
         return (
             f"あふれ検出または構成違反！以下の問題があります：\n"
+            f"{priority_instruction}"
             f"{violation_details}\n"
             f"修正してから再度 output_slide を呼んでください。"
             f"（行数超過→内容を減らすか分割。表の横幅超過→列数を減らすかセル内容を短くする）"

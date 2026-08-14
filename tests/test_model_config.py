@@ -177,6 +177,9 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
     assert "確認できないセルは「公式情報で要確認」" in prompt
     assert "比較の穴埋めとして追加しない" in prompt
     assert "<!-- source: https://... -->" in prompt
+    assert "実質5〜7行" in prompt
+    assert "その1回の修正ではみ出しを完全に解消" in prompt
+    assert "新しい説明・数値・出典を追加しない" in prompt
 
 
 def test_sonnet_system_prompt_does_not_add_kimi_rules():
