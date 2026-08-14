@@ -32,7 +32,7 @@
     "prod:rollback": "node --env-file-if-exists=.env.production.local infra/scripts/rollback-production.mjs --apply",
     "copy-themes": "cp src/themes/*.css amplify/agent/runtime/",
     "test": "vitest run",
-    "sandbox": "npm run copy-themes && BRANCH=$(git branch --show-current | tr '/' '-') && npx ampx sandbox --identifier \"sb-${BRANCH}\" --profile sandbox",
+    "sandbox": "npm run copy-themes && BRANCH=$(git branch --show-current | tr '/' '-') && npx ampx sandbox --identifier \"sb-${BRANCH}\"",
     "setup:git-hooks": "git config --local core.hooksPath .githooks",
     "push:approve": "bash scripts/approve-push-scope.sh"
   },

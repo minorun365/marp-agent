@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import process from 'node:process';
 
-const profile = process.env.AWS_PROFILE || 'sandbox';
+const profile = process.env.AWS_PROFILE;
 const processes = [];
 let shuttingDown = false;
 
@@ -30,14 +30,16 @@ function shutdown(exitCode = 0) {
   setTimeout(() => process.exit(exitCode), 300).unref();
 }
 
-console.log(`AWS profile: ${profile}`);
+console.log(`AWS profile: ${profile || '(default credential chain)'}`);
 console.log('AgentCore: http://127.0.0.1:8081/invocations');
 console.log('Web:       http://127.0.0.1:5173');
 
-start('./node_modules/.bin/cdkd', [
+const agentArgs = [
   'local', 'start-agentcore', 'PawapoAgent/Runtime',
-  '--watch', '--port', '8081', '--no-verify-auth', '--profile', profile,
-]);
+  '--watch', '--port', '8081', '--no-verify-auth',
+];
+if (profile) agentArgs.push('--profile', profile);
+start('./node_modules/.bin/cdkd', agentArgs);
 start('./node_modules/.bin/vite', [], {
   VITE_AGENT_ENDPOINT: '/local-agent',
 });

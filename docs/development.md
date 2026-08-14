@@ -1,141 +1,68 @@
 # 開発ガイド
 
-このドキュメントはローカル開発・サンドボックス・デプロイの手順をまとめたものです。
+このドキュメントはローカル開発とデプロイの手順をまとめたものです。
 
 ---
 
 ## クイックスタート
 
 ```bash
-# AWS認証（サンドボックス起動前に必要）
-aws sso login --profile sandbox
+# AWS認証（バックエンド付きのローカル起動前に必要）
+aws login
 
-# フロントエンドのローカル開発サーバー起動
+# メイン画面だけ（AWS不要）
+npm run dev:ui
+
+# 普段の機能開発（Cognito / AgentCore ローカル）
 npm run dev
 
-# サンドボックス起動（ブランチ名が自動で識別子になる）
-npm run sandbox
-
-# 認証スキップでUIだけ確認したい場合
-VITE_USE_MOCK=true npm run dev
+# 配信経路まで含めた確認
+npm run dev:full
 ```
+
+Git への push では本番 AWS は変わりません。本番反映は CDKD を明示実行します。Amplify Gen2 の手順は `legacy/amplify` ブランチを参照してください。
 
 ---
 
 ## ローカル開発サーバー
 
-### フロントエンドのみ起動
+| 目的 | コマンド | AWS |
+|---|---|---|
+| メイン画面だけ | `npm run dev:ui` | 不要 |
+| 認証画面だけ | `npm run dev:auth` | 不要 |
+| 普段の機能開発 | `npm run dev` | Cognito、Bedrock、Secrets Manager |
+| 配信経路まで | `npm run dev:full` | 本番相当の Cognito と CDKD 状態 |
 
-```bash
-npm run dev
-```
-
-- Vite開発サーバーが起動（http://localhost:5173）
-- ホットリロード対応
-- バックエンド（AgentCore）は別途サンドボックスが必要
-
-### 認証スキップ（モックモード）
-
-```bash
-VITE_USE_MOCK=true npm run dev
-```
-
-- Cognito認証をスキップしてUIのみ確認
-- デザイン調整やコンポーネント開発に便利
+- `npm run dev` は Vite（http://localhost:5173）と AgentCore ローカルを起動する
+- `npm run dev:full` は CloudFront 相当経路（http://localhost:8080）まで含める
+- AWS を使う入口では `AWS_PROFILE` を付けるか、デフォルトの認証情報チェーンを使う
 
 ---
 
-## サンドボックス（Amplify sandbox）
-
-### 前提条件
-
-サンドボックス起動前に AWS SSO でログインしておく：
+## インフラ（CDK / CDKD）
 
 ```bash
-aws sso login --profile sandbox
+npm run infra:synth
+npm run infra:diff
+npm run infra:dry-run
 ```
 
-### 起動コマンド
+テーマCSSはこれらのコマンドが `copy-themes` で配ります。手で `cdkd` を叩くときは、先に `npm run copy-themes` を実行してください。
 
-```bash
-npm run sandbox
-```
-
-### 仕組み
-
-このコマンドは以下を自動で行う：
-
-1. `.env` から環境変数を読み込み
-2. 現在のブランチ名を取得
-3. `sb-{ブランチ名}` を識別子としてサンドボックス起動
-4. **テストユーザーを自動作成**（環境変数 `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` 設定時）
-
-```bash
-# 実際に実行されるコマンド
-export $(grep -v '^#' .env | xargs) && \
-  BRANCH=$(git branch --show-current | tr '/' '-') && \
-  npx ampx sandbox --identifier "sb-${BRANCH}"
-```
-
-### 識別子の命名規則
-
-| 環境 | 命名規則 | 例 |
-|------|----------|-----|
-| **本番 Amplify** | ブランチ名そのまま | `main`, `feature-xxx` |
-| **サンドボックス** | `sb-` プレフィックス付き | `sb-main`, `sb-feature-xxx` |
-
-これによりCloudFormationスタック名やリソース名が衝突しない。
-
-### 追加オプション
-
-```bash
-# ブラウザを自動で開かない
-npm run sandbox -- --no-open
-
-# 特定のAWSプロファイルを使用
-npm run sandbox -- --profile my-profile
-```
-
-### サンドボックスの削除
-
-```bash
-npx ampx sandbox delete --yes
-```
-
-Dockerイメージのキャッシュをクリアしたい場合や、環境変数が反映されない場合に実行。
+`cdk.json` のドメインなどの context は作者の公開アプリ向けです。自分のAWSに載せるときは書き換えてください。
 
 ---
 
 ## 環境変数
 
-### .env ファイル
+プロジェクトルートの `.env` に置きます。
 
 ```bash
-# ローカル開発時は認証スキップ
 VITE_USE_MOCK=false
-
-# Tavily APIキー（カンマ区切りで複数指定）
 TAVILY_API_KEYS=tvly-xxxxx,tvly-yyyyy
-
-# テストユーザー（sandbox環境で自動作成）
 TEST_USER_EMAIL=test@example.com
 TEST_USER_PASSWORD=TestPass123!
-
-# Cognito User Migration Triggerを使う場合のみ設定
-VITE_USE_USER_PASSWORD_AUTH=false
-OLD_USER_POOL_ID=
-OLD_USER_POOL_CLIENT_ID=
-OLD_ACCOUNT_ROLE_ARN=
-
-# 共有スライドの独自ドメインを使う場合のみ両方設定
-SHARED_SLIDES_PUBLIC_DOMAIN=
-SHARED_SLIDES_CERTIFICATE_ARN=
 ```
-
-### サンドボックスでの読み込み
-
-`npm run sandbox` は `.env` の内容を自動でシェル環境変数としてエクスポートする。
-`dotenv/config` に依存せず確実に読み込まれる。
 
 ---
 
@@ -144,9 +71,9 @@ SHARED_SLIDES_CERTIFICATE_ARN=
 KAG社内版は別リポジトリで運用している。共通変更はマージではなく cherry-pick で反映する。KAG社内版固有のテーマ、ドメイン、認証制限などをこの一般公開リポジトリへ混ぜないため。
 
 ```
-~/git/minorun365/
+.
 ├── marp-agent/             # 一般公開版
-└── marp-agent-kag/         # KAG社内版
+└── marp-agent-kag/         # 社内向け別リポジトリ
 ```
 
 ### 反映例
@@ -164,74 +91,15 @@ git push origin main
 
 ## 本番デプロイ
 
-### 自動デプロイ
+GitHub へ push しても本番 AWS は変わりません。差分確認、dry-run、明示スタック指定のあとで CDKD を実行します。
 
-GitHubにプッシュすると、Amplify Consoleが自動でビルド・デプロイを実行。
+複数セッションで作業している場合は、push 前に `git log --oneline origin/main..HEAD` で送信対象を確認する。今回の作業と無関係なコミットが含まれていれば push しない。
 
-```bash
-git push origin main  # mainブランチにデプロイ
-```
-
-### デプロイ状況の確認
-
-```bash
-# Amplify CLIで確認
-aws amplify list-jobs --app-id {appId} --branch-name {branch} --region {region}
-```
-
-または `/check-deploy-status` スキルを使用。
-
-### デプロイスキップ
-
-ドキュメントのみの変更でデプロイを避けたい場合：
-
-```bash
-git commit -m "ドキュメント更新 [skip-cd]"
-```
-
----
-
-## テストユーザー（Sandbox専用）
-
-### 自動作成の仕組み
-
-サンドボックス起動時に、`.env` の環境変数が設定されていれば検証用ユーザーが自動作成される。
-
-| 環境変数 | 説明 | 例 |
-|----------|------|-----|
-| `TEST_USER_EMAIL` | ログイン用メールアドレス | `test@example.com` |
-| `TEST_USER_PASSWORD` | パスワード（8文字以上、大文字・小文字・数字・記号含む） | `TestPass123!` |
-
-### 技術的な実装
-
-- CDK `CfnUserPoolUser` でユーザー作成
-- CDK `AwsCustomResource` + `adminSetUserPassword` API で恒久パスワード設定
-- `email_verified: true` で確認済みメールとして登録
-- `messageAction: SUPPRESS` でウェルカムメールを抑制
-
-### 注意事項
-
-- **本番環境（Amplify Console）では作成されない**（`isSandbox` 判定）
-- サンドボックス削除時にユーザーも自動削除される
-- 既存ユーザーがいる場合、スタック更新時にエラーになる可能性あり（サンドボックス再作成で解消）
+旧 Amplify Gen2 の自己ホストと `[skip-cd]` は `legacy/amplify` ブランチの手順です。
 
 ---
 
 ## トラブルシューティング
-
-### サンドボックスが起動しない
-
-```bash
-# 既存のサンドボックスを削除
-npx ampx sandbox delete --yes
-
-# 再起動
-npm run sandbox
-```
-
-### 環境変数が反映されない
-
-AgentCore Hotswapは環境変数の変更を反映しない。サンドボックスを完全削除して再起動。
 
 ### Runtime重複エラー
 
@@ -239,17 +107,18 @@ AgentCore Hotswapは環境変数の変更を反映しない。サンドボック
 Resource of type 'AWS::BedrockAgentCore::Runtime' with identifier 'xxx' already exists.
 ```
 
-CLIでRuntimeを削除：
-
 ```bash
 aws bedrock-agentcore-control list-agent-runtimes --region us-east-1
 aws bedrock-agentcore-control delete-agent-runtime --agent-runtime-id {runtimeId} --region us-east-1
 ```
 
+Amplify sandbox の起動・削除は `legacy/amplify` ブランチを使います。
+
 ---
 
 ## 関連ドキュメント
 
+- `docs/new-architecture.html` - 新基盤の構成
 - `docs/knowledge/` - 技術的な知見・調査結果
 - `docs/spec.md` - 機能仕様
 - `docs/todo.md` - タスク管理
