@@ -33,7 +33,7 @@ Git への push では本番 AWS は変わりません。本番反映は CDKD �
 
 Amplify Gen2 の自己ホスト手順は [`legacy/amplify`](https://github.com/minorun365/marp-agent/tree/legacy/amplify) ブランチに残しています。
 
-<img width="1362" height="759" alt="アーキテクチャ図" src="https://github.com/user-attachments/assets/21c580e9-6c09-4ef8-ba82-90014522871b" />
+<img alt="アーキテクチャ図" src="docs/images/architecture.png" />
 
 CDK は次の6スタックに分かれています。差分を確認するときは、触ったつもりのないスタックが `No changes` のままかを見てください。
 
