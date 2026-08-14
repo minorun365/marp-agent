@@ -4,8 +4,10 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import type { Construct } from 'constructs';
 
 export interface AuthAccessStackProps extends cdk.StackProps {
-  readonly legacyMigrationRoleArn: string;
-  readonly legacyGoogleCheckRoleArn: string;
+  /** 旧環境のユーザー移行用ロールARN。新規構築なら未設定でよい。 */
+  readonly legacyMigrationRoleArn?: string;
+  /** 旧環境のGoogleアカウント照合用ロールARN。新規構築なら未設定でよい。 */
+  readonly legacyGoogleCheckRoleArn?: string;
 }
 
 export class AuthAccessStack extends cdk.Stack {
@@ -21,10 +23,12 @@ export class AuthAccessStack extends cdk.Stack {
 
     this.userMigrationLogGroup = this.createLogGroup('UserMigration', 'pawapo-user-migration');
     this.userMigrationRole = this.createLambdaRole('UserMigration', 'pawapo-user-migration', this.userMigrationLogGroup);
-    this.userMigrationRole.addToPolicy(new iam.PolicyStatement({
-      actions: ['sts:AssumeRole'],
-      resources: [props.legacyMigrationRoleArn],
-    }));
+    if (props.legacyMigrationRoleArn) {
+      this.userMigrationRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['sts:AssumeRole'],
+        resources: [props.legacyMigrationRoleArn],
+      }));
+    }
 
     this.googleLinkLogGroup = this.createLogGroup('GoogleLink', 'pawapo-google-link');
     this.googleLinkRole = this.createLambdaRole('GoogleLink', 'pawapo-google-link', this.googleLinkLogGroup);
@@ -35,10 +39,12 @@ export class AuthAccessStack extends cdk.Stack {
         StringEquals: { 'aws:ResourceTag/Project': 'pawapo' },
       },
     }));
-    this.googleLinkRole.addToPolicy(new iam.PolicyStatement({
-      actions: ['sts:AssumeRole'],
-      resources: [props.legacyGoogleCheckRoleArn],
-    }));
+    if (props.legacyGoogleCheckRoleArn) {
+      this.googleLinkRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['sts:AssumeRole'],
+        resources: [props.legacyGoogleCheckRoleArn],
+      }));
+    }
 
     this.googleIdpManagerLogGroup = this.createLogGroup('GoogleIdpManager', 'pawapo-google-idp-manager');
     this.googleIdpManagerRole = this.createLambdaRole(

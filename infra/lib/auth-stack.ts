@@ -13,8 +13,10 @@ export interface AuthStackProps extends cdk.StackProps {
   readonly appDomain: string;
   readonly previewDomain?: string;
   readonly authAccess: AuthAccessStack;
-  readonly legacyMigrationRoleArn: string;
-  readonly legacyGoogleCheckRoleArn: string;
+  /** 旧環境のユーザー移行用ロールARN。新規構築なら未設定でよい。 */
+  readonly legacyMigrationRoleArn?: string;
+  /** 旧環境のGoogleアカウント照合用ロールARN。新規構築なら未設定でよい。 */
+  readonly legacyGoogleCheckRoleArn?: string;
 }
 
 export class AuthStack extends cdk.Stack {
@@ -27,10 +29,11 @@ export class AuthStack extends cdk.Stack {
 
     const oldUserPoolId = this.node.tryGetContext('oldUserPoolId') as string | undefined;
     const oldUserPoolClientId = this.node.tryGetContext('oldUserPoolClientId') as string | undefined;
-    const migrationValues = [oldUserPoolId, oldUserPoolClientId];
+    // 旧環境から引き継ぐときだけ3つそろえる。新規構築なら3つとも未設定にする。
+    const migrationValues = [oldUserPoolId, oldUserPoolClientId, props.legacyMigrationRoleArn];
     const migrationEnabled = migrationValues.every(Boolean);
     if (migrationValues.some(Boolean) && !migrationEnabled) {
-      throw new Error('既存ユーザー移行には oldUserPoolId と oldUserPoolClientId の両方が必要です');
+      throw new Error('既存ユーザー移行には oldUserPoolId・oldUserPoolClientId・oldMigrationRoleArn の3つが必要です');
     }
     const googleClientId = this.node.tryGetContext('googleClientId') as string | undefined;
     const cognitoDomainPrefix = this.node.tryGetContext('cognitoDomainPrefix') as string | undefined;
@@ -50,7 +53,7 @@ export class AuthStack extends cdk.Stack {
         role: props.authAccess.userMigrationRole,
         logGroup: props.authAccess.userMigrationLogGroup,
         environment: {
-          OLD_ACCOUNT_ROLE_ARN: props.legacyMigrationRoleArn,
+          OLD_ACCOUNT_ROLE_ARN: props.legacyMigrationRoleArn!,
           OLD_USER_POOL_ID: oldUserPoolId!,
           OLD_USER_POOL_CLIENT_ID: oldUserPoolClientId!,
         },
@@ -70,7 +73,8 @@ export class AuthStack extends cdk.Stack {
         role: props.authAccess.googleLinkRole,
         logGroup: props.authAccess.googleLinkLogGroup,
         environment: {
-          OLD_ACCOUNT_ROLE_ARN: props.legacyGoogleCheckRoleArn,
+          // 旧環境が無ければ空文字。handler側が空を見て照合そのものをスキップする。
+          OLD_ACCOUNT_ROLE_ARN: props.legacyGoogleCheckRoleArn ?? '',
           OLD_USER_POOL_ID: oldUserPoolId ?? '',
         },
         bundling: { minify: true, sourceMap: true },
@@ -112,6 +116,15 @@ export class AuthStack extends cdk.Stack {
         ...(migrationFunction ? { userMigration: migrationFunction } : {}),
         ...(googleLinkFunction ? { preSignUp: googleLinkFunction } : {}),
       },
+    });
+
+    // 運営者本人の利用を利用統計から切り分けるためのグループ。
+    // 所属ユーザーのJWTには cognito:groups に owner が入り、エージェント側がログへ印を付ける。
+    // 誰を入れるかはCognito側で管理し、個人の識別子はこのリポジトリへ持ち込まない。
+    new cognito.CfnUserPoolGroup(this, 'OwnerGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'owner',
+      description: '運営者本人。デモ・検証の利用を統計から除外するために使う',
     });
 
     let googleProvider: cdk.CustomResource | undefined;

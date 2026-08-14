@@ -16,12 +16,9 @@ const env = {
 const appDomain = app.node.getContext('appDomain') as string;
 const previewDomain = app.node.tryGetContext('previewDomain') as string | undefined;
 const cutoverWildcardDomain = app.node.tryGetContext('cutoverWildcardDomain') as string | undefined;
+// 旧環境からユーザーを引き継ぐときだけ指定する。新規に構築する場合は未設定でよい。
 const oldMigrationRoleArn = app.node.tryGetContext('oldMigrationRoleArn') as string | undefined;
 const oldGoogleCheckRoleArn = app.node.tryGetContext('oldGoogleCheckRoleArn') as string | undefined;
-
-if (!oldMigrationRoleArn || !oldGoogleCheckRoleArn) {
-  throw new Error('oldMigrationRoleArn と oldGoogleCheckRoleArn のcontextが必要です');
-}
 
 const foundation = new FoundationStack(app, 'PawapoFoundation', {
   env,
