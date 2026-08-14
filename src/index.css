@@ -146,7 +146,11 @@ body {
   border: none;
   box-shadow: none;
   -webkit-tap-highlight-color: transparent;
-  transition: all 0.2s;
+  /* transition: all にしない。iOS Safariでは opacity のトランジション中に要素が合成レイヤーへ
+     移り、同じフレームで起きたラベル変更（公開する→公開中...）による幅の広がりがレイヤーへ
+     反映されず、伸びた分の帯だけ変更前の濃紺が残る（ボタン左端に縦線が出る）。
+     アニメーションさせたいのはhoverの背景だけなので、対象をbackgroundに絞る */
+  transition: background 0.2s;
 }
 
 .btn-brand:hover {
