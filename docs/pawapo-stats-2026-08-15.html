@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>パワポ作るマン統計｜リリース〜刷新前の全記録</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb; --blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a; --sub:#4a4a54; --mut:#767680; --line:#e8e8ee; --soft:#f7f8fa;
+  --gold:#f0b21f; --gold-deep:#8a5a00; --gold-soft:#fdf5e0;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  color:var(--ink);line-height:1.85;font-size:15.5px;
+  -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;
+  font-feature-settings:"palt" 1;
+}
+.wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,
+.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+.hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+
+.toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+.toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;
+  grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.toc li{margin:0}
+.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;
+  color:var(--sub);font-size:14px;padding:5px 0}
+.toc a:hover{color:var(--blue-deep)}
+.toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);
+  font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+
+section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+section::before{content:"";position:absolute;top:-1px;left:0;
+  width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+  font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;
+  background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);
+  font-weight:700;letter-spacing:.005em}
+h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;
+  padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));margin:20px 0}
+.card{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:#fff;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+.card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+.card h4{margin:0 0 8px;font-size:12px;color:var(--mut);font-weight:700;letter-spacing:.08em;
+  padding-bottom:8px;border-bottom:1px solid var(--line)}
+.card .big{font-size:27px;font-weight:800;color:var(--blue-deep);line-height:1.25;
+  font-variant-numeric:tabular-nums;display:block;margin:2px 0 2px}
+.card p{margin:4px 0 0;font-size:12.5px;color:var(--mut);line-height:1.7}
+
+.callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;
+  border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.callout b{color:var(--gold-deep)}
+.callout > :first-child{margin-top:0}
+.callout > :last-child{margin-bottom:0}
+.callout.blue{background:var(--blue-soft)}
+.callout.blue::before{background:var(--blue-grad)}
+.callout.blue b{color:var(--blue-deep)}
+
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;
+  border:1px solid var(--line);border-radius:16px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:600px}
+thead{background-image:var(--blue-grad)}
+th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;
+  text-align:left;white-space:nowrap;letter-spacing:.02em;border:0}
+td{padding:13px 16px;text-align:left;vertical-align:top;border:0;
+  border-bottom:1px solid var(--line);line-height:1.75}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbfcfe}
+td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+td.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+th.num{text-align:right}
+tr.total td{background:var(--blue-soft);font-weight:800;color:var(--blue-deep);border-top:2px solid var(--blue-line)}
+tr.partial td{color:var(--mut)}
+td.svc{background:var(--blue-soft);color:var(--blue-deep);font-weight:800;font-size:14px;
+  white-space:nowrap;border-right:1px solid var(--blue-line);vertical-align:middle;text-align:center}
+td.who{font-weight:700;color:var(--ink);white-space:nowrap;background:#fdfdfe}
+td.who small{color:var(--mut);font-weight:400;display:block}
+tr.grp td{border-top:2px solid var(--blue-line)}
+tbody tr:first-child td{border-top:0}
+td.risk{background:#fdf4f4;color:#8a3a3a;font-weight:700}
+td.safe{background:#f0faf3;color:#1a6b38;font-weight:700}
+.note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
+
+.tag{display:inline-block;font-size:11px;padding:3px 10px;border-radius:99px;
+  font-weight:700;white-space:nowrap;vertical-align:2px;letter-spacing:.03em}
+.t-new{background:var(--gold);color:#4a3000}
+.t-fact{background:var(--blue-soft);color:var(--blue-deep)}
+
+ul,ol{margin:12px 0;padding-left:23px}
+li{margin:7px 0}
+svg{width:100%;height:auto;display:block}
+.fig{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff;margin:24px 0}
+.fig figcaption{font-size:12.5px;color:var(--mut);margin-top:12px;text-align:center;line-height:1.7}
+.grid + .table-wrap{margin-top:20px}
+
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--mut);line-height:1.9}
+footer p{margin:8px 0}
+code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
+  font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+
+@media (max-width:620px){
+  body{font-size:15px}
+  .hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}
+  .hero h1{font-size:23px}
+  h2{font-size:20px}
+  section{padding-top:38px}
+  .callout{padding:16px 18px 16px 22px}
+  .toc{padding:18px 20px}
+  .card .big{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ 利用実績の棚卸し</span>
+    <h1>リリースから200日、<br>アーキテクチャ刷新前の全記録</h1>
+    <p class="sub">2026年1月24日の開発開始から、8月14日の新基盤切替までを実データで通しで集計しました。</p>
+    <div class="meta">
+      集計日：2026年8月15日（JST）／ 対象：公開版・KAG社内版の全世代<br>
+      出典：Cognito ユーザープール6本、CloudWatch Logs（AgentCore ランタイム7本）、Cost Explorer 4アカウント、Git・GitHub Releases
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li><a href="#s1"><span class="num">01</span>これまでの到達点</a></li>
+    <li><a href="#s2"><span class="num">02</span>ユーザーはどう増えたか</a></li>
+    <li><a href="#s3"><span class="num">03</span>日々どう使われているか</a></li>
+    <li><a href="#s4"><span class="num">04</span>コスト効率の実像</a></li>
+    <li><a href="#s5"><span class="num">05</span>いま保全すべきデータ</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <span class="eyebrow">01</span>
+  <h2>これまでの到達点</h2>
+  <p class="lead">1月31日の一般公開から約6か月半。ユーザー登録は1,598人、スライド生成セッションは4,191回に達しました。累計のAI費用は約1,959ドル（1ドル155円換算で約30万円）で、1セッションあたり0.53ドル（約82円）です。</p>
+
+  <div class="grid">
+    <div class="card">
+      <h4>ユーザー登録</h4>
+      <span class="big">1,598</span>
+      <p>公開版 1,501 ／ 社内版 100<br>メール重複を除いた実数</p>
+    </div>
+    <div class="card">
+      <h4>生成セッション</h4>
+      <span class="big">4,191</span>
+      <p>公開版 3,719 ／ 社内版 472</p>
+    </div>
+    <div class="card">
+      <h4>累計AI費用</h4>
+      <span class="big">$1,959</span>
+      <p>約30万円<br>公開版のみ・クレジット適用前</p>
+    </div>
+    <div class="card">
+      <h4>セッション単価</h4>
+      <span class="big">$0.53</span>
+      <p>約82円／回<br>直近3か月は0.4ドル前後</p>
+    </div>
+    <div class="card">
+      <h4>リリース</h4>
+      <span class="big">32</span>
+      <p>v1.0.0 から v1.18.0<br>うち2月だけで21本</p>
+    </div>
+    <div class="card">
+      <h4>アカウント移設</h4>
+      <span class="big">2回</span>
+      <p>6月7日・8月14日<br>いずれも無停止で実施</p>
+    </div>
+  </div>
+
+  <p class="note">セッション数は AgentCore ランタイムのログから、同一セッションIDの初回出現時刻で数えた実測値です。1月分には公開前の開発テストが含まれます。</p>
+
+  <h3>環境の移り変わり</h3>
+  <p>基盤は3世代あり、それぞれ別のAWSアカウントで動いてきました。ユーザープールもセッションログも世代ごとに分かれているため、通しの統計を出すには6本のプールと7本のランタイムを横断する必要があります。</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="3世代のアカウント移行タイムライン">
+      <defs>
+        <linearGradient id="tl" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#0e0d6a"/><stop offset="0.5" stop-color="#0a4695"/><stop offset="1" stop-color="#01b6ec"/>
+        </linearGradient>
+      </defs>
+      <rect x="40" y="74" width="820" height="6" rx="3" fill="url(#tl)"/>
+
+      <g font-family="-apple-system,BlinkMacSystemFont,sans-serif">
+        <!-- 第1世代 -->
+        <rect x="40" y="96" width="380" height="30" rx="14" fill="#eaf2fb"/>
+        <text x="230" y="116" font-size="13" font-weight="700" fill="#0a4695" text-anchor="middle">第1世代：個人サンドボックス</text>
+        <text x="230" y="144" font-size="11.5" fill="#767680" text-anchor="middle">Amplify Gen2 ／ 1,076人 ・ 2,799セッション</text>
+
+        <!-- 第2世代 -->
+        <rect x="430" y="96" width="270" height="30" rx="14" fill="#eaf2fb"/>
+        <text x="565" y="116" font-size="13" font-weight="700" fill="#0a4695" text-anchor="middle">第2世代：会社サンドボックス</text>
+        <text x="565" y="144" font-size="11.5" fill="#767680" text-anchor="middle">Amplify Gen2 ／ 505人 ・ 920セッション</text>
+
+        <!-- 第3世代 -->
+        <rect x="710" y="96" width="150" height="30" rx="14" fill="#fdf5e0"/>
+        <text x="785" y="116" font-size="13" font-weight="700" fill="#8a5a00" text-anchor="middle">第3世代：専用</text>
+        <text x="785" y="144" font-size="11.5" fill="#767680" text-anchor="middle">CDKD + CloudFront</text>
+        <text x="785" y="160" font-size="11.5" fill="#767680" text-anchor="middle">実績はこれから</text>
+
+        <!-- 節点 -->
+        <circle cx="60" cy="77" r="7" fill="#0e0d6a"/>
+        <text x="60" y="58" font-size="11.5" font-weight="700" fill="#15151a" text-anchor="middle">1/24</text>
+        <text x="60" y="40" font-size="11" fill="#767680" text-anchor="middle">開発開始</text>
+
+        <circle cx="150" cy="77" r="7" fill="#0a4695"/>
+        <text x="150" y="58" font-size="11.5" font-weight="700" fill="#15151a" text-anchor="middle">1/31</text>
+        <text x="150" y="40" font-size="11" fill="#767680" text-anchor="middle">一般公開</text>
+
+        <circle cx="250" cy="77" r="7" fill="#0a4695"/>
+        <text x="250" y="58" font-size="11.5" font-weight="700" fill="#15151a" text-anchor="middle">2/10</text>
+        <text x="250" y="40" font-size="11" fill="#767680" text-anchor="middle">社内版を分離</text>
+
+        <circle cx="425" cy="77" r="8" fill="#f0b21f" stroke="#fff" stroke-width="2"/>
+        <text x="425" y="58" font-size="11.5" font-weight="700" fill="#8a5a00" text-anchor="middle">6/7</text>
+        <text x="425" y="40" font-size="11" fill="#8a5a00" text-anchor="middle">移設1回目</text>
+
+        <circle cx="705" cy="77" r="8" fill="#f0b21f" stroke="#fff" stroke-width="2"/>
+        <text x="705" y="58" font-size="11.5" font-weight="700" fill="#8a5a00" text-anchor="middle">8/14</text>
+        <text x="705" y="40" font-size="11" fill="#8a5a00" text-anchor="middle">移設2回目</text>
+
+        <text x="860" y="58" font-size="11.5" font-weight="700" fill="#15151a" text-anchor="end">8/15</text>
+        <text x="860" y="40" font-size="11" fill="#767680" text-anchor="end">本集計</text>
+      </g>
+    </svg>
+    <figcaption>横軸は時間に比例していません。帯の中の数値は、その世代のプール・ランタイムに残っている実測値です。</figcaption>
+  </figure>
+</section>
+
+<section id="s2">
+  <span class="eyebrow">02</span>
+  <h2>ユーザーはどう増えたか</h2>
+  <p class="lead">公開直後の2月に395人が登録してピークを打ち、その後は自然減。ただし6月の移設を挟んで7月まで月200人前後の登録が続いており、流入自体は止まっていません。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>月</th><th class="num">新規ユーザー</th><th class="num">セッション</th><th class="num">AI費用</th><th class="num">セッション単価</th><th>その月の出来事</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>2026-01</td><td class="num">232</td><td class="num">567</td><td class="num">$183.22</td><td class="num">$0.32</td><td>1/24 開発開始、1/31 一般公開</td></tr>
+        <tr><td>2026-02</td><td class="num">395</td><td class="num">943</td><td class="num">$546.46</td><td class="num">$0.58</td><td>21リリース。共有機能・PPTX出力・モデル選択</td></tr>
+        <tr><td>2026-03</td><td class="num">222</td><td class="num">579</td><td class="num">$339.27</td><td class="num">$0.59</td><td>プロンプトキャッシュ最適化</td></tr>
+        <tr><td>2026-04</td><td class="num">141</td><td class="num">438</td><td class="num">$296.59</td><td class="num">$0.68</td><td>共有URLの独自ドメイン対応</td></tr>
+        <tr><td>2026-05</td><td class="num">77</td><td class="num">224</td><td class="num">$198.19</td><td class="num">$0.88</td><td>リリースなし。単価が最も悪化</td></tr>
+        <tr><td>2026-06</td><td class="num">274</td><td class="num">387</td><td class="num">$154.70</td><td class="num">$0.40</td><td>6/7 アカウント移設1回目</td></tr>
+        <tr><td>2026-07</td><td class="num">202</td><td class="num">466</td><td class="num">$199.56</td><td class="num">$0.43</td><td>Kimi K2.5・GPT-5.6 Sol を追加</td></tr>
+        <tr class="partial"><td>2026-08</td><td class="num">41</td><td class="num">115</td><td class="num">$40.92</td><td class="num">$0.36</td><td>8/13 Kimi K2.5 に固定、8/14 移設2回目（15日まで）</td></tr>
+        <tr class="total"><td>累計</td><td class="num">1,584</td><td class="num">3,719</td><td class="num">$1,958.91</td><td class="num">$0.53</td><td>公開版のみ。重複を除くと1,501人</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">新規ユーザーの累計1,584人には、6月の移設時に新プールへ登録し直した82人と、8月の移設で移行済みの1人が二重に含まれます。これを除いた実ユーザーが1,501人です。</p>
+
+  <div class="callout">
+    <p><b>移設のたびにユーザーベースは作り直しになっています。</b>6月の移設時点で旧プールに1,076人いましたが、新プールへ登録し直したのは82人（7.6%）。残りは新規流入423人で埋まった形です。8月14日の移設後も同じ構造で、新プールにはまだ3人しかいません。移行用の仕組みは用意されているため、既存ユーザーは次のログイン時に順次移ってくる想定です。</p>
+  </div>
+
+  <h3>KAG社内版</h3>
+  <p>社内版は重複を除いて100人、累計472セッションです。3月をピークに利用が細り、7月以降は月1桁まで落ちています。社内版は今も第2世代の基盤（Amplify Gen2）のままで、公開版のような刷新は行っていません。</p>
+</section>
+
+<section id="s3">
+  <span class="eyebrow">03</span>
+  <h2>日々どう使われているか</h2>
+  <p class="lead">セッションの63%が平日日中の9時から17時台に集中し、ピークは14時台。業務時間内に使われる道具として定着していることが、時間帯・曜日の両方から読み取れます。</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 414" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="月次セッション数とセッション単価の推移">
+      <defs>
+        <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0a4695"/><stop offset="1" stop-color="#01b6ec"/>
+        </linearGradient>
+      </defs>
+
+      <!-- ── 上段：セッション単価 ── -->
+      <text x="60" y="30" font-family="-apple-system,sans-serif" font-size="11.5" font-weight="700" fill="#8a5a00" letter-spacing=".06em">セッション単価（USD／回）</text>
+      <g stroke="#f2eadc" stroke-width="1">
+        <line x1="60" y1="50" x2="860" y2="50"/>
+        <line x1="60" y1="100" x2="860" y2="100"/>
+        <line x1="60" y1="150" x2="860" y2="150"/>
+      </g>
+      <g font-family="-apple-system,sans-serif" font-size="10.5" fill="#a08a5c">
+        <text x="52" y="54" text-anchor="end">$0.9</text>
+        <text x="52" y="104" text-anchor="end">$0.6</text>
+        <text x="52" y="154" text-anchor="end">$0.3</text>
+      </g>
+      <polyline points="110,146.7 210,103.3 310,101.7 410,86.7 510,53.3 610,133.3 710,128.3 810,140"
+        fill="none" stroke="#f0b21f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <g fill="#f0b21f">
+        <circle cx="110" cy="146.7" r="4.5"/><circle cx="210" cy="103.3" r="4.5"/>
+        <circle cx="310" cy="101.7" r="4.5"/><circle cx="410" cy="86.7" r="4.5"/>
+        <circle cx="510" cy="53.3" r="5.5"/><circle cx="610" cy="133.3" r="4.5"/>
+        <circle cx="710" cy="128.3" r="4.5"/><circle cx="810" cy="140" r="4.5"/>
+      </g>
+      <g font-family="-apple-system,sans-serif" font-size="11.5" font-weight="700" fill="#8a5a00"
+         paint-order="stroke fill" stroke="#fff" stroke-width="4" text-anchor="middle">
+        <text x="110" y="135.7">0.32</text><text x="210" y="92.3">0.58</text>
+        <text x="310" y="90.7">0.59</text><text x="410" y="75.7">0.68</text>
+        <text x="510" y="42.3">0.88</text><text x="610" y="122.3">0.40</text>
+        <text x="710" y="117.3">0.43</text><text x="810" y="129">0.36</text>
+      </g>
+
+      <!-- ── 下段：セッション数 ── -->
+      <text x="60" y="182" font-family="-apple-system,sans-serif" font-size="11.5" font-weight="700" fill="#0a4695" letter-spacing=".06em">セッション数（回／月）</text>
+      <g stroke="#e8e8ee" stroke-width="1">
+        <line x1="60" y1="200" x2="860" y2="200"/>
+        <line x1="60" y1="242.5" x2="860" y2="242.5"/>
+        <line x1="60" y1="285" x2="860" y2="285"/>
+        <line x1="60" y1="327.5" x2="860" y2="327.5"/>
+        <line x1="60" y1="370" x2="860" y2="370"/>
+      </g>
+      <g font-family="-apple-system,sans-serif" font-size="10.5" fill="#767680">
+        <text x="52" y="204" text-anchor="end">1000</text>
+        <text x="52" y="246.5" text-anchor="end">750</text>
+        <text x="52" y="289" text-anchor="end">500</text>
+        <text x="52" y="331.5" text-anchor="end">250</text>
+        <text x="52" y="374" text-anchor="end">0</text>
+      </g>
+      <g fill="url(#bar)">
+        <rect x="88"  y="273.6" width="44" height="96.4" rx="4"/>
+        <rect x="188" y="209.7" width="44" height="160.3" rx="4"/>
+        <rect x="288" y="271.6" width="44" height="98.4" rx="4"/>
+        <rect x="388" y="295.5" width="44" height="74.5" rx="4"/>
+        <rect x="488" y="331.9" width="44" height="38.1" rx="4"/>
+        <rect x="588" y="304.2" width="44" height="65.8" rx="4"/>
+        <rect x="688" y="290.8" width="44" height="79.2" rx="4"/>
+      </g>
+      <rect x="788" y="350.4" width="44" height="19.6" rx="4" fill="#b9d6ea"/>
+      <g font-family="-apple-system,sans-serif" font-size="11.5" font-weight="700" fill="#0e0d6a"
+         paint-order="stroke fill" stroke="#fff" stroke-width="4" text-anchor="middle">
+        <text x="110" y="266.6">567</text><text x="210" y="202.7">943</text>
+        <text x="310" y="264.6">579</text><text x="410" y="288.5">438</text>
+        <text x="510" y="324.9">224</text><text x="610" y="297.2">387</text>
+        <text x="710" y="283.8">466</text><text x="810" y="343.4">115</text>
+      </g>
+
+      <!-- x軸 -->
+      <g font-family="-apple-system,sans-serif" font-size="12" fill="#4a4a54" text-anchor="middle">
+        <text x="110" y="390">1月</text><text x="210" y="390">2月</text>
+        <text x="310" y="390">3月</text><text x="410" y="390">4月</text>
+        <text x="510" y="390">5月</text><text x="610" y="390">6月</text>
+        <text x="710" y="390">7月</text><text x="810" y="390">8月</text>
+      </g>
+      <text x="860" y="409" font-family="-apple-system,sans-serif" font-size="10" fill="#767680" text-anchor="end">※8月は15日までの集計</text>
+    </svg>
+    <figcaption>公開版の月次セッション数と、1セッションあたりのAI費用。5月に単価が最悪の0.88ドルまで上がり、6月以降は0.4ドル前後で安定しています。</figcaption>
+  </figure>
+
+  <h3>時間帯と曜日</h3>
+  <p>公開版の全セッションを日本時間の時間帯で割ると、9時から17時台が全体の63%を占めます。最も多いのは14時台、次いで9時台。深夜0時から5時台は8%で、業務時間外の利用は限定的です。曜日別では火曜が1日平均22.7回で最多、土曜が12.2回で最少と、平日が週末の1.5倍から1.9倍でした。</p>
+
+  <div class="callout blue">
+    <p><b>「思いついたときに触るツール」ではなく「業務時間内に仕事として使うツール」になっています。</b>資料作成という用途からすれば自然ですが、平日日中に負荷が寄るということは、この時間帯の応答速度と安定性が体験を決めるということでもあります。</p>
+  </div>
+</section>
+
+<section id="s4">
+  <span class="eyebrow">04</span>
+  <h2>コスト効率の実像</h2>
+  <p class="lead">費用の9割はAIモデルの推論そのものです。インフラは月2ドル未満で、これまでのレポートに載っていた「インフラ数百ドル」は、共有アカウントに同居していた別アプリの費用でした。</p>
+
+  <h3>実際の内訳（2026年7月）</h3>
+  <p>7月は Project タグでアプリの費用を正確に切り出せる唯一の月です。この月の公開版の全費用は201.35ドルで、内訳は次のとおりでした。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>区分</th><th>項目</th><th class="num">費用</th><th class="num">構成比</th></tr>
+      </thead>
+      <tbody>
+        <tr class="grp"><td class="svc" rowspan="2">AI推論</td><td class="who">Claude Sonnet 4.6</td><td class="num">$179.10</td><td class="num">88.9%</td></tr>
+        <tr><td class="who">Claude Haiku 4.5<small>はみ出し検査などの補助用途</small></td><td class="num">$1.20</td><td class="num">0.6%</td></tr>
+        <tr class="grp"><td class="svc">実行基盤</td><td class="who">Bedrock AgentCore Runtime</td><td class="num">$19.26</td><td class="num">9.6%</td></tr>
+        <tr class="grp"><td class="svc" rowspan="3">インフラ</td><td class="who">Amplify Hosting</td><td class="num">$1.36</td><td class="num">0.7%</td></tr>
+        <tr><td class="who">ECR<small>コンテナイメージ保管</small></td><td class="num">$0.31</td><td class="num">0.2%</td></tr>
+        <tr><td class="who">CodeBuild ほか<small>CloudFront・Cognito・S3 はいずれも0ドル</small></td><td class="num">$0.12</td><td class="num">0.1%</td></tr>
+        <tr class="total"><td>合計</td><td></td><td class="num">$201.35</td><td class="num">100%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <p><b>過去レポートの「累計インフラコスト712ドル」は取り下げが必要です。</b>当時は共有アカウント全体の費用をアプリに割り当てていましたが、中身を確認すると Security Hub が月80ドル、EC2 が月50ドル、WAF が月25ドル、SageMaker と、いずれもパワポ作るマンとは無関係の同居アプリの費用でした。タグで正確に切れる7月で見ると、アプリ本体のインフラ費用は月1.79ドルです。<b>このアプリは「サーバーレスでインフラ費用がほぼゼロ、費用はほぼ全額がトークン課金」という構造</b>だと言えます。</p>
+  </div>
+
+  <h3>単価はどう動いたか</h3>
+  <p>セッション単価は2月から5月にかけて0.58ドルから0.88ドルへ悪化し、6月以降は0.4ドル前後まで改善しました。5月の悪化は、リリースが2か月止まっていた時期に長文・高難度の依頼だけが残ったことが主因と見られます。6月以降の改善は、プロンプトキャッシュの効きと、7月に追加したモデル選択肢の影響が重なったものです。</p>
+
+  <div class="callout blue">
+    <p><b>8月13日に標準モデルを Kimi K2.5 へ切り替えた効果は、まだ測れていません。</b>8月の費用に計上されているのは主に切替前の Sonnet 4.6 分（36.84ドル）で、Kimi の課金は Cost Explorer にまだ現れていません。加えて8月14日に専用アカウントへ移設したため、新環境の費用データはこれからです。<b>Kimi 標準化のコスト効果は、9月に入ってから改めて測るのが確実</b>です。</p>
+  </div>
+
+  <h3>モデルの変遷</h3>
+  <p>これまでに試したモデルは10種類近くあります。初期の Sonnet 4.5 から始まり、Kimi K2 の採用と撤退、Opus 4.6 と Haiku 4.5 と DeepSeek V3.2 の同時期の試行、2月中旬の Sonnet 一本化、2月17日からの Sonnet 4.6、4月の Opus 4.7 追加、7月の Kimi K2.5 復活と GPT-5.6 Sol 追加、そして8月13日の Kimi K2.5 固定という流れです。現在は Sonnet 4.6・Sonnet 5・GPT-5.6 Sol・GLM-5・Opus 4.6 の設定をコードに残したまま無効化し、Kimi K2.5 だけを有効にしています。</p>
+</section>
+
+<section id="s5">
+  <span class="eyebrow">05</span>
+  <h2>いま保全すべきデータ</h2>
+  <p class="lead">今回の集計で最も重要な発見は、過去の実績データが「旧環境をまだ消していないから残っている」という状態にあることです。切り戻し用に保持している旧リソースを撤去した瞬間、ここまでの数字は二度と取れなくなります。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>データ</th><th>いまの所在</th><th>保持設定</th><th>失われる条件</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ユーザー 1,076人</td><td>第1世代のユーザープール</td>
+          <td class="safe">無期限</td><td class="risk">プール削除で即消滅</td>
+        </tr>
+        <tr>
+          <td>ユーザー 505人</td><td>第2世代のユーザープール</td>
+          <td class="safe">無期限</td><td class="risk">プール削除で即消滅</td>
+        </tr>
+        <tr>
+          <td>セッションログ 2,799件</td><td>第1世代のロググループ</td>
+          <td class="safe">無期限</td><td class="risk">ランタイム・ロググループ削除で消滅</td>
+        </tr>
+        <tr>
+          <td>セッションログ 920件</td><td>第2世代のロググループ</td>
+          <td class="safe">無期限</td><td class="risk">同上</td>
+        </tr>
+        <tr>
+          <td>セッションログ（新環境）</td><td>第3世代のロググループ</td>
+          <td class="risk">30日</td><td class="risk">30日経過で自動削除</td>
+        </tr>
+        <tr>
+          <td>費用データ</td><td>Cost Explorer（4アカウント）</td>
+          <td class="risk">14か月</td><td class="risk">2027年3月ごろ1月分から順次消滅</td>
+        </tr>
+        <tr>
+          <td>リリース履歴</td><td>Git・GitHub Releases</td>
+          <td class="safe">恒久</td><td class="safe">リスクなし</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <p><b>新環境のログ保持が30日に設定されている点は、次に手を打つべきところです。</b>このままだと、来月以降は「直近30日」より前の利用状況を一切振り返れなくなります。<b>保持期間を延ばすか、月次のセッション数だけを定期的にどこかへ書き出す仕組みを入れておく</b>と、今回のような棚卸しを毎回ゼロからやらずに済みます。旧環境を撤去する前に、この文書の数字が保存済みであることを確認してください。</p>
+  </div>
+
+  <h3>この集計で分かった注意点</h3>
+  <ul>
+    <li>第1世代のアカウントは他アプリと共有のため、AI費用は「上限値」です。1月から5月までは当時のレポートと同じくアカウント全体の Bedrock 費用を計上しており、他の検証アプリの分が含まれている可能性があります。6月以降はタグで正確に切り分けています。</li>
+    <li>1月のセッション567件には、一般公開前（1月24日から30日）の開発テストが含まれます。公開後だけで見るなら実質は2月からの数字が実力値です。</li>
+    <li>共有スライドの発行数は指標化できませんでした。保存先のバケットが実質空で、共有機能の利用回数を遡って数える手段が残っていません。</li>
+    <li>新環境では8月15日時点でセッションログが1件も出ていません。切替が8月14日夕方だったためで、異常ではありませんが、稼働確認は改めて必要です。</li>
+  </ul>
+</section>
+
+<footer>
+  <p>集計日：2026年8月15日（JST）／ 対象期間：2026年1月1日〜8月15日</p>
+  <p>データ取得元：Cognito ListUsers（6プール）、CloudWatch Logs Insights（AgentCore ランタイム7本、セッションIDの初回出現で重複排除）、Cost Explorer（RECORD_TYPE=Usage でクレジット適用前を取得）、Git タグ・GitHub Releases。</p>
+  <p>円換算はいずれも1ドル155円で計算した参考値です。実際の会計処理には、その時点の適切なレートを使ってください。</p>
+  <p>過去のスナップショット：<code>docs/usage-analytics.md</code>（3月28日時点）、<code>docs/temp/usage-trend-2026-04.md</code>（4月23日時点）、<code>docs/report-2026-02-19.md</code>（2月19日時点）。</p>
+</footer>
+
+</div>
+</body>
+</html>
