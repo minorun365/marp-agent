@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>無言バグ＆別テーマ混入｜パワポ作るマン調査</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb; --blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a; --sub:#4a4a54; --mut:#767680; --line:#e8e8ee; --soft:#f7f8fa;
+  --gold:#f0b21f; --gold-deep:#8a5a00; --gold-soft:#fdf5e0;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  color:var(--ink);line-height:1.85;font-size:15.5px;
+  -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;
+  font-feature-settings:"palt" 1;
+}
+.wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,
+.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+.hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+.toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+.toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;
+  grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.toc li{margin:0}
+.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;
+  color:var(--sub);font-size:14px;padding:5px 0}
+.toc a:hover{color:var(--blue-deep)}
+.toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);
+  font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+section::before{content:"";position:absolute;top:-1px;left:0;
+  width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+  font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;
+  background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);
+  font-weight:700;letter-spacing:.005em}
+h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;
+  padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));margin:20px 0}
+.card{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:#fff;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+.card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+.card h4{margin:0 0 8px;font-size:15px;color:var(--blue-deep);font-weight:700;
+  padding-bottom:8px;border-bottom:1px solid var(--line)}
+.card p{margin:6px 0;font-size:14px;color:var(--sub);line-height:1.8}
+.callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;
+  border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.callout b{color:var(--gold-deep)}
+.callout > :first-child{margin-top:0}
+.callout > :last-child{margin-bottom:0}
+.callout.blue{background:var(--blue-soft)}
+.callout.blue::before{background:var(--blue-grad)}
+.callout.blue b{color:var(--blue-deep)}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;
+  border:1px solid var(--line);border-radius:16px}
+.grid + .table-wrap{margin-top:22px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:600px}
+thead{background-image:var(--blue-grad)}
+th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;
+  text-align:left;white-space:nowrap;letter-spacing:.02em;border:0}
+td{padding:13px 16px;text-align:left;vertical-align:top;border:0;
+  border-bottom:1px solid var(--line);line-height:1.75}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbfcfe}
+td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+td.ng{background:#fdf4f4;color:#8a3a3a}
+td.ok{background:#f0faf3;color:#1a6b38}
+.note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
+blockquote{margin:20px 0;padding:18px 24px;background:var(--soft);border-radius:14px;
+  color:var(--sub);font-size:13.8px;line-height:1.85;border-left:3px solid var(--blue-line)}
+blockquote p{margin:5px 0}
+ul,ol{margin:12px 0;padding-left:23px}
+li{margin:7px 0}
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--mut);line-height:1.9}
+footer p{margin:8px 0}
+code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
+  font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+.ba{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));margin:18px 0}
+.ba > div{border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.ba h5{margin:0 0 10px;font-size:11.5px;letter-spacing:.12em;font-weight:800;color:var(--mut)}
+.ba .flow{margin:0;font-size:13.5px;line-height:2.1;color:var(--sub)}
+.ba.after > div{border-color:var(--blue-line);background:var(--blue-soft)}
+.dim{color:var(--mut)}
+.hit{color:var(--gold-deep);font-weight:700}
+@media (max-width:620px){
+  body{font-size:15px}
+  .hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}
+  .hero h1{font-size:23px}
+  h2{font-size:20px}
+  section{padding-top:38px}
+  .callout{padding:16px 18px 16px 22px}
+  .toc{padding:18px 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ 障害調査</span>
+    <h1>はみ出し検知のあと無言になる件は原因確定<br>別テーマのスライドは追跡手段から用意</h1>
+    <p class="sub">インボックス依頼2件の調査結果（2026年8月15日 未明）</p>
+    <div class="meta">
+      1件目：はみ出し検知メッセージの後にステータスが出ず無言になる → 原因3つを特定、修正済み<br>
+      2件目：「みのるん365とは」で別テーマが出た → 再現3経路とも空振り。原因未確定
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <nav class="toc">
+    <h2>目次</h2>
+    <ol>
+      <li><a href="#s1"><span class="num">01</span>1件目：無言になる原因（確定）</a></li>
+      <li><a href="#s2"><span class="num">02</span>修正のBefore/After</a></li>
+      <li><a href="#s3"><span class="num">03</span>2件目：別テーマ混入の調査</a></li>
+      <li><a href="#s4"><span class="num">04</span>ログが残っていなかった問題</a></li>
+      <li><a href="#s5"><span class="num">05</span>次のアクションと確認したいこと</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <span class="eyebrow">01</span>
+    <h2>1件目：無言になる原因は3つ重なっていた</h2>
+    <p class="lead">
+      Kimiに切り替えてから出た症状で間違いありません。はみ出し検知のメッセージ自体がKimi専用の機能で、
+      それを入れたときに「検知したあとの待ち時間」を埋める仕組みだけが抜けていました。
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h4>① 検知メッセージがスピナーを止める</h4>
+        <p>回っていた「スライドを作成中...」を「スライドを確認しました ✓」へ書き換える作りでした。
+        以降、次の <code>output_slide</code> が届くまで、動いている表示がゼロになります。</p>
+      </div>
+      <div class="card">
+        <h4>② 空白を埋めるはずの信号が捨てられていた</h4>
+        <p>バックエンドは10秒ごとに <code>{type:"progress", message:"処理中..."}</code> を送っていました。
+        ところがフロントの振り分けに <code>progress</code> の分岐が無く、
+        受け皿は <code>content</code> と <code>data</code> しか見ないため、
+        <code>message</code> に入った文言が読まれず消えていました。</p>
+      </div>
+      <div class="card">
+        <h4>③ Kimiの「修正します。」も出ない</h4>
+        <p>Kimiのテキストはいったんバッファに溜める作りで、Web検索を使った回は最後まで表示されません。
+        システムプロンプトで「修正します。の1文だけ出す」と指示していますが、その1文も画面に届いていませんでした。</p>
+      </div>
+    </div>
+
+    <div class="callout blue">
+      <p><b>なぜKimiだけか。</b>
+      はみ出し検知メッセージ（<code>slide_progress</code>）はKimiのときしか送っていません
+      （<code>model_type != "kimi"</code> なら送らない実装）。
+      Sonnetなどでは「スライドを作成中...」が最後まで回り続けるので、この空白が生まれませんでした。</p>
+    </div>
+
+    <p class="note">
+      該当箇所：<code>useChatMessages.ts</code> の <code>appendSlideProgress</code>、
+      <code>agentCoreClient.ts</code> の <code>handleEvent</code>、
+      <code>agent.py</code> のKimiテキストバッファ。
+    </p>
+  </section>
+
+  <section id="s2">
+    <span class="eyebrow">02</span>
+    <h2>修正のBefore/After</h2>
+    <p class="lead">画面の流れがどう変わるかです。修正はコミット済み・push済みですが、本番にはまだ反映していません。</p>
+
+    <div class="ba">
+      <div>
+        <h5>BEFORE</h5>
+        <p class="flow">
+          🔄 スライドを作成中...<br>
+          ✓ スライドを確認しました<br>
+          💬 文字や表のはみ出しを検知したので、スライドを修正します<br>
+          <span class="hit">（ここから数十秒〜数分、完全に無言）</span><br>
+          🔄 スライドを作成中...<br>
+          ✓ スライドを作成しました
+        </p>
+      </div>
+      <div>
+        <h5>AFTER</h5>
+        <p class="flow">
+          🔄 スライドを作成中...<br>
+          ✓ スライドを確認しました<br>
+          💬 文字や表のはみ出しを検知したので、スライドを修正します<br>
+          <b>🔄 スライドを修正中...</b><span class="dim">（Tipsも回ります）</span><br>
+          <span class="dim">（そのまま継続。二重にステータスは出しません）</span><br>
+          ✓ スライドを作成しました
+        </p>
+      </div>
+    </div>
+
+    <h3>入れた変更</h3>
+    <ul>
+      <li>検知メッセージの直後に「スライドを修正中...」を立てる。次の <code>output_slide</code> が届いてもステータスを重ねず、そのまま回し続ける</li>
+      <li>待ち時間中もTipsをローテーションさせる（修正はスライド全文の作り直しなので長い）</li>
+      <li>捨てられていた <code>progress</code> を拾い、<code>message</code> フィールドも読むようにする</li>
+      <li>回帰テストを2本追加（検知後にスピナー付きステータスが1つ残ること、修正版が届いても1つのままであること）</li>
+    </ul>
+
+    <p class="note">テスト35件・リント・ビルドとも通過。コミットは <code>9550f4e</code> と <code>6f592ce</code>。</p>
+  </section>
+
+  <section id="s3">
+    <span class="eyebrow">03</span>
+    <h2>2件目：別テーマのスライドは再現できませんでした</h2>
+    <p class="lead">
+      本番と同じ設定（Kimi K2.5・同じシステムプロンプト・同じツール）をローカルで動かし、
+      考えられる3経路を試しました。結論として<b>どれも「Claude Code対Codex」を再現しません</b>。
+      原因は未確定です。
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>試した経路</th><th>想定した引きずり</th><th>実際の結果</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>単発で投げる</td>
+            <td>プロンプト自体が原因</td>
+            <td class="ok">正しくみのるん本人のスライドを生成（8枚）</td>
+          </tr>
+          <tr>
+            <td>前のスライドを文脈に付与</td>
+            <td>画面に残ったMarkdownが「現在のスライド」として渡る</td>
+            <td class="ng">スライドを作らずテキストで回答して停止（別の不具合）</td>
+          </tr>
+          <tr>
+            <td>同一セッションの2ターン目</td>
+            <td>会話履歴に前のスライドが残る</td>
+            <td class="ng">「どう対応しますか？」と確認質問して停止（別の不具合）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>構造としては、こういう経路があります</h3>
+    <p>
+      再現しなかっただけで、可能性が消えたわけではありません。とくに気になるのが1つ目です。
+    </p>
+    <ul>
+      <li><b>システムプロンプトにClaude CodeとCodexの固有指示が5行入っている</b>。
+      8月12日のコミット <code>e138f05</code>（Kimiのスライド生成と根拠検証を改善）で追加されたもので、
+      「Claude CodeとCodexの比較では、まず <code>site:support.anthropic.com ...</code> を検索する」といった
+      実行可能な検索クエリまで名指しで書いてあります。全ユーザー共通のプロンプトに特定案件のチューニングが焼き込まれた状態です</li>
+      <li><b>画面に前のスライドが残っていると文脈に入る</b>。
+      セッションは15分アイドルで切れる仕様なので、しばらく放置して再開すると「現在のスライド」として前の全文が付きます</li>
+      <li><b>同一セッションの会話履歴</b>（直近6メッセージを保持）</li>
+    </ul>
+
+    <div class="callout">
+      <p><b>他のユーザーとの混線ではありません。</b>
+      AgentCore Runtimeはセッションごとに専用のマイクロVMで完全分離される仕様で、
+      公式ドキュメントでも「セッション終了時にVMごと破棄してメモリを消去する」と明記されています。
+      別の人の生成物がみのるんの画面に出る経路は、AWS側の作りとしてはありません。</p>
+    </div>
+  </section>
+
+  <section id="s4">
+    <span class="eyebrow">04</span>
+    <h2>そもそもログが残っていませんでした</h2>
+    <p class="lead">
+      2件目を追えなかった一番の理由がこれです。調査の副産物として見つかった、独立した問題でもあります。
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h4>コンテナのログが1行も出ていない</h4>
+        <p>Dockerfileに <code>PYTHONUNBUFFERED</code> が無く、Pythonの <code>print</code> がバッファに溜まったまま
+        CloudWatchへ流れていませんでした。出ていたのはライブラリ側のログだけです。
+        2時54分前後のログを引いても、コンテナの起動記録40行しかありませんでした。</p>
+      </div>
+      <div class="card">
+        <h4>Bedrock側のログも空</h4>
+        <p>呼び出しログの設定自体は有効ですが、ロググループの最新レコードは2月6日で止まっています。
+        AgentCore経由の呼び出しは記録されていないようです。</p>
+      </div>
+    </div>
+
+    <p>
+      対処として <code>PYTHONUNBUFFERED=1</code> を入れ、実行開始時に
+      「セッションID・モデル・履歴の有無・プロンプト長・受け取ったMarkdown長」を残すようにしました。
+      プロンプト本文は出さず長さだけです。これを反映しておけば、次に同じことが起きたときは
+      <b>その回のセッションが何を受け取って動いたのか</b>を後から確認できます。
+    </p>
+  </section>
+
+  <section id="s5">
+    <span class="eyebrow">05</span>
+    <h2>次のアクションと、確認したいこと</h2>
+
+    <h3>デプロイの判断をお願いします</h3>
+    <p>
+      mainへpushしましたが、これだけでは本番は変わりません（CDKDの実行が別途必要）。
+      1件目の修正も、ログの修正も、反映して初めて効きます。
+      朝いちで <code>npm run infra:diff</code> から流してよければ進めます。
+    </p>
+
+    <h3>2件目について教えてほしいこと</h3>
+    <ul>
+      <li>2時54分の直前に、<b>Claude CodeとCodexを比較するスライドを作っていましたか？</b>
+      作っていた場合は「画面に残っていたものが引きずられた」線が濃くなります</li>
+      <li>そのとき<b>画面には前のスライドが表示されていましたか</b>、それとも新規で開いた状態でしたか</li>
+      <li>出てきたスライドは、<b>以前に自分で作ったものと同じ内容でしたか</b>、それとも見覚えのない新しい内容でしたか</li>
+    </ul>
+    <p class="note">
+      「見覚えのない新しい内容」だった場合は、システムプロンプトの焼き込みが効いた可能性が高くなります。
+      その場合はClaude Code／Codex固有の記述を汎用ルールへ書き換える修正を提案します。
+    </p>
+
+    <div class="callout">
+      <p><b>インボックスの依頼はまだ閉じていません。</b>
+      2件目が未確定のためです。上の確認が取れて原因が固まったら閉じます。</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>調査日時：2026年8月15日 3時台（JST）／ 対象：pawapo_agent_main v24（us-east-1）</p>
+    <p>コミット：9550f4e（表示修正）、6f592ce（ログ出力）。本番未反映。</p>
+    <p>元ファイル：marp-agent/tmp/silent-status-and-wrong-topic-2026-08-15.html</p>
+  </footer>
+
+</div>
+</body>
+</html>
