@@ -578,8 +578,12 @@ def consume_slide_progress() -> str | None:
     return message
 
 
-def _format_slide_progress(violations: list[dict], attempt: int) -> str:
-    """詳細な内部指示を出さず、検査で確定した問題の種類だけを要約する。"""
+def _format_slide_progress(violations: list[dict]) -> str:
+    """詳細な内部指示を出さず、検査で確定した問題の種類だけを要約する。
+
+    何回目の検査か・何回だけ再チェックするかは内部事情なので出さない。
+    「何を見つけて、これから何をするか」だけを伝える。
+    """
     violation_types = {violation['type'] for violation in violations}
     categories = []
 
@@ -606,17 +610,7 @@ def _format_slide_progress(violations: list[dict], attempt: int) -> str:
         categories.append('見せ方の偏り')
 
     summary = '、'.join(categories) if categories else '調整が必要な箇所'
-    if _active_model_type == 'kimi':
-        if violation_types & {'line_overflow', 'table_overflow'}:
-            action = 'はみ出しを最優先で調整し、1回だけ再チェックします。'
-        else:
-            action = '内容を調整し、1回だけ再チェックします。'
-    else:
-        action = '内容を調整して再チェックします。'
-    return (
-        f'{attempt}回目の確認で、{summary}を検出しました。'
-        f'{action}'
-    )
+    return f'{summary}を検知したので、スライドを修正します'
 
 
 def reset_generated_markdown() -> None:
@@ -701,10 +695,7 @@ def output_slide(markdown: str) -> str:
 
     if retry_violations and _overflow_retry_count < retry_limit:
         _overflow_retry_count += 1
-        _slide_progress_message = _format_slide_progress(
-            retry_violations,
-            _overflow_retry_count,
-        )
+        _slide_progress_message = _format_slide_progress(retry_violations)
         details = []
         for v in retry_violations:
             if v['type'] == 'line_overflow':

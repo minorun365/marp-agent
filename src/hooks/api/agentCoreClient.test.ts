@@ -24,7 +24,7 @@ function createCallbacks(): AgentCoreCallbacks {
 describe('handleEvent', () => {
   it('スライド検査の進捗を通常テキストと分けて通知する', () => {
     const callbacks = createCallbacks();
-    const message = '1回目の確認で、文字や表のはみ出しを検出しました。内容を調整して再チェックします。';
+    const message = '文字や表のはみ出しを検知したので、スライドを修正します';
 
     handleEvent({ type: 'slide_progress', data: message }, callbacks);
 

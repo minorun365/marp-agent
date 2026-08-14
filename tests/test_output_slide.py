@@ -126,10 +126,7 @@ def test_slide_validation_progress_is_consumed_once():
 
     output_slide(markdown=markdown)
 
-    assert consume_slide_progress() == (
-        "1回目の確認で、文字や表のはみ出しを検出しました。"
-        "内容を調整して再チェックします。"
-    )
+    assert consume_slide_progress() == "文字や表のはみ出しを検知したので、スライドを修正します"
     assert consume_slide_progress() is None
 
 
@@ -141,10 +138,7 @@ def test_kimi_progress_announces_one_overflow_first_recheck():
 
     output_slide(markdown=markdown)
 
-    assert consume_slide_progress() == (
-        "1回目の確認で、文字や表のはみ出しを検出しました。"
-        "はみ出しを最優先で調整し、1回だけ再チェックします。"
-    )
+    assert consume_slide_progress() == "文字や表のはみ出しを検知したので、スライドを修正します"
 
 
 def test_reset_generated_markdown():

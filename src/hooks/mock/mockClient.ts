@@ -43,7 +43,7 @@ export async function invokeAgentMock(
   callbacks.onToolUse('output_slide');
   await sleep(transitionDelay);
   callbacks.onSlideProgress?.(
-    '1回目の確認で、文字や表のはみ出しを検出しました。内容を調整して再チェックします。'
+    '文字や表のはみ出しを検知したので、スライドを修正します'
   );
   await sleep(transitionDelay);
   callbacks.onToolUse('output_slide');
