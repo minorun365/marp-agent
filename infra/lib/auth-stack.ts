@@ -134,7 +134,7 @@ export class AuthStack extends cdk.Stack {
           ClientId: googleClientId!,
           SecretName: 'pawapo/google-oauth-client-secret',
           Scopes: 'openid email profile',
-          ConfigurationVersion: '2',
+          ConfigurationVersion: '3',
         },
       });
       // 既存のL2リソースと同じ論理IDにして、旧IDプロバイダーの削除後に

@@ -70,7 +70,7 @@ aws route53 get-hosted-zone --id <hosted-zone-id> --profile pawapo
 
 - 確認日: 2026年8月13日
 - 実環境で確認したバージョン: CDKD 0.282.5
-- 状態: upstreamへのIssue・Pull Requestは未作成
+- 状態: CDKD 0.283.20で`--exclusively`が追加済み
 
 IAM RoleとLambda Functionに正しい依存関係があっても、ロール作成の数秒後にLambdaを作成すると、次のエラーで失敗した。
 
@@ -90,7 +90,7 @@ upstreamでは、この既知のLambdaエラーを短時間だけ再試行する
 
 `cdkd deploy PawapoAuth --dry-run` は依存する `PawapoFoundation` も対象に含めた。この実行時にFoundation用のcontextを省略していたため、予算通知が削除候補として表示された。dry-runだったため実変更はない。
 
-単独更新では `--exclusively` を使う。CLIの動作自体はCDK互換だが、本番でcontext依存リソースを扱うときに意図しない削除を招きやすいため、対象スタック以外にも差分がある場合の警告強化やドキュメント改善を検討する。
+CDKD 0.282.5はCDK CLIの`--exclusively`を受け付けず、`unknown option`で停止していた。CDKD 0.283.20では同オプションを利用できる。単独更新では対象スタック名と`--exclusively`を指定し、全スタックの合成に必要なcontextは省略せず渡す。
 
 ## WebAuthnだけのUser PoolでMFAをOPTIONALへ補完して失敗する
 
@@ -135,11 +135,13 @@ GetFunctionCodeSigningConfig failed ... Code signing is not supported for functi
 
 - 確認日: 2026年8月14日
 - 実環境で確認したバージョン: CDKD 0.282.5
-- 状態: upstreamへのIssue・Pull Requestは未作成
+- 状態: GitHub Security Advisory GHSA-p5qg-v9gv-hc7wとして公開され、CDKD 0.283.20で修正済み
 
 Secrets Managerの動的参照を`AWS::Cognito::UserPoolIdentityProvider.ProviderDetails.client_secret`へ指定してデプロイすると、CDKDは参照を解決した実値をstateの`Properties`と`Attributes.ProviderDetails`へ保存した。`cdkd state show`もマスクせず表示するため、AWS側で秘匿されるべきOAuthクライアントシークレットがstateとターミナルへ露出する。
 
-現在の回避策は、CDKD管理リソースのプロパティへ秘密値を渡さないこと。カスタムリソースのLambdaが実行時にSecrets Managerから値を取得し、CognitoのIDプロバイダーを作成・更新する構成へ変更した。upstreamでは、リソース型ごとの機密プロパティをstate保存前とCLI表示前にマスクし、動的参照を解決した秘密値が永続化されない回帰テストを追加する必要がある。
+CDKD 0.283.20では、Secrets ManagerとSSM SecureStringの動的参照を解決前の式へ戻してstateへ保存する。既存stateは次回デプロイ時に自動で浄化され、`cdkd scrub`でも再デプロイせずに修正できる。すでにstateへ保存された秘密値は漏えい済みとして扱い、別途ローテーションする。
+
+新環境では切替直前の認証リソース置換を避けるため、カスタムリソースの回避策を当面維持する。CDK標準の`UserPoolIdentityProviderGoogle`へ戻す場合は、Google IDプロバイダーを削除・再作成する差分とログイン停止時間を別途確認してから実施する。
 
 ## 証明書置換時に利用中の旧証明書の削除を試みる
 

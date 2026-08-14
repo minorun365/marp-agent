@@ -79,13 +79,18 @@ async function upsertProvider(properties: ResourceProperties) {
   if (!secretResponse.ok) throw new Error(`Secrets Manager request failed: ${secretResponse.status}`);
   const secret = await secretResponse.json() as { SecretString?: string };
   if (!secret.SecretString) throw new Error('Google OAuth client secret is empty.');
+  const clientSecret = secret.SecretString.trim();
+  const googleSecretPrefixCount = clientSecret.match(/GOCSPX-/g)?.length ?? 0;
+  if (googleSecretPrefixCount !== 1) {
+    throw new Error('Google OAuth client secret must contain exactly one client secret.');
+  }
 
   const input = {
     UserPoolId: properties.UserPoolId,
     ProviderName: providerName,
     ProviderDetails: {
       client_id: properties.ClientId,
-      client_secret: secret.SecretString,
+      client_secret: clientSecret,
       authorize_scopes: properties.Scopes,
     },
     AttributeMapping: {
