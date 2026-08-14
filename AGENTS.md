@@ -131,6 +131,12 @@ MCP サーバーが利用できない場合のみ、Bash で `aws logs` コマ�
 `npm run infra:synth` / `infra:diff` / `infra:dry-run` / `infra:deploy` が `copy-themes` を実行して配る。
 手で `cdkd` を直接叩くときは、先に `npm run copy-themes` を実行する（忘れるとプレビューだけ直って書き出しが古いままになる）。
 
+⚠️ **本番へは `npm run infra:deploy` や素の `cdkd` を直接使わない。** このCDKアプリは
+context の有無でリソースを作るかどうかが決まるため、1つでも落とすと既存リソースが
+**削除差分**として出る（Googleログイン一式、予算アラートなど）。本番デプロイは
+`deploy-prod` スキル（ローカル専用）のラッパー経由で行い、`diff` で「変更したはずのない
+スタックが No changes detected か」を先に確認する。
+
 ## E2Eテスト手順
 
 コード変更後のE2Eテストは、ログイン済みのブラウザでローカルURLを開いて確認する。
