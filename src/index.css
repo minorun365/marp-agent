@@ -1,10 +1,76 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* ブランドカラー。ヘッダーだけは上端まで塗り広げるため専用変数に分けている */
+:root {
+  --brand-gradient-start: #1a3a6e;
+  --brand-gradient-end: #5ba4d9;
+  --brand-gradient: linear-gradient(to right, var(--brand-gradient-start), var(--brand-gradient-end));
+  /* ヘッダー最上部の色。ステータスバー側の地色（html背景）とindex.htmlのtheme-colorを
+     これと同じ値にしておかないと、セーフエリアとヘッダーの境目に色の段差が出る */
+  --header-top: #16305f;
+  --header-gradient: linear-gradient(158deg, var(--header-top) 0%, #1a3a6e 34%, #5ba4d9 100%);
+
+  /* セーフエリアを変数へ通す。ホーム画面Webアプリ（standalone）でしか実値が入らないため、
+     検証時はこの2つを固定値で上書きすればブラウザ上でも見え方を再現できる */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
 /* iOS Safari対応: 100vwがスクロールバー幅を超える問題を防止 */
 html, body {
   width: 100%;
   overflow-x: hidden;
+}
+
+/* iOS対応:
+   1. Safariはステータスバー周辺をキャンバスの背景色で塗る。htmlに色を置き、
+      bodyには背景を指定しない（bodyに白系を置くとその色が上端へ抜けて白帯になる）
+   2. ホーム画面Webアプリ（standalone）ではヘッダーのpadding-topがセーフエリアを塗る
+   3. overscroll-behaviorでゴムバンドを止め、地色が露出する場面自体をなくす */
+html {
+  background: var(--header-top);
+  overscroll-behavior: none;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+/* ヘッダー: ダイナミックアイランド／ノッチの領域まで自分の背景で塗り、
+   その分だけ内側へ余白を足して文字が潜り込まないようにする。
+   横向き時はノッチ側の余白も確保する。 */
+/* padding-topはセーフエリアへの「足し算」にしない。足すとstandaloneのときだけ
+   ヘッダーのおでこが間延びする。セーフエリアの値自体がステータスバーを避ける高さなので、
+   その下にわずかな余白を足すだけでよい */
+.app-header {
+  padding-top: max(0.75rem, calc(var(--safe-top) + 0.25rem));
+  padding-bottom: 0.75rem;
+  padding-left: max(1rem, var(--safe-left));
+  padding-right: max(1rem, var(--safe-right));
+}
+
+@media (min-width: 768px) {
+  .app-header {
+    padding-top: max(1rem, calc(var(--safe-top) + 0.25rem));
+    padding-bottom: 1rem;
+    padding-left: max(1.5rem, var(--safe-left));
+    padding-right: max(1.5rem, var(--safe-right));
+  }
+}
+
+/* 画面下端まで伸びるスクロール領域: 最後の要素がホームインジケータに被らないようにする */
+.app-scroll-pane {
+  padding-bottom: max(1rem, var(--safe-bottom));
+}
+
+/* 入力欄: ホームインジケータに送信ボタンが被らないよう下端の余白を確保する */
+.app-composer {
+  padding-bottom: max(1rem, var(--safe-bottom));
+  padding-left: max(1.5rem, var(--safe-left));
+  padding-right: max(1.5rem, var(--safe-right));
 }
 
 /* Amplify Authenticatorを上下中央揃え + 背景グラデーション */
@@ -70,7 +136,7 @@ html, body {
 }
 
 .bg-brand-gradient {
-  background: linear-gradient(to right, #1a3a6e, #5ba4d9);
+  background: var(--header-gradient);
 }
 
 .btn-brand {

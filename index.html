@@ -2,10 +2,12 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: ノッチ／ダイナミックアイランドの領域まで描画し、env(safe-area-inset-*)を有効にする -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>パワポ作るマン</title>
     <meta name="description" content="AIエージェントがいい感じのスライドを自動生成！みのるんがAWS最新技術で構築。" />
-    <meta name="theme-color" content="#1e1b4b" />
+    <!-- index.cssの --header-top と同じ値にする（ずれるとステータスバー周りに色の段差が出る） -->
+    <meta name="theme-color" content="#16305f" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/agentcore.png" />
@@ -31,6 +33,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // 検証用: ?safe=1 でホーム画面Webアプリ相当のセーフエリアを差し込む（本番では何もしない）
+      if (new URLSearchParams(location.search).has('safe')) {
+        document.documentElement.style.setProperty('--safe-top', '59px');
+        document.documentElement.style.setProperty('--safe-bottom', '34px');
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

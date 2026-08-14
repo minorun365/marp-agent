@@ -223,7 +223,7 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
       </div>
 
       {/* スライド一覧 */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+      <div ref={containerRef} className="app-scroll-pane flex-1 overflow-y-auto overflow-x-hidden px-6 pt-4">
         <style>{css}</style>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {slides.map((slide) => (

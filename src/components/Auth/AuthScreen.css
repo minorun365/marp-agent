@@ -44,7 +44,7 @@
   width: 100%;
   max-width: 620px;
   margin-left: auto;
-  padding: max(54px, env(safe-area-inset-top)) 58px max(54px, env(safe-area-inset-bottom));
+  padding: max(54px, var(--safe-top)) 58px max(54px, var(--safe-bottom));
   flex-direction: column;
 }
 
@@ -65,7 +65,7 @@
 .auth-panel {
   display: grid;
   min-height: 100dvh;
-  padding: max(42px, env(safe-area-inset-top)) 40px max(42px, env(safe-area-inset-bottom));
+  padding: max(42px, var(--safe-top)) 40px max(42px, var(--safe-bottom));
   place-items: center;
   background: #fff;
 }
@@ -121,12 +121,12 @@
 @media (max-width: 840px) {
   .auth-page { display: block; min-height: 100dvh; }
   .auth-brand { min-height: 214px; background: linear-gradient(112deg, #1a3a6e 0%, #4d8fbd 64%, #edf5fa 150%); }
-  .auth-brand-inner { min-height: 214px; padding: calc(25px + env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) 27px max(22px, env(safe-area-inset-left)); }
+  .auth-brand-inner { min-height: 214px; padding: max(25px, calc(var(--safe-top) + 4px)) max(22px, var(--safe-right)) 27px max(22px, var(--safe-left)); }
   .auth-wordmark { font-size: 11px; }
   .auth-copy { margin: auto 0 0; padding: 34px 0 0; }
   .auth-copy h1 { max-width: 320px; font-size: 29px; line-height: 1.24; }
   .auth-copy p, .auth-powered { display: none; }
-  .auth-panel { display: block; min-height: calc(100dvh - 214px); padding: 37px max(22px, env(safe-area-inset-right)) max(44px, calc(32px + env(safe-area-inset-bottom))) max(22px, env(safe-area-inset-left)); }
+  .auth-panel { display: block; min-height: calc(100dvh - 214px); padding: 37px max(22px, var(--safe-right)) max(44px, calc(32px + var(--safe-bottom))) max(22px, var(--safe-left)); }
   .auth-shell { max-width: 430px; margin: 0 auto; }
   .auth-shell h2 { font-size: 27px; }
   .auth-page:not([data-auth-state='initial']) .auth-brand { display: none; }
