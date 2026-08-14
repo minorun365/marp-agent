@@ -146,6 +146,16 @@ aws amplify update-branch --environment-variables NEW_KEY=value
 - AWSアカウントID、profile対応表、組織名とデプロイ先の関係、実リソースIDは、公開ファイル・コミットメッセージ・リリースノートへ記載しない。
 - これらの対応表を含む運用スキルはローカル専用とし、Gitへ追加しない。
 
+### ⚠️ 移行期間中は main が本番ではない（2026-08 時点）
+
+Amplify から新環境（CDKD / `infra/`）への移行中で、**本番の中身は `codex/pawapo-rearchitecture` ブランチ**。
+`main` へコミットしても本番には反映されないので、バグ修正は本番ブランチへも適用する（cherry-pick）。
+新環境の作業ツリーは `git worktree list` で確認する。移行が完了したらこの節を削除する。
+
+- 新環境には旧 `amplify.yml` のようなCIが無い。テーマCSS（`amplify/agent/runtime/*.css` は `.gitignore` 対象のコピー）は
+  `npm run infra:synth` / `infra:diff` / `infra:dry-run` / `infra:deploy` が `copy-themes` を実行して配る。
+  手で `cdkd` を直接叩くときは、先に `npm run copy-themes` を実行する（忘れるとプレビューだけ直って書き出しが古いままになる）。
+
 ## E2Eテスト手順
 
 コード変更後のE2Eテストは以下の手順で実施する。公式 Chrome 拡張と専用 profile `AIエージェント`（実ディレクトリ `AI Agent - KAG`）を使用してブラウザ操作を自動化する。
