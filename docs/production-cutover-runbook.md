@@ -1,5 +1,15 @@
 # 本番切替runbook
 
+## 現在の状態
+
+- 2026年8月14日、本番ドメインを新CloudFrontへ切り替え済み
+- Route 53の変更は `INSYNC`、新CloudFrontは `Deployed`
+- AgentCore Runtimeは `READY`
+- 本番URLで新ログイン画面とGoogle認証経路を確認済み
+- 旧Amplifyの独自ドメイン関連付けは解除済み
+- 旧Amplifyアプリ、旧Cognito、旧共有サブドメインは切り戻し用に保持
+- 従来パスワード、パスキー、スライド生成・出力を含む認証後E2Eは、本人の初回ログイン時に確認する
+
 ## 完了済みの準備
 
 - 新AWS環境は `us-east-1` へCDKDで配備済み
@@ -10,9 +20,11 @@
 - 共有URLは本番と同じ `https://pawapo.minoruonda.com/slides/{id}/` を返す
 - 旧Amplifyと旧共有サブドメインは撤去せず残す
 
-## 切替前チェック
+## 切替前チェック（実施済み）
 
 実値とAWS profileはGit追跡外の `.env.production.local` に置く。
+
+このチェックは旧Amplifyの独自ドメインが残っている切替前専用であり、切替後の現在は再実行しない。
 
 ```bash
 npm run prod:cutover:check
@@ -29,7 +41,7 @@ npm run prod:cutover:check
 - 本番DNSがTTL 60秒の単一CNAMEで、旧Amplifyを向いている
 - プレビューDNSが新CloudFrontを向いている
 
-## 本番切替
+## 本番切替（2026年8月14日実施済み）
 
 みのるんの明示了承後にだけ実行する。
 
