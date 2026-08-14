@@ -414,6 +414,41 @@ agentRuntimeArtifact = agentcore.AgentRuntimeArtifact.fromEcrRepository(
 | ECRイメージ数 | 1つのみ | 蓄積（要Lifecycle Policy） |
 | ロールバック | ❌ 不可 | ✅ 可能 |
 
+## Web Lambda（PawapoWeb）のイメージが毎回作り直される問題
+
+`WebFunction` は `lambda.DockerImageCode.fromImageAsset()` でリポジトリのルート全体をビルドコンテキストにしている。CDKはコンテキストに含まれるファイル群のフィンガープリントをそのままアセットハッシュにするため、**イメージの中身に関係ないファイルでも、除外していなければ変更のたびにハッシュが変わってLambdaが置換される**。
+
+2026-08-15、`infra/lib/` のTypeScriptを1行変えただけでPawapoWebだけがハッシュ変化することを実測し、`.dockerignore` へ `infra/bin` `infra/lib` `infra/scripts` `tmp` を追加して解消した。
+
+### 除外リストは2か所にある。片方だけ足さない
+
+CDKの `image-asset.js` は、ソースディレクトリの `.dockerignore` を読んで `exclude` プロパティと**マージしてから**フィンガープリントを計算する。
+
+```js
+exclude = [...dockerignoreの各行, ...props.exclude, '!.dockerignore']
+```
+
+つまり次の2か所はどちらへ書いても効くが、現状は内容がずれている。除外を足すときは両方を見る。
+
+| 場所 | 現在の中身 |
+|------|-----------|
+| `.dockerignore` | `.git` `.github` `.agents` `.claude` `.codex` `cdk.out` `dist` `node_modules` `coverage` `.env*` `amplify_outputs.json` `docs` `tests` `tmp` `infra/bin` `infra/lib` `infra/scripts` |
+| `infra/lib/web-stack.ts` のインライン `exclude` | `.git` `.github` `.agents` `.claude` `.codex` `node_modules` `cdk.out` `dist` `docs` `infra/scripts` `tests` `amplify/agent/runtime/.venv` `**/__pycache__` |
+
+- **`infra/web/` は除外しない。** Dockerfileが `COPY infra/web/server.mjs` するので、`infra` をディレクトリごと除外すると壊れる
+- **`.dockerignore` にコメント行（`#` 始まり）を書かない。** `ignoreMode: IgnoreMode.GLOB` を指定しているため、CDK側は各行をminimatchのパターンとして解釈する
+
+### 除外の効果を検証する手順
+
+`npx cdkd synth` を回して `cdk.out/PawapoWeb.assets.json` の `dockerImages` のキー（アセットハッシュ）を比べる。Dockerの実ビルドは走らないので速い。
+
+```bash
+npx cdkd synth >/dev/null 2>&1
+python3 -c "import json;print(list(json.load(open('cdk.out/PawapoWeb.assets.json'))['dockerImages'].keys())[0])"
+```
+
+除外を足した直後は1回だけハッシュが変わる（コンテキストの中身が変わるため。この再ビルドは避けられない）。その後に対象ファイルを触ってハッシュが動かなければ成功。**除外しすぎていないかの逆方向テスト**（`src/` を触ってハッシュが変わること）も併せて確認する。
+
 ### 参考
 
 - [deploy-time-build](https://github.com/tmokmss/deploy-time-build)
