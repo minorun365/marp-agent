@@ -12,3 +12,7 @@ coverage
 amplify_outputs.json
 docs
 tests
+tmp
+infra/bin
+infra/lib
+infra/scripts
