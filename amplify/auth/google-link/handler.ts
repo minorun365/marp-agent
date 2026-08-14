@@ -67,7 +67,11 @@ export const handler: PreSignUpTriggerHandler = async (event) => {
 
   const separator = event.userName.indexOf('_');
   if (separator < 1) throw new Error('Googleアカウントの識別情報を確認できませんでした。');
-  const providerName = event.userName.slice(0, separator);
+  // CognitoはuserNameを "google_<sub>" と小文字の接頭辞で渡すが、
+  // AdminLinkProviderForUserはUser Poolへ登録した名前 "Google" と完全一致を求める。
+  // 接頭辞をそのまま渡すとInvalidParameterExceptionでサインインが中断される。
+  const rawProviderName = event.userName.slice(0, separator);
+  const providerName = rawProviderName.toLowerCase() === 'google' ? 'Google' : rawProviderName;
   const providerUserId = event.userName.slice(separator + 1);
 
   await cognito.send(new AdminLinkProviderForUserCommand({

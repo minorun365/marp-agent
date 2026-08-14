@@ -33,6 +33,7 @@ function PasskeyIcon() {
 
 interface AuthScreenProps {
   readonly demoMode?: boolean;
+  readonly initialError?: string;
   readonly onAuthenticated: () => void;
 }
 
@@ -49,17 +50,23 @@ function toMessage(error: unknown) {
   return '認証処理に失敗しました。時間をおいてもう一度お試しください。';
 }
 
-export function AuthScreen({ demoMode = false, onAuthenticated }: AuthScreenProps) {
+export function AuthScreen({ demoMode = false, initialError = '', onAuthenticated }: AuthScreenProps) {
   const [state, setState] = useState<AuthState>(() => demoInitialState(demoMode));
   const [email, setEmail] = useState(demoMode ? 'you@example.com' : '');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [state]);
+
+  // リダイレクトログインの失敗は画面の再表示としてしか現れないため、
+  // 親から届いた理由をそのまま初期エラーとして出す。
+  useEffect(() => {
+    if (initialError) setError(initialError);
+  }, [initialError]);
 
   const run = async (operation: () => Promise<void>) => {
     setError('');

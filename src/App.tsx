@@ -21,15 +21,26 @@ const mockSignOut = () => {
   console.log('Mock signOut called');
 };
 
+function redirectErrorMessage(data: unknown) {
+  const error = (data as { error?: unknown } | undefined)?.error;
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string' && error) return error;
+  return 'Googleログインを完了できませんでした。時間をおいてもう一度お試しください。';
+}
+
 function AuthenticatedApp() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [redirectError, setRedirectError] = useState('');
 
   useEffect(() => {
     const unsubscribe = Hub.listen('auth', ({ payload }) => {
       if (payload.event === 'signedIn' || payload.event === 'signInWithRedirect') {
+        setRedirectError('');
         setAuthenticated(true);
       }
       if (payload.event === 'signInWithRedirect_failure') {
+        // 失敗を黙って握りつぶすと、ログイン画面が再表示されるだけに見えて原因が追えない。
+        setRedirectError(redirectErrorMessage(payload.data));
         setAuthenticated(false);
       }
     });
@@ -40,7 +51,9 @@ function AuthenticatedApp() {
   }, []);
 
   if (authenticated === null) return null;
-  if (!authenticated) return <AuthScreen onAuthenticated={() => setAuthenticated(true)} />;
+  if (!authenticated) {
+    return <AuthScreen initialError={redirectError} onAuthenticated={() => setAuthenticated(true)} />;
+  }
 
   return <MainApp signOut={() => void amplifySignOut().finally(() => setAuthenticated(false))} />;
 }
