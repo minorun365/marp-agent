@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import * as cdk from 'aws-cdk-lib';
 import * as agentcore from 'aws-cdk-lib/aws-bedrockagentcore';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import type { Construct } from 'constructs';
 import type { AuthStack } from './auth-stack.js';
 import type { FoundationStack } from './foundation-stack.js';
@@ -60,6 +61,15 @@ export class AgentStack extends cdk.Stack {
         SHARED_SLIDES_PUBLIC_DOMAIN: props.appDomain,
       },
       tags: { Project: 'pawapo' },
+    });
+
+    // AgentCoreが自動生成するロググループは既定30日で消える。
+    // 利用統計を後から集計できるよう、CDK側で先に作って13か月保持にする。
+    // ランタイムを作り直すとIDが変わり別名になるため、このスタックで一緒に作り直す。
+    new logs.LogGroup(this, 'RuntimeLogGroup', {
+      logGroupName: `/aws/bedrock-agentcore/runtimes/${this.runtime.attrAgentRuntimeId}-DEFAULT`,
+      retention: logs.RetentionDays.THIRTEEN_MONTHS,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     new cdk.CfnOutput(this, 'AgentRuntimeArn', { value: this.runtime.attrAgentRuntimeArn });

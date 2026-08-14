@@ -9,6 +9,7 @@ import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
 
 from config import normalize_model_type
+from identity import log_session_identity
 from tools import (
     web_search,
     output_slide,
@@ -82,6 +83,9 @@ async def invoke(payload, context=None):
     session_id = getattr(context, 'session_id', None) if context else None
     theme = payload.get("theme", "border")
     reference_file = payload.get("reference_file")
+
+    # 利用統計のため、このリクエストが誰のものかを1行だけログへ残す（詳細は identity.py）
+    log_session_identity(session_id, context)
 
     # PDF出力
     if action == "export_pdf" and current_markdown:
