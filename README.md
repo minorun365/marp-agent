@@ -14,14 +14,18 @@
 
 ## アーキテクチャ
 
-AWSの最新サービスを活用して、フルサーバーレスで構築。現在はKimi K2.5を標準モデルとして試験運用し、Claude Sonnet 4.6は一時停止しています。維持費の中心はAmazon Bedrockのモデル推論料金です。
+公開中のアプリは、CloudFront から画面を配信し、ブラウザが Amazon Bedrock AgentCore Runtime へ直接つながる構成です。標準モデルは Kimi K2.5 で、維持費の中心は Bedrock の推論料金です。
+
+構成の解説は [新基盤のアーキテクチャ](docs/new-architecture.html) にあります。
+
+このリポジトリの `main` は、移行期間中も Amplify Gen2 の自己ホスト手順を残しています。新しい CDK 実装は `codex/pawapo-rearchitecture` ブランチを参照してください。
 
 <img width="1362" height="759" alt="アーキテクチャ図" src="https://github.com/user-attachments/assets/21c580e9-6c09-4ef8-ba82-90014522871b" />
 
 
 ## デプロイ手順
 
-自分のAWS環境にデプロイする場合の手順です。
+自分のAWS環境にデプロイする場合の手順です。`main` の現行コードは Amplify Gen2 です。
 
 ### 前提条件
 
@@ -30,7 +34,7 @@ AWSの最新サービスを活用して、フルサーバーレスで構築。�
 - Docker Desktop（起動しておく）
 - AWSアカウント
   - リージョンはバージニア/オレゴン/東京のいずれか
-  - BedrockプレイグランドからClaudeのユースケース送信をしておく
+  - Bedrockプレイグランドから利用するモデルのユースケース送信をしておく
 - [Tavily](https://tavily.com/) APIキー（無料、Web検索機能に必要）
 
 ### 1. セットアップ

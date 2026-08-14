@@ -8,7 +8,7 @@
 
 ```bash
 # AWS認証（サンドボックス起動前に必要）
-aws sso login --profile sandbox
+aws login
 
 # フロントエンドのローカル開発サーバー起動
 npm run dev
@@ -49,10 +49,10 @@ VITE_USE_MOCK=true npm run dev
 
 ### 前提条件
 
-サンドボックス起動前に AWS SSO でログインしておく：
+サンドボックス起動前に AWS へログインしておく：
 
 ```bash
-aws sso login --profile sandbox
+aws login
 ```
 
 ### 起動コマンド
@@ -144,9 +144,9 @@ SHARED_SLIDES_CERTIFICATE_ARN=
 KAG社内版は別リポジトリで運用している。共通変更はマージではなく cherry-pick で反映する。KAG社内版固有のテーマ、ドメイン、認証制限などをこの一般公開リポジトリへ混ぜないため。
 
 ```
-~/git/minorun365/
+.
 ├── marp-agent/             # 一般公開版
-└── marp-agent-kag/         # KAG社内版
+└── marp-agent-kag/         # 社内向け別リポジトリ
 ```
 
 ### 反映例

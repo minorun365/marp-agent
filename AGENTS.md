@@ -10,7 +10,7 @@ This file provides guidance to coding agents (Claude Code / Codex) when working 
 
 ```bash
 # AWS認証（サンドボックス起動前に必要）
-aws sso login --profile sandbox
+aws login
 
 # フロントエンド起動（ローカル開発）
 npm run dev
@@ -158,14 +158,14 @@ Amplify から新環境（CDKD / `infra/`）への移行中で、**本番の中�
 
 ## E2Eテスト手順
 
-コード変更後のE2Eテストは以下の手順で実施する。公式 Chrome 拡張と専用 profile `AIエージェント`（実ディレクトリ `AI Agent - KAG`）を使用してブラウザ操作を自動化する。
+コード変更後のE2Eテストは、ログイン済みのブラウザで `localhost:5173` を開いて確認する。
 
 ### 手順
 
-1. **SSOセッション確認**: `aws sts get-caller-identity --profile sandbox`
-2. **サンドボックス起動**: `npm run sandbox` をバックグラウンド実行（`--profile sandbox` はスクリプトに内蔵済み）
+1. **AWSセッション確認**: `aws sts get-caller-identity`
+2. **サンドボックス起動**: `npm run sandbox` をバックグラウンド実行
 3. **フロントエンド起動**: `npm run dev`（別プロセスでバックグラウンド実行）
-4. **公式 Chrome 拡張で確認**:
+4. **ブラウザで確認**:
    - `localhost:5173` にアクセス
    - ログインページの表示確認
    - テスト用ユーザーでログイン（`.env`のTEST_USER_EMAIL/TEST_USER_PASSWORD使用）
@@ -176,7 +176,6 @@ Amplify から新環境（CDKD / `infra/`）への移行中で、**本番の中�
 ### 注意事項
 
 - サンドボックスのデプロイには3-5分かかる（Hotswap時は30秒程度）
-- `npm run sandbox` には `--profile sandbox` がスクリプトに内蔵済み（追加不要）
 - **⚠️ 環境変数の読み込み【必須】**: `npm run sandbox` は `.env` を自動読み込みしない。**サンドボックス起動時は必ず以下のワンライナーを使うこと**（`npm run sandbox` を単体で実行してはならない）：
   ```bash
   export $(grep -v '^#' .env | grep -v '^$' | xargs) && npm run sandbox

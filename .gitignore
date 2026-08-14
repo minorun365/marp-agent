@@ -47,9 +47,11 @@ uv.lock
 .agents/skills/check-app-stats/
 .agents/skills/check-deploy-status/
 .agents/skills/start-dev/
+.agents/skills/deploy-prod/
 .claude/skills/check-app-stats/
 .claude/skills/check-deploy-status/
 .claude/skills/start-dev/
+.claude/skills/deploy-prod/
 
 # テストスクリーンショット
 tests/screenshots/*
