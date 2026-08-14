@@ -123,6 +123,34 @@ export async function getAgentCoreConfig() {
   return { url, accessToken };
 }
 
+async function refreshAccessToken() {
+  const session = await fetchAuthSession({ forceRefresh: true });
+  const accessToken = session.tokens?.accessToken?.toString();
+
+  if (!accessToken) {
+    throw new Error('認証セッションを更新できませんでした。再度ログインしてください。');
+  }
+
+  return accessToken;
+}
+
+function createInvokeRequest(
+  accessToken: string,
+  body: string,
+  sessionId?: string,
+): RequestInit {
+  return {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+      'Authorization': `Bearer ${accessToken}`,
+      ...(sessionId && { 'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId }),
+    },
+    body,
+  };
+}
+
 /**
  * イベントをコールバックに振り分け
  */
@@ -193,22 +221,24 @@ export async function invokeAgent(
   try {
     const { url, accessToken } = await getAgentCoreConfig();
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-        'Authorization': `Bearer ${accessToken}`,
-        ...(sessionId && { 'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId }),
-      },
-      body: JSON.stringify({
-        prompt,
-        markdown: currentMarkdown,
-        model_type: modelType,
-        theme,
-        ...(referenceFile && { reference_file: referenceFile }),
-      }),
+    const requestBody = JSON.stringify({
+      prompt,
+      markdown: currentMarkdown,
+      model_type: modelType,
+      theme,
+      ...(referenceFile && { reference_file: referenceFile }),
     });
+
+    let response = await fetch(url, createInvokeRequest(accessToken, requestBody, sessionId));
+
+    // Cognitoのセッションが更新境界にあると、画面上はログイン済みでも
+    // AgentCoreが古いJWTを拒否することがある。認証エラー時だけ強制更新し、
+    // 同じリクエストを1回だけ再送する。
+    if (response.status === 401 || response.status === 403) {
+      await response.body?.cancel();
+      const refreshedAccessToken = await refreshAccessToken();
+      response = await fetch(url, createInvokeRequest(refreshedAccessToken, requestBody, sessionId));
+    }
 
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
