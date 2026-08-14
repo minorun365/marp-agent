@@ -110,6 +110,21 @@ td.safe{background:#f0faf3;color:#1a6b38;font-weight:700}
 .t-new{background:var(--gold);color:#4a3000}
 .t-fact{background:var(--blue-soft);color:var(--blue-deep)}
 
+.bars{margin:20px 0;border:1px solid var(--line);border-radius:16px;padding:6px 20px}
+.bar-row{display:grid;grid-template-columns:182px minmax(0,1fr) 124px;
+  gap:16px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.bar-row:last-child{border-bottom:0}
+.bar-label{font-size:13.5px;font-weight:700;color:var(--ink)}
+.bar-track{display:block;background:var(--soft);border-radius:99px;height:13px;overflow:hidden}
+.bar-fill{display:block;height:100%;border-radius:99px;background:var(--blue-grad)}
+.bar-row.sub .bar-fill{background:var(--blue-line)}
+.bar-val{font-size:13px;font-variant-numeric:tabular-nums;color:var(--sub);text-align:right;white-space:nowrap}
+.bar-val b{color:var(--blue-deep);font-size:14px}
+@media (max-width:620px){
+  .bar-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:12px 0}
+  .bar-track{grid-column:1 / -1;order:3}
+}
+
 ul,ol{margin:12px 0;padding-left:23px}
 li{margin:7px 0}
 svg{width:100%;height:auto;display:block}
@@ -157,8 +172,9 @@ code{background:var(--soft);border:1px solid var(--line);border-radius:5px;paddi
     <li><a href="#s1"><span class="num">01</span>これまでの到達点</a></li>
     <li><a href="#s2"><span class="num">02</span>ユーザーはどう増えたか</a></li>
     <li><a href="#s3"><span class="num">03</span>日々どう使われているか</a></li>
-    <li><a href="#s4"><span class="num">04</span>コスト効率の実像</a></li>
-    <li><a href="#s5"><span class="num">05</span>いま保全すべきデータ</a></li>
+    <li><a href="#s4"><span class="num">04</span>ユーザーは何を作っているか</a></li>
+    <li><a href="#s5"><span class="num">05</span>コスト効率の実像</a></li>
+    <li><a href="#s6"><span class="num">06</span>記録を残す仕組みの提案</a></li>
   </ol>
 </nav>
 
@@ -390,6 +406,89 @@ code{background:var(--soft);border:1px solid var(--line);border-radius:5px;paddi
 
 <section id="s4">
   <span class="eyebrow">04</span>
+  <h2>ユーザーは何を作っているか</h2>
+  <p class="lead">実際の依頼文3,078件を分類しました。AI・クラウド技術が約4割を占める一方、同じくらいの割合が一般教養・生活・他分野の業務で、技術者向けツールの枠を越えて使われています。</p>
+
+  <div class="callout">
+    <p><b>みのるん自身の利用は、完全には切り分けられません。</b>AgentCore のログにはセッションID（UUID）しか記録されておらず、どのユーザーの依頼かを判別する情報がありません。そこで、明らかな動作確認と自己言及（「テストスライド」「元気？」「みのるんを調べて」など）122件を機械的に除いたうえで集計しています。デモや検証で本番環境を使ったぶんは、この数字に一定量含まれている前提で読んでください。切り分けたい場合の対処は最終セクションに書きました。</p>
+  </div>
+
+  <h3>依頼のテーマ</h3>
+  <div class="bars">
+    <div class="bar-row"><span class="bar-label">AI・クラウド技術</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-val"><b>39.2%</b> ／ 1,207件</span></div>
+    <div class="bar-row"><span class="bar-label">一般教養・生活・その他</span><span class="bar-track"><span class="bar-fill" style="width:90%"></span></span><span class="bar-val"><b>35.3%</b> ／ 1,087件</span></div>
+    <div class="bar-row"><span class="bar-label">社内・ビジネス資料</span><span class="bar-track"><span class="bar-fill" style="width:25.3%"></span></span><span class="bar-val"><b>9.9%</b> ／ 305件</span></div>
+    <div class="bar-row"><span class="bar-label">開発・エンジニアリング</span><span class="bar-track"><span class="bar-fill" style="width:21.5%"></span></span><span class="bar-val"><b>8.4%</b> ／ 259件</span></div>
+    <div class="bar-row"><span class="bar-label">教育・研修</span><span class="bar-track"><span class="bar-fill" style="width:8.9%"></span></span><span class="bar-val"><b>3.5%</b> ／ 108件</span></div>
+    <div class="bar-row"><span class="bar-label">セキュリティ・法務</span><span class="bar-track"><span class="bar-fill" style="width:5.1%"></span></span><span class="bar-val"><b>2.0%</b> ／ 62件</span></div>
+    <div class="bar-row"><span class="bar-label">登壇・自己紹介</span><span class="bar-track"><span class="bar-fill" style="width:4.1%"></span></span><span class="bar-val"><b>1.6%</b> ／ 50件</span></div>
+  </div>
+  <p class="note">依頼文をキーワードで分類し、複数該当する場合は上の順で1つに寄せています。「一般教養・生活・その他」には、他分野の業務資料（産業医の衛生講話、Power BI と Tableau の比較、専門学校生向けのプロダクトマネジメント講義など）と、純粋な興味・生活まわり（歴史、スポーツ、ペット、人間ドック選び）が混在します。</p>
+
+  <h3>どうやって依頼しているか</h3>
+  <p>入力の形は大きく4通りに分かれました。記事のURLを貼るのが約2割、ひとことのテーマだけ書くのが約2割、原稿や構成案を長文で流し込むのが1割、PDFを添付するのが217件です。</p>
+
+  <div class="grid">
+    <div class="card">
+      <h4>URLを貼る</h4>
+      <span class="big">19.6%</span>
+      <p>602件。記事やドキュメントを<br>そのままスライド化する</p>
+    </div>
+    <div class="card">
+      <h4>ひとことテーマ</h4>
+      <span class="big">20.6%</span>
+      <p>634件。20字以下で<br>おまかせに近い頼み方</p>
+    </div>
+    <div class="card">
+      <h4>長文を流し込む</h4>
+      <span class="big">10.2%</span>
+      <p>313件。200字以上の<br>原稿・構成案を貼る</p>
+    </div>
+    <div class="card">
+      <h4>PDFを添付</h4>
+      <span class="big">217</span>
+      <p>件。参考資料を読ませて<br>そこから作らせる</p>
+    </div>
+  </div>
+
+  <p>細かい注文を付ける人は少数派です。聴衆を指定したのが8.6%（266件）、枚数の指定が3.7%（114件）、所要時間の指定が3.3%（102件）でした。「1時間程度・50枚以内・SIer所属の生成AIアプリ開発者向け」のように条件を詰めて書くのは、全体の1割に届きません。</p>
+
+  <h3>貼られたURLの中身</h3>
+  <p>URLの内訳は技術情報源に偏っています。AWS公式（ブログとドキュメントの合計）が117件で最多、次いで Qiita 56件、GitHub 38件、Zenn 29件、Anthropic 公式（Claude 関連ドメインを含む）が39件。note・X・YouTube も10件前後あり、記事だけでなく動画や投稿をスライドにまとめる使い方も出ています。</p>
+
+  <h3>時期による変化</h3>
+  <p>公開から半年で、依頼の中身ははっきり動きました。AI・クラウド技術の比率が下がり、一般テーマと社内資料が伸びています。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>月</th><th class="num">件数</th><th class="num">AI・クラウド</th><th class="num">一般教養・生活</th><th class="num">社内・ビジネス</th><th class="num">URLを貼る</th><th class="num">ひとこと依頼</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>2026-01</td><td class="num">331</td><td class="num">42.0%</td><td class="num">34.7%</td><td class="num">8.2%</td><td class="num">10.6%</td><td class="num">39.0%</td></tr>
+        <tr><td>2026-02</td><td class="num">887</td><td class="num">42.6%</td><td class="num">34.0%</td><td class="num">7.0%</td><td class="num">18.6%</td><td class="num">21.0%</td></tr>
+        <tr><td>2026-03</td><td class="num">523</td><td class="num">41.3%</td><td class="num">35.0%</td><td class="num">11.1%</td><td class="num">19.1%</td><td class="num">19.3%</td></tr>
+        <tr><td>2026-04</td><td class="num">364</td><td class="num">34.1%</td><td class="num">34.1%</td><td class="num">12.4%</td><td class="num">26.9%</td><td class="num">19.8%</td></tr>
+        <tr><td>2026-05</td><td class="num">200</td><td class="num">36.0%</td><td class="num">31.5%</td><td class="num">12.0%</td><td class="num">29.0%</td><td class="num">15.0%</td></tr>
+        <tr><td>2026-06</td><td class="num">357</td><td class="num">39.8%</td><td class="num">35.6%</td><td class="num">9.5%</td><td class="num">26.6%</td><td class="num">15.7%</td></tr>
+        <tr><td>2026-07</td><td class="num">360</td><td class="num">33.6%</td><td class="num">41.9%</td><td class="num">13.3%</td><td class="num">13.6%</td><td class="num">14.7%</td></tr>
+        <tr class="partial"><td>2026-08</td><td class="num">56</td><td class="num">26.8%</td><td class="num">41.1%</td><td class="num">14.3%</td><td class="num">3.6%</td><td class="num">12.5%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">8月は15日までの56件と母数が小さいため、単月の比率は振れます。</p>
+
+  <div class="callout blue">
+    <p><b>読み取れるのは、利用者層が技術者から一般の業務ユーザーへ広がったことです。</b>初期はAI・クラウドの依頼が4割超で、みのるんの発信を見て来たAWS界隈が中心だったと考えられます。7月以降は一般テーマが4割を超え、社内・ビジネス資料も14%まで伸びました。同時に「ひとこと依頼」は39%から13%まで下がっており、ユーザーが具体的に指示を書くようになっています。</p>
+  </div>
+
+  <div class="callout">
+    <p><b>ひとつ気になるのは、URL貼り付けの比率が6月の26.6%から7月13.6%・8月3.6%へ落ちている点です。</b>7月はモデル構成を大きく変えた月（Kimi K2.5 の復活と GPT-5.6 Sol の追加）にあたるため、URL読み込みの挙動が変わって使われなくなった可能性があります。ただし現時点では時期が重なっているだけで、因果は確認できていません。<b>Web検索・URL取得まわりが今も期待どおり動いているか、実際に試して確かめる価値があります。</b></p>
+  </div>
+</section>
+
+<section id="s5">
+  <span class="eyebrow">05</span>
   <h2>コスト効率の実像</h2>
   <p class="lead">費用の9割はAIモデルの推論そのものです。インフラは月2ドル未満で、これまでのレポートに載っていた「インフラ数百ドル」は、共有アカウントに同居していた別アプリの費用でした。</p>
 
@@ -428,10 +527,10 @@ code{background:var(--soft);border:1px solid var(--line);border-radius:5px;paddi
   <p>これまでに試したモデルは10種類近くあります。初期の Sonnet 4.5 から始まり、Kimi K2 の採用と撤退、Opus 4.6 と Haiku 4.5 と DeepSeek V3.2 の同時期の試行、2月中旬の Sonnet 一本化、2月17日からの Sonnet 4.6、4月の Opus 4.7 追加、7月の Kimi K2.5 復活と GPT-5.6 Sol 追加、そして8月13日の Kimi K2.5 固定という流れです。現在は Sonnet 4.6・Sonnet 5・GPT-5.6 Sol・GLM-5・Opus 4.6 の設定をコードに残したまま無効化し、Kimi K2.5 だけを有効にしています。</p>
 </section>
 
-<section id="s5">
-  <span class="eyebrow">05</span>
-  <h2>いま保全すべきデータ</h2>
-  <p class="lead">今回の集計で最も重要な発見は、過去の実績データが「旧環境をまだ消していないから残っている」という状態にあることです。切り戻し用に保持している旧リソースを撤去した瞬間、ここまでの数字は二度と取れなくなります。</p>
+<section id="s6">
+  <span class="eyebrow">06</span>
+  <h2>記録を残す仕組みの提案</h2>
+  <p class="lead">ここまでの数字が取れたのは、旧環境をまだ消していないからです。切り戻し用に残している旧リソースを撤去した瞬間、この記録は二度と再現できません。何が失われかけているかを整理し、そのうえで手当ての案を示します。</p>
 
   <div class="table-wrap">
     <table>
@@ -472,13 +571,50 @@ code{background:var(--soft);border:1px solid var(--line);border-radius:5px;paddi
   </div>
 
   <div class="callout">
-    <p><b>新環境のログ保持が30日に設定されている点は、次に手を打つべきところです。</b>このままだと、来月以降は「直近30日」より前の利用状況を一切振り返れなくなります。<b>保持期間を延ばすか、月次のセッション数だけを定期的にどこかへ書き出す仕組みを入れておく</b>と、今回のような棚卸しを毎回ゼロからやらずに済みます。旧環境を撤去する前に、この文書の数字が保存済みであることを確認してください。</p>
+    <p><b>新環境のログ保持が30日に設定されている点が、いちばん先に手を打つところです。</b>このままだと来月以降は直近30日より前を一切振り返れません。なお AgentCore のロググループはランタイム側が自動で作るもので、CDK では保持期間を管理していません（<code>infra/lib/agent-stack.ts</code> にログの記述はなく、Lambda 側だけ <code>ONE_MONTH</code> を明示）。旧環境を撤去する前に、この文書の数字が保存済みであることを確認してください。</p>
+  </div>
+
+  <h3>提案：3つの手当てを、この順で</h3>
+  <p>作り込みすぎない構成を勧めます。1と2だけで今回の課題はほぼ解消し、3は生ログが残っていれば急ぎません。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>優先</th><th>やること</th><th>手間</th><th>効果</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td class="who">ログ保持を30日→400日へ<small>put-retention-policy を1本。ランタイムを作り直すとロググループ名が変わるので、デプロイ手順へ組み込む</small></td>
+          <td class="safe">コマンド1本</td>
+          <td>過去を失わない。生ログさえ残れば、今回と同じ集計をいつでもやり直せる</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td class="who">ログにユーザー識別子を出す<small>JWT の sub をハッシュ化した値と、本人フラグをセッション属性へ</small></td>
+          <td class="safe">アプリ側の小改修</td>
+          <td>みのるん自身の利用を除外できる。加えてリピート率・ヘビーユーザー・1人あたり利用回数が測れるようになる</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td class="who">月次集計の自動書き出し<small>EventBridge の月次ルールで Lambda を起動し、前月の集計JSONをS3へ</small></td>
+          <td>CDKへ追加実装</td>
+          <td>ロググループが変わっても集計値だけは残る。1をやるなら後回しでよい</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout blue">
+    <p><b>おすすめは1と2の組み合わせです。</b>1はコマンド1本で、これをやらないと来月データが消えるので緊急度が高い。2は今回いちばん困った「本人の利用を切り分けられない」に直接効くうえ、ユーザー1人あたりの利用回数という、いま完全に見えていない指標が取れるようになります。保持料金は現在のログ量（新環境で数MB／月）なら、400日保持でも月$0.01に届きません。<b>3の自動書き出しは、当面は <code>check-app-stats</code> スキルを月初に実行して結果を <code>docs/</code> へコミットする運用で代替できます</b>——実装ゼロで人が読める形の記録が残り、今回のような棚卸しの土台にもなります。</p>
   </div>
 
   <h3>この集計で分かった注意点</h3>
   <ul>
     <li>第1世代のアカウントは他アプリと共有のため、AI費用は「上限値」です。1月から5月までは当時のレポートと同じくアカウント全体の Bedrock 費用を計上しており、他の検証アプリの分が含まれている可能性があります。6月以降はタグで正確に切り分けています。</li>
     <li>1月のセッション567件には、一般公開前（1月24日から30日）の開発テストが含まれます。公開後だけで見るなら実質は2月からの数字が実力値です。</li>
+    <li>依頼テーマの分類はキーワードによる機械的な振り分けです。1件を1カテゴリに寄せているため、境界にあるもの（たとえば「社内向けのAI研修資料」）はどれか一方に入っています。傾向を見る用途には足りますが、厳密な内訳ではありません。</li>
+    <li>用途分析からみのるん自身の利用を完全には除けていません。除外できたのは、動作確認や自己言及とはっきり分かる122件だけです。切り分けたい場合は、提案2のユーザー識別子が必要です。</li>
     <li>共有スライドの発行数は指標化できませんでした。保存先のバケットが実質空で、共有機能の利用回数を遡って数える手段が残っていません。</li>
     <li>新環境では8月15日時点でセッションログが1件も出ていません。切替が8月14日夕方だったためで、異常ではありませんが、稼働確認は改めて必要です。</li>
   </ul>
