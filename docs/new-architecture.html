@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>パワポ作るマン新基盤｜アーキテクチャ図</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb; --blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a; --sub:#4a4a54; --mut:#767680; --line:#e8e8ee; --soft:#f7f8fa;
+  --gold:#f0b21f; --gold-deep:#8a5a00; --gold-soft:#fdf5e0;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  color:var(--ink);line-height:1.85;font-size:15.5px;
+  -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;
+  font-feature-settings:"palt" 1;
+}
+.wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,
+.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+.hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+
+.toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+.toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;
+  grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.toc li{margin:0}
+.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;
+  color:var(--sub);font-size:14px;padding:5px 0}
+.toc a:hover{color:var(--blue-deep)}
+.toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);
+  font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+
+section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+section::before{content:"";position:absolute;top:-1px;left:0;
+  width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+  font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;
+  background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);
+  font-weight:700;letter-spacing:.005em}
+h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;
+  padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));margin:20px 0}
+.card{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:#fff;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+.card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+.card h4{margin:0 0 8px;font-size:15px;color:var(--blue-deep);font-weight:700;
+  padding-bottom:8px;border-bottom:1px solid var(--line)}
+.card p{margin:6px 0;font-size:14px;color:var(--sub);line-height:1.8}
+.grid + .table-wrap{margin-top:20px}
+
+.callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;
+  border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.callout b{color:var(--gold-deep)}
+.callout > :first-child{margin-top:0}
+.callout > :last-child{margin-bottom:0}
+.callout.blue{background:var(--blue-soft)}
+.callout.blue::before{background:var(--blue-grad)}
+.callout.blue b{color:var(--blue-deep)}
+
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;
+  border:1px solid var(--line);border-radius:16px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:600px}
+thead{background-image:var(--blue-grad)}
+th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;
+  text-align:left;white-space:nowrap;letter-spacing:.02em;border:0}
+td{padding:13px 16px;text-align:left;vertical-align:top;border:0;
+  border-bottom:1px solid var(--line);line-height:1.75}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbfcfe}
+td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+td.svc{background:var(--blue-soft);color:var(--blue-deep);font-weight:800;font-size:14.5px;
+  white-space:nowrap;border-right:1px solid var(--blue-line);vertical-align:middle;text-align:center}
+td.svc small{color:var(--blue-mid);font-weight:500;font-size:11px;display:block;margin-top:3px}
+td.who{font-weight:700;color:var(--ink);white-space:nowrap;background:#fdfdfe}
+tr.grp td{border-top:2px solid var(--blue-line)}
+tbody tr:first-child td{border-top:0}
+.note{font-size:12.5px;color:var(--mut);margin:6px 0 0;line-height:1.8}
+
+.tag{display:inline-block;font-size:11px;padding:3px 10px;border-radius:99px;
+  font-weight:700;white-space:nowrap;vertical-align:2px;letter-spacing:.03em}
+.t-new{background:var(--gold);color:#4a3000}
+.t-fact{background:var(--blue-soft);color:var(--blue-deep)}
+
+ul,ol{margin:12px 0;padding-left:23px}
+li{margin:7px 0}
+svg{width:100%;height:auto;display:block}
+.fig{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff;margin:24px 0}
+.fig figcaption{font-size:12.5px;color:var(--mut);margin-top:12px;text-align:center;line-height:1.7}
+
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--mut);line-height:1.9}
+footer p{margin:8px 0}
+code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
+  font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+
+@media (max-width:620px){
+  body{font-size:15px}
+  .hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}
+  .hero h1{font-size:23px}
+  h2{font-size:20px}
+  section{padding-top:38px}
+  .callout{padding:16px 18px 16px 22px}
+  .toc{padding:18px 20px}
+  .fig{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ 新基盤アーキテクチャ</span>
+    <h1>Amplify を卒業した<br>新しいパワポ作るマンの構成</h1>
+    <p class="sub">専用 AWS アカウント ／ バージニア北部 ／ CDK ＋ CDKD ／ Kimi K2.5</p>
+    <div class="meta">
+      対象：新環境（移行中の本番）<br>
+      根拠：インフラ定義6スタックとエージェント本体の実装コードを読んで作成
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <nav class="toc">
+    <h2>目次</h2>
+    <ol>
+      <li><a href="#s1"><span class="num">01</span>全体像</a></li>
+      <li><a href="#s2"><span class="num">02</span>3つの経路を分けた理由</a></li>
+      <li><a href="#s3"><span class="num">03</span>スライド生成エージェントの中身</a></li>
+      <li><a href="#s4"><span class="num">04</span>インフラの6スタック</a></li>
+      <li><a href="#s5"><span class="num">05</span>Amplify から置き換えたもの</a></li>
+      <li><a href="#s6"><span class="num">06</span>移行中のいま注意する点</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <span class="eyebrow">01</span>
+    <h2>全体像</h2>
+    <p class="lead">
+      利用者のブラウザから <b>3方向へ別々に</b>つながるのが、この構成の一番の特徴です。
+      画面の配信、ログイン、AI の実行がそれぞれ独立していて、どれかが重くても他を巻き込みません。
+    </p>
+
+    <figure class="fig">
+      <svg viewBox="0 0 1040 706" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="パワポ作るマン新基盤の全体アーキテクチャ図">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#a8a8b2"/>
+          </marker>
+          <marker id="ar-b" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#0a4695"/>
+          </marker>
+          <linearGradient id="acg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0e0d6a"/>
+            <stop offset="45%" stop-color="#0a4695"/>
+            <stop offset="68%" stop-color="#0862aa"/>
+            <stop offset="100%" stop-color="#01b6ec"/>
+          </linearGradient>
+        </defs>
+
+        <!-- 利用者ブラウザ -->
+        <rect x="14" y="286" width="164" height="120" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/>
+        <text x="96" y="330" text-anchor="middle" font-size="14" font-weight="700" fill="#15151a">利用者のブラウザ</text>
+        <text x="96" y="352" text-anchor="middle" font-size="11.5" fill="#767680">React 19 ／ Vite</text>
+        <text x="96" y="370" text-anchor="middle" font-size="11.5" fill="#767680">Tailwind CSS v4</text>
+        <text x="96" y="390" text-anchor="middle" font-size="11" fill="#0a4695">画面は1つの SPA</text>
+
+        <!-- AWSアカウント枠 -->
+        <rect x="200" y="14" width="826" height="678" rx="18" fill="none"
+              stroke="#cfe0f2" stroke-dasharray="6 5"/>
+        <text x="216" y="38" font-size="12" font-weight="700" fill="#0862aa">
+          専用 AWS アカウント　／　バージニア北部（us-east-1）　／　CDK で定義し CDKD でデプロイ
+        </text>
+
+        <!-- ゾーン1 Web配信 -->
+        <rect x="216" y="52" width="794" height="182" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/>
+        <text x="234" y="76" font-size="12.5" font-weight="800" fill="#0a4695">① 画面と共有スライドの配信</text>
+
+        <rect x="234" y="88" width="176" height="130" rx="14" fill="#eaf2fb" stroke="#cfe0f2"/>
+        <text x="322" y="114" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0e0d6a">CloudFront</text>
+        <text x="322" y="134" text-anchor="middle" font-size="11" fill="#4a4a54">pawapo.minoruonda.com</text>
+        <text x="322" y="152" text-anchor="middle" font-size="11" fill="#767680">ACM 証明書 ／ HTTP/3</text>
+        <text x="322" y="170" text-anchor="middle" font-size="11" fill="#767680">パスごとに宛先を切替</text>
+        <text x="322" y="196" text-anchor="middle" font-size="10.5" fill="#0862aa">CloudFront Function で</text>
+        <text x="322" y="210" text-anchor="middle" font-size="10.5" fill="#0862aa">末尾スラッシュを補完</text>
+
+        <path d="M410,120 L462,120" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+        <path d="M410,186 L462,186" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="436" y="112" text-anchor="middle" font-size="10" fill="#767680">既定</text>
+        <text x="436" y="178" text-anchor="middle" font-size="10" fill="#767680">/slides/</text>
+
+        <rect x="466" y="92" width="272" height="58" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="602" y="114" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0e0d6a">画面配信 Lambda</text>
+        <text x="602" y="134" text-anchor="middle" font-size="10.5" fill="#4a4a54">Lambda Web Adapter でビルド成果物を返す</text>
+
+        <rect x="466" y="158" width="272" height="58" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="602" y="180" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0e0d6a">共有スライド保管 S3</text>
+        <text x="602" y="200" text-anchor="middle" font-size="10.5" fill="#4a4a54">CloudFront だけが読める非公開バケット</text>
+
+        <rect x="754" y="92" width="240" height="124" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="874" y="114" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0a4695">Lambda が返す2つのもの</text>
+        <text x="770" y="136" font-size="10.5" fill="#4a4a54">・React のビルド成果物（画面）</text>
+        <text x="770" y="154" font-size="10.5" fill="#4a4a54">・実行時の接続設定（JSON）</text>
+        <text x="770" y="178" font-size="10.5" fill="#767680">接続先の ID などを起動時に</text>
+        <text x="770" y="194" font-size="10.5" fill="#767680">配るので、同じ画面のビルドを</text>
+        <text x="770" y="210" font-size="10.5" fill="#767680">ローカルと本番で使い回せる</text>
+
+        <!-- ゾーン2 AI実行 -->
+        <rect x="216" y="248" width="794" height="252" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/>
+        <text x="234" y="272" font-size="12.5" font-weight="800" fill="#0a4695">② スライド生成エージェントの実行</text>
+
+        <rect x="234" y="286" width="304" height="196" rx="14" fill="url(#acg)"/>
+        <text x="386" y="312" text-anchor="middle" font-size="13.5" font-weight="700" fill="#fff">AgentCore Runtime</text>
+        <text x="386" y="330" text-anchor="middle" font-size="10.5" fill="#dfeaf7">AI 実行専用のサーバーレス基盤</text>
+
+        <rect x="248" y="342" width="276" height="40" rx="10" fill="#ffffff" fill-opacity="0.93"/>
+        <text x="386" y="360" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0e0d6a">Strands Agents（Python）</text>
+        <text x="386" y="375" text-anchor="middle" font-size="10" fill="#4a4a54">直近6往復ぶんの会話をコンテナ内に保持</text>
+
+        <rect x="248" y="390" width="276" height="38" rx="10" fill="#ffffff" fill-opacity="0.93"/>
+        <text x="386" y="406" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0e0d6a">4つの道具</text>
+        <text x="386" y="421" text-anchor="middle" font-size="10" fill="#4a4a54">Web検索・スライド出力・共有リンク・URL取得</text>
+
+        <rect x="248" y="436" width="276" height="34" rx="10" fill="#ffffff" fill-opacity="0.93"/>
+        <text x="386" y="452" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0e0d6a">Marp CLI ＋ Chromium ＋ LibreOffice</text>
+        <text x="386" y="464" text-anchor="middle" font-size="10" fill="#4a4a54">PDF ／ PowerPoint ／ 編集できる PowerPoint</text>
+
+        <path d="M538,318 L590,318" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+        <path d="M538,378 L590,378" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+        <path d="M538,438 L590,438" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+
+        <rect x="594" y="296" width="212" height="46" rx="12" fill="#eaf2fb" stroke="#cfe0f2"/>
+        <text x="700" y="315" text-anchor="middle" font-size="12" font-weight="700" fill="#0e0d6a">Bedrock（文章生成）</text>
+        <text x="700" y="332" text-anchor="middle" font-size="10.5" fill="#4a4a54">Kimi K2.5 を試験運用中</text>
+
+        <rect x="594" y="356" width="212" height="46" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="700" y="375" text-anchor="middle" font-size="12" font-weight="700" fill="#0e0d6a">Secrets Manager</text>
+        <text x="700" y="392" text-anchor="middle" font-size="10.5" fill="#4a4a54">Web検索 API の鍵を実行時に取得</text>
+
+        <rect x="594" y="416" width="212" height="46" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="700" y="435" text-anchor="middle" font-size="12" font-weight="700" fill="#0e0d6a">共有スライドを S3 へ保存</text>
+        <text x="700" y="452" text-anchor="middle" font-size="10.5" fill="#4a4a54">上の ① と同じバケット</text>
+
+        <path d="M538,300 C 560,300 560,276 590,276 L900,276 C 918,276 922,282 922,300 L922,334"
+              stroke="#a8a8b2" stroke-width="1.4" fill="none" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+        <text x="756" y="270" text-anchor="middle" font-size="10" fill="#767680">実行の記録</text>
+
+        <rect x="850" y="340" width="144" height="76" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="922" y="366" text-anchor="middle" font-size="12" font-weight="700" fill="#0e0d6a">CloudWatch</text>
+        <text x="922" y="384" text-anchor="middle" font-size="10.5" fill="#4a4a54">ログとトレース</text>
+        <text x="922" y="401" text-anchor="middle" font-size="10.5" fill="#767680">自動計装で取得</text>
+
+        <!-- ゾーン3 認証 -->
+        <rect x="216" y="514" width="794" height="164" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/>
+        <text x="234" y="538" font-size="12.5" font-weight="800" fill="#0a4695">③ ログイン</text>
+
+        <rect x="234" y="550" width="252" height="110" rx="14" fill="#eaf2fb" stroke="#cfe0f2"/>
+        <text x="360" y="576" text-anchor="middle" font-size="13" font-weight="700" fill="#0e0d6a">Cognito ユーザープール</text>
+        <text x="360" y="598" text-anchor="middle" font-size="10.5" fill="#4a4a54">メール＋パスワード</text>
+        <text x="360" y="616" text-anchor="middle" font-size="10.5" fill="#4a4a54">パスキー（合言葉なしログイン）</text>
+        <text x="360" y="634" text-anchor="middle" font-size="10.5" fill="#4a4a54">Google アカウント</text>
+        <text x="360" y="652" text-anchor="middle" font-size="10" fill="#8a5a00">発行した合言葉で ② を許可</text>
+
+        <path d="M486,584 L538,584" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+        <path d="M486,630 L538,630" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+
+        <rect x="542" y="562" width="212" height="44" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="648" y="580" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0e0d6a">Google 連携ログイン</text>
+        <text x="648" y="596" text-anchor="middle" font-size="10.5" fill="#4a4a54">同じメールの既存ユーザーと紐付け</text>
+
+        <rect x="542" y="610" width="212" height="44" rx="12" fill="#fff" stroke="#e8e8ee"/>
+        <text x="648" y="628" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0e0d6a">既存ユーザー移行 Lambda</text>
+        <text x="648" y="644" text-anchor="middle" font-size="10.5" fill="#4a4a54">初回ログイン時に自動で引っ越し</text>
+
+        <path d="M754,632 L800,632" stroke="#a8a8b2" stroke-width="1.6" marker-end="url(#ar)"/>
+        <rect x="804" y="600" width="190" height="64" rx="12" fill="#fff" stroke="#e8e8ee" stroke-dasharray="5 4"/>
+        <text x="899" y="624" text-anchor="middle" font-size="11.5" font-weight="700" fill="#767680">旧 AWS アカウント</text>
+        <text x="899" y="642" text-anchor="middle" font-size="10.5" fill="#767680">Amplify 時代のユーザー情報</text>
+        <text x="899" y="658" text-anchor="middle" font-size="10" fill="#767680">読み取り専用で参照</text>
+
+        <!-- ブラウザからの3本 -->
+        <path d="M178,304 C 202,304 200,150 232,150" stroke="#0a4695" stroke-width="2"
+              fill="none" marker-end="url(#ar-b)"/>
+        <path d="M178,346 C 206,346 208,384 232,384" stroke="#0a4695" stroke-width="2"
+              fill="none" marker-end="url(#ar-b)"/>
+        <path d="M178,388 C 202,388 200,584 232,584" stroke="#0a4695" stroke-width="2"
+              fill="none" marker-end="url(#ar-b)"/>
+
+        <text x="196" y="192" font-size="10.5" font-weight="700" fill="#0a4695">画面</text>
+        <text x="196" y="416" font-size="10.5" font-weight="700" fill="#0a4695">生成</text>
+        <text x="196" y="562" font-size="10.5" font-weight="700" fill="#0a4695">ログイン</text>
+      </svg>
+      <figcaption>
+        利用者のブラウザから、画面配信・エージェント実行・ログインの3方向へ独立してつながる。
+        スライド生成のやり取りは Lambda を経由せず、ブラウザとエージェント基盤が直接つながる。
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s2">
+    <span class="eyebrow">02</span>
+    <h2>3つの経路を分けた理由</h2>
+    <p class="lead">
+      旧構成では画面配信も AI の中継も Amplify が面倒を見ていました。新構成では役割ごとに経路を切り、
+      それぞれが別の理由で壊れたり詰まったりしないようにしています。
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h4>① 画面と共有スライドの配信</h4>
+        <p>CloudFront が入口。既定のパスは画面配信 Lambda、<code>/slides/</code> は共有スライドの S3 へ振り分けます。</p>
+        <p>Lambda は Lambda Web Adapter を挟んだ普通の Node サーバーで、同じコンテナをローカルでもそのまま起動できます。</p>
+      </div>
+      <div class="card">
+        <h4>② スライド生成エージェントの実行</h4>
+        <p>ブラウザが AgentCore Runtime を<b>直接</b>呼びます。生成の途中経過はそのままブラウザへ流れます。</p>
+        <p>Lambda を挟まないので、Lambda の実行時間の上限が AI の生成時間の上限になりません。ここが今回の設計の肝です。</p>
+      </div>
+      <div class="card">
+        <h4>③ ログイン</h4>
+        <p>Cognito が発行した合言葉（JWT）を、そのまま ② の呼び出しに添えます。エージェント基盤側がこれを検証します。</p>
+        <p>ブラウザへ AWS の一時認証情報を渡す必要がないため、旧構成にあった Identity Pool を廃止しました。</p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>経路</th><th>入口</th><th>処理するもの</th><th>止まったときの影響範囲</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>① 画面</td>
+            <td>CloudFront → Lambda</td>
+            <td>React のビルド成果物、実行時の接続設定 JSON</td>
+            <td>画面が開けない。生成中の会話には影響しない</td>
+          </tr>
+          <tr>
+            <td>① 共有</td>
+            <td>CloudFront → S3</td>
+            <td>共有されたスライドの HTML（SNS 用のカード情報つき）</td>
+            <td>共有リンクだけが見られない</td>
+          </tr>
+          <tr>
+            <td>② 生成</td>
+            <td>AgentCore Runtime</td>
+            <td>スライド本文の生成、Web 検索、PDF・PowerPoint への変換</td>
+            <td>生成だけが止まる。画面と共有リンクは生きている</td>
+          </tr>
+          <tr>
+            <td>③ ログイン</td>
+            <td>Cognito</td>
+            <td>登録、ログイン、パスキー、Google 連携、既存ユーザーの移行</td>
+            <td>新規ログインが不可。ログイン済みの利用は合言葉の期限まで継続</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s3">
+    <span class="eyebrow">03</span>
+    <h2>スライド生成エージェントの中身</h2>
+    <p class="lead">
+      AgentCore Runtime の中で動いているのは、Marp CLI と変換ツール一式を同居させた ARM64 のコンテナです。
+      1つのコンテナがスライドの文章生成から PowerPoint 化まで完結させます。
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>層</th><th>中身</th><th>役割</th></tr>
+        </thead>
+        <tbody>
+          <tr class="grp">
+            <td class="svc" rowspan="2">頭脳<small>考える部分</small></td>
+            <td class="who">Strands Agents</td>
+            <td>道具の使い分けと会話の管理。直近6往復ぶんだけを残して古い会話を自動で捨て、トークン代を抑える</td>
+          </tr>
+          <tr>
+            <td class="who">Bedrock の Kimi K2.5</td>
+            <td>スライド本文の生成。他モデル（Sonnet・GLM・Opus など）は設定を残したまま無効化中で、切り替えは環境変数だけで戻せる</td>
+          </tr>
+          <tr class="grp">
+            <td class="svc" rowspan="4">道具<small>エージェントが呼ぶ</small></td>
+            <td class="who">Web 検索</td>
+            <td>Tavily で最新情報を調べる。API キーは Secrets Manager から実行時に取得する</td>
+          </tr>
+          <tr>
+            <td class="who">スライド出力</td>
+            <td>Marp 形式の Markdown を確定させ、画面のプレビューへ流す</td>
+          </tr>
+          <tr>
+            <td class="who">共有リンク発行</td>
+            <td>スライドの HTML を S3 へ保存し、SNS 用のカード情報を埋め込む</td>
+          </tr>
+          <tr>
+            <td class="who">URL 取得</td>
+            <td>指定されたページの中身を読み込んで題材にする</td>
+          </tr>
+          <tr class="grp">
+            <td class="svc" rowspan="2">変換<small>コンテナ同梱</small></td>
+            <td class="who">Marp CLI ＋ Chromium</td>
+            <td>Markdown から PDF と PowerPoint を書き出す。日本語フォントも同梱している</td>
+          </tr>
+          <tr>
+            <td class="who">LibreOffice Impress</td>
+            <td>あとから編集できる形式の PowerPoint を作る</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note">
+      会話履歴は同じセッション ID で呼ぶ間だけコンテナの中に残ります（目安として無操作15分・最長8時間）。
+      外部のメモリ基盤や DynamoDB は初期構成に入れず、必要になった時点で足す判断にしています。
+    </p>
+  </section>
+
+  <section id="s4">
+    <span class="eyebrow">04</span>
+    <h2>インフラの6スタック</h2>
+    <p class="lead">
+      更新頻度で分けています。ほとんど変わらない土台と、毎回のデプロイで動く部分を混ぜないことで、
+      本番デプロイの影響範囲を小さく保っています。
+    </p>
+
+    <figure class="fig">
+      <svg viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="6つの CDK スタックの依存関係">
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#a8a8b2"/>
+          </marker>
+        </defs>
+
+        <text x="115" y="26" text-anchor="middle" font-size="11" font-weight="700" fill="#767680">土台（ほぼ更新しない）</text>
+        <text x="605" y="26" text-anchor="middle" font-size="11" font-weight="700" fill="#0a4695">アプリ本体（毎回更新する）</text>
+
+        <rect x="20" y="42" width="190" height="82" rx="14" fill="#eaf2fb" stroke="#cfe0f2"/>
+        <text x="115" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#0e0d6a">Foundation</text>
+        <text x="115" y="90" text-anchor="middle" font-size="10.5" fill="#4a4a54">ドメイン・証明書</text>
+        <text x="115" y="107" text-anchor="middle" font-size="10.5" fill="#4a4a54">秘密情報・予算通知</text>
+
+        <rect x="20" y="160" width="190" height="82" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/>
+        <text x="115" y="188" text-anchor="middle" font-size="13" font-weight="700" fill="#0e0d6a">AuthAccess</text>
+        <text x="115" y="208" text-anchor="middle" font-size="10.5" fill="#4a4a54">認証まわりの Lambda が</text>
+        <text x="115" y="225" text-anchor="middle" font-size="10.5" fill="#4a4a54">使う権限とログ</text>
+
+        <rect x="272" y="42" width="190" height="82" rx="14" fill="#f7f8fa" stroke="#e8e8ee"/>
+        <text x="367" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#0e0d6a">WorkloadAccess</text>
+        <text x="367" y="90" text-anchor="middle" font-size="10.5" fill="#4a4a54">エージェントと画面配信の</text>
+        <text x="367" y="107" text-anchor="middle" font-size="10.5" fill="#4a4a54">実行権限とログ</text>
+
+        <rect x="272" y="160" width="190" height="82" rx="14" fill="#eaf2fb" stroke="#cfe0f2"/>
+        <text x="367" y="188" text-anchor="middle" font-size="13" font-weight="700" fill="#0e0d6a">Auth</text>
+        <text x="367" y="208" text-anchor="middle" font-size="10.5" fill="#4a4a54">Cognito 本体と</text>
+        <text x="367" y="225" text-anchor="middle" font-size="10.5" fill="#4a4a54">移行・Google 連携</text>
+
+        <rect x="524" y="100" width="186" height="84" rx="14" fill="#eaf2fb" stroke="#cfe0f2"/>
+        <text x="617" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#0e0d6a">Agent</text>
+        <text x="617" y="150" text-anchor="middle" font-size="10.5" fill="#4a4a54">コンテナ置き場と</text>
+        <text x="617" y="167" text-anchor="middle" font-size="10.5" fill="#4a4a54">AgentCore Runtime</text>
+
+        <rect x="772" y="100" width="196" height="84" rx="14" fill="#eaf2fb" stroke="#cfe0f2"/>
+        <text x="870" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#0e0d6a">Web</text>
+        <text x="870" y="150" text-anchor="middle" font-size="10.5" fill="#4a4a54">画面配信 Lambda・</text>
+        <text x="870" y="167" text-anchor="middle" font-size="10.5" fill="#4a4a54">CloudFront・共有 S3</text>
+
+        <path d="M210,84 L268,84" stroke="#a8a8b2" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <path d="M210,110 C 240,110 238,180 268,180" stroke="#a8a8b2" stroke-width="1.5"
+              fill="none" marker-end="url(#ar2)"/>
+        <path d="M210,215 L268,215" stroke="#a8a8b2" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <path d="M462,90 C 494,90 494,132 520,132" stroke="#a8a8b2" stroke-width="1.5" fill="none" marker-end="url(#ar2)"/>
+        <path d="M462,194 C 494,194 494,156 520,156" stroke="#a8a8b2" stroke-width="1.5" fill="none" marker-end="url(#ar2)"/>
+        <path d="M710,142 L768,142" stroke="#a8a8b2" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+        <text x="239" y="76" text-anchor="middle" font-size="10" fill="#767680">証明書</text>
+        <text x="239" y="207" text-anchor="middle" font-size="10" fill="#767680">権限</text>
+        <text x="739" y="134" text-anchor="middle" font-size="10" fill="#767680">接続先</text>
+
+        <text x="500" y="278" text-anchor="middle" font-size="10.5" fill="#767680">
+          矢印は「参照する向き」。Web は他の4つの出力（ドメイン・Cognito・エージェント・権限）をまとめて使う
+        </text>
+      </svg>
+      <figcaption>スタックの依存関係。土台側を触らずにアプリ側だけを更新できる形にしている。</figcaption>
+    </figure>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>スタック</th><th>主なリソース</th><th>消えると困る度</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Foundation</td><td>専用サブドメインのゾーン、ACM 証明書、秘密情報2本、月次の予算通知</td><td>高（秘密情報は保持設定）</td></tr>
+          <tr><td>AuthAccess</td><td>認証系 Lambda の実行ロールとログ</td><td>低</td></tr>
+          <tr><td>Auth</td><td>Cognito ユーザープール、アプリクライアント、移行・Google 連携・IdP 管理の Lambda</td><td>最高（削除保護つき）</td></tr>
+          <tr><td>WorkloadAccess</td><td>エージェントと画面配信 Lambda の実行ロール、Web のログ</td><td>低</td></tr>
+          <tr><td>Agent</td><td>コンテナイメージ、AgentCore Runtime、モデル設定</td><td>中（作り直せる）</td></tr>
+          <tr><td>Web</td><td>画面配信 Lambda、Function URL、CloudFront、共有スライド S3、DNS レコード</td><td>高（S3 は保持設定）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s5">
+    <span class="eyebrow">05</span>
+    <h2>Amplify から置き換えたもの</h2>
+    <p class="lead">
+      Amplify が裏で引き受けていた仕事を、どこへ移したかの対応表です。
+      <span class="tag t-fact">旧</span> が Amplify Gen2 時代、<span class="tag t-new">新</span> が今の構成です。
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>役割</th><th>旧（Amplify Gen2）</th><th>新（CDK ＋ CDKD）</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>画面の配信</td>
+            <td>Amplify Hosting が丸ごと担当</td>
+            <td>CloudFront ＋ 画面配信 Lambda。将来サーバー側処理を足せる余地を残した</td>
+          </tr>
+          <tr>
+            <td>接続設定の受け渡し</td>
+            <td><code>amplify_outputs.json</code> をビルド時に焼き込む</td>
+            <td>Lambda が実行時に JSON で返す。同じビルド成果物をローカルと本番で共用できる</td>
+          </tr>
+          <tr>
+            <td>ログイン基盤</td>
+            <td>Amplify Auth が Cognito を自動生成</td>
+            <td>CDK の Auth スタックで明示的に定義。パスキーと Google を追加した</td>
+          </tr>
+          <tr>
+            <td>開発環境</td>
+            <td>ブランチごとの sandbox を都度デプロイ</td>
+            <td>常設の開発用 AWS 環境を持たず、手元でエージェント基盤と配信経路を再現して起動する</td>
+          </tr>
+          <tr>
+            <td>デプロイの起点</td>
+            <td>GitHub へ push すると自動でデプロイ</td>
+            <td>push とデプロイを分離し、依頼を受けたときにスキルから手動で実行する</td>
+          </tr>
+          <tr>
+            <td>独自ドメイン</td>
+            <td>Amplify の画面で設定</td>
+            <td>個人アカウントの親ドメインから専用サブドメインへ委任し、証明書ごと CDK で管理</td>
+          </tr>
+          <tr>
+            <td>秘密情報</td>
+            <td>Amplify の環境変数</td>
+            <td>公開してよい設定は CDK、鍵は Secrets Manager へ完全に分離</td>
+          </tr>
+          <tr>
+            <td>ブラウザの AWS 権限</td>
+            <td>Identity Pool で一時認証情報を発行</td>
+            <td>廃止。必要なのは Cognito の合言葉だけなので作らない</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout blue">
+      <p><b>デプロイの入口は4つに整理済み。</b>
+      手元では「画面だけ」「認証画面だけ」「エージェントも動かす」「配信経路まで丸ごと」を選んで起動し、
+      本番は差分確認 → 試し打ち → 完全待機デプロイ → 状態確認の順で進めます。切り戻し用のコマンドも用意済みです。</p>
+    </div>
+  </section>
+
+  <section id="s6">
+    <span class="eyebrow">06</span>
+    <h2>移行中のいま注意する点</h2>
+    <p class="lead">実装を読んで見つかった、設計文書と現状のズレと、切り替え運用の要点です。</p>
+
+    <div class="grid">
+      <div class="card">
+        <h4>通信方式はまだ従来のまま</h4>
+        <p>設計では AgentCore の標準イベント形式（AG-UI）へ移す方針ですが、現時点の実装は従来の独自ストリーミングのままです。</p>
+        <p>受け皿の設定項目だけは先に用意してあるので、切り替えは画面側とエージェント側を別々に進められます。</p>
+      </div>
+      <div class="card">
+        <h4>本番の中身は main ではない</h4>
+        <p>移行期間中の本番は再構築用のブランチ側です。バグ修正を main へ入れただけでは本番に反映されません。</p>
+        <p>旧環境の CI が無いぶん、テーマの CSS はデプロイ用コマンドが配ります。手動で叩くときは配布を先に実行します。</p>
+      </div>
+      <div class="card">
+        <h4>ドメイン切り替えは段階制御</h4>
+        <p>本番ドメインを新 CloudFront へ付けるかどうかは、設定値ひとつで切り替わります。切り替え前は予備のドメインだけで動かします。</p>
+        <p>旧環境の完全一致設定が優先される仕組みを使い、切り替え中に見えなくなる時間を作らない設計です。</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p><b>既存ユーザーは自分では何もしなくてよい形。</b>
+      これまでと同じメールアドレスとパスワードで最初にログインした時点で、裏側の Lambda が旧アカウントへ問い合わせて自動で引っ越します。
+      ただし Google やパスキーで先にログインした場合はこの仕組みが動かないため、初回だけはパスワードで入ってもらう必要があります。</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>作成: パワポ作るマンの新環境（再構築ブランチ）のインフラ定義とエージェント実装を読んで作成。</p>
+    <p>一次情報: <code>docs/migration-architecture.md</code>（設計）、<code>infra/lib/*.ts</code>（実装）、<code>amplify/agent/runtime/</code>（エージェント本体）</p>
+  </footer>
+
+</div>
+</body>
+</html>
