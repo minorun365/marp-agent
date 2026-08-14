@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Docker再ビルド抑止｜パワポ作るマン</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb; --blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a; --sub:#4a4a54; --mut:#767680; --line:#e8e8ee; --soft:#f7f8fa;
+  --gold:#f0b21f; --gold-deep:#8a5a00; --gold-soft:#fdf5e0;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  color:var(--ink);line-height:1.85;font-size:15.5px;
+  -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;
+  font-feature-settings:"palt" 1;
+}
+.wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,
+.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+.hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+
+.toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+.toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;
+  grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.toc li{margin:0}
+.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;
+  color:var(--sub);font-size:14px;padding:5px 0}
+.toc a:hover{color:var(--blue-deep)}
+.toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);
+  font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+
+section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+section::before{content:"";position:absolute;top:-1px;left:0;
+  width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+  font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;
+  background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);
+  font-weight:700;letter-spacing:.005em}
+h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;
+  padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+
+.callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;
+  border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.callout b{color:var(--gold-deep)}
+.callout > :first-child{margin-top:0}
+.callout > :last-child{margin-bottom:0}
+.callout.blue{background:var(--blue-soft)}
+.callout.blue::before{background:var(--blue-grad)}
+.callout.blue b{color:var(--blue-deep)}
+
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;
+  border:1px solid var(--line);border-radius:16px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:600px}
+thead{background-image:var(--blue-grad)}
+th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;
+  text-align:left;white-space:nowrap;letter-spacing:.02em;border:0}
+td{padding:13px 16px;text-align:left;vertical-align:top;border:0;
+  border-bottom:1px solid var(--line);line-height:1.75}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbfcfe}
+td:first-child{font-weight:700;color:var(--blue)}
+td.st{text-align:center;font-weight:700;white-space:nowrap}
+td.ok{background:#f0faf3;color:#1a6b38}
+td.ng{background:#fdf4f4;color:#8a3a3a}
+.note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
+.hash{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  color:var(--blue-deep);white-space:nowrap}
+
+.diff{border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:20px 0}
+.diff-h{background:var(--soft);padding:10px 18px;font-size:12px;font-weight:700;
+  letter-spacing:.08em;color:var(--mut);border-bottom:1px solid var(--line)}
+.diff pre{margin:0;padding:16px 18px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.9}
+.diff pre i{font-style:normal;display:block}
+.diff pre i.add{background:#f0faf3;color:#1a6b38;font-weight:700;
+  margin:0 -18px;padding:0 18px}
+.diff pre i.ctx{color:var(--mut)}
+
+ul,ol{margin:12px 0;padding-left:23px}
+li{margin:7px 0}
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--mut);line-height:1.9}
+footer p{margin:8px 0}
+code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
+  font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+
+@media (max-width:620px){
+  body{font-size:15px}
+  .hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}
+  .hero h1{font-size:23px}
+  h2{font-size:20px}
+  section{padding-top:38px}
+  .callout{padding:16px 18px 16px 22px}
+  .toc{padding:18px 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ インフラ改善</span>
+    <h1>infra配下のコードを直すたびに<br>Web Lambdaが作り直される問題を止めた</h1>
+    <p class="sub">Dockerビルドコンテキストから CDK コードと tmp を除外し、synth のアセットハッシュで実測検証</p>
+    <div class="meta">対応日：2026-08-15 ／ ブランチ claude/recursing-benz-786e2d ／ コミット 4ddfdc2<br>本番デプロイは未実施（コミットとpushのみ）</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <nav class="toc">
+    <h2>目次</h2>
+    <ol>
+      <li><a href="#s1"><span class="num">01</span>何が起きていたか</a></li>
+      <li><a href="#s2"><span class="num">02</span>変更内容（Before / After）</a></li>
+      <li><a href="#s3"><span class="num">03</span>検証結果</a></li>
+      <li><a href="#s4"><span class="num">04</span>この先の注意点</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <span class="eyebrow">01</span>
+    <h2>何が起きていたか</h2>
+    <p class="lead">CDK の <code>DockerImageAsset</code> は、ビルドコンテキストに含まれるファイル群のフィンガープリントをそのままアセットハッシュにします。ハッシュが変わればイメージタグが変わり、CloudFormation は Lambda を置換します。</p>
+
+    <p>問題は、ビルドコンテキストがリポジトリのルート全体だったことです。<code>infra/lib/</code> の TypeScript は Docker イメージの中身に一切関係しないのに、コンテキストの一部としてハッシュに算入されていました。</p>
+
+    <div class="callout blue">
+      <p><b>見落としやすいポイント：<code>.dockerignore</code> は「Dockerだけの設定」ではない</b></p>
+      <p>CDK の <code>image-asset.js</code> は、ソースディレクトリの <code>.dockerignore</code> を読んで、その中身を <code>exclude</code> プロパティと<b>マージしてからフィンガープリントを計算</b>します（<code>exclude = [...dockerignoreの各行, ...props.exclude, '!.dockerignore']</code>）。つまり <code>.dockerignore</code> への1行が、そのままアセットハッシュの入力を変えます。</p>
+    </div>
+
+    <p><a href="https://github.com/minorun365/marp-agent/blob/main/infra/lib/web-stack.ts">infra/lib/web-stack.ts</a> の <code>fromImageAsset()</code> には既にインラインの <code>exclude</code> 配列があり、<code>docs</code> / <code>tests</code> / <code>infra/scripts</code> などを除外していました。ただし <code>infra/lib</code>・<code>infra/bin</code>・<code>tmp</code> はどちらにも入っていませんでした。</p>
+  </section>
+
+  <section id="s2">
+    <span class="eyebrow">02</span>
+    <h2>変更内容（Before / After）</h2>
+    <p class="lead">触ったファイルは <code>.dockerignore</code> 1本だけ、追加は4行です。<code>infra/web/server.mjs</code> は Dockerfile が <code>COPY</code> するので、ディレクトリ単位ではなく <code>infra/bin</code>・<code>infra/lib</code>・<code>infra/scripts</code> と細かく指定しています。</p>
+
+    <div class="diff">
+      <div class="diff-h">.dockerignore（末尾）</div>
+      <pre><i class="ctx"> amplify_outputs.json</i><i class="ctx"> docs</i><i class="ctx"> tests</i><i class="add">+tmp</i><i class="add">+infra/bin</i><i class="add">+infra/lib</i><i class="add">+infra/scripts</i></pre>
+    </div>
+
+    <p>ビルドコンテキストへ実際にステージングされた <code>infra/</code> 配下は、修正後は次の2ファイルだけになりました。Dockerfile の <code>COPY infra/web/server.mjs</code> は問題なく通ります。</p>
+
+    <ul>
+      <li><code>infra/web/Dockerfile</code></li>
+      <li><code>infra/web/server.mjs</code></li>
+    </ul>
+
+    <p>フロントのビルド（<code>tsc -b &amp;&amp; vite build</code>）が参照するのは <code>src/</code> と <code>vite.config.ts</code> だけで、<code>tsconfig</code> の <code>include</code> にも <code>infra/</code> は入っていません。除外してもイメージのビルドには影響しないことを確認済みです。</p>
+  </section>
+
+  <section id="s3">
+    <span class="eyebrow">03</span>
+    <h2>検証結果</h2>
+    <p class="lead">「修正後にハッシュが変わらない」だけを見ると、検証手段そのものが壊れていた場合に偽の合格になります。そこで<b>修正前に同じ操作で再現すること</b>と、<b>拾うべき変更はちゃんと拾うこと</b>も測りました。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>操作</th><th>PawapoWeb のアセットハッシュ</th><th>判定</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>基準</td>
+            <td>修正前・無変更で synth</td>
+            <td><span class="hash">3d6b8f67…b646a</span></td>
+            <td class="st">—</td>
+          </tr>
+          <tr>
+            <td>対照</td>
+            <td>修正前・<code>infra/lib/web-stack.ts</code> にコメント1行</td>
+            <td><span class="hash">92df02e2…52ffb</span> <b>変化</b></td>
+            <td class="st ng">問題を再現</td>
+          </tr>
+          <tr>
+            <td>修正</td>
+            <td><code>.dockerignore</code> に4行追加して synth</td>
+            <td><span class="hash">e62fb099…dc01cc</span> 変化（1回だけ）</td>
+            <td class="st">想定内</td>
+          </tr>
+          <tr>
+            <td>本命</td>
+            <td>修正後・<code>infra/lib</code> <code>infra/bin</code> <code>infra/scripts</code> <code>tmp</code> の4か所を同時に変更</td>
+            <td><span class="hash">e62fb099…dc01cc</span> <b>不変</b></td>
+            <td class="st ok">成功条件クリア</td>
+          </tr>
+          <tr>
+            <td>逆方向</td>
+            <td>修正後・<code>src/main.tsx</code> にコメント1行</td>
+            <td><span class="hash">4a3ca455…33e27d</span> 変化</td>
+            <td class="st ok">除外しすぎていない</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>他スタックへの影響</h3>
+    <p>修正前後の <code>cdk.out</code> を全ファイル比較しました。<b>PawapoWeb 以外の5スタックはテンプレート・アセットマニフェストとも完全一致</b>です。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>スタック</th><th>template.json</th><th>assets.json</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>PawapoFoundation</td><td class="st ok">一致</td><td class="st ok">一致</td></tr>
+          <tr><td>PawapoAuth</td><td class="st ok">一致</td><td class="st ok">一致</td></tr>
+          <tr><td>PawapoAuthAccess</td><td class="st ok">一致</td><td class="st ok">一致</td></tr>
+          <tr><td>PawapoWorkloadAccess</td><td class="st ok">一致</td><td class="st ok">一致</td></tr>
+          <tr><td>PawapoAgent</td><td class="st ok">一致</td><td class="st ok">一致</td></tr>
+          <tr><td>PawapoWeb</td><td>2行のみ差分</td><td>ハッシュのみ差分</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note">PawapoWeb の差分はイメージタグの文字列（<code>Fn::Sub</code> の ECR URI と <code>aws:asset:path</code>）の2行だけで、リソース構成の変更はありません。</p>
+  </section>
+
+  <section id="s4">
+    <span class="eyebrow">04</span>
+    <h2>この先の注意点</h2>
+
+    <h3>次のデプロイで1回だけ再ビルドが走る</h3>
+    <p>除外を足したことでコンテキストの中身が変わるため、ハッシュは <span class="hash">3d6b8f67…</span> → <span class="hash">e62fb099…</span> へ1回だけ移ります。この置換は避けられません。2回目以降、<code>infra/lib</code> だけを直したデプロイでは再ビルドが起きなくなります。</p>
+
+    <h3>除外リストが2か所にあるので、片方だけ足さないよう注意</h3>
+    <p><code>.dockerignore</code> と <code>web-stack.ts</code> のインライン <code>exclude</code> は CDK 側でマージされるため、どちらへ書いても効きます。ただし現状は <code>infra/scripts</code> が両方、<code>infra/lib</code> は <code>.dockerignore</code> だけ、というふうに重複と偏りがあります。将来の除外追加でどちらか一方を見て判断すると取りこぼします。一本化する価値はありますが、今回は指示の範囲外なので触っていません。</p>
+
+    <h3><code>.dockerignore</code> にコメント行を足さない</h3>
+    <p><code>ignoreMode</code> が <code>IgnoreMode.GLOB</code> に設定されているため、CDK は各行を minimatch のパターンとして解釈します。Docker のコメント記法（<code>#</code> 始まり）が同じように扱われる保証がないので、現状どおりコメントなしのプレーンな一覧で保ちます。</p>
+
+    <div class="callout">
+      <p><b>本番デプロイは未実施です。</b> 変更はブランチ <code>claude/recursing-benz-786e2d</code> へ push しただけで、AWS には何も反映していません。反映するときは <code>deploy-prod</code> スキル経由でお願いします。</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>変更ファイル：<code>.dockerignore</code>（+4行）</p>
+    <p>コミット：<code>4ddfdc2</code> infra配下のCDKコードとtmpをDockerビルドコンテキストから外し不要な再ビルドを止める</p>
+    <p>検証コマンド：<code>npx cdkd synth</code> ／ 比較対象は <code>cdk.out/*.template.json</code> と <code>cdk.out/*.assets.json</code></p>
+  </footer>
+
+</div>
+</body>
+</html>
