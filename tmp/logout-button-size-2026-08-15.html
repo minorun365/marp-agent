@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ログアウトボタン｜サイズ調整と本番反映</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb; --blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a; --sub:#4a4a54; --mut:#767680; --line:#e8e8ee; --soft:#f7f8fa;
+  --gold:#f0b21f; --gold-deep:#8a5a00; --gold-soft:#fdf5e0;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  color:var(--ink);line-height:1.85;font-size:15.5px;
+  -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;
+  font-feature-settings:"palt" 1;
+}
+.wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,
+.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+.hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+
+.toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+.toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;
+  grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.toc li{margin:0}
+.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;
+  color:var(--sub);font-size:14px;padding:5px 0}
+.toc a:hover{color:var(--blue-deep)}
+.toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);
+  font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+
+section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+section::before{content:"";position:absolute;top:-1px;left:0;
+  width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+  font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;
+  background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);
+  font-weight:700;letter-spacing:.005em}
+h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;
+  padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+
+.callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;
+  border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.callout b{color:var(--gold-deep)}
+.callout > :first-child{margin-top:0}
+.callout > :last-child{margin-bottom:0}
+.callout.blue{background:var(--blue-soft)}
+.callout.blue::before{background:var(--blue-grad)}
+.callout.blue b{color:var(--blue-deep)}
+
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;
+  border:1px solid var(--line);border-radius:16px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+thead{background-image:var(--blue-grad)}
+th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;
+  text-align:left;letter-spacing:.02em;border:0}
+td{padding:13px 16px;text-align:left;vertical-align:top;border:0;
+  border-bottom:1px solid var(--line);line-height:1.75}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbfcfe}
+td:first-child{font-weight:700;color:var(--blue)}
+td.ok{color:#1a6b38;font-weight:700}
+.note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
+
+.ba{border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:20px 0}
+.ba .row{padding:16px 20px;border-bottom:1px solid var(--line)}
+.ba .row:last-child{border-bottom:0}
+.ba .row.after{background:#fbfcfe}
+.ba .lbl{font-size:11px;font-weight:800;letter-spacing:.1em;margin:0 0 8px;color:var(--mut)}
+.ba .row.after .lbl{color:var(--blue-bright)}
+.ba pre{margin:0;font-size:12.5px;line-height:1.9;white-space:pre-wrap;word-break:break-all;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--sub)}
+.ba .row.after pre{color:var(--blue-deep);font-weight:600}
+
+blockquote{margin:20px 0;padding:18px 24px;background:var(--soft);border-radius:14px;
+  color:var(--sub);font-size:13.8px;line-height:1.85;border-left:3px solid var(--blue-line)}
+blockquote p{margin:5px 0}
+ul,ol{margin:12px 0;padding-left:23px}
+li{margin:7px 0}
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--mut);line-height:1.9}
+footer p{margin:8px 0}
+code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
+  font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+
+@media (max-width:620px){
+  body{font-size:15px}
+  .hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}
+  .hero h1{font-size:23px}
+  h2{font-size:20px}
+  section{padding-top:38px}
+  .callout{padding:16px 18px 16px 22px}
+  .toc{padding:18px 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ UI修正と本番反映</span>
+    <h1>ログアウトボタンを<br>周囲の文字サイズに合わせた</h1>
+    <p class="sub">ヘッダー内でボタンだけ10px固定になっていた不揃いを解消し、本番へ反映済み</p>
+    <div class="meta">対応日：2026年8月15日<br>コミット：c70d80b ／ 反映先：pawapo.minoruonda.com</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="toc">
+    <h2>目次</h2>
+    <ol>
+      <li><a href="#s1"><span class="num">01</span>何が起きていたか</a></li>
+      <li><a href="#s2"><span class="num">02</span>変更内容（Before / After）</a></li>
+      <li><a href="#s3"><span class="num">03</span>検証結果</a></li>
+      <li><a href="#s4"><span class="num">04</span>本番デプロイと同乗した変更</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <span class="eyebrow">01</span>
+    <h2>何が起きていたか</h2>
+    <p class="lead">ヘッダーは「タイトル＋サブタイトル」と「ログアウトボタン」の2要素で構成されています。このうちボタンだけが、周囲より一段小さい文字サイズで固定されていました。</p>
+
+    <p>該当箇所は <code>src/App.tsx</code> の189行目です。クラス指定が <code>text-[10px] md:text-[10px]</code> となっており、<b>スマホでもPCでも10px固定</b>でした。Tailwind の <code>md:</code> はPC幅で上書きするための指定ですが、同じ値が書かれているため実質的に効いていない状態です。</p>
+
+    <div class="callout blue">
+      <p><b>周囲との比較</b>：同じヘッダー内のサブタイトル「Strands ＆ AgentCoreでフルサーバーレス構築！」は <code>text-xs md:text-sm</code>＝12px／14px です。つまりボタンは、ヘッダー内で最も小さいテキストより、さらに小さい状態でした。加えて上下パディングが <code>py-0.5</code>（4px）と薄く、ボタン全体の高さも約23pxに留まっていました。</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <span class="eyebrow">02</span>
+    <h2>変更内容（Before / After）</h2>
+    <p class="lead">文字サイズをサブタイトルと同値に引き上げ、それに合わせて内側の余白と角丸も調整しました。変更したのは className の1行のみです。</p>
+
+    <h3>src/App.tsx:187-192（ヘッダー内のボタン要素）</h3>
+
+    <div class="ba">
+      <div class="row">
+        <p class="lbl">BEFORE</p>
+<pre>&lt;button
+  onClick={signOut}
+  className="bg-white/20 text-white px-2 md:px-3 py-0.5 md:py-1 rounded hover:bg-white/30 transition-colors text-[10px] md:text-[10px] whitespace-nowrap flex-shrink-0"
+&gt;
+  ログアウト
+&lt;/button&gt;</pre>
+      </div>
+      <div class="row after">
+        <p class="lbl">AFTER</p>
+<pre>&lt;button
+  onClick={signOut}
+  className="bg-white/20 text-white px-3 md:px-4 py-1 md:py-1.5 rounded-md hover:bg-white/30 transition-colors text-xs md:text-sm whitespace-nowrap flex-shrink-0"
+&gt;
+  ログアウト
+&lt;/button&gt;
+</pre>
+      </div>
+    </div>
+
+    <h3>変更したクラスの対応表</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>項目</th><th>Before</th><th>After</th><th>意図</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>文字サイズ</td><td><code>text-[10px] md:text-[10px]</code><br>10px／10px</td><td><code>text-xs md:text-sm</code><br>12px／14px</td><td>サブタイトルと同値に揃える</td></tr>
+          <tr><td>左右パディング</td><td><code>px-2 md:px-3</code><br>8px／12px</td><td><code>px-3 md:px-4</code><br>12px／16px</td><td>文字が大きくなったぶん左右も広げる</td></tr>
+          <tr><td>上下パディング</td><td><code>py-0.5 md:py-1</code><br>2px／4px</td><td><code>py-1 md:py-1.5</code><br>4px／6px</td><td>押しやすい高さを確保する</td></tr>
+          <tr><td>角丸</td><td><code>rounded</code>（4px）</td><td><code>rounded-md</code>（6px）</td><td>面積が増えたぶん角丸も一段上げる</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note"><code>whitespace-nowrap</code> と <code>flex-shrink-0</code> はそのまま残しています。スマホでタイトルが長いときにボタンだけ潰れる・折り返すのを防ぐ指定で、サイズを上げた後もこれが効いていることを実機で確認しました。</p>
+  </section>
+
+  <section id="s3">
+    <span class="eyebrow">03</span>
+    <h2>検証結果</h2>
+    <p class="lead">自動テストと、PC・スマホ両方の実表示で確認しました。</p>
+
+    <h3>実測値（ブラウザの getComputedStyle で計測）</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>指標</th><th>Before</th><th>After</th><th>比較対象</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>フォントサイズ</td><td>10px</td><td class="ok">14px</td><td>サブタイトル 14px と一致</td></tr>
+          <tr><td>ボタン高さ</td><td>約23px</td><td class="ok">32px</td><td>—</td></tr>
+          <tr><td>ボタン幅</td><td>—</td><td>102px</td><td>—</td></tr>
+          <tr><td>内側パディング</td><td>4px / 12px</td><td class="ok">6px / 16px</td><td>—</td></tr>
+          <tr><td>横方向のはみ出し</td><td>0</td><td class="ok">0</td><td>スマホ幅でも0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>テストと実機確認</h3>
+
+    <ul>
+      <li><b>lint</b>：エラーなし</li>
+      <li><b>build</b>：成功</li>
+      <li><b>フロントエンドテスト</b>：8ファイル35件すべて成功</li>
+      <li><b>バックエンドテスト</b>：138件すべて成功</li>
+      <li><b>iPhone 17 Pro Simulator</b>：実表示を確認。ボタン単体だけでなく、ヘッダーの色がDynamic Island側までつながっているか、タイトルとボタンが重なっていないか、横スクロールが出ていないかも併せて確認し、いずれも問題なし</li>
+      <li><b>PC幅（1280px）</b>：ボタンとサブタイトルの視覚的な階層が揃っていることを確認</li>
+    </ul>
+
+    <div class="callout">
+      <p><b>検証中に踏んだ罠</b>：Vite の開発サーバーが既定でIPv6の <code>::1</code> だけにバインドするため、Simulator の Safari から <code>127.0.0.1</code> で開けず「サーバに接続できなかった」と表示されました。<code>--host 127.0.0.1</code> を付けて起動し直すことで解決しています。今後 Simulator 検証をするときも同じ手順が要ります。</p>
+    </div>
+  </section>
+
+  <section id="s4">
+    <span class="eyebrow">04</span>
+    <h2>本番デプロイと同乗した変更</h2>
+    <p class="lead">deploy-prod スキルのラッパー経由で、差分の出た3スタックを明示指定してデプロイしました。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>スタック</th><th>差分</th><th>内容</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>PawapoAuth</td><td>1件 追加</td><td>Cognito の OwnerGroup</td></tr>
+          <tr><td>PawapoAgent</td><td>1件 追加／1件 更新</td><td>RuntimeLogGroup の追加、コンテナイメージの更新</td></tr>
+          <tr><td>PawapoWeb</td><td>1件 更新</td><td>Web用 Lambda のコンテナイメージ（今回のUI変更はここに含まれる）</td></tr>
+          <tr><td>その他3スタック</td><td class="ok">差分なし</td><td>Foundation / AuthAccess / WorkloadAccess</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><b>削除・置換はゼロ</b>でした。このCDKアプリは context の有無でリソースの作成可否が決まるため、context の渡し漏れが「削除差分」として現れます。ラッパーが実リソースから context を復元しており、触っていないスタックが「差分なし」であることを先に確認したうえで実行しています。</p>
+
+    <div class="callout">
+      <p><b>お伝えしておきたい点</b>：本番が数コミット遅れていたため、今回のデプロイで <code>1be21c2</code>「利用統計のためログ保持を13か月へ延ばし利用者の識別を追加」の分も同時に反映されました。上の表の OwnerGroup と RuntimeLogGroup がそれにあたります。配信はコンテナイメージ単位なので、ログアウトボタンの変更だけを切り離すことはできません。いずれも main の正規コミットで削除を伴わないため、そのまま進めました。</p>
+    </div>
+
+    <h3>本番反映の機械確認</h3>
+
+    <p>配信中のJSバンドルを直接取得し、新旧クラスの出現数を数えました。</p>
+
+    <blockquote>
+      <p>pawapo.minoruonda.com → 新クラス <b>1件</b>／旧クラス <b>0件</b></p>
+      <p>preview.pawapo.minoruonda.com → 新クラス <b>1件</b>／旧クラス <b>0件</b></p>
+    </blockquote>
+
+    <p>両ドメインとも新しいクラスに置き換わり、古い <code>text-[10px]</code> は残っていません。反映は完了しています。</p>
+  </section>
+
+  <footer>
+    <p>コミット：c70d80b「ヘッダーのログアウトボタンを周囲の文字サイズに合わせて拡大」</p>
+    <p>変更ファイル：src/App.tsx（1行）</p>
+    <p>このHTMLの置き場：marp-agent/tmp/logout-button-size-2026-08-15.html</p>
+  </footer>
+</div>
+
+</body>
+</html>
