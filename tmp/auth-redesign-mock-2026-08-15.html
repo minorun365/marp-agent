@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ログイン画面リデザイン｜3案のスマホモック</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a; --blue:#0a4695; --blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb; --blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a; --sub:#4a4a54; --mut:#767680; --line:#e8e8ee; --soft:#f7f8fa;
+  --gold:#f0b21f; --gold-deep:#8a5a00; --gold-soft:#fdf5e0;
+
+  /* アプリ実物の色。ヘッダーのグラデはログイン後と同一 */
+  --app-top:#16305f;
+  --app-grad:linear-gradient(to right,#1a3a6e,#5ba4d9);
+  --auth-navy-deep:#0c2344; --auth-blue:#315f8e; --auth-muted:#687483;
+  --auth-line:#dce3ea; --auth-soft:#f4f7fa;
+  --auth-button-gradient:linear-gradient(to right,#1a3a6e 0%,#5ba4d9 100%);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  color:var(--ink);line-height:1.85;font-size:15.5px;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"palt" 1;
+}
+.wrap{max-width:1280px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:1280px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero p,.hero span,.hero b,.hero div{color:#fff}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+
+section{position:relative;padding:46px 0 4px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+section::before{content:"";position:absolute;top:-1px;left:0;
+  width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+  color:var(--blue);width:max-content;background:var(--blue-grad);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);font-weight:700}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+
+.callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;
+  border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.callout b{color:var(--gold-deep)}
+.callout > :first-child{margin-top:0}
+.callout > :last-child{margin-bottom:0}
+.callout.blue{background:var(--blue-soft)}
+.callout.blue::before{background:var(--blue-grad)}
+.callout.blue b{color:var(--blue-deep)}
+
+.table-wrap{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:16px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:600px}
+thead{background-image:var(--blue-grad)}
+th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;text-align:left;white-space:nowrap;border:0}
+td{padding:13px 16px;text-align:left;vertical-align:top;border:0;border-bottom:1px solid var(--line);line-height:1.75}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+.note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
+
+/* ══════ iPhone枠（390x844相当）。上下の地色のつながりを見るための器 ══════ */
+.phones{display:flex;flex-wrap:wrap;gap:26px;margin:26px 0 8px;align-items:flex-start}
+.phone-col{flex:0 0 auto;width:330px}
+.phone-name{font-size:14px;font-weight:800;color:var(--blue-deep);margin:0 0 4px}
+.phone-desc{font-size:12.5px;color:var(--mut);margin:0 0 12px;line-height:1.7;min-height:56px}
+.phone{
+  width:330px;height:714px;border-radius:38px;overflow:hidden;position:relative;
+  box-shadow:0 10px 34px rgba(14,13,106,.16),0 0 0 8px #1a1a1f;background:#fff;
+  display:flex;flex-direction:column;
+}
+/* ステータスバー領域（Dynamic Island）。アプリの地色 */
+.st-bar{height:50px;background:var(--app-top);flex:none;position:relative}
+.st-bar::after{content:"";position:absolute;left:50%;top:11px;transform:translateX(-50%);
+  width:92px;height:26px;border-radius:99px;background:#000}
+.st-bar .clock{position:absolute;left:26px;top:11px;color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em}
+/* ブラウザの下端バー領域。ここもアプリの地色 */
+.bt-bar{height:64px;background:var(--app-top);flex:none;display:grid;place-items:center}
+.bt-bar div{width:186px;height:32px;border-radius:99px;background:rgba(255,255,255,.92);
+  display:grid;place-items:center;font-size:11.5px;color:#3a3a44;font-weight:600}
+/* 画面本体。ページはスクロールしない（ログイン後と同じ固定レイアウト） */
+.screen{flex:1;display:flex;flex-direction:column;min-height:0;background:#fff;overflow:hidden}
+
+/* ── ヒーロー（3案共通の土台）。円の装飾は無し、グラデはログイン後と同一 ── */
+.p-hero{background:var(--app-grad);color:#fff;flex:none;display:flex;flex-direction:column;justify-content:center}
+.p-hero .brand{font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:0}
+.p-hero .by{font-weight:500;opacity:.82}
+.p-hero .tag{margin:6px 0 0;font-size:11px;color:rgba(255,255,255,.62);line-height:1.6}
+/* 案1: ログイン後のヘッダーと同じ寸法の帯 */
+.h-bar{padding:12px 18px 13px}
+.h-bar .brand{font-size:19px}
+.h-bar .by{font-size:14px;margin-left:5px}
+.h-bar .tag{font-size:10.5px}
+/* 案2・3: 大きく見せるヒーロー */
+.h-big{padding:26px 20px 28px;min-height:182px}
+.h-big .brand{font-size:34px}
+.h-big .by{display:block;font-size:14px;margin-top:8px}
+.h-big .tag{margin-top:12px;font-size:11.5px;color:rgba(255,255,255,.7)}
+
+/* ── フォーム面 ── */
+.p-body{flex:1;min-height:0;padding:20px;display:flex;flex-direction:column;justify-content:center;gap:0}
+.p-body.top{justify-content:flex-start;padding-top:26px}
+.act{display:flex;width:100%;min-height:46px;align-items:center;justify-content:center;gap:9px;
+  border:1px solid transparent;border-radius:11px;font-size:13.5px;font-weight:660;font-family:inherit}
+.act.pri{color:#fff;background:var(--auth-button-gradient);box-shadow:0 7px 20px rgba(20,47,87,.16)}
+.act.sec{border-color:var(--auth-line);color:#17202c;background:#fff}
+.act + .act{margin-top:10px}
+.gm{color:#4285f4;font-size:16px;font-weight:800}
+.div{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin:16px 0;color:#8b95a1;font-size:10.5px}
+.div::before,.div::after{height:1px;background:var(--auth-line);content:""}
+.fld{display:grid;gap:7px;margin-bottom:12px;color:#344253;font-size:11.5px;font-weight:650}
+.fld i{display:block;width:100%;height:46px;padding:0 13px;border:1px solid var(--auth-line);
+  border-radius:10px;background:#fff;font-style:normal;font-size:13.5px;color:#a0a9b3;line-height:46px}
+.newu{margin-top:16px;padding-top:14px;border-top:1px solid var(--auth-line);
+  color:var(--auth-muted);font-size:11.5px;text-align:center}
+.newu u{color:#142f57;font-weight:680;text-underline-offset:3px}
+.priv{margin:16px 0 0;color:#8b95a1;font-size:10px;line-height:1.7;text-align:center}
+.lead-1{margin:0 0 18px;color:var(--auth-muted);font-size:13px;text-align:center}
+
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--mut);line-height:1.9}
+footer p{margin:8px 0}
+
+@media (max-width:620px){
+  body{font-size:15px}
+  .hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}
+  .hero h1{font-size:23px}
+  h2{font-size:20px}
+  section{padding-top:38px}
+  .phone-col,.phone{width:100%;max-width:330px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ ログイン画面リデザイン</span>
+    <h1>いただいたFBをもとに<br>3案つくりました</h1>
+    <p class="sub">円の装飾を外し、グラデはログイン後のヘッダーと同一に。上下も固定しています。</p>
+    <div class="meta">2026年8月15日 ／ 3案とも未実装（選んでいただいてから実装します）</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <span class="eyebrow">01</span>
+  <h2>3案に共通して直したところ</h2>
+  <p class="lead">ご指摘の4点のうち3点は方向が1つに決まるので、全案に反映しました。案が分かれるのは白い面の中身だけです。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ご指摘</th><th>対応</th></tr></thead>
+      <tbody>
+        <tr><td>円の装飾</td><td>削除しました。ログイン後のヘッダーと同じ、素のグラデーション1枚にしています</td></tr>
+        <tr><td>グラデーション</td><td>ログイン後と同一の <code>左→右（濃紺 → 明るい青）</code> に統一。左端の濃紺が上端の地色と同じ値なので、ステータスバーから継ぎ目なくつながります</td></tr>
+        <tr><td>上下の固定</td><td>ページ全体のスクロールを廃止し、ログイン後と同じ画面固定に。スクロールで背景がずれることがなくなります</td></tr>
+        <tr><td>タイトル</td><td>「チャット一言で、スライド完成！」をやめ、パワポ作るマン を主役に。大きさは案ごとに変えています</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout blue">
+    <p><b>枠の上下の濃紺は、実機のステータスバーとブラウザ下端の帯です。</b> ログイン後と同じ地色なので、ログインの前後で画面の縁の色が変わりません。</p>
+  </div>
+</section>
+
+<section id="s2">
+  <span class="eyebrow">02</span>
+  <h2>3案（iPhone表示）</h2>
+  <p class="lead">違いは「ヒーローの大きさ」と「白い面にどれだけ残すか」の2点だけです。</p>
+
+  <div class="phones">
+
+    <div class="phone-col">
+      <p class="phone-name">案1　ログイン後と同じ帯</p>
+      <p class="phone-desc">ヒーローをログイン後のヘッダーと同じ寸法に。ログインした瞬間に画面の上が変わらないので、つながりが一番自然です。</p>
+      <div class="phone">
+        <div class="st-bar"><span class="clock">16:37</span></div>
+        <div class="screen">
+          <div class="p-hero h-bar">
+            <p class="brand">パワポ作るマン<span class="by">by みのるん</span></p>
+            <p class="tag">Strands ＆ AgentCoreでフルサーバーレス構築！</p>
+          </div>
+          <div class="p-body">
+            <div class="act sec"><span class="gm">G</span>Googleで続ける</div>
+            <div class="div">または</div>
+            <div class="fld">メールアドレス<i>you@example.com</i></div>
+            <div class="act pri">メールで続ける</div>
+            <div class="newu">初めてご利用の方は <u>アカウントを作成</u></div>
+            <p class="priv">登録されたメールアドレスは認証目的でのみ使用します。</p>
+          </div>
+        </div>
+        <div class="bt-bar"><div>pawapo.minoruonda.com</div></div>
+      </div>
+    </div>
+
+    <div class="phone-col">
+      <p class="phone-name">案2　タイトルを大きく</p>
+      <p class="phone-desc">ヒーローは今の高さのまま、タイトルを主役に。白い面は見出しを全部やめて、入力とボタンだけにしています。</p>
+      <div class="phone">
+        <div class="st-bar"><span class="clock">16:37</span></div>
+        <div class="screen">
+          <div class="p-hero h-big">
+            <p class="brand">パワポ作るマン<span class="by">by みのるん</span></p>
+            <p class="tag">AIと話すだけで、プレゼン資料ができます。</p>
+          </div>
+          <div class="p-body">
+            <div class="act sec"><span class="gm">G</span>Googleで続ける</div>
+            <div class="div">または</div>
+            <div class="fld">メールアドレス<i>you@example.com</i></div>
+            <div class="act pri">メールで続ける</div>
+            <div class="newu">初めてご利用の方は <u>アカウントを作成</u></div>
+            <p class="priv">登録されたメールアドレスは認証目的でのみ使用します。</p>
+          </div>
+        </div>
+        <div class="bt-bar"><div>pawapo.minoruonda.com</div></div>
+      </div>
+    </div>
+
+    <div class="phone-col">
+      <p class="phone-name">案3　ボタン2つだけ</p>
+      <p class="phone-desc">白い面をボタン2つまで削った案。メールアドレスの入力は次の画面に送ります。新規も既存も同じ入口なので、下の案内も要りません。</p>
+      <div class="phone">
+        <div class="st-bar"><span class="clock">16:37</span></div>
+        <div class="screen">
+          <div class="p-hero h-big">
+            <p class="brand">パワポ作るマン<span class="by">by みのるん</span></p>
+            <p class="tag">AIと話すだけで、プレゼン資料ができます。</p>
+          </div>
+          <div class="p-body">
+            <p class="lead-1">誰でも無料で使えます。</p>
+            <div class="act sec"><span class="gm">G</span>Googleではじめる</div>
+            <div class="act sec">メールアドレスではじめる</div>
+            <p class="priv">登録されたメールアドレスは認証目的でのみ使用します。</p>
+          </div>
+        </div>
+        <div class="bt-bar"><div>pawapo.minoruonda.com</div></div>
+      </div>
+    </div>
+
+  </div>
+  <p class="note">枠の外側の黒い縁と、上下の濃紺・白い丸は実機の見え方を再現したものです。画面の中身だけをご覧ください。</p>
+</section>
+
+<section id="s3">
+  <span class="eyebrow">03</span>
+  <h2>白い面から何を消したか</h2>
+  <p class="lead">3案とも、いま出ている見出し3行を消しています。案3はさらにフォームも削っています。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>要素</th><th>現在</th><th>案1・案2</th><th>案3</th></tr></thead>
+      <tbody>
+        <tr><td>小見出し</td><td>GET STARTED</td><td>消す</td><td>消す</td></tr>
+        <tr><td>見出し</td><td>スライドづくりを、はじめましょう</td><td>消す</td><td>消す</td></tr>
+        <tr><td>リード文</td><td>誰でも無料で使えます。</td><td>消す（ヒーローの1行が代わりになる）</td><td>残す（ボタンだけだと素っ気ないため1行だけ）</td></tr>
+        <tr><td>メール入力欄</td><td>あり</td><td>あり</td><td>次の画面へ送る</td></tr>
+        <tr><td>新規登録の案内</td><td>あり</td><td>あり</td><td>不要（ボタンが両方の入口を兼ねる）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>案1と案2の違いはヒーローの大きさだけです。案1はログイン後との連続性が最も高く、案2はサービスの顔として印象に残ります。案3はさらに削れますが、既存ユーザーのログインはタップが1回増えます。</p>
+</section>
+
+<footer>
+  <p>実装対象：src/components/Auth/AuthScreen.tsx ／ AuthScreen.css</p>
+  <p>選んでいただいた案で実装し、iPhoneとPCで確認してからデプロイします。</p>
+</footer>
+
+</div>
+</body>
+</html>
