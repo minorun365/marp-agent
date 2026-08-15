@@ -126,9 +126,13 @@
   .auth-copy { margin: auto 0 0; padding: 34px 0 0; }
   .auth-copy h1 { max-width: 320px; font-size: 29px; line-height: 1.24; }
   .auth-copy p, .auth-powered { display: none; }
-  .auth-panel { display: block; min-height: calc(100dvh - 214px); padding: 37px max(22px, var(--safe-right)) max(44px, calc(32px + var(--safe-bottom))) max(22px, var(--safe-left)); }
+  .auth-panel { display: block; min-height: calc(100dvh - 214px); padding: 26px max(22px, var(--safe-right)) max(44px, calc(32px + var(--safe-bottom))) max(22px, var(--safe-left)); }
   .auth-shell { max-width: 430px; margin: 0 auto; }
   .auth-shell h2 { font-size: 27px; }
+  /* 最初の画面の新規登録リンクをブラウザのアドレスバーより上に収める。 */
+  .auth-lead { margin-bottom: 18px; }
+  .auth-divider { margin: 16px 0; }
+  .auth-new-user { margin-top: 14px; padding-top: 13px; }
   .auth-page:not([data-auth-state='initial']) .auth-brand { display: none; }
   .auth-page:not([data-auth-state='initial']) .auth-panel { min-height: 100dvh; }
 }
