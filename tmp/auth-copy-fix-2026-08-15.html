@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ログイン画面文言｜案A実装の対応レポート</title>
+<title>ログイン画面文言｜案A実装と本番反映</title>
 <style>
 :root{
   --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
@@ -94,7 +94,7 @@ code{background:var(--soft);border:1px solid var(--line);border-radius:5px;paddi
   font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
 
 .shot{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff;margin:24px 0;
-  max-width:420px}
+  max-width:400px}
 .shot img{width:100%;height:auto;display:block;border-radius:10px}
 .shot figcaption{font-size:12.5px;color:var(--mut);margin-top:12px;text-align:center;line-height:1.7}
 
@@ -119,9 +119,9 @@ footer p{margin:8px 0}
 <div class="hero">
   <div class="hero-in">
     <span class="kicker">パワポ作るマン ／ 対応レポート</span>
-    <h1>ログイン画面の文言と<br>新規登録の導線を直しました</h1>
+    <h1>ログイン画面の文言と導線を直し、<br>本番へ反映しました</h1>
     <p class="sub">モックの案Aを採用。リード文はご指示どおり「誰でも無料で使えます。」に。</p>
-    <div class="meta">対象：src/components/Auth/AuthScreen.tsx の initial 画面<br>2026年8月15日 ／ 本番未反映（デプロイは未実施）</div>
+    <div class="meta">対象：最初のログイン画面（initial）<br>2026年8月15日 ／ 本番デプロイ済み</div>
   </div>
 </div>
 
@@ -130,7 +130,7 @@ footer p{margin:8px 0}
 <section id="s1">
   <span class="eyebrow">01</span>
   <h2>画面の Before / After</h2>
-  <p class="lead">変えたのは文言3か所と、最下部への新規導線1行です。ボタンの構成・画面遷移・CSSはそのままです。</p>
+  <p class="lead">文言3か所を変え、次の画面にあった新規登録の導線を最初の画面へ前倒ししました。</p>
 
   <div class="ba">
     <div>
@@ -180,80 +180,66 @@ footer p{margin:8px 0}
       </tbody>
     </table>
   </div>
-  <p class="note">見出しは <code>&lt;br /&gt;</code> で明示的に2行にしています。画面幅による折り返し位置のブレを防ぐためで、モックと同じ組みになります。</p>
 </section>
 
 <section id="s2">
   <span class="eyebrow">02</span>
-  <h2>コードの差分</h2>
-  <p class="lead">initial ブロックの4行と、新規登録画面の戻り先の分岐です。</p>
+  <h2>スマホの収まりも直しました</h2>
+  <p class="lead">前回の報告で挙げた「追加した導線がSafariのアドレスバーに隠れる」件です。ご一任いただいたので直しました。</p>
 
-  <h3>文言と導線（initial 画面）</h3>
-<pre><span class="del">- &lt;p className="auth-eyebrow"&gt;Welcome back&lt;/p&gt;
-- &lt;h2&gt;続きをはじめましょう&lt;/h2&gt;
-- &lt;p className="auth-lead"&gt;Googleまたはメールアドレスで続けられます。&lt;/p&gt;</span>
-<span class="add">+ &lt;p className="auth-eyebrow"&gt;Get started&lt;/p&gt;
-+ &lt;h2&gt;スライドづくりを、&lt;br /&gt;はじめましょう&lt;/h2&gt;
-+ &lt;p className="auth-lead"&gt;誰でも無料で使えます。&lt;/p&gt;</span>
+  <p>実機で測ったところ、導線の下端がCSS換算で約780px、アドレスバーが796pxから始まっており、余裕が16pxしかありませんでした。スマホ幅だけ4か所の余白を2〜3割ずつ削って、約44px手前に引き上げています。ヒーローの高さや文字サイズは触っていません。</p>
 
-  （中略：Googleボタン、区切り、メールアドレス入力フォーム）
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>詰めた箇所</th><th>Before</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>パネル上余白</td><td>37px</td><td>26px</td></tr>
+        <tr><td>リード文の下</td><td>28px</td><td>18px</td></tr>
+        <tr><td>「または」の上下</td><td>22px</td><td>16px</td></tr>
+        <tr><td>導線の上（余白＋罫線まで）</td><td>20px ＋ 18px</td><td>14px ＋ 13px</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">いずれも <code>@media (max-width: 840px)</code> の中だけの指定です。PC幅は1pxも変わっていません。</p>
 
-    &lt;button className="auth-action auth-primary" type="submit"&gt;メールで続ける&lt;/button&gt;
-  &lt;/form&gt;
-<span class="add">+ &lt;div className="auth-new-user"&gt;初めてご利用の方は &lt;button className="auth-text-button" type="button"
-+   onClick={() =&gt; { setSignupFrom('initial'); setState('signup'); }}&gt;アカウントを作成&lt;/button&gt;&lt;/div&gt;</span></pre>
-  <p class="note"><code>auth-new-user</code> はメール画面ですでに使っている既存クラスなので、CSSの追加はありません。</p>
+  <figure class="shot">
+    <img src="auth-after-iphone.png" alt="iPhone Simulator で表示した変更後のログイン画面">
+    <figcaption>iPhone 17 Simulator（Safari）。導線に加えて、その下の注記まで読める位置に収まりました。</figcaption>
+  </figure>
 
-  <h3>戻り先の分岐（新規登録画面）</h3>
-  <p>新規登録へ入る経路が2つになったため、戻り先を覚える状態を1つ足しました。これが無いと、最初の画面から登録へ進んだ人が「戻る」でメールアドレス入力後の画面に落ちて、空欄のメール欄が表示されます。</p>
-<pre><span class="add">+ // 新規登録はメール入力前後のどちらからも入れるため、戻り先を覚えておく。
-+ const [signupFrom, setSignupFrom] = useState&lt;AuthState&gt;('email');</span>
-
-  // 新規登録画面の戻るボタン
-<span class="del">- &lt;button className="auth-back" onClick={() =&gt; setState('email')}&gt;← 戻る&lt;/button&gt;</span>
-<span class="add">+ &lt;button className="auth-back" onClick={() =&gt; setState(signupFrom)}&gt;← 戻る&lt;/button&gt;</span></pre>
+  <h3>試して取りやめた対応が1つあります</h3>
+  <p>余白を詰めた結果ページが1画面に収まり、画面最下部にアプリの地色（濃紺）が出るようになりました。これを白にしようとキャンバスの背景を上下2色に塗り分けたところ、<b>今度は上端のステータスバーが白帯になって崩れました</b>。Safariはステータスバー周辺をキャンバスの背景色で塗るため、ここは単色である必要があり、上端を濃紺にする限り下端も濃紺になります。</p>
+  <p>取りやめた結果、上端も下端も濃紺でヒーローと揃う形になっています。チャット画面と同じ地色なのでアプリ全体としては一貫しており、悪くない見え方だと判断しました。気になるようでしたら別の手を考えます。</p>
 </section>
 
 <section id="s3">
   <span class="eyebrow">03</span>
-  <h2>実機での確認</h2>
-  <p class="lead">iPhone 17 Simulator と PC幅の両方で表示し、遷移も実際にクリックして確かめました。</p>
-
-  <figure class="shot">
-    <img src="auth-after-iphone.png" alt="iPhone Simulator で表示した変更後のログイン画面">
-    <figcaption>iPhone 17 Simulator（Safari）。ヒーローの帯はDynamic Islandまでつながり、横スクロールも発生していません。</figcaption>
-  </figure>
+  <h2>本番反映</h2>
+  <p class="lead">deploy-prod のラッパー経由で、差分を確認してから流しました。</p>
 
   <div class="table-wrap">
     <table>
       <thead><tr><th>確認項目</th><th>結果</th></tr></thead>
       <tbody>
         <tr><td>ESLint</td><td class="ok">エラーなし</td></tr>
-        <tr><td>ビルド</td><td class="ok">成功（2.86秒）</td></tr>
-        <tr><td>テスト</td><td class="ok">35件すべて通過（AuthScreen の3件を含む）</td></tr>
+        <tr><td>フロントのテスト</td><td class="ok">35件すべて通過</td></tr>
+        <tr><td>バックエンドのテスト</td><td class="ok">138件すべて通過</td></tr>
+        <tr><td>触っていない5スタック</td><td class="ok">すべて No changes detected</td></tr>
+        <tr><td>PawapoWeb の差分</td><td class="ok">Lambdaのイメージ更新1件のみ（作成0・削除0・置換0）</td></tr>
         <tr><td>iPhone 実機表示</td><td class="ok">上端・余白・横幅とも問題なし</td></tr>
-        <tr><td>PC幅（1280px）</td><td class="ok">1画面に収まる。左のブランド面も従来どおり</td></tr>
-        <tr><td>アカウント作成へ遷移</td><td class="ok">登録画面が開く</td></tr>
-        <tr><td>登録画面から戻る</td><td class="ok">最初の画面へ戻る（メール画面へ落ちない）</td></tr>
+        <tr><td>PC幅（1280px）</td><td class="ok">変更前と同一</td></tr>
+        <tr><td>登録画面からの戻り先</td><td class="ok">最初の画面へ戻る（メール画面へ落ちない）</td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="callout blue">
-    <p><b>本番へはまだ反映していません。</b> mainへのpushはリポジトリの正本を更新するだけで、AWSは変わりません。反映するときは deploy-prod スキル経由で <code>diff</code> を確認してから流します。</p>
+    <p><b>入口が2つになったので、戻り先を覚える状態を1つ足しています。</b> これが無いと、最初の画面から登録へ進んだ人が「戻る」でメールアドレス入力後の画面に落ち、空欄のメール欄を見ることになります。実際にクリックして確認しました。</p>
   </div>
 </section>
 
-<section id="s4">
-  <span class="eyebrow">04</span>
-  <h2>もう1つ気づいた点</h2>
-  <p class="lead">今回は直していません。判断だけいただければ、次のついでに入れられます。</p>
-  <p>最下部の「アカウントを作成」は、iPhoneではSafariのアドレスバーにわずかに重なる位置にあります。少しスクロールすれば見えますが、初訪問の人に見せたい導線としては、あと一歩ファーストビューに入りきっていません。</p>
-  <p>入れきるなら、リード文と最初のボタンの間の余白（現在28px）を詰めるのが影響の少ない手です。ただしPC幅では現状で問題なく収まっているため、スマホ幅だけの調整になります。</p>
-</section>
-
 <footer>
-  <p>変更ファイル：src/components/Auth/AuthScreen.tsx（1ファイル、7行）</p>
+  <p>変更ファイル：src/components/Auth/AuthScreen.tsx ／ src/components/Auth/AuthScreen.css</p>
   <p>モック：ログイン画面文言｜現行と改善2案のモック（共有くん内）</p>
 </footer>
 
