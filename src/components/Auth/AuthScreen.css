@@ -5,7 +5,9 @@
   --auth-muted: #687483;
   --auth-line: #dce3ea;
   --auth-soft: #f4f7fa;
-  --auth-gradient: linear-gradient(118deg, #1a3a6e 0%, #3d79a8 48%, #75afd2 72%, #f3f8fb 126%);
+  /* ログイン後のヘッダー（bg-brand-gradient）と同じ値。左端の濃紺が index.css の
+     --header-top と近く、ステータスバーの地色から継ぎ目なくつながる */
+  --auth-gradient: linear-gradient(to right, #1a3a6e, #5ba4d9);
   --auth-button-gradient: linear-gradient(to right, #1a3a6e 0%, #5ba4d9 100%);
 }
 
@@ -26,18 +28,6 @@
   background: var(--auth-gradient);
 }
 
-.auth-brand::after {
-  position: absolute;
-  right: -13rem;
-  bottom: -12rem;
-  width: 31rem;
-  height: 31rem;
-  border: 1px solid rgb(255 255 255 / 13%);
-  border-radius: 50%;
-  box-shadow: 0 0 0 5rem rgb(255 255 255 / 2.5%), 0 0 0 10rem rgb(255 255 255 / 1.8%);
-  content: '';
-}
-
 .auth-brand-inner {
   z-index: 1;
   display: flex;
@@ -48,18 +38,9 @@
   flex-direction: column;
 }
 
-.auth-wordmark {
-  display: flex;
-  align-items: center;
-  color: rgb(255 255 255 / 86%);
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: .06em;
-}
-
 .auth-copy { margin: auto 0; padding: 72px 0 96px; }
 .auth-copy h1 { margin: 0; font-size: clamp(38px, 4vw, 62px); font-weight: 720; letter-spacing: -.045em; line-height: 1.18; }
-.auth-copy p { max-width: 430px; margin: 22px 0 0; color: rgb(255 255 255 / 72%); font-size: 15px; line-height: 1.9; }
+.auth-by { display: block; margin-top: 14px; color: rgb(255 255 255 / 82%); font-size: clamp(16px, 1.4vw, 21px); font-weight: 500; letter-spacing: 0; }
 .auth-powered { color: rgb(255 255 255 / 78%); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 
 .auth-panel {
@@ -114,33 +95,38 @@
 .auth-center { display: block; margin: 14px auto 0; }
 .auth-new-user { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--auth-line); color: var(--auth-muted); font-size: 12px; text-align: center; }
 .auth-privacy { margin: 24px 0 0; color: #8b95a1; font-size: 10.5px; line-height: 1.7; text-align: center; }
+.auth-tagline { margin: 0 0 22px; color: var(--auth-navy-deep); font-size: 15px; font-weight: 660; line-height: 1.6; text-align: center; }
 .auth-error { margin: 16px 0 0; padding: 11px 13px; border-left: 3px solid #b24b4b; color: #8a3333; background: #fff5f5; font-size: 12px; line-height: 1.6; }
 .auth-offer-icon { display: grid; width: 54px; height: 54px; margin-bottom: 22px; border-radius: 17px; place-items: center; color: #fff; background: var(--auth-button-gradient); box-shadow: 0 10px 26px rgb(20 47 87 / 18%); }
 .auth-offer-icon .auth-passkey-icon { width: 28px; height: 28px; }
 
 @media (max-width: 840px) {
-  .auth-page { display: block; min-height: 100dvh; }
-  .auth-brand { min-height: 214px; background: linear-gradient(112deg, #1a3a6e 0%, #4d8fbd 64%, #edf5fa 150%); }
-  .auth-brand-inner { min-height: 214px; padding: max(25px, calc(var(--safe-top) + 4px)) max(22px, var(--safe-right)) 27px max(22px, var(--safe-left)); }
-  .auth-wordmark { font-size: 11px; }
-  .auth-copy { margin: auto 0 0; padding: 34px 0 0; }
-  .auth-copy h1 { max-width: 320px; font-size: 29px; line-height: 1.24; }
-  .auth-copy p, .auth-powered { display: none; }
-  .auth-panel { display: block; min-height: calc(100dvh - 214px); padding: 26px max(22px, var(--safe-right)) max(44px, calc(32px + var(--safe-bottom))) max(22px, var(--safe-left)); }
-  .auth-shell { max-width: 430px; margin: 0 auto; }
+  /* ログイン後（App.tsx の h-[100dvh] flex flex-col）と同じ固定レイアウト。
+     ページ自体はスクロールさせず、フォーム面だけを内側でスクロールさせる。
+     背景がスクロールで動かないので、上端のヒーローが常に画面の縁と地続きになる。 */
+  .auth-page { display: flex; height: 100dvh; min-height: 0; overflow: hidden; flex-direction: column; }
+  .auth-brand { min-height: 182px; flex: none; }
+  .auth-brand-inner { min-height: 182px; padding: max(25px, calc(var(--safe-top) + 4px)) max(22px, var(--safe-right)) 26px max(22px, var(--safe-left)); }
+  .auth-copy { margin: auto 0 0; padding: 30px 0 0; }
+  .auth-copy h1 { max-width: 320px; font-size: 34px; line-height: 1.15; }
+  .auth-by { margin-top: 8px; font-size: 14px; }
+  .auth-powered { display: none; }
+  .auth-panel { display: flex; min-height: 0; flex: 1; padding: 26px max(22px, var(--safe-right)) max(28px, calc(18px + var(--safe-bottom))) max(22px, var(--safe-left)); overflow-y: auto; }
+  /* margin:auto で上下中央に置く。place-items:center と違い、中身が画面より
+     大きいときも上端が切れずにスクロールできる */
+  .auth-shell { max-width: 430px; margin: auto; }
   .auth-shell h2 { font-size: 27px; }
   /* 最初の画面の新規登録リンクをブラウザのアドレスバーより上に収める。 */
   .auth-lead { margin-bottom: 18px; }
   .auth-divider { margin: 16px 0; }
   .auth-new-user { margin-top: 14px; padding-top: 13px; }
   .auth-page:not([data-auth-state='initial']) .auth-brand { display: none; }
-  .auth-page:not([data-auth-state='initial']) .auth-panel { min-height: 100dvh; }
 }
 
 @media (max-width: 380px) {
-  .auth-brand, .auth-brand-inner { min-height: 194px; }
-  .auth-copy h1 { font-size: 26px; }
-  .auth-panel { min-height: calc(100dvh - 194px); padding-top: 30px; }
+  .auth-brand, .auth-brand-inner { min-height: 166px; }
+  .auth-copy h1 { font-size: 30px; }
+  .auth-panel { padding-top: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

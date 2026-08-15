@@ -202,10 +202,8 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
     <main className="auth-page" data-auth-state={state}>
       <section className="auth-brand" aria-label="パワポ作るマン">
         <div className="auth-brand-inner">
-          <div className="auth-wordmark">パワポ作るマン by みのるん</div>
           <div className="auth-copy">
-            <h1>チャット一言で、<br />スライド完成！</h1>
-            <p>テーマを伝えるだけで、構成からデザインまで。AIと会話しながらプレゼン資料を仕上げられます。</p>
+            <h1>パワポ作るマン<span className="auth-by">by みのるん</span></h1>
           </div>
           <div className="auth-powered">Powered by Strands &amp; AgentCore</div>
         </div>
@@ -215,9 +213,7 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
         <div className="auth-shell">
           {state === 'initial' && (
             <>
-              <p className="auth-eyebrow">Get started</p>
-              <h2>スライドづくりを、<br />はじめましょう</h2>
-              <p className="auth-lead">誰でも無料で使えます。</p>
+              <p className="auth-tagline">チャット一言でプレゼン資料を作ろう！</p>
               <button className="auth-action auth-secondary" type="button" disabled={busy} onClick={() => void run(async () => {
                 if (demoMode) onAuthenticated();
                 else await signInWithRedirect({ provider: 'Google' });
