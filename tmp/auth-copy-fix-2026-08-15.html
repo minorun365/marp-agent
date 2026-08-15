@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ログイン画面文言｜案A実装と本番反映</title>
+<title>ログイン画面リデザイン｜案2の実装と本番反映</title>
 <style>
 :root{
   --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
@@ -72,18 +72,13 @@ td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
 td.ok{background:#f0faf3;font-weight:700;color:#1a6b38;white-space:nowrap}
 .note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
 
-.ba{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));margin:20px 0}
-.ba > div{border:1px solid var(--line);border-radius:16px;padding:16px 20px;background:#fff}
-.ba .ttl{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--mut);margin:0 0 10px}
-.ba .after{border-color:var(--blue-line);background:#fcfdff}
-.ba .after .ttl{color:var(--blue)}
-.ba .eb{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--blue);margin:0 0 4px}
-.ba .hd{font-size:20px;font-weight:700;color:var(--blue-deep);line-height:1.3;margin:0 0 8px;letter-spacing:-.02em}
-.ba .ld{font-size:13px;color:var(--mut);margin:0}
-.ba .newline{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);
-  font-size:12px;color:var(--mut);text-align:center}
-.ba .newline u{color:var(--blue-deep);font-weight:700;text-underline-offset:3px}
-.ba .none{font-size:12.5px;color:#b8b8c0;font-style:italic;margin:14px 0 0}
+.shots{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));margin:24px 0}
+.shot{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;margin:0}
+.shot.now{border-color:var(--blue-line);background:#fcfdff}
+.shot img{width:100%;height:auto;display:block;border-radius:10px}
+.shot figcaption{font-size:12.5px;color:var(--mut);margin-top:12px;text-align:center;line-height:1.7}
+.shot .tag{display:block;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--mut);margin-bottom:12px}
+.shot.now .tag{color:var(--blue)}
 
 pre{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:16px 18px;
   overflow-x:auto;font-size:12.5px;line-height:1.75;margin:14px 0;
@@ -92,11 +87,6 @@ pre .del{color:#8a3a3a}
 pre .add{color:#1a6b38}
 code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
   font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
-
-.shot{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff;margin:24px 0;
-  max-width:400px}
-.shot img{width:100%;height:auto;display:block;border-radius:10px}
-.shot figcaption{font-size:12.5px;color:var(--mut);margin-top:12px;text-align:center;line-height:1.7}
 
 ul,ol{margin:12px 0;padding-left:23px}
 li{margin:7px 0}
@@ -119,9 +109,9 @@ footer p{margin:8px 0}
 <div class="hero">
   <div class="hero-in">
     <span class="kicker">パワポ作るマン ／ 対応レポート</span>
-    <h1>ログイン画面の文言と導線を直し、<br>本番へ反映しました</h1>
-    <p class="sub">モックの案Aを採用。リード文はご指示どおり「誰でも無料で使えます。」に。</p>
-    <div class="meta">対象：最初のログイン画面（initial）<br>2026年8月15日 ／ 本番デプロイ済み</div>
+    <h1>案2でリデザインし、<br>本番へ反映しました</h1>
+    <p class="sub">タイトルを主役に。円の装飾を外し、グラデはログイン後のヘッダーと同一にしました。</p>
+    <div class="meta">対象：ログイン画面（最初の画面）<br>2026年8月15日 ／ 本番デプロイ済み</div>
   </div>
 </div>
 
@@ -129,118 +119,107 @@ footer p{margin:8px 0}
 
 <section id="s1">
   <span class="eyebrow">01</span>
-  <h2>画面の Before / After</h2>
-  <p class="lead">文言3か所を変え、次の画面にあった新規登録の導線を最初の画面へ前倒ししました。</p>
+  <h2>実機の Before / After</h2>
+  <p class="lead">iPhone 17 Simulator（Safari）で撮ったものです。</p>
 
-  <div class="ba">
-    <div>
-      <p class="ttl">BEFORE</p>
-      <p class="eb">WELCOME BACK</p>
-      <p class="hd">続きをはじめましょう</p>
-      <p class="ld">Googleまたはメールアドレスで続けられます。</p>
-      <p class="none">（新規登録の導線なし。メールを入れて次の画面へ進むと初めて現れる）</p>
-    </div>
-    <div class="after">
-      <p class="ttl">AFTER</p>
-      <p class="eb">GET STARTED</p>
-      <p class="hd">スライドづくりを、<br>はじめましょう</p>
-      <p class="ld">誰でも無料で使えます。</p>
-      <p class="newline">初めてご利用の方は <u>アカウントを作成</u></p>
-    </div>
-  </div>
-
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>箇所</th><th>Before</th><th>After</th><th>意図</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>小見出し</td>
-          <td>Welcome back</td>
-          <td>Get started</td>
-          <td>再訪前提の挨拶をやめ、初訪問でも成立する語にした</td>
-        </tr>
-        <tr>
-          <td>見出し</td>
-          <td>続きをはじめましょう</td>
-          <td>スライドづくりを、はじめましょう</td>
-          <td>何をはじめるのかを明示。「続き」は既存ユーザーにしか通じない</td>
-        </tr>
-        <tr>
-          <td>リード文</td>
-          <td>Googleまたはメールアドレスで続けられます。</td>
-          <td>誰でも無料で使えます。</td>
-          <td>手段の説明はボタン自体が語るので、初訪問が一番知りたい条件に置き換え</td>
-        </tr>
-        <tr>
-          <td>最下部</td>
-          <td>（なし）</td>
-          <td class="ok">初めてご利用の方は アカウントを作成</td>
-          <td>次の画面にあった導線を前倒しし、入口を最初の画面で見せた</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="shots">
+    <figure class="shot">
+      <span class="tag">BEFORE</span>
+      <img src="auth-before-iphone.png" alt="変更前のログイン画面">
+      <figcaption>タイトルが小さく、白い面に見出しが3行。右下に円の装飾。</figcaption>
+    </figure>
+    <figure class="shot now">
+      <span class="tag">AFTER</span>
+      <img src="auth-after-iphone.png" alt="変更後のログイン画面">
+      <figcaption>タイトルが主役。白い面は一言とフォームだけ。上下の縁がログイン後と同じ地色でつながる。</figcaption>
+    </figure>
   </div>
 </section>
 
 <section id="s2">
   <span class="eyebrow">02</span>
-  <h2>スマホの収まりも直しました</h2>
-  <p class="lead">前回の報告で挙げた「追加した導線がSafariのアドレスバーに隠れる」件です。ご一任いただいたので直しました。</p>
-
-  <p>実機で測ったところ、導線の下端がCSS換算で約780px、アドレスバーが796pxから始まっており、余裕が16pxしかありませんでした。スマホ幅だけ4か所の余白を2〜3割ずつ削って、約44px手前に引き上げています。ヒーローの高さや文字サイズは触っていません。</p>
+  <h2>いただいた4点への対応</h2>
 
   <div class="table-wrap">
     <table>
-      <thead><tr><th>詰めた箇所</th><th>Before</th><th>After</th></tr></thead>
+      <thead><tr><th>ご指摘</th><th>対応</th></tr></thead>
       <tbody>
-        <tr><td>パネル上余白</td><td>37px</td><td>26px</td></tr>
-        <tr><td>リード文の下</td><td>28px</td><td>18px</td></tr>
-        <tr><td>「または」の上下</td><td>22px</td><td>16px</td></tr>
-        <tr><td>導線の上（余白＋罫線まで）</td><td>20px ＋ 18px</td><td>14px ＋ 13px</td></tr>
+        <tr>
+          <td>円の装飾</td>
+          <td>削除しました（<code>.auth-brand::after</code> ごと廃止）。グラデーション1枚だけになっています</td>
+        </tr>
+        <tr>
+          <td>グラデーション</td>
+          <td>ログイン後のヘッダーと同じ <code>左→右（#1a3a6e → #5ba4d9）</code> に変更。斜め118度から水平になりました</td>
+        </tr>
+        <tr>
+          <td>上下の固定</td>
+          <td>ページ全体のスクロールを廃止し、ログイン後と同じ固定レイアウトに。スクロールで背景がずれません</td>
+        </tr>
+        <tr>
+          <td>タイトル</td>
+          <td>「チャット一言で、スライド完成！」をやめ、パワポ作るマン を34pxで主役に</td>
+        </tr>
+        <tr>
+          <td>白い面の要素過多</td>
+          <td class="ok">GET STARTED ／ 見出し ／ リード文の3行を削除。代わりにご指定の一言を1行だけ置きました</td>
+        </tr>
       </tbody>
     </table>
   </div>
-  <p class="note">いずれも <code>@media (max-width: 840px)</code> の中だけの指定です。PC幅は1pxも変わっていません。</p>
 
-  <figure class="shot">
-    <img src="auth-after-iphone.png" alt="iPhone Simulator で表示した変更後のログイン画面">
-    <figcaption>iPhone 17 Simulator（Safari）。導線に加えて、その下の注記まで読める位置に収まりました。</figcaption>
-  </figure>
-
-  <h3>試して取りやめた対応が1つあります</h3>
-  <p>余白を詰めた結果ページが1画面に収まり、画面最下部にアプリの地色（濃紺）が出るようになりました。これを白にしようとキャンバスの背景を上下2色に塗り分けたところ、<b>今度は上端のステータスバーが白帯になって崩れました</b>。Safariはステータスバー周辺をキャンバスの背景色で塗るため、ここは単色である必要があり、上端を濃紺にする限り下端も濃紺になります。</p>
-  <p>取りやめた結果、上端も下端も濃紺でヒーローと揃う形になっています。チャット画面と同じ地色なのでアプリ全体としては一貫しており、悪くない見え方だと判断しました。気になるようでしたら別の手を考えます。</p>
+  <h3>白い面に置いた一言</h3>
+  <p>いただいた文言をそのまま使っています。Googleボタンのすぐ上に、中央寄せで1行だけ。</p>
+  <blockquote style="margin:16px 0;padding:16px 22px;background:var(--soft);border-radius:14px;border-left:3px solid var(--blue-line);font-size:15px;font-weight:660;color:var(--blue-deep);text-align:center">チャット一言でプレゼン資料を作ろう！</blockquote>
+  <p class="note">ヒーローにあった「AIと話すだけで、プレゼン資料ができます。」はモック段階の案なので、ご指示どおり入れていません。</p>
 </section>
 
 <section id="s3">
   <span class="eyebrow">03</span>
-  <h2>本番反映</h2>
-  <p class="lead">deploy-prod のラッパー経由で、差分を確認してから流しました。</p>
+  <h2>固定レイアウトの作り方</h2>
+  <p class="lead">ログイン後（App.tsx の <code>h-[100dvh] flex flex-col</code>）と同じ構造に合わせました。</p>
+
+<pre>@media (max-width: 840px) {
+<span class="del">- .auth-page  { display: block; min-height: 100dvh; }
+- .auth-panel { display: block; min-height: calc(100dvh - 214px); }</span>
+<span class="add">+ .auth-page  { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
++ .auth-brand { flex: none; }
++ .auth-panel { flex: 1; min-height: 0; overflow-y: auto; display: flex; }
++ .auth-shell { margin: auto; }</span>
+}</pre>
+
+  <p>ページ自体は動かず、フォーム面だけが内側でスクロールします。これで背景が常に画面の縁と地続きになります。</p>
+
+  <div class="callout blue">
+    <p><b>中央寄せに <code>place-items:center</code> ではなく <code>margin:auto</code> を使っています。</b> 前者は中身が画面より高いときに上端が切れてスクロールで戻せなくなりますが、後者は余白が負にならないので切れません。小さい端末でも全項目に手が届きます。</p>
+  </div>
+</section>
+
+<section id="s4">
+  <span class="eyebrow">04</span>
+  <h2>確認したこと</h2>
 
   <div class="table-wrap">
     <table>
       <thead><tr><th>確認項目</th><th>結果</th></tr></thead>
       <tbody>
         <tr><td>ESLint</td><td class="ok">エラーなし</td></tr>
-        <tr><td>フロントのテスト</td><td class="ok">35件すべて通過</td></tr>
-        <tr><td>バックエンドのテスト</td><td class="ok">138件すべて通過</td></tr>
+        <tr><td>テスト</td><td class="ok">35件すべて通過</td></tr>
+        <tr><td>最初の画面（iPhone）</td><td class="ok">上下の縁がログイン後と同色でつながる</td></tr>
+        <tr><td>メール画面（iPhone）</td><td class="ok">ヒーローが消えてもレイアウトが崩れない</td></tr>
+        <tr><td>PC幅（1280px）</td><td class="ok">左面はタイトルのみ、右面はフォーム中央寄せ</td></tr>
         <tr><td>触っていない5スタック</td><td class="ok">すべて No changes detected</td></tr>
         <tr><td>PawapoWeb の差分</td><td class="ok">Lambdaのイメージ更新1件のみ（作成0・削除0・置換0）</td></tr>
-        <tr><td>iPhone 実機表示</td><td class="ok">上端・余白・横幅とも問題なし</td></tr>
-        <tr><td>PC幅（1280px）</td><td class="ok">変更前と同一</td></tr>
-        <tr><td>登録画面からの戻り先</td><td class="ok">最初の画面へ戻る（メール画面へ落ちない）</td></tr>
       </tbody>
     </table>
   </div>
 
-  <div class="callout blue">
-    <p><b>入口が2つになったので、戻り先を覚える状態を1つ足しています。</b> これが無いと、最初の画面から登録へ進んだ人が「戻る」でメールアドレス入力後の画面に落ち、空欄のメール欄を見ることになります。実際にクリックして確認しました。</p>
-  </div>
+  <p class="note">実装後、フォームが上寄せのままだと下に大きな余白が残ったため、上下中央へ寄せています（Before/AfterのAfterは調整後）。</p>
 </section>
 
 <footer>
-  <p>変更ファイル：src/components/Auth/AuthScreen.tsx ／ src/components/Auth/AuthScreen.css</p>
-  <p>モック：ログイン画面文言｜現行と改善2案のモック（共有くん内）</p>
+  <p>変更ファイル：src/components/Auth/AuthScreen.tsx ／ AuthScreen.css</p>
+  <p>3案のモック：ログイン画面リデザイン｜3案のスマホモック（共有くん内）</p>
 </footer>
 
 </div>
