@@ -186,7 +186,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
           </div>
           <button
             onClick={signOut}
-            className="bg-white/20 text-white px-2 md:px-3 py-0.5 md:py-1 rounded hover:bg-white/30 transition-colors text-[10px] md:text-[10px] whitespace-nowrap flex-shrink-0"
+            className="bg-white/20 text-white px-3 md:px-4 py-1 md:py-1.5 rounded-md hover:bg-white/30 transition-colors text-xs md:text-sm whitespace-nowrap flex-shrink-0"
           >
             ログアウト
           </button>
