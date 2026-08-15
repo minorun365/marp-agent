@@ -57,6 +57,8 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
   const [code, setCode] = useState('');
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
+  // 新規登録はメール入力前後のどちらからも入れるため、戻り先を覚えておく。
+  const [signupFrom, setSignupFrom] = useState<AuthState>('email');
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -213,9 +215,9 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
         <div className="auth-shell">
           {state === 'initial' && (
             <>
-              <p className="auth-eyebrow">Welcome back</p>
-              <h2>続きをはじめましょう</h2>
-              <p className="auth-lead">Googleまたはメールアドレスで続けられます。</p>
+              <p className="auth-eyebrow">Get started</p>
+              <h2>スライドづくりを、<br />はじめましょう</h2>
+              <p className="auth-lead">誰でも無料で使えます。</p>
               <button className="auth-action auth-secondary" type="button" disabled={busy} onClick={() => void run(async () => {
                 if (demoMode) onAuthenticated();
                 else await signInWithRedirect({ provider: 'Google' });
@@ -229,6 +231,7 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
                 </label>
                 <button className="auth-action auth-primary" type="submit">メールで続ける</button>
               </form>
+              <div className="auth-new-user">初めてご利用の方は <button className="auth-text-button" type="button" onClick={() => { setSignupFrom('initial'); setState('signup'); }}>アカウントを作成</button></div>
             </>
           )}
 
@@ -248,13 +251,13 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
                 <button className="auth-action auth-secondary" type="submit" disabled={busy}>パスワードでログイン</button>
               </form>
               <button className="auth-text-button auth-center" type="button" onClick={() => setState('reset')}>パスワードを忘れた方</button>
-              <div className="auth-new-user">初めてご利用の方は <button className="auth-text-button" type="button" onClick={() => setState('signup')}>アカウントを作成</button></div>
+              <div className="auth-new-user">初めてご利用の方は <button className="auth-text-button" type="button" onClick={() => { setSignupFrom('email'); setState('signup'); }}>アカウントを作成</button></div>
             </>
           )}
 
           {state === 'signup' && (
             <>
-              <button className="auth-back" type="button" onClick={() => setState('email')}>← 戻る</button>
+              <button className="auth-back" type="button" onClick={() => setState(signupFrom)}>← 戻る</button>
               <p className="auth-eyebrow">Create account</p>
               <h2>アカウントを作成</h2>
               <p className="auth-lead">メールアドレスとパスワードで始められます。</p>
