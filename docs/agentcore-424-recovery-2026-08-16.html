@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e0d6a">
+<title>AgentCore 424障害｜原因と恒久対策</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a;--blue:#0a4695;--blue-mid:#0862aa;--blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb;--blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a;--sub:#4a4a54;--mut:#767680;--line:#e8e8ee;--soft:#f7f8fa;
+  --gold:#f0b21f;--gold-deep:#8a5a00;--gold-soft:#fdf5e0;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;color:var(--ink);line-height:1.85;font-size:15.5px;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;font-feature-settings:"palt" 1}
+.wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,.hero b,.hero strong,.hero a,.hero span,.hero div,.hero code{color:#fff}
+.hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+.toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+.toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.toc li{margin:0}.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;color:var(--sub);font-size:14px;padding:5px 0}.toc a:hover{color:var(--blue-deep)}
+.toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+section{position:relative;margin:0;padding:46px 0 4px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}section::before{content:"";position:absolute;top:-1px;left:0;width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);font-weight:700;letter-spacing:.005em}
+h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));margin:20px 0}
+.card{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:#fff;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+.card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+.card h4{margin:0 0 8px;font-size:12px;color:var(--mut);font-weight:700;letter-spacing:.08em;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.card .big{display:block;font-size:24px;font-weight:800;color:var(--blue-deep);line-height:1.25;margin:4px 0}
+.card p{margin:4px 0 0;font-size:13px;color:var(--sub);line-height:1.75}
+.callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}.callout b{color:var(--gold-deep)}.callout>:first-child{margin-top:0}.callout>:last-child{margin-bottom:0}
+.callout.blue{background:var(--blue-soft)}.callout.blue::before{background:var(--blue-grad)}.callout.blue b{color:var(--blue-deep)}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;border:1px solid var(--line);border-radius:16px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:660px}thead{background-image:var(--blue-grad)}
+th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;text-align:left;white-space:nowrap;letter-spacing:.02em;border:0}
+td{padding:13px 16px;text-align:left;vertical-align:top;border:0;border-bottom:1px solid var(--line);line-height:1.75}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fbfcfe}td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+.code-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:16px;margin:20px 0}
+.code-box{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}.code-box h3{margin:0;padding:12px 16px;border:0;background:var(--soft);font-size:13px}.code-box pre{margin:0;padding:18px;overflow:auto;background:#fff;line-height:1.7}
+blockquote{margin:20px 0;padding:18px 24px;background:var(--soft);border-radius:14px;color:var(--sub);font-size:13.8px;line-height:1.85;border-left:3px solid var(--blue-line)}
+ul,ol{margin:12px 0;padding-left:23px}li{margin:7px 0}
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut);line-height:1.9}footer p{margin:8px 0}
+code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+pre code{background:transparent;border:0;padding:0;color:var(--ink)}
+@media(max-width:620px){body{font-size:15px}.hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}.hero h1{font-size:23px}h2{font-size:20px}section{padding-top:38px}.callout{padding:16px 18px 16px 22px}.toc{padding:18px 20px}.code-pair{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ 障害対応</span>
+    <h1>AgentCore 424障害<br>原因特定から本番復旧まで完了</h1>
+    <p class="sub">コンテナへのPythonファイル同梱漏れを修正し、同種事故を防ぐテストと障害ログを追加</p>
+    <div class="meta">本番反映：2026年8月16日 19:11 JST ／ 認証済み生成でプレビュー表示まで確認</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="toc">
+    <h2>目次</h2>
+    <ol>
+      <li><a href="#s1"><span class="num">01</span>復旧結果</a></li>
+      <li><a href="#s2"><span class="num">02</span>原因</a></li>
+      <li><a href="#s3"><span class="num">03</span>修正前後</a></li>
+      <li><a href="#s4"><span class="num">04</span>恒久対策と検証</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <span class="eyebrow">01</span>
+    <h2>本番は復旧済み</h2>
+    <p class="lead">修正版Runtimeを本番へ反映し、ログイン済みの画面から1枚のスライドを生成した。AgentCoreへの接続、Kimi K2.5の推論、ツール実行、プレビューへの切り替えまで通っている。</p>
+    <div class="grid">
+      <article class="card"><h4>RUNTIME</h4><span class="big">Version 5</span><p>状態はREADY。修正版コンテナへ更新済み。</p></article>
+      <article class="card"><h4>本番E2E</h4><span class="big">1 / 1</span><p>認証済みで生成し、1枚目のプレビューを表示。</p></article>
+      <article class="card"><h4>ブラウザ</h4><span class="big">エラー 0</span><p>復旧確認中のconsole errorとwarningは0件。</p></article>
+      <article class="card"><h4>障害ログ</h4><span class="big">記録開始</span><p>CloudWatchでRuntime起動ログを確認。</p></article>
+    </div>
+    <div class="callout blue"><p><b>モデル障害ではなかった。</b>Kimi K2.5へ本番アカウントから最小推論を実行し、正常応答を確認した。424の内側はRuntimeコンテナの起動時クラッシュだった。</p></div>
+  </section>
+
+  <section id="s2">
+    <span class="eyebrow">02</span>
+    <h2>追加したPythonファイルがコンテナに入っていなかった</h2>
+    <p class="lead">利用者識別を記録する変更で、エントリポイントの<code>agent.py</code>から<code>identity.py</code>を読み込むようにした。一方、Dockerfileはコピーするファイルを2本に固定しており、新しいファイルが本番イメージへ入らなかった。</p>
+    <blockquote>
+      <p><code>ModuleNotFoundError: No module named 'identity'</code></p>
+      <p>本番と同じECRイメージを手元で起動し、エントリポイントのimport時に同じ例外で終了することを確認した。</p>
+    </blockquote>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>順番</th><th>実際に起きていたこと</th><th>利用者から見えた結果</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>AgentCoreがRuntimeコンテナを起動</td><td>Runtimeの管理状態はREADY</td></tr>
+          <tr><td>2</td><td><code>agent.py</code>が<code>identity.py</code>をimport</td><td>ファイルが無いためプロセス終了</td></tr>
+          <tr><td>3</td><td>AgentCoreが依存先Runtimeの起動失敗を検知</td><td>ブラウザへHTTP 424を返却</td></tr>
+          <tr><td>4</td><td>実行ロールにCloudWatch送信権限が無い</td><td>ロググループはあっても障害ログが0件</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s3">
+    <span class="eyebrow">03</span>
+    <h2>固定リストをやめ、トップレベルのPythonファイルをすべて同梱</h2>
+    <p class="lead">今回の1ファイルだけを足す修正ではなく、今後トップレベルへPythonモジュールを追加した場合も自動でコンテナへ入る指定へ変えた。</p>
+    <div class="code-pair">
+      <article class="code-box">
+        <h3>Before</h3>
+        <pre><code># エージェントコードと全テーマをコピー
+COPY agent.py config.py ./
+COPY *.css ./</code></pre>
+      </article>
+      <article class="code-box">
+        <h3>After</h3>
+        <pre><code># エージェントコードと全テーマをコピー
+# Pythonモジュールの同梱漏れを防ぐ
+COPY *.py ./
+COPY *.css ./</code></pre>
+      </article>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>対象</th><th>Before</th><th>After</th></tr></thead>
+        <tbody>
+          <tr><td>コンテナ作成</td><td>列挙した2ファイルだけコピー</td><td>トップレベルのPythonファイルを一括コピー</td></tr>
+          <tr><td>回帰検知</td><td>ローカルpytestではファイルが見えるため検知できない</td><td>Dockerfileの包括コピーを回帰テストで固定</td></tr>
+          <tr><td>障害調査</td><td>CloudWatchの保存先はあるがログ0件</td><td>LogsとX-Rayの送信権限を実行ロールへ追加</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s4">
+    <span class="eyebrow">04</span>
+    <h2>コード、コンテナ、本番の3段階で確認</h2>
+    <p class="lead">Dockerfileの静的テストだけで終えず、ARM64コンテナの実起動と本番画面の生成まで通した。CDKDの差分は対象2スタックに限定し、作成0件、削除0件で反映した。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>確認</th><th>結果</th><th>確認できたこと</th></tr></thead>
+        <tbody>
+          <tr><td>バックエンドテスト</td><td>140件成功</td><td>既存機能と追加した回帰テストが成功</td></tr>
+          <tr><td>フロントテスト</td><td>35件成功</td><td>AgentCore呼び出しを含む既存UIテストが成功</td></tr>
+          <tr><td>build / lint</td><td>成功</td><td>TypeScriptと配信物のビルド、静的検査が成功</td></tr>
+          <tr><td>ARM64コンテナ</td><td>8080番で待受</td><td>修正版イメージがエントリポイントを正常起動</td></tr>
+          <tr><td>CDKD dry-run</td><td>更新2、削除0</td><td>IAMポリシーとRuntimeだけが変更対象</td></tr>
+          <tr><td>本番生成</td><td>プレビュー1/1</td><td>認証、Runtime、モデル推論、生成結果の受信が成功</td></tr>
+          <tr><td>CloudWatch Logs</td><td>新規ストリームあり</td><td>次回の起動異常をログから追跡可能</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout"><p><b>恒久対策は3点。</b>Pythonファイルの包括コピー、コンテナ同梱と監視権限の回帰テスト、RuntimeからCloudWatch LogsとX-Rayへの送信権限を追加した。</p></div>
+  </section>
+
+  <footer>
+    <p>対象コミット：<code>6e1f9d5</code>「AgentCoreの起動時424を修正し監視を強化」</p>
+    <p>記録：2026年8月16日 JST ／ AWSのアカウントID・Runtime ID・認証情報は掲載していない。</p>
+  </footer>
+</div>
+</body>
+</html>
