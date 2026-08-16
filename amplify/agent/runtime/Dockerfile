@@ -30,7 +30,8 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # エージェントコードと全テーマをコピー
-COPY agent.py config.py ./
+# トップレベルのPythonモジュールを追加してもコンテナへの同梱漏れが起きないようにする。
+COPY *.py ./
 COPY *.css ./
 
 # サブモジュールをコピー

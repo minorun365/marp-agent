@@ -42,6 +42,21 @@ export class WorkloadAccessStack extends cdk.Stack {
         `arn:${this.partition}:bedrock:*:${this.account}:application-inference-profile/*`,
       ],
     }));
+    this.runtimeRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['logs:DescribeLogGroups'],
+      resources: ['*'],
+    }));
+    this.runtimeRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+      resources: [
+        `arn:${this.partition}:logs:${this.region}:${this.account}:log-group:/aws/bedrock-agentcore/runtimes/*`,
+        `arn:${this.partition}:logs:${this.region}:${this.account}:log-group:/aws/bedrock-agentcore/runtimes/*:*`,
+      ],
+    }));
+    this.runtimeRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['xray:PutTelemetryRecords', 'xray:PutTraceSegments'],
+      resources: ['*'],
+    }));
     this.webLogGroup = new logs.LogGroup(this, 'WebLogGroup', {
       logGroupName: '/aws/lambda/pawapo-web',
       retention: logs.RetentionDays.ONE_MONTH,
