@@ -5,8 +5,9 @@
   --auth-muted: #687483;
   --auth-line: #dce3ea;
   --auth-soft: #f4f7fa;
-  /* ログイン後のヘッダー（bg-brand-gradient）と同じ値。左端の濃紺が index.css の
-     --header-top と近く、ステータスバーの地色から継ぎ目なくつながる */
+  /* 横方向のグラデなので、上端の色は左から右へ動く。ステータスバーの地色
+     （index.css の --header-top）は単色なので、これだけだと右側で色が飛ぶ。
+     スマホ幅では下の @media で上端に単色→透明の層を重ねて継ぎ目を消している */
   --auth-gradient: linear-gradient(to right, #1a3a6e, #5ba4d9);
   --auth-button-gradient: linear-gradient(to right, #1a3a6e 0%, #5ba4d9 100%);
 }
@@ -25,7 +26,7 @@
   min-height: 100dvh;
   overflow: hidden;
   color: #fff;
-  background: var(--auth-gradient);
+  background-image: var(--auth-gradient);
 }
 
 .auth-brand-inner {
@@ -105,7 +106,16 @@
      ページ自体はスクロールさせず、フォーム面だけを内側でスクロールさせる。
      背景がスクロールで動かないので、上端のヒーローが常に画面の縁と地続きになる。 */
   .auth-page { display: flex; height: 100dvh; min-height: 0; overflow: hidden; flex-direction: column; }
-  .auth-brand { min-height: 182px; flex: none; }
+  /* ログイン後のヘッダー（index.css の .app-header）と同じ2層構成。下層が本来の
+     グラデで、上層に「ステータスバーと同じ単色→透明」の短い縦グラデを重ねる。
+     ブラウザが単色で塗るステータスバー帯と上端の色を揃え、境目の横線を消す */
+  .auth-brand {
+    min-height: 182px;
+    flex: none;
+    background-image:
+      linear-gradient(to bottom, var(--header-top) 0, rgba(22, 48, 95, 0) calc(var(--safe-top) + 30px)),
+      var(--auth-gradient);
+  }
   .auth-brand-inner { min-height: 182px; padding: max(25px, calc(var(--safe-top) + 4px)) max(22px, var(--safe-right)) 26px max(22px, var(--safe-left)); }
   .auth-copy { margin: auto 0 0; padding: 30px 0 0; }
   .auth-copy h1 { max-width: 320px; font-size: 34px; line-height: 1.15; }

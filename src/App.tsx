@@ -175,8 +175,8 @@ function MainApp({ signOut }: { signOut?: () => void }) {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-gray-50">
-      {/* ヘッダー: 余白はapp-header側でセーフエリアを足し込む */}
-      <header className="app-header bg-brand-gradient text-white shadow-md">
+      {/* ヘッダー: 背景と余白はapp-header側で2層グラデ＋セーフエリアを組み立てる */}
+      <header className="app-header text-white shadow-md">
         <div className="max-w-3xl mx-auto flex justify-between items-center gap-2">
           <div className="min-w-0">
             <h1 className="text-lg md:text-2xl font-bold truncate">

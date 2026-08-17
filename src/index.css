@@ -42,11 +42,16 @@ body {
 /* ヘッダー: ダイナミックアイランド／ノッチの領域まで自分の背景で塗り、
    その分だけ内側へ余白を足して文字が潜り込まないようにする。
    横向き時はノッチ側の余白も確保する。 */
-/* padding-topはセーフエリアへの「足し算」にしない。足すとstandaloneのときだけ
-   ヘッダーのおでこが間延びする。セーフエリアの値自体がステータスバーを避ける高さなので、
-   その下にわずかな余白を足すだけでよい */
+/* 背景は2層。下層が本来の斜めグラデで、上層に「ステータスバーと同じ単色→透明」の
+   短い縦グラデを重ねる。こうしないと、ブラウザが単色で塗るステータスバー帯と
+   斜めグラデの上端の間で色が飛び、境目に横線が見える。
+   padding-topはセーフエリアへの「足し算」にしない。セーフエリアの値自体が
+   ステータスバーを避ける高さなので、そこへ余白を足すとおでこが間延びする */
 .app-header {
-  padding-top: max(0.75rem, calc(var(--safe-top) + 0.25rem));
+  background-image:
+    linear-gradient(to bottom, var(--header-top) 0, rgba(22, 48, 95, 0) calc(var(--safe-top) + 30px)),
+    var(--header-gradient);
+  padding-top: max(0.75rem, var(--safe-top));
   padding-bottom: 0.75rem;
   padding-left: max(1rem, var(--safe-left));
   padding-right: max(1rem, var(--safe-right));
@@ -54,7 +59,7 @@ body {
 
 @media (min-width: 768px) {
   .app-header {
-    padding-top: max(1rem, calc(var(--safe-top) + 0.25rem));
+    padding-top: max(1rem, var(--safe-top));
     padding-bottom: 1rem;
     padding-left: max(1.5rem, var(--safe-left));
     padding-right: max(1.5rem, var(--safe-right));
