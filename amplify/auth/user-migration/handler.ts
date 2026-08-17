@@ -11,6 +11,7 @@ import {
   type AdminGetUserCommandOutput,
   type AttributeType,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { legacyPools, type LegacyPool } from '../legacy-pools.js';
 
 const stsClient = new STSClient({});
 
@@ -22,9 +23,9 @@ async function sendCommand<Output>(client: unknown, command: unknown): Promise<O
   return (client as AwsClientWithSend).send<Output>(command);
 }
 
-async function getOldCognitoClient(): Promise<CognitoIdentityProviderClient> {
+async function getOldCognitoClient(pool: LegacyPool): Promise<CognitoIdentityProviderClient> {
   const assumed = await sendCommand<AssumeRoleCommandOutput>(stsClient, new AssumeRoleCommand({
-    RoleArn: process.env.OLD_ACCOUNT_ROLE_ARN,
+    RoleArn: pool.roleArn,
     RoleSessionName: 'MarpAgentUserMigration',
   }));
 
@@ -49,43 +50,68 @@ function toUserAttributes(attributes: AttributeType[] | undefined, username: str
   };
 }
 
-export const handler: UserMigrationTriggerHandler = async (event) => {
-  const cognito = await getOldCognitoClient();
-
-  if (event.triggerSource === 'UserMigration_Authentication') {
+/** 旧環境のパスワードで認証し、成功した世代の利用者属性を返す */
+async function authenticateAgainstLegacy(
+  userName: string,
+  password: string,
+): Promise<AdminGetUserCommandOutput | undefined> {
+  for (const pool of legacyPools()) {
+    // パスワード検証にはクライアントIDが要る。持たない世代は照合専用なので飛ばす。
+    if (!pool.clientId) continue;
     try {
+      const cognito = await getOldCognitoClient(pool);
       await sendCommand(cognito, new AdminInitiateAuthCommand({
-        UserPoolId: process.env.OLD_USER_POOL_ID,
-        ClientId: process.env.OLD_USER_POOL_CLIENT_ID,
+        UserPoolId: pool.userPoolId,
+        ClientId: pool.clientId,
         AuthFlow: 'ADMIN_USER_PASSWORD_AUTH',
-        AuthParameters: {
-          USERNAME: event.userName,
-          PASSWORD: event.request.password,
-        },
+        AuthParameters: { USERNAME: userName, PASSWORD: password },
       }));
 
       const userInfo = await sendCommand<AdminGetUserCommandOutput>(cognito, new AdminGetUserCommand({
-        UserPoolId: process.env.OLD_USER_POOL_ID,
-        Username: event.userName,
+        UserPoolId: pool.userPoolId,
+        Username: userName,
       }));
-
-      event.response.userAttributes = toUserAttributes(userInfo.UserAttributes, event.userName);
-      event.response.finalUserStatus = 'CONFIRMED';
-      event.response.messageAction = 'SUPPRESS';
+      console.log(`[INFO] migrated from ${pool.label}`);
+      return userInfo;
     } catch {
-      throw new Error('Authentication failed');
+      // この世代には居ない、またはパスワードが違う。次の世代を試す。
+      continue;
     }
-  } else if (event.triggerSource === 'UserMigration_ForgotPassword') {
+  }
+  return undefined;
+}
+
+/** 旧環境に利用者が存在するかを世代順に探し、最初に見つかった属性を返す */
+async function findInLegacy(userName: string): Promise<AdminGetUserCommandOutput | undefined> {
+  for (const pool of legacyPools()) {
     try {
+      const cognito = await getOldCognitoClient(pool);
       const userInfo = await sendCommand<AdminGetUserCommandOutput>(cognito, new AdminGetUserCommand({
-        UserPoolId: process.env.OLD_USER_POOL_ID,
-        Username: event.userName,
+        UserPoolId: pool.userPoolId,
+        Username: userName,
       }));
-
-      event.response.userAttributes = toUserAttributes(userInfo.UserAttributes, event.userName);
+      console.log(`[INFO] found in ${pool.label}`);
+      return userInfo;
     } catch {
-      throw new Error('User not found');
+      continue;
     }
+  }
+  return undefined;
+}
+
+export const handler: UserMigrationTriggerHandler = async (event) => {
+  if (event.triggerSource === 'UserMigration_Authentication') {
+    const userInfo = await authenticateAgainstLegacy(event.userName, event.request.password);
+    if (!userInfo) throw new Error('Authentication failed');
+
+    event.response.userAttributes = toUserAttributes(userInfo.UserAttributes, event.userName);
+    event.response.finalUserStatus = 'CONFIRMED';
+    event.response.messageAction = 'SUPPRESS';
+  } else if (event.triggerSource === 'UserMigration_ForgotPassword') {
+    const userInfo = await findInLegacy(event.userName);
+    if (!userInfo) throw new Error('User not found');
+
+    event.response.userAttributes = toUserAttributes(userInfo.UserAttributes, event.userName);
   }
 
   return event;

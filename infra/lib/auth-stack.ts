@@ -17,6 +17,10 @@ export interface AuthStackProps extends cdk.StackProps {
   readonly legacyMigrationRoleArn?: string;
   /** 旧環境のGoogleアカウント照合用ロールARN。新規構築なら未設定でよい。 */
   readonly legacyGoogleCheckRoleArn?: string;
+  /** 2代目の旧環境のユーザー移行用ロールARN。世代が1つだけなら未設定でよい。 */
+  readonly legacyMigrationRoleArn2?: string;
+  /** 2代目の旧環境のGoogleアカウント照合用ロールARN。世代が1つだけなら未設定でよい。 */
+  readonly legacyGoogleCheckRoleArn2?: string;
 }
 
 export class AuthStack extends cdk.Stack {
@@ -34,6 +38,18 @@ export class AuthStack extends cdk.Stack {
     const migrationEnabled = migrationValues.every(Boolean);
     if (migrationValues.some(Boolean) && !migrationEnabled) {
       throw new Error('既存ユーザー移行には oldUserPoolId・oldUserPoolClientId・oldMigrationRoleArn の3つが必要です');
+    }
+
+    // 2代目の移行元。本番が3世代あるため、途中の世代を落とすとその期間の利用者が移行できない。
+    const oldUserPoolId2 = this.node.tryGetContext('oldUserPoolId2') as string | undefined;
+    const oldUserPoolClientId2 = this.node.tryGetContext('oldUserPoolClientId2') as string | undefined;
+    const migrationValues2 = [oldUserPoolId2, oldUserPoolClientId2, props.legacyMigrationRoleArn2];
+    const migration2Enabled = migrationValues2.every(Boolean);
+    if (migrationValues2.some(Boolean) && !migration2Enabled) {
+      throw new Error('2代目の移行元には oldUserPoolId2・oldUserPoolClientId2・oldMigrationRoleArn2 の3つが必要です');
+    }
+    if (migration2Enabled && !migrationEnabled) {
+      throw new Error('2代目の移行元を使うには、初代の移行元も設定してください');
     }
     const googleClientId = this.node.tryGetContext('googleClientId') as string | undefined;
     const cognitoDomainPrefix = this.node.tryGetContext('cognitoDomainPrefix') as string | undefined;
@@ -56,6 +72,11 @@ export class AuthStack extends cdk.Stack {
           OLD_ACCOUNT_ROLE_ARN: props.legacyMigrationRoleArn!,
           OLD_USER_POOL_ID: oldUserPoolId!,
           OLD_USER_POOL_CLIENT_ID: oldUserPoolClientId!,
+          ...(migration2Enabled ? {
+            OLD2_ACCOUNT_ROLE_ARN: props.legacyMigrationRoleArn2!,
+            OLD2_USER_POOL_ID: oldUserPoolId2!,
+            OLD2_USER_POOL_CLIENT_ID: oldUserPoolClientId2!,
+          } : {}),
         },
         bundling: { minify: true, sourceMap: true },
       });
@@ -76,6 +97,10 @@ export class AuthStack extends cdk.Stack {
           // 旧環境が無ければ空文字。handler側が空を見て照合そのものをスキップする。
           OLD_ACCOUNT_ROLE_ARN: props.legacyGoogleCheckRoleArn ?? '',
           OLD_USER_POOL_ID: oldUserPoolId ?? '',
+          ...(props.legacyGoogleCheckRoleArn2 && oldUserPoolId2 ? {
+            OLD2_ACCOUNT_ROLE_ARN: props.legacyGoogleCheckRoleArn2,
+            OLD2_USER_POOL_ID: oldUserPoolId2,
+          } : {}),
         },
         bundling: { minify: true, sourceMap: true },
       });

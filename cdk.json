@@ -6,7 +6,7 @@
       "infra/**/*.ts",
       "infra/web/**",
       "amplify/agent/runtime/**",
-      "amplify/auth/user-migration/**",
+      "amplify/auth/**",
       "src/**"
     ],
     "exclude": [

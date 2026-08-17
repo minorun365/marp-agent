@@ -8,6 +8,10 @@ export interface AuthAccessStackProps extends cdk.StackProps {
   readonly legacyMigrationRoleArn?: string;
   /** 旧環境のGoogleアカウント照合用ロールARN。新規構築なら未設定でよい。 */
   readonly legacyGoogleCheckRoleArn?: string;
+  /** 2代目の旧環境のユーザー移行用ロールARN。世代が1つだけなら未設定でよい。 */
+  readonly legacyMigrationRoleArn2?: string;
+  /** 2代目の旧環境のGoogleアカウント照合用ロールARN。世代が1つだけなら未設定でよい。 */
+  readonly legacyGoogleCheckRoleArn2?: string;
 }
 
 export class AuthAccessStack extends cdk.Stack {
@@ -23,10 +27,14 @@ export class AuthAccessStack extends cdk.Stack {
 
     this.userMigrationLogGroup = this.createLogGroup('UserMigration', 'pawapo-user-migration');
     this.userMigrationRole = this.createLambdaRole('UserMigration', 'pawapo-user-migration', this.userMigrationLogGroup);
-    if (props.legacyMigrationRoleArn) {
+    // 移行元は複数世代ありうる。世代を1つでも落とすと、その期間の利用者が移行できなくなる。
+    const migrationRoleArns = [props.legacyMigrationRoleArn, props.legacyMigrationRoleArn2].filter(
+      (arn): arn is string => Boolean(arn),
+    );
+    if (migrationRoleArns.length > 0) {
       this.userMigrationRole.addToPolicy(new iam.PolicyStatement({
         actions: ['sts:AssumeRole'],
-        resources: [props.legacyMigrationRoleArn],
+        resources: migrationRoleArns,
       }));
     }
 
@@ -39,10 +47,13 @@ export class AuthAccessStack extends cdk.Stack {
         StringEquals: { 'aws:ResourceTag/Project': 'pawapo' },
       },
     }));
-    if (props.legacyGoogleCheckRoleArn) {
+    const googleCheckRoleArns = [props.legacyGoogleCheckRoleArn, props.legacyGoogleCheckRoleArn2].filter(
+      (arn): arn is string => Boolean(arn),
+    );
+    if (googleCheckRoleArns.length > 0) {
       this.googleLinkRole.addToPolicy(new iam.PolicyStatement({
         actions: ['sts:AssumeRole'],
-        resources: [props.legacyGoogleCheckRoleArn],
+        resources: googleCheckRoleArns,
       }));
     }
 

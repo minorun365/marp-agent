@@ -6,17 +6,14 @@ import {
   ListUsersCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { AssumeRoleCommand, STSClient } from '@aws-sdk/client-sts';
+import { legacyPools, type LegacyPool } from '../legacy-pools.js';
 
 const cognito = new CognitoIdentityProviderClient({});
 const sts = new STSClient({});
 
-async function existsInOldPool(email: string) {
-  const roleArn = process.env.OLD_ACCOUNT_ROLE_ARN;
-  const userPoolId = process.env.OLD_USER_POOL_ID;
-  if (!roleArn || !userPoolId) return false;
-
+async function existsIn(pool: LegacyPool, email: string) {
   const assumed = await sts.send(new AssumeRoleCommand({
-    RoleArn: roleArn,
+    RoleArn: pool.roleArn,
     RoleSessionName: 'PawapoGoogleLinkCheck',
   }));
   const oldCognito = new CognitoIdentityProviderClient({
@@ -29,12 +26,20 @@ async function existsInOldPool(email: string) {
   });
 
   try {
-    await oldCognito.send(new AdminGetUserCommand({ UserPoolId: userPoolId, Username: email }));
+    await oldCognito.send(new AdminGetUserCommand({ UserPoolId: pool.userPoolId, Username: email }));
     return true;
   } catch (error) {
     if (error instanceof Error && error.name === 'UserNotFoundException') return false;
     throw error;
   }
+}
+
+/** 移行元のどれか1つにでも居れば、まずパスワードで移行してもらう */
+async function existsInOldPool(email: string) {
+  for (const pool of legacyPools()) {
+    if (await existsIn(pool, email)) return true;
+  }
+  return false;
 }
 
 export const handler: PreSignUpTriggerHandler = async (event) => {
