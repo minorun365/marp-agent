@@ -76,6 +76,42 @@ npm run prod:cutover
 - AgentCoreから401または403が返った場合、Cognitoセッションを強制更新して同じ生成リクエストを1回だけ再送する
 - 本番切替の完了条件を、認証済みの生成・プレビュー・出力・共有URL表示までの実操作に固定する
 
+## 残っている後片付け（期限つき）
+
+切替そのものは完了しているが、期限や条件が来てから片付けるものが2件ある。
+放置すると、撤去したい旧環境がいつまでも残り続けるので、`npm run prod:verify` が期限を過ぎたら知らせる。
+
+### 1. 旧共有サブドメインの停止（2026年8月22日以降）
+
+移行前に発行された共有スライドは、いまも旧環境（会社サンドボックス）のCloudFrontから
+`slides.pawapo.minoruonda.com` で配信されている。共有URLの有効期限は発行から7日なので、
+**切替日（8月14日）から7日が過ぎる8月21日で、過去に発行したURLはすべて期限切れになる**。
+
+片付ける手順:
+
+1. 旧配信のアクセスログ、または対象バケットの最終更新日を見て、参照が止まっていることを確かめる
+2. 旧環境のCloudFrontからエイリアスを外して無効化し、削除する
+3. 親ドメインのDNSから `slides.pawapo.minoruonda.com` のA/AAAAと証明書検証用レコードを削除する
+
+現行の共有URLは `https://pawapo.minoruonda.com/slides/{id}/` で、専用アカウントのS3から配信している。
+このサブドメインを消しても、いま発行される共有URLには影響しない。
+
+### 2. 2代目の移行元の撤去（移行が一巡してから）
+
+会社サンドボックスのUser Poolを移行元に加えている（`.env.production.local` の `PAWAPO_OLD2_*`）。
+2代目の期間に登録した423人がログインするまで必要なので、日付ではなく**実績**で判断する。
+
+`npm run prod:usage` の利用者数と、移行ログの「2代目から移行」の件数を見て、
+**2代目からの移行が数週間ゼロになったら**撤去してよい。手順は次のとおり。
+
+1. `.env.production.local` から `PAWAPO_OLD2_*` の3行を消す
+2. `cdkd-prod.sh diff PawapoAuthAccess PawapoAuth` で、環境変数と引き受け先だけが減ることを確認する
+3. デプロイし、`npm run prod:verify` と `npm run prod:smoke` を通す
+4. 会社サンドボックス側の役割（`pawapo-legacy-user-migration` / `pawapo-legacy-google-check`）を
+   `infra/bin/legacy-migration-access.ts` のスタックごと削除する
+
+初代の移行元（個人検証アカウントのUser Pool）は、まだ移行していない利用者が多いので当面残す。
+
 ## 切り戻し
 
 新環境で利用継続が難しい不具合が見つかった場合は、次のコマンドが旧Amplifyへ `pawapo` サブドメインを再関連付けし、利用可能になるまで待ってからDNSを戻す。

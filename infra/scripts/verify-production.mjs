@@ -230,6 +230,44 @@ guarded('予算アラートが設定されている', () => {
   check('予算アラートが設定されている', Boolean(budget), budget ? `上限 $${Math.round(Number(budget.BudgetLimit.Amount))}/月` : '未設定');
 });
 
+// ── 期限が来た後片付け ──────────────────────────────────────────────
+// ドキュメントに書くだけだと読み返さないので、期限が過ぎたらここで知らせる。
+// 合否には数えない（放置しても壊れないが、片付けないと旧環境が残り続ける類のもの）。
+const reminders = [];
+
+// 旧共有サブドメインは、切替日から共有URLの有効期限（7日）を過ぎれば不要になる。
+const shareExpiry = new Date('2026-08-22T00:00:00+09:00');
+if (Date.now() >= shareExpiry.getTime()) {
+  guarded('旧共有サブドメインの停止', () => {
+    const zoneName = appDomain.split('.').slice(-2).join('.');
+    const zones = aws(['route53', 'list-hosted-zones-by-name', '--dns-name', zoneName]);
+    // 親ゾーンは別アカウントにあることもあるので、引けなければ黙って飛ばす。
+    const zone = (zones.HostedZones || []).find((z) => z.Name === `${zoneName}.`);
+    if (!zone) return;
+    const records = aws(['route53', 'list-resource-record-sets', '--hosted-zone-id', zone.Id.split('/').pop()]);
+    const legacyShare = (records.ResourceRecordSets || []).find((r) => r.Name === `slides.${appDomain}.`);
+    if (legacyShare) {
+      reminders.push('旧共有サブドメイン slides.* がまだ残っています。共有URLの有効期限は過ぎているので、切替runbookの「残っている後片付け」に従って撤去できます。');
+    }
+  });
+}
+
+// 2代目の移行元は、そこからの移行が止まったら撤去できる（日付ではなく実績で判断する）。
+if (legacyAccountId2) {
+  guarded('2代目の移行元の要否', () => {
+    if (!runtimeId) return;
+    const events = aws([
+      'logs', 'filter-log-events',
+      '--log-group-name', '/aws/lambda/pawapo-user-migration',
+      '--start-time', String(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      '--filter-pattern', '2代目',
+    ]);
+    if ((events.events || []).length === 0) {
+      reminders.push('直近30日で「2代目から移行」した利用者がいません。移行が一巡したなら、2代目の移行元を撤去できます（切替runbook参照）。');
+    }
+  });
+}
+
 // ── 結果 ────────────────────────────────────────────────────────────
 const failures = results.filter((r) => !r.ok);
 console.log('\n本番構成の検査\n');
@@ -237,6 +275,12 @@ for (const { name, ok, detail } of results) {
   console.log(`  ${ok ? '✓' : '✗'} ${name}${detail ? `  — ${detail}` : ''}`);
 }
 console.log(`\n${results.length - failures.length}/${results.length} 項目が合格\n`);
+
+if (reminders.length > 0) {
+  console.log('片付けられるものがあります:\n');
+  for (const reminder of reminders) console.log(`  ・${reminder}`);
+  console.log('');
+}
 
 if (failures.length > 0) {
   console.error('不合格の項目があります。デプロイを完了扱いにしないこと。\n');
