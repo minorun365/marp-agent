@@ -48,6 +48,12 @@ export class AgentStack extends cdk.Stack {
       },
       networkConfiguration: { networkMode: 'PUBLIC' },
       protocolConfiguration: 'HTTP',
+      // AgentCoreは既定でリクエストヘッダーをコンテナへ渡さない。許可リストへ入れて初めて届く。
+      // Authorizationが無いと、検証済みJWTから利用者を識別できず利用統計が取れない
+      // （エージェント側では署名を再検証せず、subのハッシュだけを使う。詳細は identity.py）。
+      requestHeaderConfiguration: {
+        requestHeaderAllowlist: ['Authorization'],
+      },
       roleArn: props.workloadAccess.runtimeRole.roleArn,
       environmentVariables: {
         AGENT_OBSERVABILITY_ENABLED: 'true',
