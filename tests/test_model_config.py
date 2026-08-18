@@ -9,7 +9,7 @@ from config import (
     get_system_prompt,
     normalize_model_type,
 )
-from tools.http_request import _get_haiku_model_id
+from tools.http_request import _html_to_text
 
 
 def test_only_kimi_is_enabled():
@@ -139,17 +139,37 @@ def test_get_model_config_rejects_missing_glm_environment_variable(monkeypatch):
         get_model_config("glm")
 
 
-def test_get_haiku_model_id_uses_environment_variable(monkeypatch):
-    monkeypatch.setenv("BEDROCK_HAIKU_MODEL_ID", "haiku-profile-arn")
+def test_html_to_text_keeps_heading_structure():
+    """記事の見出しは章立て＝ストーリーの骨格なので、Markdownとして残す。"""
+    html = (
+        "<html><head><style>.a{color:red}</style></head><body>"
+        "<nav>メニュー1 メニュー2</nav>"
+        "<h1>エージェント時代の開発</h1>"
+        "<p>結論から書く。</p>"
+        "<h2>何が変わったのか</h2>"
+        "<ul><li>設計が変わる</li><li>運用が変わる</li></ul>"
+        "<footer>copyright</footer>"
+        "</body></html>"
+    )
 
-    assert _get_haiku_model_id() == "haiku-profile-arn"
+    text = _html_to_text(html)
+
+    assert "# エージェント時代の開発" in text
+    assert "## 何が変わったのか" in text
+    assert "- 設計が変わる" in text
+    # 本文以外のパーツとCSSは落とす
+    assert "メニュー1" not in text
+    assert "color:red" not in text
+    assert "copyright" not in text
 
 
-def test_get_haiku_model_id_rejects_missing_environment_variable(monkeypatch):
-    monkeypatch.delenv("BEDROCK_HAIKU_MODEL_ID", raising=False)
+def test_url_reference_mode_prompt_prioritizes_the_article():
+    """URLを貼った依頼では、記事が主役で検索は補助という契約になっている。"""
+    prompt = config.URL_REFERENCE_MODE_PROMPT
 
-    with pytest.raises(RuntimeError, match="BEDROCK_HAIKU_MODEL_ID"):
-        _get_haiku_model_id()
+    assert "最初に http_request" in prompt
+    assert "主役の資料" in prompt
+    assert "最大2回" in prompt
 
 
 def test_kimi_system_prompt_adds_slide_balance_rules():
@@ -158,6 +178,10 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
     assert "現在は2026年です。" in prompt
     assert "Kimi K2.5実行契約" in prompt
     assert "狭いテーマは10〜12枚" in prompt
+    # レイアウト指示は、Kimiが自分で数えられる単位で与える（行数・文字幅は守れない）
+    assert "見出し1行＋箇条書き4項目まで" in prompt
+    # ユーザーが貼ったURLは、検索結果URLと違って本文を取りに行く
+    assert "ユーザーが自分でメッセージへ貼ったURLは別で" in prompt
     assert "複数の機能や論点を扱うテーマは14〜18枚" in prompt
     assert "最大20枚" in prompt
     assert "論点を分けて4〜6回検索" in prompt
@@ -173,12 +197,12 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
     assert "製品名の境界を厳密に守る" in prompt
     assert "対象製品名をURLまたはページタイトルに含むページだけ" in prompt
     assert "site:help.openai.com Codex rate card" in prompt
-    assert "http_requestでページ本文を再取得しない" in prompt
+    assert "検索結果のURLへは、http_requestで本文を取りに行かない" in prompt
     assert "確認できないセルは「公式情報で要確認」" in prompt
     assert "比較の穴埋めとして追加しない" in prompt
     assert "<!-- source: https://... -->" in prompt
-    assert "実質5〜7行" in prompt
-    assert "その1回の修正ではみ出しを完全に解消" in prompt
+    assert "箇条書きの1項目は、句点で終わる1文にする" in prompt
+    assert "該当スライドの箇条書きを1項目減らすか、長い項目を1文へ削る" in prompt
     assert "新しい説明・数値・出典を追加しない" in prompt
 
 

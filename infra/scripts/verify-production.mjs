@@ -89,6 +89,10 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
   const env = runtime.environmentVariables || {};
   const requiredKeys = [
     'AGENT_OBSERVABILITY_ENABLED',
+    // モデルIDが落ちるとエージェントは起動時に落ちる。デプロイ前にここで気づく。
+    // 2026-08-18: 旧Haiku要約用の BEDROCK_HAIKU_MODEL_ID が移行時に落ちたまま、
+    // 要約が例外で潰れてURL本文が先頭5000文字に切られていた事故があった（要約自体を廃止済み）。
+    'BEDROCK_KIMI_MODEL_ID',
     'TAVILY_SECRET_ARN',
     'SHARED_SLIDES_BUCKET',
     'SHARED_SLIDES_PUBLIC_DOMAIN',

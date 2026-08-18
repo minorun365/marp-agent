@@ -1,72 +1,76 @@
-"""HTTP リクエストツール（Haiku要約付き）
+"""HTTP リクエストツール
 
-strands_tools の http_request はWebページ全文を返すため、
-会話履歴のトークンが膨らむ原因になっていた。
-このラッパーでは大きなレスポンスをHaikuで要約してコスト削減する。
+ユーザーがメッセージに貼ったURLのページ本文を取得して、そのままエージェントへ渡す。
+
+⚠️ かつてはここでClaude Haikuに要約させていたが、2026-08-18に廃止した。理由は2つある。
+
+1. 要約を挟むと、記事の「何がキモなのか」という論の骨格が落ちる。要約の指示は
+   固有名詞・数値・事実の保持だけを求めていたため、筆者の主張やストーリーが消えていた
+2. 新基盤への移行時に BEDROCK_HAIKU_MODEL_ID が渡らなくなっており、要約は例外で落ちて
+   フォールバックの「先頭5000文字だけ切り出し」が常時動いていた（本番ログで確認）。
+   記事の後半が丸ごとエージェントに届いていなかった
+
+いまはスライドの主役になる記事本文を、見出し構造ごとそのまま渡す。
 """
 
-import os
 import re
 
-import boto3
 import requests as req
 from strands import tool
 
-# 要約を適用するしきい値（この文字数以下ならそのまま返す）
-SUMMARIZE_THRESHOLD = 5000
+# エージェントへ渡す本文の上限。参考資料PDF（agent.py の MAX_EXTRACTED_CHARS）と揃える。
+MAX_CONTENT_CHARS = 50000
 
-# Haiku要約用の入力上限（これ以上はHaikuにも送らない）
-HAIKU_INPUT_LIMIT = 50000
-
-_bedrock_client = None
-
-
-def _get_bedrock_client():
-    global _bedrock_client
-    if _bedrock_client is None:
-        _bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
-    return _bedrock_client
+# ユーザーがURLを貼って本文を取得したかどうか。web_searchの回数制限と、
+# output_slideの根拠チェックが参照する（ContextVarはツールが別スレッドで動くため使えない）。
+_url_fetched: bool = False
 
 
-def _get_haiku_model_id() -> str:
-    """CDKから渡されたHaiku用BedrockモデルIDを取得する。"""
-    model_id = os.getenv("BEDROCK_HAIKU_MODEL_ID", "").strip()
-    if not model_id:
-        raise RuntimeError("BEDROCK_HAIKU_MODEL_ID is required")
-    return model_id
+def get_url_fetched() -> bool:
+    """このリクエストでユーザー提供URLの本文を取得済みかを返す。"""
+    return _url_fetched
+
+
+def reset_url_fetched() -> None:
+    """リクエスト開始時に取得状態をリセットする。"""
+    global _url_fetched
+    _url_fetched = False
 
 
 def _html_to_text(html: str) -> str:
-    """HTMLからテキストを簡易抽出"""
-    text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL)
-    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL)
+    """HTMLから本文を抽出する。見出しはMarkdownとして残す。
+
+    見出しを潰すと記事の章立て＝ストーリーラインが失われ、
+    エージェントは平坦な文章の塊から構成を組み立てる羽目になる。
+    """
+    text = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+    # 記事本文ではない周辺パーツを落としてノイズを減らす
+    for tag in ("nav", "header", "footer", "aside", "form", "noscript", "svg"):
+        text = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<!--.*?-->", " ", text, flags=re.DOTALL)
+
+    # 見出しはレベルごとにMarkdownへ変換してから、残りのタグを落とす
+    for level in (1, 2, 3, 4):
+        text = re.sub(
+            rf"<h{level}[^>]*>(.*?)</h{level}>",
+            lambda match, level=level: f"\n\n{'#' * level} {re.sub(r'<[^>]+>', '', match.group(1)).strip()}\n",
+            text,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+    # 段落・リスト・改行は空白へ潰さず改行として残す
+    text = re.sub(r"</(p|div|li|tr|section|article|blockquote)>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<li[^>]*>", "\n- ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+
     text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def _summarize_with_haiku(content: str) -> str:
-    """Claude Haikuでコンテンツを要約"""
-    client = _get_bedrock_client()
-    response = client.converse(
-        modelId=_get_haiku_model_id(),
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "text": (
-                            "以下のWebページ内容を、スライド作成の参考資料として簡潔に要約してください。\n"
-                            "固有名詞、数値、重要な事実は必ず保持してください。\n\n"
-                            f"{content}"
-                        ),
-                    }
-                ],
-            }
-        ],
-        inferenceConfig={"maxTokens": 2000},
-    )
-    return response["output"]["message"]["content"][0]["text"]
+    text = text.replace("&nbsp;", " ").replace("&amp;", "&")
+    text = text.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
+    # 行内の空白は詰めつつ、行構造は保つ
+    text = re.sub(r"[ \t　]+", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 @tool
@@ -76,11 +80,16 @@ def http_request(url: str, method: str = "GET") -> str:
     **使用条件**: ユーザーがURLを直接メッセージに貼った場合のみ使用してください。
     web_searchの検索結果URLには使用しないこと（snippetで十分スライドは作れる）。
 
+    ## 取得した本文の扱い
+
+    取得したページは**そのスライドの主役の資料**です。要約や一般論へ薄めず、
+    この記事が何を伝えようとしているのか（筆者の主張・論の展開・結論）を軸に構成してください。
+    見出しは `#` `##` としてそのまま残してあるので、記事の章立てを構成の手がかりにできます。
+
     ## 自動処理
 
-    - HTMLは自動でテキスト変換（script/styleタグ除去）
-    - 5,000文字超のレスポンスはClaude Haikuが要約（固有名詞・数値・事実を保持）
-    - 要約失敗時は先頭5,000文字を切り詰めて返す
+    - HTMLは自動でテキスト変換（script/style/nav/footer等を除去し、見出しはMarkdown化）
+    - 本文は最大50,000文字まで。超過分のみ末尾を切り詰め（要約はしません）
 
     ## 制約
 
@@ -93,31 +102,43 @@ def http_request(url: str, method: str = "GET") -> str:
         method: HTTPメソッド（デフォルト: GET）
 
     Returns:
-        レスポンスのステータスコードとコンテンツ（大きい場合はHaiku要約）
+        レスポンスのステータスコードとページ本文
     """
+    global _url_fetched
     try:
-        response = req.request(method, url, timeout=30)
+        response = req.request(
+            method,
+            url,
+            timeout=30,
+            headers={
+                # UA未指定だとbot扱いで弾くサイトがあるため、一般的なブラウザを名乗る
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+                ),
+                "Accept-Language": "ja,en;q=0.8",
+            },
+        )
         content = response.text
         original_length = len(content)
 
-        # HTMLレスポンスはテキスト抽出
         content_type = response.headers.get("Content-Type", "")
         if "text/html" in content_type:
             content = _html_to_text(content)
 
-        # 一定サイズ以上の場合はHaikuで要約
-        if len(content) > SUMMARIZE_THRESHOLD:
-            try:
-                summary = _summarize_with_haiku(content[:HAIKU_INPUT_LIMIT])
-                content = f"（以下はWebページの要約です - 元の文字数: {original_length}）\n\n{summary}"
-            except Exception as e:
-                # 要約失敗時はフォールバックで切り詰め
-                print(f"[WARN] Haiku summarization failed, truncating: {e}")
-                content = (
-                    content[:SUMMARIZE_THRESHOLD]
-                    + f"\n\n（以降省略 - 全{original_length}文字中、先頭{SUMMARIZE_THRESHOLD}文字を表示）"
-                )
+        if len(content) > MAX_CONTENT_CHARS:
+            content = (
+                content[:MAX_CONTENT_CHARS]
+                + f"\n\n（以降省略 - 全{len(content)}文字中、先頭{MAX_CONTENT_CHARS}文字）"
+            )
 
-        return f"Status: {response.status_code}\n\n{content}"
+        _url_fetched = True
+        print(f"[INFO] URL fetched: {url} (html={original_length} chars, text={len(content)} chars)")
+        return (
+            f"Status: {response.status_code}\n\n"
+            "以下はユーザーが指定したページの本文です。この資料の主張がスライドの主役です。\n\n"
+            f"{content}"
+        )
     except Exception as e:
+        print(f"[ERROR] URL fetch failed: {url}: {e}")
         return f"Error: {e}"

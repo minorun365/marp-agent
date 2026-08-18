@@ -171,6 +171,29 @@ npm run prod:smoke    # 経路：ログイン→生成→識別記録→PDF書�
 検査を1項目足すところまでを1セットにする。** その設定が外れたときエラーになるなら不要、
 何も起きないまま機能が静かに欠けるなら必須、と判断する。
 
+⚠️ **`Deployment completed successfully` の下に、Dockerのpush失敗が隠れることがある。**
+ECRの認証トークンは12時間で切れる。切れた状態でデプロイすると、
+**スタックのデプロイ自体は「成功」と表示されたまま、コンテナイメージだけが上がらない**。
+しかも `prod:verify` は13項目すべて合格する（構成は正しく、古いイメージでRuntimeはREADYのまま）。
+
+```
+✓ Deployment completed successfully
+Error: 1 node(s) failed, 1 skipped:
+  - asset-publish:PawapoAgent:docker:...: Docker push failed:
+    error from registry: Your authorization token has expired.
+```
+
+**成功表示ではなく終了コードで判定する。** バックグラウンド実行なら通知の status を見る。
+踏んだら、ECRへ入り直してデプロイし直す。
+
+```bash
+aws ecr get-login-password --profile <本番profile> --region us-east-1 | docker login --username AWS --password-stdin <アカウントID>.dkr.ecr.us-east-1.amazonaws.com
+```
+
+> 由来: 2026-08-18、Kimi品質改善のデプロイで発生。出力末尾が成功表示だったため完了と読みかけたが、
+> 終了コードが1だった。`prod:verify` も13/13で合格していたので、**検査2本だけでは捕まらない**。
+> コード変更を伴うデプロイでは `prod:smoke` まで通して初めて完了と言える。
+
 利用状況の確認は `npm run prod:usage`（旧 `check-app-stats/run.sh` は移行前専用なので使わない）。
 
 ## E2Eテスト手順

@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-# strands, tavily, bedrock_agentcore, boto3 をモック（ローカルにはインストールされていない）
+# strands, tavily, bedrock_agentcore, boto3, requests をモック（ローカルにはインストールされていない）
 mock_strands = MagicMock()
 mock_strands.tool = lambda func: setattr(func, 'tool_func', func) or func
 sys.modules["strands"] = mock_strands
@@ -15,6 +15,7 @@ sys.modules["tavily"] = mock_tavily
 sys.modules["strands_tools"] = MagicMock()
 sys.modules["bedrock_agentcore"] = MagicMock()
 sys.modules["boto3"] = MagicMock()
+sys.modules["requests"] = MagicMock()
 
 # ランタイムディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent / "amplify" / "agent" / "runtime"))

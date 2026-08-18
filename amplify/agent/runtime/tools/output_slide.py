@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 
 from strands import tool
 
+from .http_request import get_url_fetched
+
 # スライド出力用のグローバル変数
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
 _generated_markdown: str | None = None
@@ -42,7 +44,9 @@ OFFICIAL_SOURCE_RULES = (
 )
 
 MAX_OVERFLOW_RETRIES = 2
-KIMI_MAX_VALIDATION_RETRIES = 1
+# 2026-08-18: 1回では直りきらず、実測で全生成の54%がはみ出したまま出ていたため2回にした。
+# 直しきれなかったぶんは _repair_slides_mechanically が機械で詰める。
+KIMI_MAX_VALIDATION_RETRIES = 2
 KIMI_RETRY_VIOLATION_TYPES = frozenset({
     'line_overflow',
     'table_overflow',
@@ -515,7 +519,9 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                 'sources': irrelevant_slide_sources,
             })
 
-    if _active_model_type == 'kimi' and not _web_search_executed:
+    # ユーザーが貼ったURLの本文を読んでいる場合、その記事の数値は根拠がある。
+    # 検索の有無だけで判定すると、記事に書いてある割合や金額まで違反として削らせてしまう。
+    if _active_model_type == 'kimi' and not _web_search_executed and not get_url_fetched():
         unsupported_claims = sorted(
             claim
             for claim in set(QUANTIFIED_CLAIM_PATTERN.findall(markdown))
@@ -611,6 +617,206 @@ def _format_slide_progress(violations: list[dict]) -> str:
 
     summary = '、'.join(categories) if categories else '調整が必要な箇所'
     return f'{summary}を検知したので、スライドを修正します'
+
+
+SPECIAL_SLIDE_PATTERN = re.compile(r'_class:\s*(?:top|lead|end|tinytext)')
+SENTENCE_BOUNDARY_PATTERN = re.compile(r'(?<=[。！？])')
+CLAUSE_BOUNDARY_PATTERN = re.compile(r'(?<=[、])')
+MAX_BOLD_PER_SLIDE = 2
+# 機械修正で必ず残す本文要素の数（これを下回るまで削らない）
+MIN_BODY_ELEMENTS = 2
+
+
+def _is_special_slide(slide: str) -> bool:
+    """タイトル・中タイトル・参考文献・裏表紙かを判定する。"""
+    return bool(SPECIAL_SLIDE_PATTERN.search(slide))
+
+
+def _shorten_to_width(text: str, max_width: int) -> str:
+    """表示幅が max_width 以内へ収まるよう、末尾を落として詰める。
+
+    日本語が壊れにくい順に3段階で試す。
+    1. 文（。！？）の区切りで落とす
+    2. 読点（、）の区切りで落として、末尾の読点を削る
+    3. どちらの区切りも無い長文は、文字単位で切って「…」を付ける
+    """
+    if _get_display_width(_strip_markdown_formatting(text)) <= max_width:
+        return text
+
+    for pattern, trailing in ((SENTENCE_BOUNDARY_PATTERN, ''), (CLAUSE_BOUNDARY_PATTERN, '、')):
+        parts = [part for part in pattern.split(text) if part]
+        while len(parts) > 1:
+            parts.pop()
+            candidate = ''.join(parts).rstrip()
+            if trailing:
+                candidate = candidate.rstrip(trailing)
+            if _get_display_width(_strip_markdown_formatting(candidate)) <= max_width:
+                return candidate
+
+    # 区切りが無い長文。切り詰めた事実が読み手に分かるよう省略記号を残す。
+    ellipsis_width = _get_display_width('…')
+    truncated = text
+    while (
+        len(truncated) > 1
+        and _get_display_width(_strip_markdown_formatting(truncated)) + ellipsis_width > max_width
+    ):
+        truncated = truncated[:-1]
+    return f'{truncated.rstrip()}…' if truncated.strip() else text
+
+
+def _reduce_bold(slide: str) -> str:
+    """1スライドの太字を MAX_BOLD_PER_SLIDE 箇所までへ機械的に減らす。
+
+    先頭から数えて上限を超えたものを平文に戻す。最初に出る強調ほど
+    そのスライドの主題に近いという前提で、後ろから外す。
+    """
+    matches = list(re.finditer(r'\*\*(.+?)\*\*', slide))
+    if len(matches) <= MAX_BOLD_PER_SLIDE:
+        return slide
+
+    result = []
+    cursor = 0
+    for index, match in enumerate(matches):
+        result.append(slide[cursor:match.start()])
+        if index < MAX_BOLD_PER_SLIDE:
+            result.append(match.group(0))
+        else:
+            result.append(match.group(1))
+        cursor = match.end()
+    result.append(slide[cursor:])
+    return ''.join(result)
+
+
+def _shrink_table_rows(slide: str) -> str:
+    """表の横幅超過を、セル内容の切り詰めで解消する。
+
+    列を減らすと表の意味が変わるため、幅の広いセルから削る。
+    """
+    lines = slide.split('\n')
+    if not any(
+        line.strip().startswith('|') and line.strip().endswith('|')
+        for line in lines
+    ):
+        return slide
+
+    for _ in range(6):
+        if _check_table_width('\n'.join(lines)) == 0:
+            break
+        widest_cell_width = 0
+        target = None
+        for line_index, line in enumerate(lines):
+            stripped = line.strip()
+            if not (stripped.startswith('|') and stripped.endswith('|')):
+                continue
+            if re.match(r'^\|[\s\-:|]+\|$', stripped):
+                continue
+            if _get_display_width(stripped) <= MAX_TABLE_ROW_WIDTH:
+                continue
+            cells = stripped.strip('|').split('|')
+            for cell_index, cell in enumerate(cells):
+                width = _get_display_width(cell.strip())
+                if width > widest_cell_width:
+                    widest_cell_width = width
+                    target = (line_index, cell_index)
+        if target is None:
+            break
+        line_index, cell_index = target
+        cells = lines[line_index].strip().strip('|').split('|')
+        cell = cells[cell_index].strip()
+        # 表示幅で2割ずつ詰める（全角1文字＝幅2なので偶数へ丸める）
+        budget = max(8, (widest_cell_width * 4 // 5) // 2 * 2)
+        shortened = _shorten_to_width(cell, budget)
+        if shortened == cell:
+            trimmed = cell
+            while _get_display_width(trimmed) > budget and len(trimmed) > 1:
+                trimmed = trimmed[:-1]
+            shortened = trimmed
+        if shortened == cell:
+            break
+        cells[cell_index] = f' {shortened} '
+        lines[line_index] = '|' + '|'.join(cells) + '|'
+
+    return '\n'.join(lines)
+
+
+def _shrink_slide_lines(slide: str) -> str:
+    """行数超過を、長い行の短縮と末尾要素の削除で解消する。
+
+    見出し・HTMLコメント（_class や source）は保持する。
+    """
+    if _count_content_lines(slide) <= MAX_LINES_PER_SLIDE:
+        return slide
+
+    lines = slide.split('\n')
+
+    def is_protected(line: str) -> bool:
+        stripped = line.strip()
+        return (
+            not stripped
+            or stripped.startswith('#')
+            or bool(re.match(r'^<!--.*-->$', stripped))
+            or stripped.startswith('```')
+        )
+
+    # 1. 折り返している行を1行分の幅へ短縮する
+    for index, line in enumerate(lines):
+        if _count_content_lines('\n'.join(lines)) <= MAX_LINES_PER_SLIDE:
+            break
+        stripped = line.strip()
+        if is_protected(line) or _estimate_visual_lines(stripped) <= 1:
+            continue
+        marker_match = re.match(r'^(\s*(?:[-*+]|\d+[.)])\s+)(.*)$', line)
+        if marker_match:
+            prefix, body = marker_match.group(1), marker_match.group(2)
+            marker_width = _get_display_width(prefix)
+            shortened = _shorten_to_width(body, MAX_DISPLAY_WIDTH_PER_LINE - marker_width)
+            if shortened != body:
+                lines[index] = prefix + shortened
+        else:
+            shortened = _shorten_to_width(line, MAX_DISPLAY_WIDTH_PER_LINE)
+            if shortened != line:
+                lines[index] = shortened
+
+    # 2. まだ超えていれば、末尾の本文要素から落とす
+    while _count_content_lines('\n'.join(lines)) > MAX_LINES_PER_SLIDE:
+        removable = [
+            index
+            for index, line in enumerate(lines)
+            if line.strip() and not is_protected(line)
+        ]
+        if len(removable) <= MIN_BODY_ELEMENTS:
+            break
+        lines.pop(removable[-1])
+
+    return '\n'.join(line for line in lines).strip()
+
+
+def _repair_slides_mechanically(markdown: str) -> str:
+    """LLMが直しきれなかった違反を、機械で確定的に解消する。
+
+    行数・表幅・太字はどれも計算で判定できるので、再生成を待たずにここで詰める。
+    内容は多少減るが、はみ出したスライドがそのまま利用者へ届くよりはよい。
+    """
+    slides = _parse_slides(markdown)
+    if not slides:
+        return markdown
+
+    repaired = []
+    for slide in slides:
+        if _is_special_slide(slide):
+            repaired.append(slide)
+            continue
+        fixed = _reduce_bold(slide)
+        fixed = _shrink_table_rows(fixed)
+        fixed = _shrink_slide_lines(fixed)
+        repaired.append(fixed)
+
+    if repaired == slides:
+        return markdown
+
+    frontmatter = _extract_frontmatter(markdown)
+    content = '\n\n---\n\n'.join(repaired)
+    return f'{frontmatter}\n\n{content}\n' if frontmatter else f'{content}\n'
 
 
 def reset_generated_markdown() -> None:
@@ -804,7 +1010,13 @@ def output_slide(markdown: str) -> str:
             violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 
     if violations:
-        print(f"[WARN] Slide overflow: max retries exceeded, accepting with violations: {violations}")
+        print(f"[WARN] Slide overflow: max retries exceeded, repairing mechanically: {violations}")
+        markdown = _repair_slides_mechanically(markdown)
+        violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
+        if violations:
+            print(f"[WARN] Violations remaining after mechanical repair: {violations}")
+        else:
+            print("[INFO] Mechanical repair resolved all violations")
 
     _generated_markdown = markdown
     _overflow_retry_count = 0

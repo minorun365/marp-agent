@@ -7,6 +7,8 @@ import boto3
 from strands import tool
 from tavily import TavilyClient
 
+from .http_request import get_url_fetched
+
 
 def _load_tavily_api_keys() -> list[str]:
     """環境変数、またはSecrets ManagerからTavily APIキーを読み込む。"""
@@ -36,6 +38,9 @@ tavily_clients: list[TavilyClient] = [
 _last_search_result: str | None = None
 _search_call_count: int = 0
 MAX_SEARCH_CALLS = 6
+# ユーザーがURLを貼っている場合、その記事がスライドの主役になる。
+# 補足の検索まで禁止はしないが、検索へ脱線して記事の主張が薄まるのを実装側で止める。
+MAX_SEARCH_CALLS_WITH_URL = 2
 
 
 def get_last_search_result() -> str | None:
@@ -57,6 +62,8 @@ def web_search(query: str) -> str:
     ## 使い方のルール
 
     - 検索結果が不十分な場合は異なるクエリで再検索してOK。ただし1回の依頼につき最大6回まで
+    - **ユーザーがURLを貼っている場合は、そのページの内容でスライドを作る。** 記事が前提としている
+      用語をどうしても補うときだけ検索し、その場合も最大2回まで（実装側でも制限している）
     - 製品仕様・料金・セキュリティ・提供状況は、ベンダー公式ドメインを `site:` で指定して先に検索する。公式情報がある重要事実を第三者ブログだけで断定しない
     - Web検索時は最後のスライドに `<!-- _class: tinytext -->` 付きの参考文献スライドを追加すること
     - エラー時（APIキー未設定・rate limit・usage limit等）はスライドを作成せず、「利用殺到でみのるんの検索API無料枠が枯渇したようです。Xで本人（@minorun365）に教えてあげてください。修正をお待ちください」と案内する
@@ -69,7 +76,14 @@ def web_search(query: str) -> str:
         検索結果のテキスト
     """
     global _search_call_count
-    if _search_call_count >= MAX_SEARCH_CALLS:
+    url_fetched = get_url_fetched()
+    call_limit = MAX_SEARCH_CALLS_WITH_URL if url_fetched else MAX_SEARCH_CALLS
+    if _search_call_count >= call_limit:
+        if url_fetched:
+            return (
+                f"Web検索は上限{call_limit}回に達しました。ユーザーが貼ったURLの本文が主役の資料です。"
+                "取得済みのページ内容だけを使って、今すぐスライドを作成してください。"
+            )
         return "Web検索は上限6回に達しました。これまでの検索結果だけを使ってスライドを作成してください。"
     _search_call_count += 1
 

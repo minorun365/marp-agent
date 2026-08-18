@@ -4,11 +4,12 @@ import asyncio
 import base64
 import json
 import os
+import re
 
 import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
 
-from config import normalize_model_type
+from config import URL_REFERENCE_MODE_PROMPT, normalize_model_type
 from identity import log_session_identity
 from tools import (
     web_search,
@@ -23,11 +24,15 @@ from tools import (
     reset_generated_tweet_url,
 )
 from tools.web_search import get_last_search_result, reset_last_search_result
+from tools.http_request import reset_url_fetched
 from exports import generate_pdf, generate_pptx, generate_editable_pptx
 from sharing import share_slide
 from session import get_or_create_agent
 
 app = BedrockAgentCoreApp()
+
+# ユーザーがメッセージへ貼ったURLの検出。記事本体を主役にするモードへ切り替える。
+USER_URL_PATTERN = re.compile(r'https?://[^\s<>"\'）】」]+')
 
 MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_EXTRACTED_CHARS = 50000  # 約25,000トークン
@@ -75,6 +80,7 @@ async def invoke(payload, context=None):
     reset_generated_markdown()
     reset_generated_tweet_url()
     reset_last_search_result()
+    reset_url_fetched()
 
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")
@@ -214,6 +220,12 @@ async def invoke(payload, context=None):
     # 新規セッションまたは履歴がない場合のみ、フロントからのMarkdownをメッセージに結合
     if current_markdown and not agent.messages:
         user_message = f"現在のスライド:\n```markdown\n{current_markdown}\n```\n\nユーザーの指示: {user_message}"
+
+    # URLが貼られた依頼は、その記事がスライドの主役。検索へ脱線して一般論へ薄めさせない。
+    user_urls = USER_URL_PATTERN.findall(payload.get("prompt", ""))
+    if user_urls and action == "chat":
+        print(f"[INFO] URL reference mode enabled ({len(user_urls)} url(s))")
+        user_message = f"{URL_REFERENCE_MODE_PROMPT}\n\n{user_message}"
 
     reset_generated_markdown()
     configure_slide_validation(user_message, model_type)

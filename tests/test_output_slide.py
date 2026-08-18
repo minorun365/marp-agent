@@ -1,4 +1,6 @@
 """output_slide ツールのユニットテスト"""
+import re
+
 import pytest
 
 from tools.output_slide import (
@@ -12,6 +14,7 @@ from tools.output_slide import (
     _trim_excess_slides,
     _count_content_lines,
     _check_slide_overflow,
+    _repair_slides_mechanically,
     _get_display_width,
     _strip_markdown_formatting,
     _estimate_visual_lines,
@@ -447,8 +450,12 @@ class TestOutputSlideOverflowValidation:
         assert "あふれ検出" in result
         assert get_generated_markdown() is None
 
-    def test_overflow_accepted_after_max_retries(self):
-        """3回目は警告付きで受け入れ"""
+    def test_overflow_repaired_mechanically_after_max_retries(self):
+        """リトライ上限に達したら、はみ出しを機械で詰めてから採用する。
+
+        2026-08-18まではそのまま採用していたため、実測で全生成の54%が
+        はみ出したまま利用者へ届いていた。素通りさせないのがこのテストの主旨。
+        """
         reset_generated_markdown()
         lines = ["## 見出し"] + [f"- 項目{i}" for i in range(1, 11)]
         slide_content = "\n".join(lines)
@@ -456,9 +463,18 @@ class TestOutputSlideOverflowValidation:
 
         output_slide(markdown=md)  # 1回目リジェクト
         output_slide(markdown=md)  # 2回目リジェクト
-        result = output_slide(markdown=md)  # 3回目は受入
+        result = output_slide(markdown=md)  # 3回目は機械修正して受入
+
         assert result == "スライドを出力しました。"
-        assert get_generated_markdown() == md
+        generated = get_generated_markdown()
+        assert generated is not None
+        # 素通りしていない（元のままではない）
+        assert generated != md
+        # はみ出しが実際に解消されている
+        assert _check_slide_overflow(generated) == []
+        # 見出しと冒頭の項目は残っている
+        assert "## 見出し" in generated
+        assert "- 項目1" in generated
 
     def test_retry_counter_resets_on_success(self):
         """正常出力後にリトライカウンターがリセットされる"""
@@ -597,10 +613,11 @@ class TestOutputSlideStructureValidation:
 
         assert sonnet_result == "スライドを出力しました。"
 
-    def test_kimi_repairs_overflow_once_then_stops(self):
+    def test_kimi_repairs_overflow_twice_then_shrinks_mechanically(self):
+        """Kimiへ2回まで直させ、それでも残るはみ出しは機械で詰めて出す。"""
         reset_generated_markdown()
         configure_slide_validation("詳しい資料を作って", "kimi")
-        assert KIMI_MAX_VALIDATION_RETRIES == 1
+        assert KIMI_MAX_VALIDATION_RETRIES == 2
         long_line = "- " + "長い説明文" * 20
         md = "---\nmarp: true\n---\n## 詳細\n\n" + "\n".join([long_line] * 5)
 
@@ -613,7 +630,9 @@ class TestOutputSlideStructureValidation:
         result = output_slide(markdown=md)
 
         assert result == "スライドを出力しました。"
-        assert get_generated_markdown() == md
+        generated = get_generated_markdown()
+        assert generated is not None
+        assert _check_slide_overflow(generated) == []
         assert consume_slide_progress() is None
 
     def test_kimi_prioritizes_overflow_and_excludes_source_repairs(self):
@@ -908,11 +927,13 @@ marp: true
         ]
         md = '---\nmarp: true\n---\n\n' + '\n\n---\n\n'.join(slides)
 
-        first_result = output_slide(markdown=md)
-        second_result = output_slide(markdown=md)
+        for _ in range(KIMI_MAX_VALIDATION_RETRIES):
+            retry_result = output_slide(markdown=md)
+            assert "総枚数: 10枚（指定は8枚）" in retry_result
 
-        assert "総枚数: 10枚（指定は8枚）" in first_result
-        assert second_result == "スライドを出力しました。"
+        final_result = output_slide(markdown=md)
+
+        assert final_result == "スライドを出力しました。"
         assert len(_parse_slides(get_generated_markdown() or '')) == 8
 
     def test_kimi_accepts_undercount_after_one_repair(self):
@@ -931,3 +952,107 @@ marp: true
         assert result == "スライドを出力しました。"
         assert get_generated_markdown() == md
         assert consume_slide_progress() is None
+
+
+class TestMechanicalRepair:
+    """機械修正のテスト。
+
+    2026-08-18まで、検査ではみ出しを見つけてもKimiが直しきれなければそのまま出力していた。
+    本番ログの実測では、直近14日の生成67回のうち36回（54%）がはみ出したまま利用者へ届いていた。
+    はみ出し・表幅・太字は計算で判定できるので、最後は機械で確定させる。
+    """
+
+    def test_repairs_long_bullet_list(self):
+        """箇条書きが多すぎるスライドは、末尾の項目を落として収める。"""
+        md = (
+            "---\nmarp: true\n---\n\n## 見出し\n\n"
+            + "\n".join(f"- 項目{i}です。" for i in range(1, 13))
+        )
+
+        repaired = _repair_slides_mechanically(md)
+
+        assert _check_slide_overflow(repaired) == []
+        assert "## 見出し" in repaired
+        assert "- 項目1です。" in repaired
+
+    def test_repairs_long_sentences_by_dropping_trailing_ones(self):
+        """1項目に何文も詰まっている場合は、後ろの文から落とす。"""
+        md = (
+            "---\nmarp: true\n---\n\n## 見出し\n\n"
+            "- 第一の文です。第二の文です。第三の文です。第四の文です。第五の文です。第六の文です。\n"
+            "- 別の第一文です。別の第二文です。別の第三文です。別の第四文です。別の第五文です。\n"
+        )
+
+        repaired = _repair_slides_mechanically(md)
+
+        assert _check_slide_overflow(repaired) == []
+        assert "第一の文です。" in repaired
+
+    def test_repairs_text_without_any_punctuation(self):
+        """句点も読点も無い長文は、文字単位で切って省略記号を残す。"""
+        md = (
+            "---\nmarp: true\n---\n\n## 見出し\n\n"
+            + "\n".join("- " + "長い説明文" * 20 for _ in range(5))
+        )
+
+        repaired = _repair_slides_mechanically(md)
+
+        assert _check_slide_overflow(repaired) == []
+        assert "…" in repaired
+
+    def test_repairs_wide_table(self):
+        """表の横幅超過は、セル内容を詰めて解消する（列は減らさない）。"""
+        md = (
+            "---\nmarp: true\n---\n\n## 比較\n\n"
+            "| 観点 | 従来の開発プロセスにおける進め方 | エージェント導入後に変わる進め方 |\n"
+            "|---|---|---|\n"
+            "| 設計 | 担当者が仕様書を個別に作成して合議する | 対話しながら構造化した案を短時間で作る |\n"
+        )
+
+        repaired = _repair_slides_mechanically(md)
+
+        assert _check_slide_overflow(repaired) == []
+        # 列は3列のまま保たれる
+        assert repaired.count("|---|---|---|") == 1
+
+    def test_reduces_bold_to_two_places(self):
+        """太字は機械で2か所まで減らす（実測で最多の違反、かつ再生成では直していなかった）。"""
+        md = (
+            "---\nmarp: true\n---\n\n## 見出し\n\n"
+            "- **一つ目**：説明。\n- **二つ目**：説明。\n- **三つ目**：説明。\n- **四つ目**：説明。\n"
+        )
+
+        repaired = _repair_slides_mechanically(md)
+
+        assert len(re.findall(r"\*\*.+?\*\*", repaired)) == 2
+        # 太字を外しても本文は残す
+        assert "三つ目" in repaired
+        assert "四つ目" in repaired
+
+    def test_keeps_special_slides_untouched(self):
+        """タイトル・参考文献・裏表紙は行数チェックの対象外なので触らない。"""
+        md = (
+            "---\nmarp: true\n---\n\n"
+            "<!-- _class: top -->\n# **表紙の題**\n\n---\n\n"
+            "<!-- _class: tinytext -->\n## 参考文献\n\n"
+            + "\n".join(f"- https://example.com/{i}" for i in range(1, 9))
+            + "\n\n---\n\n<!-- _class: end -->\n# Thank you!\n"
+        )
+
+        repaired = _repair_slides_mechanically(md)
+
+        assert "**表紙の題**" in repaired
+        assert "https://example.com/8" in repaired
+
+    def test_keeps_source_comments(self):
+        """根拠URLのコメントは画面に出ないので、削らずに残す。"""
+        md = (
+            "---\nmarp: true\n---\n\n## 見出し\n\n"
+            "<!-- source: https://example.com/article -->\n\n"
+            + "\n".join(f"- 項目{i}です。" for i in range(1, 13))
+        )
+
+        repaired = _repair_slides_mechanically(md)
+
+        assert "<!-- source: https://example.com/article -->" in repaired
+        assert _check_slide_overflow(repaired) == []
