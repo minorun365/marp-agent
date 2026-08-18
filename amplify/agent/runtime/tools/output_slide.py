@@ -48,17 +48,26 @@ MAX_OVERFLOW_RETRIES = 2
 # 直しきれなかったぶんは _repair_slides_mechanically が機械で詰める。
 KIMI_MAX_VALIDATION_RETRIES = 2
 KIMI_RETRY_VIOLATION_TYPES = frozenset({
+    'non_japanese_body',
     'line_overflow',
     'table_overflow',
     'slide_count',
     'slide_count_max',
 })
 KIMI_RETRY_PRIORITY = {
+    'non_japanese_body': -1,
     'line_overflow': 0,
     'table_overflow': 0,
     'slide_count': 1,
     'slide_count_max': 1,
 }
+# 英語記事のURLを渡されると本文がそのまま英語で出てくるため、日本語率で検知する。
+# 製品名・略語が多い日本語スライドを誤検知しないよう、
+# 判定対象は文字数が一定以上あるスライドだけに絞る。
+MIN_LETTERS_FOR_LANGUAGE_CHECK = 24
+# 英語の製品名・機能名が並ぶ日本語スライド（助詞だけが日本語になる行）を
+# 巻き込まないよう、閾値は「ほぼ日本語が無い」水準に置く。
+MIN_JAPANESE_RATIO = 0.10
 MAX_LINES_PER_SLIDE = 9
 # 1行あたりの最大表示幅（半角換算）
 # Marp 16:9スライドでの実測値: 箇条書き行で半角約54文字分で折り返し発生
@@ -382,10 +391,71 @@ def mark_web_search_executed() -> None:
     _web_search_executed = True
 
 
+JAPANESE_CHARACTER_PATTERN = re.compile(r'[ぁ-んァ-ヶー々〇一-龥]')
+LATIN_LETTER_PATTERN = re.compile(r'[A-Za-z]')
+# 「Thank you!」の裏表紙と、URLだけを並べる参考文献は日本語判定の対象外。
+LANGUAGE_CHECK_EXEMPT_PATTERN = re.compile(r'_class:\s*(?:end|tinytext)')
+
+
+def _extract_language_sample(slide_content: str) -> str:
+    """言語判定に使う本文だけを取り出す（コード・コメント・URLを除く）。"""
+    kept_lines = []
+    in_code_block = False
+
+    for line in slide_content.split('\n'):
+        stripped = line.strip()
+
+        if stripped.startswith('```'):
+            in_code_block = not in_code_block
+            continue
+        if in_code_block or not stripped:
+            continue
+        if stripped.startswith('<'):
+            continue  # HTMLコメント・Marpディレクティブ
+        if re.fullmatch(r'\|[\s\-:|]+\|', stripped):
+            continue  # 表のセパレーター行
+
+        kept_lines.append(stripped)
+
+    text = '\n'.join(kept_lines)
+    return re.sub(r'https?://\S+', ' ', text)
+
+
+def _check_slide_language(markdown: str) -> list[dict]:
+    """本文が日本語で書かれているかを検証する。
+
+    英語記事のURLを渡されたときに、記事の言語のままスライドが出てくるのを防ぐ。
+    製品名・略語だけで構成された短い行を誤検知しないよう、
+    文字数が MIN_LETTERS_FOR_LANGUAGE_CHECK 以上のスライドだけを見る。
+    """
+    non_japanese_slides = []
+
+    for slide_number, slide in enumerate(_parse_slides(markdown), start=1):
+        if LANGUAGE_CHECK_EXEMPT_PATTERN.search(slide):
+            continue
+
+        sample = _extract_language_sample(slide)
+        japanese_count = len(JAPANESE_CHARACTER_PATTERN.findall(sample))
+        letter_count = japanese_count + len(LATIN_LETTER_PATTERN.findall(sample))
+
+        if letter_count < MIN_LETTERS_FOR_LANGUAGE_CHECK:
+            continue
+        if japanese_count / letter_count < MIN_JAPANESE_RATIO:
+            non_japanese_slides.append(slide_number)
+
+    if not non_japanese_slides:
+        return []
+
+    return [{
+        'type': 'non_japanese_body',
+        'slides': non_japanese_slides,
+    }]
+
+
 def _check_slide_structure(markdown: str) -> list[dict]:
     """指定枚数・中タイトル数・モデル固有スタイルを検証する。"""
     slides = _parse_slides(markdown)
-    violations = []
+    violations = _check_slide_language(markdown)
 
     if _expected_slide_count is not None and len(slides) != _expected_slide_count:
         violations.append({
@@ -593,6 +663,8 @@ def _format_slide_progress(violations: list[dict]) -> str:
     violation_types = {violation['type'] for violation in violations}
     categories = []
 
+    if 'non_japanese_body' in violation_types:
+        categories.append('本文が日本語になっていない箇所')
     if violation_types & {'line_overflow', 'table_overflow'}:
         categories.append('文字や表のはみ出し')
     if violation_types & {
@@ -845,6 +917,7 @@ def output_slide(markdown: str) -> str:
 
     ## Marpフォーマットルール
 
+    - **言語【最優先】**: 見出し・本文・表・図の説明はすべて日本語で書く。参考資料やユーザーが貼ったURLの記事が英語でも、内容を日本語へ訳して載せる（製品名・サービス名・引用URLは原語のまま。このツールが自動検証）
     - フロントマター: `marp: true`, `theme: {テーマ名}`, `size: 16:9`, `paginate: true`
     - スライド区切り: `---`
     - **総枚数【最優先】**: ユーザーが枚数を指定した場合、タイトル・中タイトル・参考文献・裏表紙をすべて含めて指定枚数ちょうどにする。出力前に必ず数える
@@ -904,7 +977,13 @@ def output_slide(markdown: str) -> str:
         _slide_progress_message = _format_slide_progress(retry_violations)
         details = []
         for v in retry_violations:
-            if v['type'] == 'line_overflow':
+            if v['type'] == 'non_japanese_body':
+                details.append(
+                    f"  - 本文が日本語になっていないスライド: {v['slides']}。"
+                    "参考資料が英語でも、スライドの見出し・本文・表はすべて日本語で書く"
+                    "（製品名・サービス名・URLは原語のまま）"
+                )
+            elif v['type'] == 'line_overflow':
                 details.append(
                     f"  - スライド{v['slide_number']}: 実質{v['line_count']}行（{v['excess']}行超過）"
                 )
@@ -981,16 +1060,26 @@ def output_slide(markdown: str) -> str:
                     + "。顧客事例・採用・汎用ページを外し、該当製品名を含む公式URLだけにする"
                 )
         violation_details = "\n".join(details)
+        language_is_broken = any(
+            violation['type'] == 'non_japanese_body'
+            for violation in retry_violations
+        )
         overflow_is_present = any(
             violation['type'] in {'line_overflow', 'table_overflow'}
             for violation in retry_violations
         )
-        priority_instruction = (
-            "【最優先】はみ出しをこの1回の修正で完全に解消してください。"
-            "該当スライドの文章を削るか短くし、新しい説明・数値・出典は追加しないでください。\n"
-            if overflow_is_present
-            else ""
-        )
+        if language_is_broken:
+            priority_instruction = (
+                "【最優先】スライド全体を日本語へ書き直してください。"
+                "英語の資料を読んだ場合も、内容を日本語へ訳してスライドへ載せます。\n"
+            )
+        elif overflow_is_present:
+            priority_instruction = (
+                "【最優先】はみ出しをこの1回の修正で完全に解消してください。"
+                "該当スライドの文章を削るか短くし、新しい説明・数値・出典は追加しないでください。\n"
+            )
+        else:
+            priority_instruction = ""
         return (
             f"あふれ検出または構成違反！以下の問題があります：\n"
             f"{priority_instruction}"

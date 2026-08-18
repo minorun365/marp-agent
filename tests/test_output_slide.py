@@ -1056,3 +1056,122 @@ class TestMechanicalRepair:
 
         assert "<!-- source: https://example.com/article -->" in repaired
         assert _check_slide_overflow(repaired) == []
+
+
+class TestSlideLanguage:
+    """英語資料を渡されても日本語スライドで出す検証"""
+
+    def test_english_body_is_rejected(self):
+        reset_generated_markdown()
+        configure_slide_validation("https://www.anthropic.com/news/example をスライドにして", "kimi")
+        md = """---
+marp: true
+---
+<!-- _class: top -->
+# Building Effective Agents
+
+---
+## What Makes Agents Effective
+
+- Agents plan their own steps toward a goal
+- Workflows follow fixed paths defined by developers
+- Start simple and add complexity only when needed
+
+---
+<!-- _class: end -->
+# Thank you!
+"""
+
+        result = output_slide(markdown=md)
+
+        assert "日本語" in result
+        assert "スライドを出力しました。" not in result
+
+    def test_japanese_body_with_english_product_names_passes(self):
+        reset_generated_markdown()
+        configure_slide_validation("AgentCoreの資料を作って", "kimi")
+        md = """---
+marp: true
+---
+<!-- _class: top -->
+# Amazon Bedrock AgentCore の全体像
+
+---
+## AgentCore が解決する課題
+
+- Runtime がエージェントの実行環境を受け持つ
+- Gateway で外部APIをツールとして束ねる
+- Identity が呼び出し元と外部連携の認証を担う
+
+---
+<!-- _class: end -->
+# Thank you!
+"""
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
+    def test_reference_and_closing_slides_are_exempt(self):
+        reset_generated_markdown()
+        configure_slide_validation("参考文献つきの資料を作って", "kimi")
+        md = """---
+marp: true
+---
+<!-- _class: top -->
+# 日本語のタイトルスライド
+
+---
+## 本文は日本語で書かれている
+
+- 検証したいのは参考文献と裏表紙が除外されること
+- 英語のURLだけの並びを違反にしない
+
+---
+<!-- _class: tinytext -->
+## References
+
+- https://www.anthropic.com/news/building-effective-agents
+- https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html
+
+---
+<!-- _class: end -->
+# Thank you!
+"""
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
+
+    def test_progress_message_mentions_language(self):
+        reset_generated_markdown()
+        configure_slide_validation("英語記事をスライドにして", "kimi")
+        md = """---
+marp: true
+---
+## Why This Matters For Engineering Teams
+
+- Agents can decide the next tool call on their own
+- Guardrails keep the loop from running away
+"""
+
+        output_slide(markdown=md)
+
+        assert "日本語" in (consume_slide_progress() or "")
+
+    def test_english_heavy_technical_slide_passes(self):
+        """英語の製品名・機能名が並ぶ日本語スライドを巻き込まない"""
+        reset_generated_markdown()
+        configure_slide_validation("AgentCoreの構成要素をまとめて", "kimi")
+        md = """---
+marp: true
+---
+## AgentCore の主要コンポーネント
+
+- Runtime / Gateway / Identity / Memory / Observability
+- Browser Tool と Code Interpreter も提供
+"""
+
+        result = output_slide(markdown=md)
+
+        assert result == "スライドを出力しました。"
