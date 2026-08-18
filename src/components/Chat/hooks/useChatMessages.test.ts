@@ -48,6 +48,33 @@ describe('appendSlideProgress', () => {
 });
 
 describe('applyToolUse', () => {
+  it('URL無しの通知に続いてURL付きが届いても取得の行を増やさない', () => {
+    // Kimiはツールの引数を分割して流すため、URLが埋まる前の通知が先に届く
+    const partial = applyToolUse([], 'http_request');
+    const full = applyToolUse(partial, 'http_request', 'https://example.com/article');
+    const generating = applyToolUse(full, 'output_slide');
+
+    expect(generating.map(message => message.statusText)).toEqual([
+      MESSAGES.WEB_FETCH_COMPLETED,
+      MESSAGES.SLIDE_GENERATING,
+    ]);
+  });
+
+  it('途中まで届いたURLが伸びても取得の行を増やさない', () => {
+    const partial = applyToolUse([], 'http_request', 'https://example.com/art');
+    const full = applyToolUse(partial, 'http_request', 'https://example.com/article');
+
+    expect(full).toHaveLength(1);
+    expect(full[0].statusText).toContain('https://example.com/article');
+  });
+
+  it('別のURLなら取得の行を分けて立てる', () => {
+    const first = applyToolUse([], 'http_request', 'https://example.com/a');
+    const second = applyToolUse(first, 'http_request', 'https://example.org/b');
+
+    expect(second).toHaveLength(2);
+  });
+
   it('Web取得を完了させてからスライド生成を開始する', () => {
     const searching = applyToolUse([], 'web_search', 'Claude Code');
     const fetching = applyToolUse(searching, 'http_request', 'https://example.com');

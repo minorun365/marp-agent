@@ -236,6 +236,9 @@ async def invoke(payload, context=None):
     kimi_text_buffer: list[str] = []
     kimi_slide_workflow_started = False
     web_search_event_count = 0
+    # 画面へ通知済みの取得URL。Kimiはツールの引数を分割して流すため、
+    # 同じ取得について複数回スナップショットが届く。
+    announced_fetch_urls: list[str] = []
 
     def get_slide_progress_event():
         """Kimiの内部文ではなく、検査ツールが確定した進捗だけを返す。"""
@@ -308,10 +311,19 @@ async def invoke(payload, context=None):
                     ):
                         yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
                 elif tool_name == "http_request":
-                    if isinstance(tool_input, dict) and "url" in tool_input:
-                        yield {"type": "tool_use", "data": tool_name, "query": tool_input["url"]}
-                    else:
-                        yield {"type": "tool_use", "data": tool_name}
+                    # KimiはURLが埋まる前のスナップショットを先に流してくる。URL無しで
+                    # 通知すると、画面に「読み込み中」がURL付きと2行に分かれて立ち、
+                    # どちらも「読み込みました」へ変わって二重表示になる。
+                    # URLが届いてから1回だけ通知する。
+                    fetch_url = tool_input.get("url", "") if isinstance(tool_input, dict) else ""
+                    # 既に通知した内容と同じ、またはその途中までなら通知しない。
+                    # 逆に続きが届いた場合は通知し、画面側が同じ行を書き換える。
+                    is_stale = any(
+                        announced.startswith(fetch_url) for announced in announced_fetch_urls
+                    )
+                    if fetch_url and not is_stale:
+                        announced_fetch_urls.append(fetch_url)
+                        yield {"type": "tool_use", "data": tool_name, "query": fetch_url}
                 else:
                     yield {"type": "tool_use", "data": tool_name}
 

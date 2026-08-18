@@ -78,10 +78,27 @@ export function applyToolUse(messages: Message[], toolName: string, query?: stri
 
   if (toolName === 'http_request') {
     const fetchStatus = getWebFetchStatus(query);
-    const hasActiveFetch = settledMessages.some(
-      message => message.isStatus && message.statusText === fetchStatus
-    );
-    if (hasActiveFetch) return settledMessages;
+    // Kimiはツールの引数を分割して流すため、同じ取得について
+    // 「URL無し」→「URL付き」の順で通知が届く。行を足すと両方が
+    // 「読み込みました」へ変わって二重表示になるので、続きの通知は同じ行を書き換える。
+    let activeIndex = -1;
+    for (let index = settledMessages.length - 1; index >= 0; index -= 1) {
+      const message = settledMessages[index];
+      if (message.isStatus && message.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
+        activeIndex = index;
+        break;
+      }
+    }
+
+    if (activeIndex >= 0) {
+      const activeStatus = settledMessages[activeIndex].statusText as string;
+      if (activeStatus === fetchStatus) return settledMessages;
+      if (activeStatus === MESSAGES.WEB_FETCH_DEFAULT || fetchStatus.startsWith(activeStatus)) {
+        const updated = [...settledMessages];
+        updated[activeIndex] = { ...updated[activeIndex], statusText: fetchStatus };
+        return updated;
+      }
+    }
 
     return [
       ...completeActiveWebStatuses(settledMessages),
