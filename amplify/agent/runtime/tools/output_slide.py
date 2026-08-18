@@ -21,6 +21,10 @@ _web_search_executed: bool = False
 _user_quantified_claims: set[str] = set()
 _required_official_source_rules: list[dict] = []
 _slide_progress_message: str | None = None
+# 違反ゼロで確定した後、Kimiが同じ内容でoutput_slideを呼び直すため、
+# 生成1回あたりのツール呼び出しが1〜2回ぶん余計に増えていた（2026-08-19実測）。
+# プロンプトの禁止だけでは守られないので、確定後の再出力はここで止める。
+_slide_finalized: bool = False
 
 OFFICIAL_SOURCE_RULES = (
     {
@@ -68,15 +72,23 @@ MIN_LETTERS_FOR_LANGUAGE_CHECK = 24
 # 英語の製品名・機能名が並ぶ日本語スライド（助詞だけが日本語になる行）を
 # 巻き込まないよう、閾値は「ほぼ日本語が無い」水準に置く。
 MIN_JAPANESE_RATIO = 0.10
+# 2026-08-19実測: border は10行でも余白が残るが、speee は10行で下端ぎりぎり、
+# 12行では下端が切れる。最も狭いテーマに合わせて9行のまま据え置く。
 MAX_LINES_PER_SLIDE = 9
 # 1行あたりの最大表示幅（半角換算）
-# Marp 16:9スライドでの実測値: 箇条書き行で半角約54文字分で折り返し発生
-# 安全マージンとして全角3文字分（半角6）を引いた値
-MAX_DISPLAY_WIDTH_PER_LINE = 48
+# 2026-08-19に全4テーマをPDFへ書き出して実測し直した値。
+#   beam 全角40字OK / border・gradient 全角36字OK / speee 全角32字OK（最も狭い）
+# 最も狭い speee に合わせて全角32字＝半角64とする。
+# 旧値48（全角24字）は実測より3分の1ほど厳しく、全角25〜32字の行を
+# 「折り返して2行」と誤って数えていた。そのため実際には余白を残して
+# 収まっているスライドが「行数超過」と判定され、再生成が毎回2〜3回走っていた。
+MAX_DISPLAY_WIDTH_PER_LINE = 64
 # テーブル行の最大表示幅（半角換算）
-# テーブルはテキスト折り返しされず横にはみ出すため、行全体の幅をチェック
-# Marp 16:9での実測: 3列テーブルで全角10文字/セル程度が上限
-MAX_TABLE_ROW_WIDTH = 64
+# 2026-08-19実測: 表はセル内で折り返すので横にはみ出さない（旧コメントの
+# 「折り返されず横にはみ出す」は誤り）。3列×1セル16字＝行全体で半角96でも
+# スライド内に収まっていた。折り返した結果の高さは行数側で検出できるため、
+# 横幅の判定は実測どおり96まで許容する。
+MAX_TABLE_ROW_WIDTH = 96
 
 QUANTIFIED_CLAIM_PATTERN = re.compile(
     r'(?:\$\s*\d[\d,.]*|\d[\d,.]*\s*(?:%|％|円|ドル|USD|万円|億円|ヶ月|か月|カ月|年|日|時間|人|倍))',
@@ -863,6 +875,29 @@ def _shrink_slide_lines(slide: str) -> str:
     return '\n'.join(line for line in lines).strip()
 
 
+def _summarize_outline(markdown: str) -> list[str]:
+    """各スライドの種別と見出しを1行ずつ並べる。
+
+    枚数違反のとき、どこを統合・分割すればよいかをモデルが選べるようにする。
+    """
+    lines = []
+    for index, slide in enumerate(_parse_slides(markdown), start=1):
+        heading = re.search(r'^#{1,3}\s+(.+)$', slide, re.MULTILINE)
+        title = heading.group(1).strip() if heading else '(見出しなし)'
+        if re.search(r'_class:\s*top', slide):
+            kind = 'タイトル'
+        elif re.search(r'_class:\s*lead', slide):
+            kind = '中タイトル'
+        elif re.search(r'_class:\s*end', slide):
+            kind = '裏表紙'
+        elif re.search(r'_class:\s*tinytext', slide):
+            kind = '参考文献'
+        else:
+            kind = '本文'
+        lines.append(f"{index}. [{kind}] {title[:34]}")
+    return lines
+
+
 def _repair_slides_mechanically(markdown: str) -> str:
     """LLMが直しきれなかった違反を、機械で確定的に解消する。
 
@@ -898,8 +933,9 @@ def reset_generated_markdown() -> None:
     global _agenda_requested, _active_model_type
     global _web_search_executed, _user_quantified_claims
     global _required_official_source_rules
-    global _slide_progress_message
+    global _slide_progress_message, _slide_finalized
     _generated_markdown = None
+    _slide_finalized = False
     _overflow_retry_count = 0
     _expected_slide_count = None
     _maximum_slide_count = None
@@ -922,7 +958,9 @@ def output_slide(markdown: str) -> str:
     - スライド区切り: `---`
     - **総枚数【最優先】**: ユーザーが枚数を指定した場合、タイトル・中タイトル・参考文献・裏表紙をすべて含めて指定枚数ちょうどにする。出力前に必ず数える
     - 1枚目はタイトルスライド（`<!-- _class: top --><!-- _paginate: skip -->`付き、テキスト中央揃え）
-    - **1スライドの行数**: 見出し＋本文すべて合わせて7〜8行を目標（9行が上限、このツールが自動検証）。3〜4行で終わらせない。1行が長いと折り返しで実質2行になるため、全角24文字（半角48文字）程度に抑える
+    - **1スライドの行数**: 見出し＋本文すべて合わせて9行が上限（このツールが自動検証）。3〜4行で終わらせない
+    - **行数の数え方【重要】**: 1行は全角32文字を超えると2行として数える。文字数を切り詰めて1行に収めようとせず、要素の数で収める
+      - 目安：見出し1行 ＋ 本文の要素5つ ＝ 6行。長い行が2〜3本あっても9行に収まる。**本文の要素は見出しを除いて5つまで**
     - **絵文字は使用禁止**（自動改行でレイアウト崩れ）
     - ==ハイライト==記法は使用禁止（日本語と相性悪い）
 
@@ -930,12 +968,14 @@ def output_slide(markdown: str) -> str:
 
     - **アジェンダ・目次**: ユーザーが明示した場合だけ作る。短い資料へ自動追加しない
     - **セクション区切り**: 8枚以下では原則作らない。10枚以上で必要な場合だけ `<!-- _class: lead -->` の中タイトルスライドを最大2枚挿入
-    - **スライドの表現パターン【重要】**: 同じパターンが2枚連続しないよう、以下A〜Eをローテーションする:
-      - A. **箇条書き型**: `##` + 箇条書き5〜6項目
-      - B. **小見出し型**: `##` + `###` + 説明文2〜3行 + 箇条書き2〜3項目
-      - C. **テーブル型**: `##` + リード文1行 + 2〜3列テーブル（セル内容は全角10文字以内。横幅もこのツールが自動検証）
-      - D. **本文+箇条書き型**: `##` + 説明文1〜2行 + 箇条書き4〜5項目
-      - E. **まとめ型**: `##` + 箇条書き3〜4項目 + `**太字のワンライナーまとめ**`
+    - **見出し【重要】**: 通常スライドの `##` は、そのページの結論を述語で言い切った1文にする。「主要機能」「料金体系」のような項目名を見出しに置かない（「エージェント機能の概要」ではなく「エージェント機能は運用の手間を人手ゼロまで下げる」）。体言止めの短い見出しは、図や表が主役のページだけに使う
+    - **リード文【重要】**: 見出しの直下に、結論を支える1行を必ず置く。見出しの言い換えにはせず、見出しが結論なら理由・前提・条件のいずれかを書く。理由や因果を箇条書きへ詰め込まない
+    - **スライドの表現パターン【重要】**: 全型で見出し直下にリード文を置く。同じパターンが2枚連続しないよう、以下A〜Eをローテーションする:
+      - A. **主張+根拠型**: `##` + リード文1行 + 箇条書き4項目（本文の要素5つ）
+      - B. **小見出し型**: `##` + リード文1行 + `###` + 箇条書き3項目（本文の要素5つ。`###` は短く保つ）
+      - C. **テーブル型**: `##` + リード文1行 + 2〜3列テーブル（表は折り返さないので行数に余裕がある。セル内容は全角10文字以内。横幅もこのツールが自動検証）
+      - D. **因果型**: `##` + リード文1行 + なぜそうなるかの説明文2行 + 箇条書き2項目（本文の要素5つ。説明文が主役なので箇条書きを3項目以上にしない）
+      - E. **まとめ型**: `##` + リード文1行 + 箇条書き4項目（本文の要素5つ）
     - **箇条書きスタイル**: 太字は使用OK。日本語テキストでコロンを使う場合は半角（:）ではなく全角（：）にする
     - **出典スライド**: Web検索時は最後に `<!-- _class: tinytext -->` 付きの参考文献スライドを追加
     - **裏表紙【必須】**: 最後のスライドは `<!-- _class: end --><!-- _paginate: skip -->` を付けて「Thank you!」とだけ表示
@@ -952,6 +992,11 @@ def output_slide(markdown: str) -> str:
         出力完了メッセージ（行数超過時はエラーメッセージ）
     """
     global _generated_markdown, _overflow_retry_count, _slide_progress_message
+    global _slide_finalized
+
+    if _slide_finalized:
+        # 同じ依頼の中で確定済み。作り直しても内容は良くならないので受け付けない。
+        return "スライドは出力済みです。同じ依頼の中で呼び直す必要はありません。"
 
     violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 
@@ -992,9 +1037,24 @@ def output_slide(markdown: str) -> str:
                     f"  - スライド{v['slide_number']}: 表の横幅超過（{v['max_width']}文字、上限{MAX_TABLE_ROW_WIDTH}文字）"
                 )
             elif v['type'] == 'slide_count':
+                difference = v['actual'] - v['expected']
+                if difference > 0:
+                    instruction = (
+                        f"{difference}枚多い。隣り合う本文スライドを{difference}組"
+                        "統合して減らす（表紙・裏表紙・参考文献は減らさない）"
+                    )
+                else:
+                    instruction = (
+                        f"{-difference}枚少ない。本文スライドのうち内容が多いものを"
+                        f"{-difference}枚分割して増やす（内容の薄いページを足さない）"
+                    )
                 details.append(
-                    f"  - 総枚数: {v['actual']}枚（指定は{v['expected']}枚）。内容を統合・分割して指定枚数ちょうどにする"
+                    f"  - 総枚数: {v['actual']}枚（指定は{v['expected']}枚）。{instruction}"
                 )
+                outline = _summarize_outline(markdown)
+                if outline:
+                    details.append("    現在の構成:")
+                    details.extend(f"      {line}" for line in outline)
             elif v['type'] == 'slide_count_max':
                 details.append(
                     f"  - 総枚数: {v['actual']}枚（上限は{v['maximum']}枚）。内容を統合して上限以内にする"
@@ -1109,4 +1169,5 @@ def output_slide(markdown: str) -> str:
 
     _generated_markdown = markdown
     _overflow_retry_count = 0
+    _slide_finalized = True
     return "スライドを出力しました。"

@@ -178,8 +178,11 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
     assert "現在は2026年です。" in prompt
     assert "Kimi K2.5実行契約" in prompt
     assert "狭いテーマは10〜12枚" in prompt
-    # レイアウト指示は、Kimiが自分で数えられる単位で与える（行数・文字幅は守れない）
-    assert "見出し1行＋箇条書き4項目まで" in prompt
+    # レイアウト指示は、Kimiが自分で数えられる単位で与える。
+    # 実測（2026-08-19）で行の56%が折り返していたため、文字数ではなく
+    # 「折り返す前提で要素数を数える」形にした
+    assert "本文の要素は、見出しを除いて5つまでにする" in prompt
+    assert "全角32文字を超えると2行として数えられる" in prompt
     # ユーザーが貼ったURLは、検索結果URLと違って本文を取りに行く
     assert "ユーザーが自分でメッセージへ貼ったURLは別で" in prompt
     assert "複数の機能や論点を扱うテーマは14〜18枚" in prompt
@@ -235,3 +238,48 @@ def test_disabled_sol_uses_the_kimi_system_prompt():
     assert "GPT-5.6 Sol向けの実行指示" not in prompt
     assert "Kimi K2.5実行契約" in prompt
     assert prompt == get_system_prompt("speee", "kimi")
+
+
+def test_kimi_system_prompt_requires_storytelling_over_bullet_lists():
+    """箇条書きの羅列を防ぐ3点（構成の骨格・結論見出し・リード文）が指示されていること。
+
+    Kimiは数えられるルールを優先するため、ストーリー側も数えられる形で
+    与えている。この指示を削るとスライドが項目名の羅列へ戻る。
+    """
+    prompt = get_system_prompt("speee", "kimi")
+
+    # 構成の骨格：ページ単位ではなく、話の流れとして役割を割り当てる
+    assert "本文スライドごとの役割を先に割り当てる" in prompt
+    assert "隣り合う本文スライドへ同じ役割を割り当てない" in prompt
+    assert "事実の列挙で終わらせない" in prompt
+
+    # 見出し：読者が最初に読む場所を、ラベルではなく主張にする
+    assert "そのページの結論を述語で言い切った1文にする" in prompt
+    assert "項目名を見出しに置かない" in prompt
+    assert "見出しだけを縦に並べて読む" in prompt
+
+    # リード文：理由・因果を書く場所を作る
+    assert "結論を支える1行を置く" in prompt
+    assert "見出しの言い換えにしない" in prompt
+
+    # 指示を増やした分、競合時にどれを捨てるかを明示しておく
+    assert "ルールが競合したときの優先順位" in prompt
+    assert "見出しとリード文は最後まで残す" in prompt
+
+
+def test_output_slide_patterns_all_require_a_lead_line():
+    """全パターンにリード文があり、箇条書きだけで完結する型が残っていないこと。"""
+    from tools.output_slide import output_slide
+
+    doc = output_slide.__doc__ or ""
+
+    assert "リード文【重要】" in doc
+    assert "主張+根拠型" in doc
+    assert "因果型" in doc
+    # 箇条書きだけで完結していた旧A型が復活していないこと
+    assert "**箇条書き型**: `##` + 箇条書き5〜6項目" not in doc
+    for pattern_line in ("A. **主張+根拠型**", "B. **小見出し型**", "C. **テーブル型**",
+                         "D. **因果型**", "E. **まとめ型**"):
+        assert pattern_line in doc
+        index = doc.index(pattern_line)
+        assert "リード文1行" in doc[index:index + 120], f"{pattern_line} にリード文がない"

@@ -152,9 +152,14 @@ def test_reset_generated_markdown():
 
 
 def test_output_slide_overwrites():
-    """連続呼び出しで最新のマークダウンが保持される"""
+    """次の依頼で呼び直すと最新のマークダウンが保持される
+
+    同じ依頼の中での呼び直しは受け付けない（確定後の空振りを止めるため）。
+    実運用では invoke ごとに reset_generated_markdown が走る。
+    """
     reset_generated_markdown()
     output_slide(markdown="# first")
+    reset_generated_markdown()  # ユーザーからの次の指示
     output_slide(markdown="# second")
     assert get_generated_markdown() == "# second"
 
@@ -481,6 +486,7 @@ class TestOutputSlideOverflowValidation:
         reset_generated_markdown()
         valid_md = "---\nmarp: true\n---\n\n## Title\n\n- Item 1"
         output_slide(markdown=valid_md)  # 正常出力（カウンターリセット）
+        reset_generated_markdown()  # 確定後は同じ依頼で呼べないため次の依頼として扱う
 
         # 次の超過スライドは1回目としてリジェクトされるはず
         lines = ["## 見出し"] + [f"- 項目{i}" for i in range(1, 11)]
@@ -1175,3 +1181,43 @@ marp: true
         result = output_slide(markdown=md)
 
         assert result == "スライドを出力しました。"
+
+
+def test_output_slide_rejects_reoutput_after_finalized():
+    """確定後の呼び直しを受け付けないこと。
+
+    Kimiは違反ゼロで確定した後も同じ内容でoutput_slideを呼び直すため、
+    生成1回あたりのツール呼び出しが余計に増えていた（2026-08-19実測）。
+    プロンプトの禁止だけでは守られないのでコード側で止めている。
+    """
+    from tools import output_slide as output_slide_tool
+    from tools.output_slide import (
+        configure_slide_validation,
+        get_generated_markdown,
+        reset_generated_markdown,
+    )
+
+    markdown = (
+        "---\nmarp: true\ntheme: border\nsize: 16:9\npaginate: true\n---\n\n"
+        "<!-- _class: top --><!-- _paginate: skip -->\n\n# タイトル\n\n---\n\n"
+        "## 結論を述語で言い切る見出し\n\n理由を述べるリード文を置く。\n\n"
+        "- 根拠のひとつ目\n- 根拠のふたつ目\n\n---\n\n"
+        "<!-- _class: end --><!-- _paginate: skip -->\n\n# Thank you!\n"
+    )
+
+    reset_generated_markdown()
+    configure_slide_validation("テスト", "kimi")
+
+    first = output_slide_tool(markdown)
+    assert "出力しました" in first
+    assert get_generated_markdown() == markdown
+
+    # 2回目は受け付けず、保存済みの内容も書き換えない
+    second = output_slide_tool(markdown.replace("根拠のふたつ目", "劣化した内容"))
+    assert "出力済み" in second
+    assert get_generated_markdown() == markdown
+
+    # ユーザーの次の指示（invokeごとのリセット）で再び受け付ける
+    reset_generated_markdown()
+    configure_slide_validation("テスト", "kimi")
+    assert "出力しました" in output_slide_tool(markdown)
