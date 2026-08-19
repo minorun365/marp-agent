@@ -2,6 +2,7 @@
 
 import os
 import json
+import time
 
 import boto3
 from strands import tool
@@ -51,6 +52,32 @@ tavily_clients: list[TavilyClient] = [
 # 何本読めたかを起動時に残す。本番で「キーが1本しか入っていない」ことに
 # 気づけず、フォールバックの不具合と切り分けられなかったため（2026-08-20）。
 print(f"[INFO] Tavily APIキーを{len(tavily_clients)}本読み込みました")
+
+# キーの読み直しの間隔（秒）。全キーが使えないときだけ読み直す。
+CLIENT_REFRESH_INTERVAL_SECONDS = 60.0
+_last_client_refresh = 0.0
+
+
+def _refresh_tavily_clients() -> bool:
+    """Secrets Managerを読み直してクライアントを作り直す。
+
+    キーはモジュール読み込み時に1度だけ取得するため、枯渇したキーを差し替えても
+    動いているコンテナには反映されず、再デプロイするまで検索が止まったままになる
+    （2026-08-20に実際に起きた）。全キーが使えなくなった時だけ読み直す。
+    """
+    global tavily_clients, _last_client_refresh
+
+    now = time.monotonic()
+    if _last_client_refresh and now - _last_client_refresh < CLIENT_REFRESH_INTERVAL_SECONDS:
+        return False
+    _last_client_refresh = now
+
+    keys = _load_tavily_api_keys()
+    if not keys:
+        return False
+    tavily_clients = [TavilyClient(api_key=key) for key in keys]
+    print(f"[INFO] Tavily APIキーを読み直しました（{len(tavily_clients)}本）")
+    return True
 
 # Web検索結果用のグローバル変数
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
@@ -109,6 +136,22 @@ def web_search(query: str) -> str:
     if not tavily_clients:
         return "Web検索機能は現在利用できません（APIキー未設定）"
 
+    result = _search_with_current_keys(query)
+    if result is not None:
+        return result
+
+    # 全キーが使えなかった。キーを差し替えた直後かもしれないので1度だけ読み直す。
+    if _refresh_tavily_clients():
+        result = _search_with_current_keys(query)
+        if result is not None:
+            return result
+
+    print(f"[ERROR] Tavilyのキー{len(tavily_clients)}本すべてが使えませんでした")
+    return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
+
+
+def _search_with_current_keys(query: str) -> str | None:
+    """いま持っているキーを順に試す。全部使えなければNoneを返す。"""
     # 複数APIキーで順番に試行（無料枠の月5000リクエスト制限対策）
     for key_number, client in enumerate(tavily_clients, start=1):
         try:
@@ -151,6 +194,4 @@ def web_search(query: str) -> str:
             print(f"[ERROR] Tavilyキー{key_number}で想定外のエラー: {type(e).__name__}: {e}")
             return f"検索エラー: {str(e)}"
 
-    # 全キー枯渇
-    print(f"[ERROR] Tavilyのキー{len(tavily_clients)}本すべてが使えませんでした")
-    return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
+    return None

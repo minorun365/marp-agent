@@ -83,3 +83,43 @@ def test_unexpected_error_stops_immediately(monkeypatch):
 
     assert unused.calls == 0
     assert "検索エラー" in result
+
+
+def test_reloads_keys_from_the_secret_when_every_key_is_dead(monkeypatch):
+    """キーを差し替えたら、再デプロイなしで次の検索から使えること。
+
+    キーはモジュール読み込み時に1度しか取らないため、Secrets Managerを更新しても
+    動いているコンテナには届かず、検索が止まったままになる（2026-08-20に発生）。
+    """
+    dead = _StubClient(UsageLimitExceededError(""))
+    fresh = _StubClient(SUCCESS)
+    monkeypatch.setattr(web_search_module, "tavily_clients", [dead])
+    monkeypatch.setattr(web_search_module, "_last_client_refresh", 0.0)
+
+    def fake_refresh():
+        web_search_module.tavily_clients = [fresh]
+        return True
+
+    monkeypatch.setattr(web_search_module, "_refresh_tavily_clients", fake_refresh)
+
+    result = web_search_module.web_search("テスト")
+
+    assert dead.calls == 1
+    assert fresh.calls == 1
+    assert "https://example.com" in result
+
+
+def test_does_not_reload_more_than_once_per_interval(monkeypatch):
+    """読み直しの間隔内なら、Secrets Managerを叩き直さない。"""
+    monkeypatch.setattr(web_search_module, "tavily_clients", [_StubClient(SUCCESS)])
+    monkeypatch.setattr(web_search_module, "_last_client_refresh", 0.0)
+    calls = []
+    monkeypatch.setattr(
+        web_search_module,
+        "_load_tavily_api_keys",
+        lambda: calls.append(1) or ["key-a", "key-b"],
+    )
+
+    assert web_search_module._refresh_tavily_clients() is True
+    assert web_search_module._refresh_tavily_clients() is False
+    assert len(calls) == 1
