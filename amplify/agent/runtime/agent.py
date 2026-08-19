@@ -245,6 +245,8 @@ async def invoke(payload, context=None):
     silent_intervals = 0
     # 「スライドを作成中」を先出ししたか（output_slideの通知が来る前の空白対策）。
     slide_compose_announced = False
+    # 検索やテキストが一度でも届いたか。届く前の考え込みと区別する。
+    activity_seen = False
 
     def get_slide_progress_event():
         """Kimiの内部文ではなく、検査ツールが確定した進捗だけを返す。"""
@@ -268,10 +270,13 @@ async def invoke(payload, context=None):
                 # 1回だけ渡してくる。そのため最後の検索からoutput_slideの通知まで
                 # 実測で70〜80秒かかり、その間ずっと画面が無音になる（keep-aliveの
                 # 「処理中...」は、直前が検査ステータスの行だと画面へ出ない）。
-                # 20秒以上なにも届かないときは本文を書いている最中なので、
+                # 一度なにか届いたあとに10秒以上黙ったら、本文を書いている最中なので、
                 # Kimiと同じ「スライドを作成中」の表示へ切り替えてTipsを回す。
+                # 「何か届いたあと」に限るのは、依頼の直後の考え込みで
+                # 検索より先に作成中と出さないため。
                 if (
-                    silent_intervals >= 2
+                    silent_intervals >= 1
+                    and activity_seen
                     and not slide_outputted
                     and not slide_compose_announced
                 ):
@@ -281,6 +286,7 @@ async def invoke(payload, context=None):
                     yield {"type": "progress", "message": "処理中..."}
                 continue
             silent_intervals = 0
+            activity_seen = True
             event = pending.result()
             if event is _STREAM_SENTINEL:
                 break
