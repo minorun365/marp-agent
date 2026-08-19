@@ -449,7 +449,7 @@ Accept: text/event-stream
 }
 ```
 - `action`: `"chat"`（通常チャット）または `"export_pdf"`（PDF生成）
-- `model_type`: `"grok"`（デフォルト。他の値はGrokへ正規化される）
+- `model_type`: `"kimi"`（デフォルト）、`"grok"`。他の値はKimiへ正規化される
 - `session_id`: 画面更新まで同一のUUIDを使用し、会話履歴を保持
 
 **レスポンス（SSE）**

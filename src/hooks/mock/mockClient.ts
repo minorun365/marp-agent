@@ -17,7 +17,7 @@ export async function invokeAgentMock(
   _theme: string,
   callbacks: AgentCoreCallbacks,
   _sessionId?: string,
-  _modelType: ModelType = 'grok',
+  _modelType: ModelType = 'kimi',
   _referenceFile?: ReferenceFile
 ): Promise<void> {
   void _modelType;

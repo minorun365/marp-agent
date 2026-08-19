@@ -15,7 +15,7 @@ _agent_sessions: dict[str, Agent] = {}
 _conversation_manager = SlidingWindowConversationManager(window_size=6)
 
 
-def _create_model(model_type: str = "grok") -> Model:
+def _create_model(model_type: str = "kimi") -> Model:
     """モデル設定に基づいてStrandsのモデルプロバイダーを作成"""
     config = get_model_config(model_type)
 
@@ -57,7 +57,7 @@ def _create_model(model_type: str = "grok") -> Model:
 
 def get_or_create_agent(
     session_id: str | None,
-    model_type: str = "grok",
+    model_type: str = "kimi",
     theme: str = "border",
 ) -> Agent:
     """セッションIDとモデルタイプとテーマに対応するAgentを取得または作成"""

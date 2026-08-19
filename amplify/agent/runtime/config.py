@@ -12,27 +12,34 @@ def _get_required_model_id(environment_variable: str) -> str:
 
 
 MODEL_ENVIRONMENT_VARIABLES = {
-    "grok": "BEDROCK_GROK_MODEL_ID",
+    "sonnet": "BEDROCK_SONNET_MODEL_ID",
+    "sonnet5": "BEDROCK_SONNET5_MODEL_ID",
     "kimi": "BEDROCK_KIMI_MODEL_ID",
     "glm": "BEDROCK_GLM_MODEL_ID",
+    "opus": "BEDROCK_OPUS_MODEL_ID",
     "sol": "BEDROCK_SOL_MODEL_ID",
+    "grok": "BEDROCK_GROK_MODEL_ID",
 }
 
 # UIのMODEL_OPTIONSでdisabledではないモデルだけを有効化する。
+# Grok 4.6は品質・費用とも検証済みだが、まず選択肢として並べて実利用で確かめる段階。
 ENABLED_MODEL_TYPES = {
+    "kimi",
     "grok",
-    # "kimi",
+    # "sonnet",
+    # "sonnet5",
     # "glm",
+    # "opus",
     # "sol",
 }
 
 
 def normalize_model_type(model_type: str | None) -> str:
-    """未有効のモデル指定をGrokへ安全にフォールバックする。"""
-    return model_type if model_type in ENABLED_MODEL_TYPES else "grok"
+    """未有効のモデル指定をKimiへ安全にフォールバックする。"""
+    return model_type if model_type in ENABLED_MODEL_TYPES else "kimi"
 
 
-def get_model_config(model_type: str = "grok") -> dict:
+def get_model_config(model_type: str = "kimi") -> dict:
     """有効化されているモデルの設定を返す。"""
     normalized_model_type = normalize_model_type(model_type)
 
@@ -55,14 +62,15 @@ def get_model_config(model_type: str = "grok") -> dict:
             "max_output_tokens": 32768,
         }
 
+    uses_prompt_cache = normalized_model_type in {"sonnet", "sonnet5", "opus"}
     return {
         "provider": "bedrock",
         "model_id": _get_required_model_id(
             MODEL_ENVIRONMENT_VARIABLES[normalized_model_type]
         ),
-        # 現在残しているモデルはどれもBedrockのプロンプトキャッシュを使わない。
-        "cache_prompt": None,
-        "cache_tools": None,
+        # OSS系モデルはBedrockのプロンプトキャッシュを使用しない。
+        "cache_prompt": "default" if uses_prompt_cache else None,
+        "cache_tools": "default" if uses_prompt_cache else None,
     }
 
 
@@ -256,7 +264,7 @@ MODEL_SPECIFIC_PROMPTS = {
 }
 
 
-def get_system_prompt(theme: str = "speee", model_type: str = "grok") -> str:
+def get_system_prompt(theme: str = "speee", model_type: str = "kimi") -> str:
     """テーマに応じたシステムプロンプトを生成"""
     model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
     return f"""あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。

@@ -218,7 +218,7 @@ export async function invokeAgent(
   theme: string,
   callbacks: AgentCoreCallbacks,
   sessionId?: string,
-  modelType: ModelType = 'grok',
+  modelType: ModelType = 'kimi',
   referenceFile?: ReferenceFile
 ): Promise<void> {
   startEvaluationTrace(modelType, prompt);

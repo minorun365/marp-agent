@@ -25,7 +25,7 @@
 
 ## アーキテクチャ
 
-公開中のアプリは、CloudFront から画面を配信し、ブラウザが Amazon Bedrock AgentCore Runtime へ直接つながる構成です。標準モデルは Grok 4.6（Bedrock Mantle 経由）で、維持費の中心は Bedrock の推論料金です。インフラは AWS CDK を CDKD でデプロイします。
+公開中のアプリは、CloudFront から画面を配信し、ブラウザが Amazon Bedrock AgentCore Runtime へ直接つながる構成です。標準モデルは Kimi K2.5 で、選択肢として Grok 4.6（Bedrock Mantle 経由）も選べます。維持費の中心は Bedrock の推論料金です。インフラは AWS CDK を CDKD でデプロイします。
 
 構成の解説は [新基盤のアーキテクチャ](docs/new-architecture.html) にあります。
 

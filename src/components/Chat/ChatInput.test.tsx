@@ -6,7 +6,7 @@ import * as types from './types';
 const defaultProps = {
   input: '',
   setInput: vi.fn(),
-  modelType: 'grok' as types.ModelType,
+  modelType: 'kimi' as types.ModelType,
   setModelType: vi.fn(),
   isLoading: false,
   hasUserMessage: false,
@@ -59,18 +59,27 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    // 有効なモデルがGrok 4.6の1件だけになったので、選ばせる意味がない。
-    // 2件以上へ戻したときだけセレクターが復活する（ChatInputのshowModelSelector）。
-    it('選べるモデルが1件のときはセレクターを出さない', () => {
+    it('Kimiを標準にし、Grokを選択肢へ並べ、停止中のSonnetは選択不可にする', () => {
       render(<ChatInput {...defaultProps} />);
-      expect(screen.queryByTitle('使用するAIモデルを選択')).not.toBeInTheDocument();
-      expect(screen.queryByRole('option', { name: '標準（Grok 4.6）' })).not.toBeInTheDocument();
+      const select = screen.getByTitle('使用するAIモデルを選択');
+      expect(select).toBeInTheDocument();
+      expect(select).toHaveValue('kimi');
+      expect(screen.getByRole('option', { name: '標準（Kimi K2.5）' })).toBeEnabled();
+      expect(screen.getByRole('option', { name: '新モデル（Grok 4.6）' })).toBeEnabled();
+      expect(screen.getByRole('option', { name: '高品質（Claude Sonnet 4.6） ※資金不足により停止中' })).toBeDisabled();
+      expect(screen.queryByRole('option', { name: '最高品質（GPT-5.6 Sol）' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: 'GLM 5' })).not.toBeInTheDocument();
     });
 
-    it('既定のモデルはGrok 4.6である', () => {
-      expect(types.MODEL_OPTIONS).toHaveLength(1);
-      expect(types.MODEL_OPTIONS[0]).toMatchObject({ value: 'grok', label: '標準（Grok 4.6）' });
-      expect(defaultProps.modelType).toBe('grok');
+    it('閉じた状態では選択中モデルの特徴を表示する', () => {
+      render(<ChatInput {...defaultProps} />);
+      expect(screen.getByText('標準')).toBeInTheDocument();
+    });
+
+    it('会話中はモデルセレクターが無効になる', () => {
+      render(<ChatInput {...defaultProps} hasUserMessage={true} />);
+      const select = screen.getByTitle('会話中はモデルを変更できません');
+      expect(select).toBeDisabled();
     });
   });
 });

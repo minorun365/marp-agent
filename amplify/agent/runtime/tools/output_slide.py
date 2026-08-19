@@ -16,7 +16,7 @@ _overflow_retry_count: int = 0
 _expected_slide_count: int | None = None
 _maximum_slide_count: int | None = None
 _agenda_requested: bool = False
-_active_model_type: str = "grok"
+_active_model_type: str = "sonnet"
 _web_search_executed: bool = False
 _user_quantified_claims: set[str] = set()
 _required_official_source_rules: list[dict] = []
@@ -976,7 +976,7 @@ def reset_generated_markdown() -> None:
     _expected_slide_count = None
     _maximum_slide_count = None
     _agenda_requested = False
-    _active_model_type = "grok"
+    _active_model_type = "sonnet"
     _web_search_executed = False
     _user_quantified_claims = set()
     _required_official_source_rules = []

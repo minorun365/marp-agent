@@ -46,11 +46,11 @@ Accept: text/event-stream
 {
   "prompt": "ユーザーの入力",
   "markdown": "現在のスライド（編集時）",
-  "model_type": "grok"
+  "model_type": "kimi"
 }
 ```
 
-`model_type`の有効値は`grok`（デフォルト）だけ。無効な値と、設定だけ残している`kimi` / `glm` / `sol`は`grok`へフォールバックする。
+`model_type`の有効値は`kimi`（デフォルト）と`grok`。無効な値と、設定だけ残している`sonnet` / `glm` / `sol`は`kimi`へフォールバックする。
 
 #### 認証問題の解決
 
