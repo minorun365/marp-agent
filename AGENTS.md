@@ -48,8 +48,8 @@ npm run infra:dry-run
 [ブラウザ] ←→ [React + Tailwind] ←SSE→ [AgentCore Runtime]
                                               │
                                               ├── Strands Agent (Python)
-                                              ├── Kimi K2.5（標準）／ Grok 4.6（選択肢。Mantle / us-west-2）
-                                              │   Sonnet 4.6 / GPT-5.6 Sol / Sonnet 5 / GLM-5 / Opus 4.6は設定保持・無効化中
+                                              ├── Grok 4.6（標準。Bedrock Mantle / us-west-2）
+                                              │   Sonnet 4.6は停止中の表示でUIに残す。Kimi K2.5 / GPT-5.6 Sol / GLM-5等は設定保持・無効化中
                                               └── Marp CLI (PDF/PPTX/編集可能PPTX変換)
 ```
 

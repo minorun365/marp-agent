@@ -60,11 +60,11 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Kimi K2.5（標準）
-"moonshotai.kimi-k2.5"
-
-# Grok 4.6（選択肢。Bedrock Mantle の us-west-2 でのみ提供）
+# Grok 4.6（標準。Bedrock Mantle の us-west-2 でのみ提供）
 "xai.grok-4.6"
+
+# Kimi K2.5（設定保持・現在無効）
+"moonshotai.kimi-k2.5"
 
 # Claude Sonnet 4.6 / Sonnet 5 / Opus 4.6（設定保持・現在無効）
 "arn:aws:bedrock:us-east-1:<account-id>:application-inference-profile/<profile-id>"
@@ -80,14 +80,14 @@ tavily-python
 
 | モデル | Strands provider / API | キャッシュ | 備考 |
 |--------|-------------------------|-----------|------|
-| Kimi K2.5 | `BedrockModel` / native | なし | 標準 |
-| Grok 4.6 | `OpenAIResponsesModel` / Mantle `/openai/v1` | なし | 選択肢。us-west-2 のみ |
+| Grok 4.6 | `OpenAIResponsesModel` / Mantle `/openai/v1` | なし | 標準。us-west-2 のみ |
+| Kimi K2.5 | `BedrockModel` / native | なし | 設定保持・現在無効 |
 | Claude Sonnet 4.6 | `BedrockModel` / native | `cache_prompt="default"`, `cache_tools="default"` | 設定保持・現在無効 |
 | GPT-5.6 Sol | `OpenAIResponsesModel` / Mantle Responses | Strandsのキャッシュ引数なし、`stateful=False` | 設定保持・現在無効 |
 | Claude Sonnet 5 / Opus 4.6 | `BedrockModel` / native | Sonnetと同じ | 設定保持・現在無効 |
 | GLM-5 | `BedrockModel` / native | なし | 設定保持・現在無効 |
 
-有効なのはKimi K2.5とGrok 4.6の2つで、無効なモデルがAPIへ指定された場合はKimi K2.5へ正規化する。
+有効なのはGrok 4.6だけで、無効なモデルがAPIへ指定された場合もGrok 4.6へ正規化する。Sonnet 4.6は停止理由を付けてUIへ残すが選択できない。
 
 Grokだけは`bedrock_mantle_config`を使わない。Strandsは、モデルIDが`openai.gpt-5.`で始まるときだけ
 `/openai/v1`へ送り、それ以外は`/v1`へ送る。`xai.grok-4.6`は`/openai/v1`でしか応答しないため、
@@ -116,9 +116,9 @@ export interface ModelOption {
 }
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'kimi', label: '標準（Kimi K2.5）', shortLabel: '標準' },
-  { value: 'grok', label: '新モデル（Grok 4.6）', shortLabel: 'Grok' },
+  { value: 'grok', label: '標準（Grok 4.6）', shortLabel: '標準' },
   { value: 'sonnet', label: '高品質（Claude Sonnet 4.6） ※資金不足により停止中', shortLabel: '高品質', disabled: true },
+  // { value: 'kimi', label: 'Kimi K2.5', shortLabel: 'Kimi' },
   // { value: 'glm', label: 'GLM 5', shortLabel: 'GLM 5' },
   // { value: 'sol', label: '最高品質（GPT-5.6 Sol）', shortLabel: '最高品質' },
 ];
@@ -166,7 +166,7 @@ body: JSON.stringify({
 
 #### バックエンド（config.py）
 ```python
-def get_model_config(model_type: str = "kimi") -> dict:
+def get_model_config(model_type: str = "grok") -> dict:
     normalized_model_type = normalize_model_type(model_type)
     if normalized_model_type == "sol":
         return {
@@ -192,14 +192,14 @@ ENABLED_MODEL_TYPES = {
     # "sol",
 }
 
-def get_system_prompt(theme: str = "speee", model_type: str = "kimi") -> str:
+def get_system_prompt(theme: str = "speee", model_type: str = "grok") -> str:
     model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
     return f"""共通プロンプト
     {model_prompt}"""
 
 @app.entrypoint
 async def invoke(payload, context=None):
-    model_type = payload.get("model_type", "kimi")
+    model_type = payload.get("model_type", "grok")
     theme = payload.get("theme", "border")
     agent = get_or_create_agent(session_id, model_type, theme)
 ```

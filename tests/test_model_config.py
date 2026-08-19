@@ -12,29 +12,28 @@ from config import (
 from tools.http_request import _html_to_text
 
 
-def test_kimi_and_grok_are_enabled():
-    """標準はKimi。Grokは選択肢として並べ、実利用を見てから標準にするか決める。"""
-    assert ENABLED_MODEL_TYPES == {"kimi", "grok"}
-    assert normalize_model_type("kimi") == "kimi"
+def test_only_grok_is_enabled():
+    """標準はGrok。Sonnet 4.6は停止中の表示だけUIへ残し、Kimiは設定だけ保持する。"""
+    assert ENABLED_MODEL_TYPES == {"grok"}
     assert normalize_model_type("grok") == "grok"
 
 
 @pytest.mark.parametrize(
     "requested_model",
-    [None, "glm", "sol", "sonnet", "sonnet5", "opus", "unknown"],
+    [None, "kimi", "glm", "sol", "sonnet", "sonnet5", "opus", "unknown"],
 )
-def test_disabled_model_falls_back_to_kimi(requested_model):
-    assert normalize_model_type(requested_model) == "kimi"
+def test_disabled_model_falls_back_to_grok(requested_model):
+    assert normalize_model_type(requested_model) == "grok"
 
 
-@pytest.mark.parametrize("requested_model", ["glm", "sol", "sonnet", "opus"])
-def test_get_model_config_uses_kimi_for_disabled_models(
+@pytest.mark.parametrize("requested_model", ["kimi", "glm", "sol", "sonnet"])
+def test_get_model_config_uses_grok_for_disabled_models(
     monkeypatch,
     requested_model,
 ):
-    monkeypatch.setenv("BEDROCK_KIMI_MODEL_ID", "moonshotai.kimi-k2.5")
+    monkeypatch.setenv("BEDROCK_GROK_MODEL_ID", "xai.grok-4.6")
 
-    assert get_model_config(requested_model)["model_id"] == "moonshotai.kimi-k2.5"
+    assert get_model_config(requested_model)["model_id"] == "xai.grok-4.6"
 
 
 def test_grok_runs_on_mantle_in_us_west_2(monkeypatch):
@@ -60,6 +59,7 @@ def test_grok_runs_on_mantle_in_us_west_2(monkeypatch):
 
 
 def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "kimi"})
     monkeypatch.setenv("BEDROCK_KIMI_MODEL_ID", "moonshotai.kimi-k2.5")
 
     model_config = get_model_config("kimi")
@@ -102,6 +102,7 @@ def test_get_model_config_uses_glm_without_prompt_cache(monkeypatch):
 
 
 def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "kimi"})
     monkeypatch.delenv("BEDROCK_KIMI_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_KIMI_MODEL_ID"):

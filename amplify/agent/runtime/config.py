@@ -22,10 +22,9 @@ MODEL_ENVIRONMENT_VARIABLES = {
 }
 
 # UIのMODEL_OPTIONSでdisabledではないモデルだけを有効化する。
-# Grok 4.6は品質・費用とも検証済みだが、まず選択肢として並べて実利用で確かめる段階。
 ENABLED_MODEL_TYPES = {
-    "kimi",
     "grok",
+    # "kimi",
     # "sonnet",
     # "sonnet5",
     # "glm",
@@ -35,11 +34,11 @@ ENABLED_MODEL_TYPES = {
 
 
 def normalize_model_type(model_type: str | None) -> str:
-    """未有効のモデル指定をKimiへ安全にフォールバックする。"""
-    return model_type if model_type in ENABLED_MODEL_TYPES else "kimi"
+    """未有効のモデル指定をGrokへ安全にフォールバックする。"""
+    return model_type if model_type in ENABLED_MODEL_TYPES else "grok"
 
 
-def get_model_config(model_type: str = "kimi") -> dict:
+def get_model_config(model_type: str = "grok") -> dict:
     """有効化されているモデルの設定を返す。"""
     normalized_model_type = normalize_model_type(model_type)
 
@@ -261,7 +260,7 @@ MODEL_SPECIFIC_PROMPTS = {
 }
 
 
-def get_system_prompt(theme: str = "speee", model_type: str = "kimi") -> str:
+def get_system_prompt(theme: str = "speee", model_type: str = "grok") -> str:
     """テーマに応じたシステムプロンプトを生成"""
     model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
     return f"""あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。

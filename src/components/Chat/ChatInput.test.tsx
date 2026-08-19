@@ -6,7 +6,7 @@ import * as types from './types';
 const defaultProps = {
   input: '',
   setInput: vi.fn(),
-  modelType: 'kimi' as types.ModelType,
+  modelType: 'grok' as types.ModelType,
   setModelType: vi.fn(),
   isLoading: false,
   hasUserMessage: false,
@@ -59,16 +59,15 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    it('Kimiを標準にし、Grokを選択肢へ並べ、停止中のSonnetは選択不可にする', () => {
+    it('Grokを標準にし、停止中のSonnetは選択不可で残す', () => {
       render(<ChatInput {...defaultProps} />);
       const select = screen.getByTitle('使用するAIモデルを選択');
       expect(select).toBeInTheDocument();
-      expect(select).toHaveValue('kimi');
-      expect(screen.getByRole('option', { name: '標準（Kimi K2.5）' })).toBeEnabled();
-      expect(screen.getByRole('option', { name: '新モデル（Grok 4.6）' })).toBeEnabled();
+      expect(select).toHaveValue('grok');
+      expect(screen.getByRole('option', { name: '標準（Grok 4.6）' })).toBeEnabled();
       expect(screen.getByRole('option', { name: '高品質（Claude Sonnet 4.6） ※資金不足により停止中' })).toBeDisabled();
+      expect(screen.queryByRole('option', { name: 'Kimi K2.5' })).not.toBeInTheDocument();
       expect(screen.queryByRole('option', { name: '最高品質（GPT-5.6 Sol）' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('option', { name: 'GLM 5' })).not.toBeInTheDocument();
     });
 
     it('閉じた状態では選択中モデルの特徴を表示する', () => {
