@@ -54,7 +54,8 @@ def test_grok_runs_on_mantle_in_us_west_2(monkeypatch):
         "model_id": "xai.grok-4.6",
         "region": "us-west-2",
         "max_output_tokens": 32768,
-        "reasoning_effort": "medium",
+        # lowが既定。mediumと品質は同等で、所要時間が3分の1になる（2026-08-19実測）
+        "reasoning_effort": "low",
     }
 
 

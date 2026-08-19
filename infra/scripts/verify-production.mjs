@@ -95,6 +95,8 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
     'BEDROCK_GROK_MODEL_ID',
     // Grok 4.6はMantleのus-west-2でだけ提供される。既定リージョンのままだとモデルが見つからない。
     'BEDROCK_GROK_REGION',
+    // 落ちてもエラーにはならず、生成が3倍遅くなるだけなので気づけない。
+    'GROK_REASONING_EFFORT',
     'BEDROCK_KIMI_MODEL_ID',
     'TAVILY_SECRET_ARN',
     'SHARED_SLIDES_BUCKET',

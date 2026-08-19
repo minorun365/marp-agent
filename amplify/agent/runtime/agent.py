@@ -241,6 +241,10 @@ async def invoke(payload, context=None):
     announced_fetch_urls: list[str] = []
     # 同じ検索について既に通知したクエリ（途中まで含む）。重複通知の判定に使う。
     announced_search_queries: list[str] = []
+    # keep-aliveが何回連続で走ったか。ツールもテキストも来ない時間の長さを測る。
+    silent_intervals = 0
+    # 「スライドを作成中」を先出ししたか（output_slideの通知が来る前の空白対策）。
+    slide_compose_announced = False
 
     def get_slide_progress_event():
         """Kimiの内部文ではなく、検査ツールが確定した進捗だけを返す。"""
@@ -259,8 +263,25 @@ async def invoke(payload, context=None):
         while True:
             done, _ = await asyncio.wait({pending}, timeout=STREAM_KEEPALIVE_INTERVAL)
             if not done:
-                yield {"type": "progress", "message": "処理中..."}
+                silent_intervals += 1
+                # Grokはツールの引数を分割せず、スライド全文を書き終えてから
+                # 1回だけ渡してくる。そのため最後の検索からoutput_slideの通知まで
+                # 実測で70〜80秒かかり、その間ずっと画面が無音になる（keep-aliveの
+                # 「処理中...」は、直前が検査ステータスの行だと画面へ出ない）。
+                # 調べ終えたあと20秒以上黙っていれば本文を書いている最中なので、
+                # Kimiと同じ「スライドを作成中」の表示へ切り替えてTipsを回す。
+                if (
+                    silent_intervals >= 2
+                    and web_search_executed
+                    and not slide_outputted
+                    and not slide_compose_announced
+                ):
+                    slide_compose_announced = True
+                    yield {"type": "tool_use", "data": "output_slide"}
+                else:
+                    yield {"type": "progress", "message": "処理中..."}
                 continue
+            silent_intervals = 0
             event = pending.result()
             if event is _STREAM_SENTINEL:
                 break

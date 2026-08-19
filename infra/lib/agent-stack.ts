@@ -64,6 +64,8 @@ export class AgentStack extends cdk.Stack {
         BEDROCK_GROK_MODEL_ID: 'xai.grok-4.6',
         // Grok 4.6はMantleのus-west-2でだけ提供される（2026-08-19実測）。
         BEDROCK_GROK_REGION: 'us-west-2',
+        // 推論の深さ。lowでもmediumと品質が変わらず、所要時間が3分の1になる。
+        GROK_REASONING_EFFORT: 'low',
         BEDROCK_KIMI_MODEL_ID: 'moonshotai.kimi-k2.5',
         TAVILY_SECRET_ARN: props.foundation.tavilySecret.secretArn,
         SHARED_SLIDES_BUCKET: sharedSlidesBucketName,
