@@ -7,6 +7,22 @@ import boto3
 from strands import tool
 from tavily import TavilyClient
 
+try:
+    # キー単位で「このキーは使えない」を意味する例外。文字列ではなく型で判定する。
+    from tavily.errors import (
+        ForbiddenError,
+        InvalidAPIKeyError,
+        UsageLimitExceededError,
+    )
+
+    KEY_LEVEL_ERRORS: tuple[type[Exception], ...] = (
+        UsageLimitExceededError,
+        ForbiddenError,
+        InvalidAPIKeyError,
+    )
+except ImportError:  # SDKの構成が変わっても検索自体は動かす
+    KEY_LEVEL_ERRORS = ()
+
 from .http_request import get_url_fetched
 
 
@@ -32,6 +48,9 @@ tavily_clients: list[TavilyClient] = [
     TavilyClient(api_key=key)
     for key in _load_tavily_api_keys()
 ]
+# 何本読めたかを起動時に残す。本番で「キーが1本しか入っていない」ことに
+# 気づけず、フォールバックの不具合と切り分けられなかったため（2026-08-20）。
+print(f"[INFO] Tavily APIキーを{len(tavily_clients)}本読み込みました")
 
 # Web検索結果用のグローバル変数
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
@@ -91,7 +110,7 @@ def web_search(query: str) -> str:
         return "Web検索機能は現在利用できません（APIキー未設定）"
 
     # 複数APIキーで順番に試行（無料枠の月5000リクエスト制限対策）
-    for client in tavily_clients:
+    for key_number, client in enumerate(tavily_clients, start=1):
         try:
             results = client.search(
                 query=query,
@@ -101,6 +120,7 @@ def web_search(query: str) -> str:
             # レスポンス内に利用制限エラーが含まれていたら次のキーで再試行
             results_str = str(results).lower()
             if "usage limit" in results_str or "exceeds your plan" in results_str:
+                print(f"[WARN] Tavilyキー{key_number}: 利用上限の応答。次のキーへ切り替えます")
                 continue
             # 検索結果をテキストに整形
             formatted_results = []
@@ -113,12 +133,24 @@ def web_search(query: str) -> str:
             global _last_search_result
             _last_search_result = search_result  # フォールバック用に保存
             return search_result
+        except KEY_LEVEL_ERRORS as e:
+            # 枯渇・停止・無効キーはこのキーの問題なので、必ず次のキーを試す。
+            # SDKはHTTP 429/432/433でも本文の形によってはメッセージが空の例外を投げる。
+            # 以前は文字列に「usage limit」等が含まれるかで判定していたため、
+            # 空メッセージだと1本目で打ち切られ、残りのキーへ切り替わらなかった。
+            print(f"[WARN] Tavilyキー{key_number}が使えません（{type(e).__name__}: {e}）。次のキーへ切り替えます")
+            continue
         except Exception as e:
-            # rate limit系のエラーなら次のキーで再試行、それ以外は即座にエラー返却
             error_str = str(e).lower()
-            if "rate limit" in error_str or "429" in error_str or "quota" in error_str or "usage limit" in error_str:
+            if any(
+                marker in error_str
+                for marker in ("rate limit", "429", "quota", "usage limit", "timed out", "timeout")
+            ):
+                print(f"[WARN] Tavilyキー{key_number}で一時的なエラー（{type(e).__name__}）。次のキーへ切り替えます")
                 continue
+            print(f"[ERROR] Tavilyキー{key_number}で想定外のエラー: {type(e).__name__}: {e}")
             return f"検索エラー: {str(e)}"
 
     # 全キー枯渇
+    print(f"[ERROR] Tavilyのキー{len(tavily_clients)}本すべてが使えませんでした")
     return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
