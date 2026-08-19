@@ -150,6 +150,18 @@ def web_search(query: str) -> str:
     return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
 
 
+def _demote_client(dead_client: TavilyClient) -> None:
+    """使えなかったキーを末尾へ回す。
+
+    枯渇したキーが先頭にいると、検索のたびに1回ずつ無駄打ちしてから
+    次のキーへ移ることになり、そのぶん待ち時間が伸びる。
+    """
+    global tavily_clients
+    remaining = [client for client in tavily_clients if client is not dead_client]
+    if remaining:
+        tavily_clients = remaining + [dead_client]
+
+
 def _search_with_current_keys(query: str) -> str | None:
     """いま持っているキーを順に試す。全部使えなければNoneを返す。"""
     # 複数APIキーで順番に試行（無料枠の月5000リクエスト制限対策）
@@ -182,6 +194,7 @@ def _search_with_current_keys(query: str) -> str | None:
             # 以前は文字列に「usage limit」等が含まれるかで判定していたため、
             # 空メッセージだと1本目で打ち切られ、残りのキーへ切り替わらなかった。
             print(f"[WARN] Tavilyキー{key_number}が使えません（{type(e).__name__}: {e}）。次のキーへ切り替えます")
+            _demote_client(client)
             continue
         except Exception as e:
             error_str = str(e).lower()

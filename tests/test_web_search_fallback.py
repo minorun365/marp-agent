@@ -123,3 +123,19 @@ def test_does_not_reload_more_than_once_per_interval(monkeypatch):
     assert web_search_module._refresh_tavily_clients() is True
     assert web_search_module._refresh_tavily_clients() is False
     assert len(calls) == 1
+
+
+def test_dead_key_moves_to_the_end(monkeypatch):
+    """枯渇したキーを毎回先に試して無駄打ちしないこと。"""
+    dead = _StubClient(UsageLimitExceededError(""))
+    alive = _StubClient(SUCCESS)
+    monkeypatch.setattr(web_search_module, "tavily_clients", [dead, alive])
+
+    web_search_module.web_search("1回目")
+    web_search_module.reset_last_search_result()
+    web_search_module.web_search("2回目")
+
+    # 2回目は先頭が使えるキーになっているので、枯渇キーを叩き直さない
+    assert dead.calls == 1
+    assert alive.calls == 2
+    assert web_search_module.tavily_clients[0] is alive
