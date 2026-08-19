@@ -157,28 +157,38 @@ def test_url_reference_mode_prompt_prioritizes_the_article():
     assert "最大2回" in prompt
 
 
-def test_grok_system_prompt_stays_short_and_covers_the_measured_gaps():
-    """Grok向けの指示は、実測で足りなかった点だけを足した短い契約に保つ。
+def test_grok_system_prompt_only_keeps_mechanical_rules():
+    """Grok向けの指示は、Marpの表示と検査に必要なものだけに絞る。
 
-    2026-08-19の実測（Sonnet 4.6と同じシンプルなプロンプトで3お題ずつ）では、
-    Grokは指定枚数・はみ出し・構造違反・見出しの主張化をSonnetと同等以上に守れた。
-    Kimi向けに積み上げた枚数の内訳表や `site:` 指定は、Grokには不要だったので入れない。
-    補ったのは、Sonnetと比べて明確に劣っていた次の3点だけ。
+    Kimi向けに積み上げた文章の型（結論を言い切る見出し、リード文を必ず置く、
+    表現パターンA〜Eのローテーション）をGrokへ持ち込むと、資料が読者へ
+    語りかける調子になって不自然になる（2026-08-20にみのるんから指摘）。
+    素のGrokは指示が無いほうが淡々とした資料調で書くので、足すのは
+    「無いと崩れる・検査に落ちる」ものだけにする。
     """
     prompt = get_system_prompt("speee", "grok")
 
-    assert "Grok 4.6実行契約" in prompt
-    # 1) 表の区切り行が7個中5個で抜け、表として描画されなかった
-    assert "区切り行を必ず入れる" in prompt
-    # 2) 本文量がSonnetの7割程度で、2〜3項目のページが混ざった
-    assert "本文の要素を4〜5つ並べる" in prompt
-    assert "要素が2〜3つで終わるページを作らない" in prompt
-    # 3) 密度を上げた版で製品名が「Code側」「両社」へ縮み、比較が読めなくなった
+    # 残すもの（無いと壊れる・取り違える）
+    assert "そのままスライドまで作る" in prompt          # 確認質問をしない
+    assert "対象の取り違えを防ぐほうを優先する" in prompt  # 略語の読み違い対策
+    assert "依頼の題をそのまま短く置く" in prompt          # 表紙が主張文にならないように
     assert "正式な製品名を本文と表へそのまま書く" in prompt
+    assert "<!-- source: https://... -->" in prompt        # 出典の検査に必要
 
-    # Kimi向けの重い指示を持ち込まない（持ち込むと薄く短い出力へ戻る）
-    assert "指定枚数を増減しない" not in prompt
-    assert "site:help.openai.com" not in prompt
+    # 途中の発話は止めない。「検索します」程度の一言はあってよい
+    assert "何をしているかを短く言いながら進めるのは構わない" in prompt
+    assert "前置き" not in prompt
+
+    # 文章の型は指示しない
+    for banned in (
+        "結論を述語で言い切った1文",
+        "リード文",
+        "本文の要素を4〜5つ",
+        "判断基準か次の一歩",
+        "である",
+    ):
+        assert banned not in prompt, f"文章の型が残っている: {banned}"
+
     assert len(prompt) < len(get_system_prompt("speee", "kimi"))
 
 
@@ -253,19 +263,30 @@ def test_kimi_system_prompt_requires_storytelling_over_bullet_lists():
     assert "見出しとリード文は最後まで残す" in prompt
 
 
-def test_output_slide_patterns_all_require_a_lead_line():
-    """全パターンにリード文があり、箇条書きだけで完結する型が残っていないこと。"""
+def test_output_slide_doc_keeps_only_marp_requirements():
+    """ツールの説明文は毎回モデルへ渡るので、ここに文章の型を書かない。
+
+    2026-08-20、システムプロンプトから型を外してもスライドの調子が変わらなかった。
+    原因は、この説明文に「結論を言い切る見出し」「リード文を必ず置く」
+    「表現パターンA〜Eをローテーション」というKimi向けの型が残っていたこと。
+    """
     from tools.output_slide import output_slide
 
     doc = output_slide.__doc__ or ""
 
-    assert "リード文【重要】" in doc
-    assert "主張+根拠型" in doc
-    assert "因果型" in doc
-    # 箇条書きだけで完結していた旧A型が復活していないこと
-    assert "**箇条書き型**: `##` + 箇条書き5〜6項目" not in doc
-    for pattern_line in ("A. **主張+根拠型**", "B. **小見出し型**", "C. **テーブル型**",
-                         "D. **因果型**", "E. **まとめ型**"):
-        assert pattern_line in doc
-        index = doc.index(pattern_line)
-        assert "リード文1行" in doc[index:index + 120], f"{pattern_line} にリード文がない"
+    # Marpの表示と、このツール自身の検査に必要なものは残す
+    assert "見出しの階層【重要】" in doc
+    assert "通常スライドの見出しは `##`" in doc
+    assert "区切り行を必ず置く" in doc
+    assert "_class: end" in doc
+    assert "9行が上限" in doc
+
+    # 文章の型は書かない
+    for banned in (
+        "結論を述語で言い切った1文",
+        "リード文【重要】",
+        "表現パターン",
+        "主張+根拠型",
+        "因果型",
+    ):
+        assert banned not in doc, f"文章の型が残っている: {banned}"
