@@ -55,7 +55,7 @@ describe('applyToolUse', () => {
     const generating = applyToolUse(full, 'output_slide');
 
     expect(generating.map(message => message.statusText)).toEqual([
-      MESSAGES.WEB_FETCH_COMPLETED,
+      `${MESSAGES.WEB_FETCH_COMPLETED} https://example.com/article`,
       MESSAGES.SLIDE_GENERATING,
     ]);
   });
@@ -80,9 +80,11 @@ describe('applyToolUse', () => {
     const fetching = applyToolUse(searching, 'http_request', 'https://example.com');
     const generating = applyToolUse(fetching, 'output_slide');
 
+    // 完了しても何を調べたかを残す。全部「Web検索完了」に潰すと、
+    // 検索を6回する依頼で同じ行が6本並び、同じ通知の繰り返しに見える。
     expect(generating.map(message => message.statusText)).toEqual([
-      MESSAGES.WEB_SEARCH_COMPLETED,
-      MESSAGES.WEB_FETCH_COMPLETED,
+      `${MESSAGES.WEB_SEARCH_COMPLETED} "Claude Code"`,
+      `${MESSAGES.WEB_FETCH_COMPLETED} https://example.com`,
       MESSAGES.SLIDE_GENERATING,
     ]);
   });
@@ -107,5 +109,28 @@ describe('applyToolUse', () => {
     const duplicate = applyToolUse(first, 'output_slide');
 
     expect(duplicate.filter(message => message.statusText === MESSAGES.SLIDE_GENERATING)).toHaveLength(1);
+  });
+
+  it('検索クエリが途中まで届いても、同じ検索は1行のまま書き換える', () => {
+    // ツールの引数は分割して届く。行を足すと1回の検索が3行に見える。
+    let messages = applyToolUse([], 'web_search', '御田稔 KAG');
+    messages = applyToolUse(messages, 'web_search', '御田稔 KAG テックエバンジェリスト');
+    messages = applyToolUse(messages, 'web_search', '御田稔 KAG テックエバンジェリスト 著書');
+
+    const searchRows = messages.filter(
+      message => message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX),
+    );
+    expect(searchRows).toHaveLength(1);
+    expect(searchRows[0].statusText).toBe('Web検索中... "御田稔 KAG テックエバンジェリスト 著書"');
+  });
+
+  it('別の検索が始まったら前の行を完了にして新しい行を立てる', () => {
+    let messages = applyToolUse([], 'web_search', '御田稔 KAG');
+    messages = applyToolUse(messages, 'web_search', 'KDDIアジャイル開発センター 会社概要');
+
+    expect(messages.map(message => message.statusText)).toEqual([
+      'Web検索完了 "御田稔 KAG"',
+      'Web検索中... "KDDIアジャイル開発センター 会社概要"',
+    ]);
   });
 });

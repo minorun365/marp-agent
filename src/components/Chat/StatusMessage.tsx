@@ -1,4 +1,4 @@
-import { TIPS, MESSAGES, isSlideInProgressStatus } from './constants';
+import { TIPS, MESSAGES, isSlideInProgressStatus, isCompletedWebStatus } from './constants';
 import type { Message } from './types';
 
 interface StatusMessageProps {
@@ -8,14 +8,13 @@ interface StatusMessageProps {
 
 export function StatusMessage({ message, index }: StatusMessageProps) {
   const isSlideGenerating = isSlideInProgressStatus(message.statusText);
-  const isWebSearching = message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX) && message.statusText !== MESSAGES.WEB_SEARCH_COMPLETED;
-  const isWebFetching = message.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX) && message.statusText !== MESSAGES.WEB_FETCH_COMPLETED;
+  const isWebSearching = message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX) && !isCompletedWebStatus(message.statusText);
+  const isWebFetching = message.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX) && !isCompletedWebStatus(message.statusText);
   const currentTip = isSlideGenerating && message.tipIndex !== undefined ? TIPS[message.tipIndex] : null;
 
   const isCompleted = message.statusText === MESSAGES.SLIDE_CHECK_COMPLETED ||
     message.statusText === MESSAGES.SLIDE_COMPLETED ||
-    message.statusText === MESSAGES.WEB_SEARCH_COMPLETED ||
-    message.statusText === MESSAGES.WEB_FETCH_COMPLETED ||
+    isCompletedWebStatus(message.statusText) ||
     message.statusText === MESSAGES.TWEET_COMPLETED;
 
   return (

@@ -62,6 +62,24 @@ export const isSlideInProgressStatus = (statusText?: string) =>
 export const getWebSearchStatus = (query?: string) =>
   query ? `${MESSAGES.WEB_SEARCH_PREFIX} "${query}"` : MESSAGES.WEB_SEARCH_DEFAULT;
 
+// 検索が終わった行は、これまで全部「Web検索完了」だけに潰していた。同じ文字列が
+// 何行も並ぶので、6回検索すると「同じ通知が繰り返し出ている」ように見える。
+// 何を調べ終えたのかが残るよう、検索中の文言だけを完了へ差し替える。
+export const toCompletedWebStatus = (statusText: string): string => {
+  if (statusText.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
+    return MESSAGES.WEB_SEARCH_COMPLETED + statusText.slice(MESSAGES.WEB_SEARCH_PREFIX.length);
+  }
+  if (statusText.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
+    return MESSAGES.WEB_FETCH_COMPLETED + statusText.slice(MESSAGES.WEB_FETCH_PREFIX.length);
+  }
+  return statusText;
+};
+
+export const isCompletedWebStatus = (statusText?: string): boolean =>
+  !!statusText
+  && (statusText.startsWith(MESSAGES.WEB_SEARCH_COMPLETED)
+    || statusText.startsWith(MESSAGES.WEB_FETCH_COMPLETED));
+
 // URL付きのWebページ取得ステータスを生成
 export const getWebFetchStatus = (url?: string) =>
   url ? `${MESSAGES.WEB_FETCH_PREFIX} ${url}` : MESSAGES.WEB_FETCH_DEFAULT;

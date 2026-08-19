@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { invokeAgent, invokeAgentMock } from '../../../hooks/useAgentCore';
 import { SSEIdleTimeoutError } from '../../../hooks/streaming/sseParser';
-import { MESSAGES, getWebSearchStatus, getWebFetchStatus, getShareMessage, isSlideInProgressStatus, useMock } from '../constants';
+import { MESSAGES, getWebSearchStatus, getWebFetchStatus, getShareMessage, isSlideInProgressStatus, toCompletedWebStatus, useMock } from '../constants';
 import type { ModelType, Message, ReferenceFile } from '../types';
 import { createMessage } from '../types';
 import { useTipRotation } from './useTipRotation';
@@ -37,10 +37,10 @@ export function appendSlideProgress(messages: Message[], message: string): Messa
 function completeActiveWebStatuses(messages: Message[]): Message[] {
   return messages.map(message => {
     if (message.isStatus && message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
-      return { ...message, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
+      return { ...message, statusText: toCompletedWebStatus(message.statusText) };
     }
     if (message.isStatus && message.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
-      return { ...message, statusText: MESSAGES.WEB_FETCH_COMPLETED };
+      return { ...message, statusText: toCompletedWebStatus(message.statusText) };
     }
     return message;
   });
@@ -65,10 +65,35 @@ export function applyToolUse(messages: Message[], toolName: string, query?: stri
 
   if (toolName === 'web_search') {
     const searchStatus = getWebSearchStatus(query);
-    const hasActiveSearch = settledMessages.some(
-      message => message.isStatus && message.statusText === searchStatus
-    );
-    if (hasActiveSearch) return settledMessages;
+    // ツールの引数は分割して届くため、同じ検索について「途中までのクエリ」→「全文」の
+    // 順で通知が来る。文字列が違うだけで別の検索として行を足すと、1回の検索が
+    // 「Web検索完了」3行になって画面が伸びる。続きの通知は同じ行を書き換える
+    // （http_requestと同じ扱い）。
+    let activeIndex = -1;
+    for (let index = settledMessages.length - 1; index >= 0; index -= 1) {
+      const message = settledMessages[index];
+      if (message.isStatus && message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
+        activeIndex = index;
+        break;
+      }
+    }
+
+    if (activeIndex >= 0) {
+      const activeStatus = settledMessages[activeIndex].statusText as string;
+      if (activeStatus === searchStatus) return settledMessages;
+      // 表示は 'Web検索中... "クエリ"' と引用符で閉じるので、文字列の前方一致では
+      // 続きかどうかを判定できない。クエリ同士で比べる。
+      const quoted = `${MESSAGES.WEB_SEARCH_PREFIX} "`;
+      const activeQuery = activeStatus.startsWith(quoted)
+        ? activeStatus.slice(quoted.length, -1)
+        : '';
+      const isContinuation = activeQuery.length > 0 && (query ?? '').startsWith(activeQuery);
+      if (activeStatus === MESSAGES.WEB_SEARCH_DEFAULT || isContinuation) {
+        const updated = [...settledMessages];
+        updated[activeIndex] = { ...updated[activeIndex], statusText: searchStatus };
+        return updated;
+      }
+    }
 
     return [
       ...completeActiveWebStatuses(settledMessages),
@@ -292,10 +317,10 @@ export function useChatMessages({
           setMessages(prev => {
             const msgs = prev.map(msg => {
               if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
-                return { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
+                return { ...msg, statusText: toCompletedWebStatus(msg.statusText) };
               }
               if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
-                return { ...msg, statusText: MESSAGES.WEB_FETCH_COMPLETED };
+                return { ...msg, statusText: toCompletedWebStatus(msg.statusText) };
               }
               if (msg.isStatus && isSlideInProgressStatus(msg.statusText)) {
                 return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
@@ -371,10 +396,10 @@ export function useChatMessages({
           setMessages(prev =>
             prev.map(msg => {
               if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
-                return { ...msg, statusText: MESSAGES.WEB_SEARCH_COMPLETED };
+                return { ...msg, statusText: toCompletedWebStatus(msg.statusText) };
               }
               if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
-                return { ...msg, statusText: MESSAGES.WEB_FETCH_COMPLETED };
+                return { ...msg, statusText: toCompletedWebStatus(msg.statusText) };
               }
               return msg;
             })

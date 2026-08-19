@@ -239,6 +239,8 @@ async def invoke(payload, context=None):
     # 画面へ通知済みの取得URL。Kimiはツールの引数を分割して流すため、
     # 同じ取得について複数回スナップショットが届く。
     announced_fetch_urls: list[str] = []
+    # 同じ検索について既に通知したクエリ（途中まで含む）。重複通知の判定に使う。
+    announced_search_queries: list[str] = []
 
     def get_slide_progress_event():
         """Kimiの内部文ではなく、検査ツールが確定した進捗だけを返す。"""
@@ -303,13 +305,26 @@ async def invoke(payload, context=None):
                 if tool_name == "web_search":
                     web_search_executed = True
                     mark_web_search_executed()
-                    web_search_event_count += 1
-                    if (
-                        web_search_event_count <= 6
-                        and isinstance(tool_input, dict)
-                        and "query" in tool_input
-                    ):
-                        yield {"type": "tool_use", "data": tool_name, "query": tool_input["query"]}
+                    # ツールの引数は複数のスナップショットに分かれて届くため、同じ検索の
+                    # 「途中まで」のクエリで何度も通知が飛ぶ。1回の検索が画面へ3行ほど
+                    # 積み上がるので、http_requestと同じくクエリが伸びている間は通知しない
+                    # （画面側は最後の1行を書き換える）。
+                    search_query = (
+                        tool_input.get("query", "") if isinstance(tool_input, dict) else ""
+                    )
+                    is_stale = any(
+                        announced.startswith(search_query)
+                        for announced in announced_search_queries
+                    )
+                    if search_query and not is_stale:
+                        announced_search_queries.append(search_query)
+                        web_search_event_count += 1
+                        if web_search_event_count <= 6:
+                            yield {
+                                "type": "tool_use",
+                                "data": tool_name,
+                                "query": search_query,
+                            }
                 elif tool_name == "http_request":
                     # KimiはURLが埋まる前のスナップショットを先に流してくる。URL無しで
                     # 通知すると、画面に「読み込み中」がURL付きと2行に分かれて立ち、

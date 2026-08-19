@@ -37,6 +37,19 @@ export async function invokeAgentMock(
     await sleep(transitionDelay);
     callbacks.onToolUse('http_request', sourceUrl);
     await sleep(transitionDelay);
+  } else {
+    // 本番のGrokは論点を分けて4〜6回検索する。検索が1回しかないモックだと、
+    // 完了した行が積み上がったときの見え方をローカルで確認できない。
+    const mockQueries = [
+      `${prompt} 概要`,
+      `${prompt} 最新 事例`,
+      `${prompt} 公式 ドキュメント`,
+      `${prompt} 導入 判断`,
+    ];
+    for (const query of mockQueries) {
+      callbacks.onToolUse('web_search', query);
+      await sleep(700);
+    }
   }
 
   // ツール使用開始
