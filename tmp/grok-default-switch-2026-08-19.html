@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Grok標準化｜Sonnet比較とプロンプト絞り込み</title>
+<title>Grok本番投入｜Sonnet比較とプロンプト絞り込み</title>
 <style>
 :root{
   --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
@@ -127,16 +127,16 @@ footer p{margin:8px 0}
 <div class="hero">
   <div class="hero-in">
     <span class="kicker">パワポ作るマン 公開版 ／ モデル切替の報告</span>
-    <h1>標準モデルをGrok 4.6へ切り替え、<br>プロンプトを3分の1に絞りました</h1>
-    <p class="sub">Sonnet 4.6と素のGrokを同じ短いプロンプトで比べ、劣っていた3点だけを補いました。</p>
+    <h1>Grok 4.6を本番の選択肢として公開しました<br>標準はKimi K2.5のままです</h1>
+    <p class="sub">Sonnet 4.6と素のGrokを同じ短いプロンプトで比べ、劣っていた3点だけを補ったうえで出しています。</p>
     <table class="hero-facts">
       <tbody>
       <tr><th>対象</th><td>パワポ作るマン 公開版（pawapo.minoruonda.com）／ KAG社内版は未対応</td></tr>
-      <tr><th>変更</th><td>標準モデル Kimi K2.5 → Grok 4.6。Claudeモデル（Sonnet 4.6 / Sonnet 5 / Opus 4.6）は設定ごと削除</td></tr>
+      <tr><th>変更</th><td>モデル選択へ「新モデル（Grok 4.6）」を追加。標準は「標準（Kimi K2.5）」のまま。Sonnet 4.6は従来どおり停止中の表示で残す</td></tr>
       <tr><th>実行環境</th><td>xai.grok-4.6 ／ bedrock-mantle ／ us-west-2 ／ 推論の深さ medium</td></tr>
       <tr><th>検証</th><td>2026年8月19日。お題3種 × 条件3系統で12本を実生成し、アプリ本番の機械検査で採点</td></tr>
-      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモークテスト4/4が合格</td></tr>
-      <tr><th>費用</th><td>1回あたり Grok 13〜36円（Kimi 約9円、Sonnet 40〜84円）</td></tr>
+      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモークテスト5/5が合格（Grokを選んだ経路も毎回検査する）</td></tr>
+      <tr><th>費用</th><td>1回あたり Grok 13〜36円（Kimi 約9円、Sonnet 40〜84円）。AWSクレジットの適用対象</td></tr>
       </tbody>
     </table>
   </div>
@@ -159,7 +159,7 @@ footer p{margin:8px 0}
   <section id="s1">
     <span class="eyebrow">01</span>
     <h2>結論</h2>
-    <p class="lead">Grokは、Sonnet 4.6と同じ短いプロンプトを与えただけで、Sonnetと同等以上のスライドを出しました。そこで長い指示を積むのをやめ、実測で劣っていた3点だけを足す方針に変えています。</p>
+    <p class="lead">Grokは、Sonnet 4.6と同じ短いプロンプトを与えただけで、Sonnetと同等以上のスライドを出しました。そこで長い指示を積むのをやめ、実測で劣っていた3点だけを足しています。標準へ上げる前に、まず選択肢として本番で試せる状態にしました。</p>
 
     <div class="grid">
       <div class="card">
@@ -178,7 +178,7 @@ footer p{margin:8px 0}
       <div class="card">
         <h4>費用はSonnetの約3分の1<span>Kimiの約2倍</span></h4>
         <div class="card-body">
-          <p>チューニング後は1回13〜36円。Sonnetの40〜84円より安く、Kimiの約9円よりは高くなります。</p>
+          <p>チューニング後は1回13〜36円。Sonnetの40〜84円より安く、Kimiの約9円よりは高くなります。AWSクレジットの適用対象なので、切り替えの障害にはなりません。</p>
         </div>
       </div>
     </div>
@@ -320,10 +320,13 @@ footer p{margin:8px 0}
         <tbody>
           <tr><td>差分</td><td>削除0件</td><td>3スタックの更新のみ。Googleログインやドメインの削除差分は出ていない</td></tr>
           <tr><td>構成検査</td><td>14/14合格</td><td>Mantleを呼べるかの検査を1項目追加した（後述）</td></tr>
-          <tr><td>スモーク</td><td>4/4合格</td><td>ログイン→生成→利用者の記録→PDF書き出しを実際に通した</td></tr>
-          <tr><td>配信物</td><td>確認済み</td><td>本番のJavaScriptに「標準（Grok 4.6）」が入り、Kimiの表示は消えている</td></tr>
+          <tr><td>スモーク</td><td>5/5合格</td><td>ログイン→生成→利用者の記録→PDF書き出しに加え、Grokを選んだ生成も毎回通す</td></tr>
+          <tr><td>配信物</td><td>確認済み</td><td>本番のJavaScriptに「標準（Kimi K2.5）」「新モデル（Grok 4.6）」の両方が入っている</td></tr>
         </tbody>
       </table>
+    </div>
+    <div class="callout blue">
+      <p><b>標準がKimiのままなので、Grokの経路はスモークテストへ足しました。</b>既定の生成だけを試す形では、Grokを選んだときだけ壊れている状態に誰も気づけません。Mantleは別エンドポイントなので、認可や接続だけが落ちることが実際に起こりえます。</p>
     </div>
     <div class="callout">
       <p><b>MantleはIAMの体系が別でした。</b>Grokは <code>bedrock-mantle</code> というエンドポイントで動き、これまでの <code>bedrock:InvokeModel</code> では認可されません。実行ロールへ <code>bedrock-mantle:CreateInference</code> と <code>bedrock-mantle:CallWithBearerToken</code> を追加し、この2つが本番に反映されているかを構成検査へ足しました。落ちると生成のたびに権限エラーになる箇所です。</p>
@@ -333,19 +336,20 @@ footer p{margin:8px 0}
   <section id="s7">
     <span class="eyebrow">07</span>
     <h2>判断していただきたい点</h2>
-    <p class="lead">品質の面では判断待ちの項目はありません。費用だけ、想定と合っているかを見ていただきたいです。</p>
+    <p class="lead">費用はクレジットの適用対象なので解消済みです。残るのは、いつGrokを標準へ上げるかだけです。</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>モデル</th><th>1回あたり</th><th>100万トークン単価</th><th>状態</th></tr></thead>
+        <thead><tr><th>モデル</th><th>1回あたり</th><th>100万トークン単価</th><th>いまの扱い</th></tr></thead>
         <tbody>
-          <tr><td>Grok 4.6</td><td>13〜36円</td><td>入力 $2.20 ／ 出力 $6.60</td><td>本番の標準（今回）</td></tr>
-          <tr><td>Kimi K2.5</td><td>約9円</td><td>入力 $0.60 ／ 出力 $3.00</td><td>設定のみ保持</td></tr>
-          <tr><td>Sonnet 4.6</td><td>40〜84円</td><td>入力 $3.00 ／ 出力 $15.00</td><td>削除</td></tr>
+          <tr><td>Kimi K2.5</td><td>約9円</td><td>入力 $0.60 ／ 出力 $3.00</td><td>標準</td></tr>
+          <tr><td>Grok 4.6</td><td>13〜36円</td><td>入力 $2.20 ／ 出力 $6.60</td><td>選択肢として公開（今回）</td></tr>
+          <tr><td>Claude Sonnet 4.6</td><td>40〜84円</td><td>入力 $3.00 ／ 出力 $15.00</td><td>停止中の表示のまま</td></tr>
         </tbody>
       </table>
     </div>
-    <p>Kimiからの切り替えで、1回あたりの費用はおよそ2倍になります。予算アラートは月100ドルのまま変えていません。利用が増えて負担が重くなるようなら、Kimiを軽量な選択肢としてUIへ戻す形にもできます（コードは残してあります）。</p>
-    <p>また、KAG社内版（別リポジトリ）は今回の対象外です。同じ切り替えを入れるかどうかは、公開版の費用と品質を数日見てから決めるのがよいと考えています。</p>
+    <p>実際に触っていただいて問題がなければ、標準をGrokへ上げます。切り替えはUIの1行と <code>config.py</code> の1行だけなので、デプロイ1回で済みます。</p>
+    <p>あわせて2点だけ共有します。ひとつは、今回のスモークテストで<b>Kimiが1回だけ無出力で落ちた</b>ことです。エラーログは出ず、再実行で通りました。ローカルで同じ依頼を再現したところ正常に出力できたので、コードの問題ではなくKimi側のばらつきと見ています。検証でもKimiは毎回3回output_slideを呼び直しており、Grokは1〜3回で収まっていました。</p>
+    <p>もうひとつは、KAG社内版（別リポジトリ）が今回の対象外という点です。公開版の様子を見てから同じ変更を入れるのがよいと考えています。</p>
   </section>
 
   <footer>
