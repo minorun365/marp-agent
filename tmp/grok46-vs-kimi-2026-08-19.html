@@ -137,7 +137,7 @@ footer p{margin:8px 0}
   <div class="hero-in">
     <span class="kicker">パワポ作るマン ／ モデル検証</span>
     <h1>Grok 4.6は、専用チューニング無しでも<br>いまのKimi K2.5を品質で上回る</h1>
-    <p class="sub">ただし1回あたりの費用は2〜4倍。切り替えるかは費用の見方しだいです。</p>
+    <p class="sub">1回あたりの費用は2〜4倍。AWSクレジットは実験で確認したところ<b>適用対象</b>でした。</p>
     <table class="hero-facts">
       <tbody>
       <tr><th>検証日</th><td>2026年8月19日（Grok 4.6は8月18日リリース）</td></tr>
@@ -375,20 +375,42 @@ footer p{margin:8px 0}
 <section id="s6">
   <span class="eyebrow">06</span>
   <h2>AWSクレジットは効くか</h2>
-  <p class="lead">結論から言うと<b>効く見込みが高い</b>ですが、確定は明日の請求データで取れます。</p>
-
-  <h3>いま確認できたこと</h3>
-  <ul>
-    <li>8月のBedrock使用料は<b>4.81ドルで、全額がクレジットで相殺</b>されている（使用+4.81／クレジット−4.81）。</li>
-    <li>Kimiの課金項目は <code>USE1-moonshotai.kimi-k2.5-mantle-input-tokens-standard</code> という名前で、<b>すでにMantle経由として</b>「Amazon Bedrock」サービスに計上されている。</li>
-    <li>Grokも同じMantleの課金体系に乗るため、<code>USW2-xai.grok-4.6-mantle-*</code> として同じ「Amazon Bedrock」に載る見込み。AWS Marketplace の別サービスとしては計上されない。</li>
-    <li>傍証として、Grok 4.3 はAWSの料金APIに「Amazon Bedrock」の製品として登録済み（4.6はまだ未掲載）。</li>
-  </ul>
+  <p class="lead">結論は<b>効きます</b>。ここは推測で済ませてはいけない箇所でした。AWSは「一部のBedrockサーバーレスモデルはAWS Marketplace として請求される」と明記しており、Marketplace はクレジットの対象外だからです。Grokがどちら側かを実際に確かめました。</p>
 
   <div class="callout">
-    <p><b>確定させるには明日もう一度見るのが確実です。</b>今日のGrok呼び出しは請求データへまだ反映されていません（Cost Explorerは1日ほど遅れます）。明日このコマンドで <code>xai.grok-4.6</code> の行が出て、クレジットで相殺されていれば確定です。</p>
+    <p><b>先に前提。</b>AWSのプロモーションクレジット規約は、AWS Marketplace を対象外（Ineligible Services）と定めています。そしてBedrockのFAQは「一部のBedrockサーバーレスモデルとBedrock Marketplaceのモデルは、サードパーティ製品として<b>AWS Marketplaceの請求項目</b>に出る」と書いています。<b>つまり「Bedrockだからクレジットが効く」とは言い切れません。</b>モデルごとにどちらの売り方かが決まります。</p>
   </div>
-  <p class="note">確認コマンド：<code>aws ce get-cost-and-usage --profile pawapo --region us-east-1 --time-period Start=2026-08-19,End=2026-08-21 --granularity DAILY --metrics UnblendedCost --group-by Type=DIMENSION,Key=USAGE_TYPE --filter '{"Dimensions":{"Key":"SERVICE","Values":["Amazon Bedrock"]}}'</code></p>
+
+  <h3>調べた5つと、その結果</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>調べたこと</th><th>方法</th><th>結果</th></tr></thead>
+      <tbody>
+        <tr><td>クレジットがBedrockに効いているか</td><td>Cost Explorer の記録タイプ別</td><td class="ok">8月のBedrock使用料 $4.81 が全額相殺</td></tr>
+        <tr><td>Marketplace請求の有無</td><td>請求主体（BILLING_ENTITY）の一覧</td><td class="ok">過去90日すべて「AWS」のみ</td></tr>
+        <tr><td>Grok初回呼び出しでサブスクが走ったか</td><td>CloudTrail（本日・過去90日）</td><td class="ok">Marketplaceイベント 0件</td></tr>
+        <tr><td>Grokが料金APIでどう扱われるか</td><td>AWS Price List API</td><td class="ok">servicecode は AmazonBedrock</td></tr>
+        <tr><td><b>Marketplace権限なしで呼べるか</b></td><td><b>権限を剥奪した認証情報で実呼び出し</b></td><td class="ok"><b>Grok・Kimiとも成功</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>決め手になった実験</h3>
+  <p>Marketplace経由のモデルは、初回呼び出しのときにサブスクリプションが自動で作られる仕組みで、<code>aws-marketplace:Subscribe</code> の権限がないと「Model access is denied」で弾かれます。そこで<b>Marketplace系の権限だけを明示的に禁止した一時的な認証情報</b>を作り、それでGrokを呼びました。</p>
+  <ul>
+    <li>まず権限が実際に落ちていることを確認（Marketplace APIは AccessDeniedException で拒否された）</li>
+    <li>その認証情報で <b>Grok 4.6 の呼び出しは成功</b>。比較用のKimiも成功</li>
+    <li>CloudTrail上、サブスクリプションは過去に一度も作られていない。<b>つまり「すでに契約済みだから通った」わけではない</b></li>
+  </ul>
+  <p>Marketplace商品であれば、この条件では必ず失敗します。失敗しなかったので、<b>Grok 4.6 はAWSが直接販売するモデル</b>＝クレジットの対象、と判断できます。</p>
+
+  <div class="callout blue">
+    <p><b>残る確認は1つだけ。</b>本日のGrok利用分は請求データへまだ反映されていません（Cost Explorerは1日ほど遅れます）。明日、下のコマンドで <code>xai.grok-4.6</code> の行が「AWS」請求主体で出て、クレジットで相殺されていれば完全に確定します。上の実験の結果から、覆る可能性は低いと見ています。</p>
+  </div>
+  <p class="note">確認コマンド：<code>aws ce get-cost-and-usage --profile pawapo --region us-east-1 --time-period Start=2026-08-19,End=2026-08-21 --granularity DAILY --metrics UnblendedCost --group-by Type=DIMENSION,Key=USAGE_TYPE Type=DIMENSION,Key=RECORD_TYPE</code></p>
+
+  <h3>今後のモデル選定で覚えておくこと</h3>
+  <p>今回いちばん危なかったのは、<b>「Bedrockのモデルだからクレジットが効く」と考えてしまうこと</b>でした。同じBedrockのサーバーレスモデルでも、AWSが売っているものとサードパーティが売っているものが混在しています。新しいモデルを本番へ入れる前は、上の表の3行目（CloudTrailでサブスクリプションの有無）と5行目（権限を落として呼べるか）を確認するのが確実です。</p>
 </section>
 
 <section id="s7">
