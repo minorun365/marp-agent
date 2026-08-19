@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>スライドの型を撤去｜検索復旧と待ち時間</title>
+<title>Grokを標準へ｜型の撤去と検索復旧</title>
 <style>
 :root{
   --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
@@ -127,7 +127,7 @@ footer p{margin:8px 0}
 <div class="hero">
   <div class="hero-in">
     <span class="kicker">パワポ作るマン 公開版 ／ 障害復旧とプロンプト整理</span>
-    <h1>Kimi向けの文章の型を撤去しました<br>Web検索も復旧済みです</h1>
+    <h1>標準モデルをGrok 4.6にしました<br>型の撤去と検索復旧も反映済みです</h1>
     <p class="sub">語りかける調子の原因は、システムプロンプトではなくツールの説明文に残っていた型でした。</p>
     <table class="hero-facts">
       <tbody>
@@ -136,7 +136,8 @@ footer p{margin:8px 0}
       <tr><th>戻したもの</th><td>撤去しすぎて質素になったため、Sonnet時代にあった「3〜5枚ごとの中タイトル」「表・引用・太字の使い分け」だけ復活。中タイトル0→2枚、引用0→1〜2件（<a href="https://html.minoruonda.com/pages/prompt-comparison-2026-08-20/index.html">別ページに全文と実測</a>）</td></tr>
       <tr><th>途中のセリフ</th><td>「前置きを出さない」という抑制を外した。確認質問だけを止め、作業中の一言は止めない</td></tr>
       <tr><th>速度</th><td>検索ありの生成が106秒 → 33秒。無音だった待ち時間には10秒で「スライドを作成中」を出す</td></tr>
-      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモーク6/6合格（検索経路の検査を新設）</td></tr>
+      <tr><th>モデル選択</th><td>「標準」が Kimi K2.5 → <b>Grok 4.6</b>。「高品質（Claude Sonnet 4.6）」は資金不足の表示のままグレーアウトで残す。Kimiは設定だけ保持し、UIからは外した</td></tr>
+      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモーク5/5合格（検索経路の検査を新設）。配信物のラベルも「標準（Grok 4.6）」を確認</td></tr>
       </tbody>
     </table>
   </div>
