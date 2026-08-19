@@ -155,7 +155,28 @@ def test_url_reference_mode_prompt_prioritizes_the_article():
 
     assert "最初に http_request" in prompt
     assert "主役の資料" in prompt
-    assert "最大2回" in prompt
+    assert "最大4回" in prompt
+
+
+def test_url_reference_mode_prompt_keeps_the_normal_structure_rules():
+    """URL資料モードは記事の扱い方だけを足し、構成のルールを上書きしない。
+
+    2026-08-20、AWSのWhat's NewのURLを貼ったら本文1枚に長文を詰めた4枚の
+    資料が出た。冒頭が「この依頼では最優先」と宣言していたため、枚数・見出し・
+    1枚あたりの要素数のルールごと押しのけられていた。
+    """
+    prompt = config.URL_REFERENCE_MODE_PROMPT
+
+    # 上書きの範囲を限定し、通常のルールを名指しで残す
+    assert "最優先" not in prompt
+    assert "構成の骨格（4-1）" in prompt
+    assert "枚数の目安" in prompt
+
+    # 1枚へ詰め込ませない
+    assert "1枚へ詰め込まない" in prompt
+
+    # 読み手が記事を読んでいない前提で書かせる
+    assert "読んでいない前提" in prompt
 
 
 def test_grok_system_prompt_only_keeps_mechanical_rules():
