@@ -232,6 +232,58 @@ if (accessToken) {
   check('Grokを選んでもスライドを生成できる', false, 'ログインできていないので未実施');
 }
 
+// ── 6. Web検索を使う経路 ────────────────────────────────────────────
+// 検索APIのキーが枯渇すると、エージェントは「無料枠が枯渇しました」と案内して
+// スライドを作らずに終わる。HTTPは200のままで構成検査も通るため、これまで
+// 利用者から指摘されるまで気づけなかった（2026-08-20に約半日止まっていた）。
+if (accessToken) {
+  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodeURIComponent(runtime.agentRuntimeArn)}/invocations?qualifier=DEFAULT`;
+  try {
+    const body = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', Accept: 'text/event-stream',
+        Authorization: `Bearer ${accessToken}`,
+        'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': `${sessionId}-search`,
+      },
+      body: JSON.stringify({
+        prompt: 'Amazon Bedrock AgentCoreの最新情報を調べて、6枚のスライドにまとめて',
+        theme: 'border',
+      }),
+      signal: AbortSignal.timeout(300_000),
+    }).then((r) => r.text());
+
+    let searched = false;
+    let searchMarkdown = '';
+    let agentText = '';
+    for (const line of body.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      try {
+        const event = JSON.parse(line.slice(6));
+        if (event.type === 'tool_use' && event.data === 'web_search') searched = true;
+        if (event.type === 'markdown') searchMarkdown = event.data || event.content || '';
+        if (event.type === 'text') agentText += event.data || event.content || '';
+      } catch {
+        // 分割されたイベントは無視してよい
+      }
+    }
+    const exhausted = agentText.includes('枯渇');
+    check(
+      'Web検索を使う依頼でもスライドを生成できる',
+      searched && Boolean(searchMarkdown) && !exhausted,
+      exhausted
+        ? '検索APIのキーが枯渇している（Secrets Managerのキーを差し替える）'
+        : searchMarkdown
+          ? `検索${searched ? 'あり' : 'なし'}で${searchMarkdown.length}文字のスライドを受信`
+          : 'スライドが返らなかった',
+    );
+  } catch (error) {
+    check('Web検索を使う依頼でもスライドを生成できる', false, error.message.split('\n')[0]);
+  }
+} else {
+  check('Web検索を使う依頼でもスライドを生成できる', false, 'ログインできていないので未実施');
+}
+
 // ── 結果 ────────────────────────────────────────────────────────────
 const failures = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failures.length}/${results.length} 項目が合格\n`);
