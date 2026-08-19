@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>プロンプト現物比較｜Sonnet時代と現在</title>
+<title>プロンプト現物比較｜構成テクニックを復活</title>
 <style>
 :root{
   --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
@@ -133,13 +133,14 @@ footer p{margin:8px 0}
 <div class="hero">
   <div class="hero-in">
     <span class="kicker">パワポ作るマン 公開版 ／ プロンプトの現物</span>
-    <h1>いまのプロンプトと<br>Kimi追加前のプロンプト</h1>
-    <p class="sub">全文をそのまま載せています。削りすぎた箇所の判断材料にしてください。</p>
+    <h1>Sonnet時代の構成テクニックを<br>戻しました</h1>
+    <p class="sub">1枚ごとの文章の型は戻さず、セクション区切りと表現の使い分けだけを復活させています。全文も載せています。</p>
     <table class="hero-facts">
       <tbody>
-      <tr><th>現在</th><td>システムプロンプト1,503字＋ツール説明文1,445字＝<b>2,948字</b>（Grok選択時）</td></tr>
-      <tr><th>Kimi追加前</th><td>システムプロンプト2,177字＋ツール説明文149字＝<b>2,326字</b>（2026年2月・Sonnet 4.5時代／コミット <code>89d5b87</code>）</td></tr>
-      <tr><th>要点</th><td>旧プロンプトは「表現の多様性」を厚く指示していた。私が外したのは主に<b>1枚ごとの文章の型</b>で、旧版にあった<b>構成テクニック</b>まで一緒に落ちている</td></tr>
+      <tr><th>戻したもの</th><td>①10枚以上なら3〜5枚ごとに中タイトルを挟む ②箇条書きだけを続けず、表・引用ブロック・太字を使い分ける</td></tr>
+      <tr><th>戻さないもの</th><td>1枚ごとの文章の型（結論を言い切る見出し／リード文必須／パターンA〜E）。語りかける調子の原因だったもの</td></tr>
+      <tr><th>効果</th><td>中タイトル 0枚 → 2枚、引用 0件 → 1〜2件、太字 0件 → 1〜6件。言い切り見出しは0のまま増えていない</td></tr>
+      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモーク6/6合格。生成は22〜34秒</td></tr>
       </tbody>
     </table>
   </div>
@@ -152,7 +153,7 @@ footer p{margin:8px 0}
       <li><a href="#s1"><span class="num">01</span>何が違うかの整理</a></li>
       <li><a href="#s2"><span class="num">02</span>いまのプロンプト全文</a></li>
       <li><a href="#s3"><span class="num">03</span>Kimi追加前の全文</a></li>
-      <li><a href="#s4"><span class="num">04</span>戻す候補（未承認）</a></li>
+      <li><a href="#s4"><span class="num">04</span>戻した結果</a></li>
     </ol>
   </nav>
 
@@ -164,10 +165,10 @@ footer p{margin:8px 0}
       <table>
         <thead><tr><th>指示の種類</th><th>Kimi追加前</th><th>いま</th><th>私の見立て</th></tr></thead>
         <tbody>
-          <tr><td>セクション区切り</td><td class="win">3〜4枚ごとに必須</td><td class="lose">10枚以上のとき最大2枚</td><td>戻す価値あり</td></tr>
-          <tr><td>表現の多様性</td><td class="win">表・引用ブロック・太字を使い分けよと明示</td><td class="lose">指示なし</td><td>戻す価値あり</td></tr>
+          <tr><td>セクション区切り</td><td class="win">3〜4枚ごとに必須</td><td class="lose">10枚以上のとき最大2枚</td><td class="win">戻した</td></tr>
+          <tr><td>表現の多様性</td><td class="win">表・引用ブロック・太字を使い分けよと明示</td><td class="lose">指示なし</td><td class="win">戻した</td></tr>
           <tr><td>箇条書きの量</td><td>1枚3〜5項目</td><td>要素5つまで（行数の話だけ）</td><td>ほぼ同じ</td></tr>
-          <tr><td>1枚ごとの文章の型</td><td class="win">なし</td><td class="win">なし（今回撤去）</td><td>戻さない</td></tr>
+          <tr><td>1枚ごとの文章の型</td><td class="win">なし</td><td class="win">なし（今回撤去）</td><td class="win">戻さない</td></tr>
           <tr><td>タイトルスライド</td><td>例示のみ</td><td>題をそのまま／副題は名詞句</td><td>いまのまま</td></tr>
           <tr><td>出典コメント</td><td>なし</td><td>各スライドに <code>&lt;!-- source: --&gt;</code></td><td>アプリの検査に必要</td></tr>
           <tr><td>検索の回数</td><td>試行錯誤してよい</td><td>4回目安・最大6回</td><td>いまのまま（待ち時間）</td></tr>
@@ -183,7 +184,7 @@ footer p{margin:8px 0}
     <h2>いまのプロンプト全文</h2>
     <p class="lead">Grokを選んだときにモデルへ渡っているものです。2つに分かれていて、どちらも毎回渡ります。</p>
 
-    <p class="dump-label">① システムプロンプト（1,503字）</p>
+    <p class="dump-label">① システムプロンプト</p>
     <div class="dump"><pre>あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。
 ユーザーと壁打ちしながらスライドの完成度を高めます。
 スライドのフロントマターには `theme: border` を使用してください。
@@ -222,7 +223,7 @@ footer p{margin:8px 0}
 - Web検索を使ったら、実在URLを3件以上並べた参考文献スライドを総枚数に含める
 - 各本文スライドの見出し直下へ、根拠にした検索結果URLを `&lt;!-- source: https://... --&gt;` の形式で1件以上書く（このコメントは画面には表示されない）</pre></div>
 
-    <p class="dump-label">② output_slide ツールの説明文（1,445字）</p>
+    <p class="dump-label">② output_slide ツールの説明文</p>
     <div class="dump"><pre>生成したスライドのマークダウンを出力します。スライドを作成・編集したら必ずこのツールを使って出力してください（テキストで直接書き出さない）。
 
 ## Marpフォーマットルール
@@ -241,7 +242,8 @@ footer p{margin:8px 0}
 
 - **見出しの階層【重要】**: タイトルスライドと中タイトル（`_class: lead`）の主題だけが `#`。通常スライドの見出しは `##`、小見出しは必要なときだけ `###`。テーマは `#` をタイトル用の大きさで描くので、通常スライドで使うと文字がはみ出す
 - **アジェンダ・目次**: ユーザーが明示した場合だけ作る。短い資料へ自動追加しない
-- **セクション区切り**: 8枚以下では原則作らない。10枚以上で必要な場合だけ `&lt;!-- _class: lead --&gt;` の中タイトルスライドを最大2枚挿入
+- **セクション区切り**: 8枚以下では作らない。10枚以上なら3〜5枚ごとに `&lt;!-- _class: lead --&gt;` の中タイトルスライドを挟む（12枚以下では最大2枚）
+- **1枚の形【重要】**: 箇条書きだけを続けない。比較・一覧・対応関係は表、定義や引用は `&gt; 引用`、要点は太字を使い分ける。同じ形が3枚続かないようにする（このツールが自動検証）。どう書くかはページの中身しだいで、決まった型に当てはめない
 - **出典スライド**: Web検索時は最後に `&lt;!-- _class: tinytext --&gt;` 付きの参考文献スライドを追加
 - **裏表紙【必須】**: 最後のスライドは `&lt;!-- _class: end --&gt;&lt;!-- _paginate: skip --&gt;` を付けて「Thank you!」とだけ表示
 - **表【重要】**: ヘッダー行の直後に `| --- | --- | --- |` の区切り行を必ず置く。無いと表として描画されない。2〜3列にし、セル内容は全角10文字以内（横幅はこのツールが自動検証）
@@ -368,33 +370,67 @@ output_slide ツールでスライドを出力した直後は、以下の場合�
 
   <section id="s4">
     <span class="eyebrow">04</span>
-    <h2>戻す候補（未承認）</h2>
-    <p class="lead">こちらの案です。まだ入れていません。どれを採るか教えてください。</p>
-    <div class="grid">
-      <div class="card">
-        <h4>A. セクション区切りを戻す<span>推し</span></h4>
-        <div class="card-body">
-          <p>「3〜4枚ごとに中タイトルを挟む」を復活させる。10枚超の資料が単調に流れるのを止める効果が大きい。</p>
-        </div>
-      </div>
-      <div class="card">
-        <h4>B. 表現の多様性を戻す<span>推し</span></h4>
-        <div class="card-body">
-          <p>「箇条書きだけにせず、表・引用ブロック・太字を使い分ける」を復活させる。<b>型の指定ではなく道具の提示</b>なので、語りかける調子には戻らないはず。</p>
-        </div>
-      </div>
-      <div class="card muted">
-        <h4>C. 1枚ごとの文章の型</h4>
-        <div class="card-body">
-          <p>結論を言い切る見出し・リード文必須・パターンのローテーション。<b>戻さない</b>方がよいと考えています（今回の違和感の原因）。</p>
-        </div>
-      </div>
+    <h2>戻した結果</h2>
+    <p class="lead">3本作って測りました。質素さは解消し、語りかける調子は戻っていません。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>お題</th><th>中タイトル</th><th>言い切り見出し</th><th>表</th><th>引用</th><th>太字</th><th>はみ出し・構造違反</th></tr></thead>
+        <tbody>
+          <tr><td>AgentCore（戻す前）</td><td class="lose">0枚</td><td>0 / 14</td><td>4</td><td class="lose">0</td><td class="lose">0</td><td>0 / 0</td></tr>
+          <tr><td>AgentCore（戻した後）</td><td class="win">2枚</td><td class="win">0 / 14</td><td>3</td><td class="win">1</td><td>0</td><td>0 / 0</td></tr>
+          <tr><td>KAGのみのるん（戻す前）</td><td class="lose">0枚</td><td>0 / 12</td><td>3</td><td class="lose">0</td><td class="lose">0</td><td>0 / 0</td></tr>
+          <tr><td>KAGのみのるん（戻した後）</td><td class="win">2枚</td><td class="win">0 / 12</td><td>4</td><td class="win">1</td><td>1</td><td>0 / 0</td></tr>
+          <tr><td>社内導入の勉強会（戻した後）</td><td class="win">2枚</td><td>1 / 11</td><td>2</td><td class="win">2</td><td class="win">6</td><td>0 / 0</td></tr>
+        </tbody>
+      </table>
     </div>
-    <p>AとBを入れた版で3本ほど生成して、質素さが解消するか・語りかけが戻らないかを測ってからお見せできます。指示をいただければ進めます。</p>
+
+    <h3>実際の見え方</h3>
+    <div class="ba">
+      <div class="before"><h4>BEFORE — 戻す前（質素）</h4><div class="ba-body">
+        <pre>## AgentCoreとは
+
+- 構築・デプロイ・運用をまとめるプラットフォーム
+- 任意のフレームワークと基盤モデルを使える
+- インフラ管理なしで権限・監視を付与
+- 各サービスは組み合わせても単独でも可</pre>
+        <p style="margin-top:.9em">箇条書きだけが続き、区切りも強調もありません。</p>
+      </div></div>
+      <div class="after"><h4>AFTER — 戻した後</h4><div class="ba-body">
+        <pre>&lt;!-- _class: lead --&gt;
+<mark># なぜ今、社内導入か</mark>
+
+---
+
+## チャットとエージェントの違い
+
+従来の生成AIは指示に対して文章を返す。
+<mark>**エージェントは複数システムを横断し、自律的に実行する。**</mark>
+
+<mark>| 観点 | 生成AI | エージェント |</mark>
+| --- | --- | --- |
+| 出力 | テキスト | 操作・実行 |
+| 権限 | ほぼ無し | API・データ |
+
+---
+
+## 2026年の数字で見る位置づけ
+
+<mark>&gt; IBM：2026年末までに**70%**の企業が展開を予定</mark>
+<mark>&gt; Gartner：2027年末までに**40%以上**が中止されうる</mark></pre>
+        <p style="margin-top:.9em">中タイトル・表・引用・太字が混ざり、見出しは項目名のままです。</p>
+      </div></div>
+    </div>
+
+    <div class="callout blue">
+      <p><b>「道具の提示」と「型の指定」を分けたのが効きました。</b>戻したのは「表・引用・太字を使い分ける」という選択肢の提示で、どのページで何を使うかはモデルに任せています。撤去したままにしたのは「毎ページ、見出しを言い切ってリード文を置く」という手順の固定で、これが全ページを同じ形にして語りかける調子を作っていました。</p>
+    </div>
   </section>
 
   <footer>
-    <p>取得元：現在＝デプロイ済みのコード（<code>config.py</code> / <code>tools/output_slide.py</code>）。旧版＝コミット <code>89d5b87</code>（2026年2月6日、Kimi K2.5追加の直前）。</p>
+    <p>取得元：現在＝デプロイ済みのコード（<code>config.py</code> / <code>tools/output_slide.py</code>）。旧版＝コミット <code>89d5b87</code>（2026年2月6日、Kimi K2.5追加の直前）。02節は復活を反映した最新版です。</p>
+    <p>検証：お題3種を各1本生成し、中タイトル数・言い切り見出し率・表と引用と太字の数・はみ出しと構造違反を機械で数えました。</p>
     <p>作成：Claude Code ／ 2026年8月20日</p>
   </footer>
 </div>
