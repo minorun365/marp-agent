@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Grok日本語の調整｜ステータス重複とスタイル修正</title>
+<title>スライドの型を撤去｜検索復旧と待ち時間</title>
 <style>
 :root{
   --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
@@ -31,7 +31,7 @@ p{margin:10px 0}
 .hero-facts{width:100%;border-collapse:separate;border-spacing:0;margin-top:26px;font-size:13px}
 .hero-facts th,.hero-facts td{background:transparent;border:0;padding:7px 14px 7px 0;
   text-align:left;vertical-align:top;line-height:1.75;white-space:normal}
-.hero-facts th{width:112px;font-weight:700;opacity:.72;font-size:12px;white-space:nowrap}
+.hero-facts th{width:118px;font-weight:700;opacity:.72;font-size:12px;white-space:nowrap}
 .hero-facts tr+tr th,.hero-facts tr+tr td{border-top:1px solid rgba(255,255,255,.18)}
 
 .toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
@@ -126,15 +126,16 @@ footer p{margin:8px 0}
 
 <div class="hero">
   <div class="hero-in">
-    <span class="kicker">パワポ作るマン 公開版 ／ Grokの調整（2回目）</span>
-    <h1>ご指摘の3点を直しました<br>日本語・検索の見え方・検証のやり方</h1>
-    <p class="sub">Sonnetと同じお題で並べて読み比べ、違和感の出どころを特定して直しています。</p>
+    <span class="kicker">パワポ作るマン 公開版 ／ 障害復旧とプロンプト整理</span>
+    <h1>Kimi向けの文章の型を撤去しました<br>Web検索も復旧済みです</h1>
+    <p class="sub">語りかける調子の原因は、システムプロンプトではなくツールの説明文に残っていた型でした。</p>
     <table class="hero-facts">
       <tbody>
-      <tr><th>対象</th><td>パワポ作るマン 公開版（pawapo.minoruonda.com）。標準は Kimi K2.5、選択肢に Grok 4.6</td></tr>
-      <tr><th>直した点</th><td>①「である」調と句点だらけの箇条書き ②検索の完了行が同じ文言で積み上がる ③対象の取り違え（KAGを別の技術と誤解）</td></tr>
-      <tr><th>検証</th><td>お題「KAGのみのるん」でSonnetとGrokを比較。本番の生SSEも取得し、画面の表示はブラウザで実際に確認</td></tr>
-      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモーク5/5合格</td></tr>
+      <tr><th>いちばん重い件</th><td>本番のWeb検索が停止していた。Secrets Manager にキーが1本しか入っておらず、それが上限超過だった。3本へ差し替えて復旧済み</td></tr>
+      <tr><th>文章の型</th><td>「結論を言い切る見出し」「リード文を必ず置く」「表現パターンA〜E」を、システムプロンプトと <code>output_slide</code> の説明文の両方から撤去。言い切り見出しは 10/13 → 0/12 になった</td></tr>
+      <tr><th>途中のセリフ</th><td>「前置きを出さない」という抑制を外した。確認質問だけを止め、作業中の一言は止めない</td></tr>
+      <tr><th>速度</th><td>検索ありの生成が106秒 → 33秒。無音だった待ち時間には10秒で「スライドを作成中」を出す</td></tr>
+      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモーク6/6合格（検索経路の検査を新設）</td></tr>
       </tbody>
     </table>
   </div>
@@ -144,199 +145,208 @@ footer p{margin:8px 0}
   <nav class="toc">
     <h2>目次</h2>
     <ol>
-      <li><a href="#s1"><span class="num">01</span>何が起きていたか</a></li>
-      <li><a href="#s2"><span class="num">02</span>日本語をSonnetと比べる</a></li>
-      <li><a href="#s3"><span class="num">03</span>検索ステータスの正体</a></li>
-      <li><a href="#s4"><span class="num">04</span>対象の取り違え</a></li>
-      <li><a href="#s5"><span class="num">05</span>本番での実測</a></li>
-      <li><a href="#s6"><span class="num">06</span>検証のやり方を直した</a></li>
+      <li><a href="#s1"><span class="num">01</span>検索が止まっていた原因</a></li>
+      <li><a href="#s2"><span class="num">02</span>フォールバックの不具合も見つかった</a></li>
+      <li><a href="#s3"><span class="num">03</span>数十秒の無音の正体</a></li>
+      <li><a href="#s4"><span class="num">04</span>語りかける調子の原因</a></li>
+      <li><a href="#s5"><span class="num">05</span>復旧後の実測</a></li>
+      <li><a href="#s6"><span class="num">06</span>判断していただきたい点</a></li>
     </ol>
   </nav>
 
   <section id="s1">
     <span class="eyebrow">01</span>
-    <h2>何が起きていたか</h2>
-    <p class="lead">前回はハーネス（バックエンド）とAPIレベルの検査だけで済ませ、画面と日本語の質を見ていませんでした。ご指摘の2点は原因が別々で、うち1つはこちらが足した指示が直接の犯人でした。</p>
+    <h2>検索が止まっていた原因</h2>
+    <p class="lead">本番のログにキーの読み込み本数を出すようにして、切り分けられました。結論として、フォールバックの前に「切り替える先が無かった」のが実態です。</p>
 
-    <div class="grid">
-      <div class="card">
-        <h4>日本語の硬さ<span>こちらの指示が原因</span></h4>
-        <div class="card-body">
-          <p>「箇条書きは句点で終わる1文にする」という指示を、Kimi向けのプロンプトからそのまま持ち込んでいました。Grokはこれを真面目に守り、全項目を「〜である。」で締める文体になっていました。</p>
-        </div>
-      </div>
-      <div class="card">
-        <h4>ステータスの繰り返し<span>重複ではなかった</span></h4>
-        <div class="card-body">
-          <p>本番の生イベントを取ったところ、通知はすべて別クエリの本物の検索でした。完了すると全部「Web検索完了」の一言に潰れるため、同じ行が積み上がって見えていました。</p>
-        </div>
-      </div>
-      <div class="card muted">
-        <h4>検証の穴<span>再発防止</span></h4>
-        <div class="card-body">
-          <p>画面を一度も見ずに完了と報告していました。今回はブラウザで実際に送信して確認し、モックも本番同様に複数回検索するよう直しています。</p>
-        </div>
-      </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>場所</th><th>キーの本数</th><th>状態</th></tr></thead>
+        <tbody>
+          <tr><td>本番（修正前）</td><td class="lose">1本</td><td>そのキーが上限超過。切り替え先が無い</td></tr>
+          <tr><td>手元の <code>.env</code></td><td>3本</td><td>1本目は上限超過、2本目と3本目は使える</td></tr>
+          <tr><td>本番（修正後）</td><td class="win">3本</td><td>手元と同じ3本へ差し替え、検索が復旧</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Tavilyのキーはアカウントごとに月1,000回の枠を持っていて、今回はキー1のアカウントが1002/1000で超過していました。本番の Secrets Manager は8月13日から更新されておらず、その1本だけを持ったままでした。</p>
+
+    <div class="callout blue">
+      <p><b>キーを差し替えても、動いているコンテナには届かない作りでした。</b>キーは起動時に1度だけ読む実装だったので、シークレットを更新しても再デプロイするまで反映されません。<b>全キーが使えなくなったときにシークレットを読み直す</b>ようにしたので、次からは差し替えるだけで戻ります（読み直しは60秒に1回まで）。</p>
     </div>
   </section>
 
   <section id="s2">
     <span class="eyebrow">02</span>
-    <h2>日本語をSonnetと比べる</h2>
-    <p class="lead">お題「KAGのみのるん」で、Sonnet（シンプルなプロンプト）とGrok（前回の本番プロンプト）を並べました。同じ内容を書いているのに、読後感がまったく違います。</p>
+    <h2>フォールバックの不具合も見つかった</h2>
+    <p class="lead">切り替え先が無かったのが今回の直接原因ですが、切り替えの仕組み自体にも、キーが2本以上あっても止まる不具合がありました。同時に直しています。</p>
 
     <div class="ba">
-      <div class="before"><h4>BEFORE — 前回の本番プロンプトのGrok</h4><div class="ba-body">
-        <pre>## みのるんはKAGから現場知見を外へ届ける人<mark>である</mark>
-本名と所属を先に押さえると、以降の肩書が追いやすくなる。
-- 本名は**御田稔**で、通称はみのるん<mark>である。</mark>
-- 所属はKDDIアジャイル開発センター<mark>である。</mark>
-- 肩書はテックエバンジェリスト<mark>である。</mark>
-- クラウドと生成AIの内製開発を外へ出す<mark>。</mark></pre>
-        <p style="margin-top:.9em">「である」が4行続き、事実を言い換えただけの項目が並びます。リード文も資料の読み方の説明になっています。</p>
+      <div class="before"><h4>BEFORE — 例外の文字列で判定していた</h4><div class="ba-body">
+        <pre>except Exception as e:
+    error_str = str(e).lower()
+    if "rate limit" in error_str or "429" in error_str
+       or "quota" in error_str or "usage limit" in error_str:
+        continue
+    <mark>return f"検索エラー: {str(e)}"</mark></pre>
+        <p style="margin-top:.9em">TavilyのSDKは、応答の形によっては<b>メッセージが空の例外</b>を投げます。空だとどの語にも当たらず、1本目で打ち切って残りのキーを試しませんでした。</p>
       </div></div>
-      <div class="after"><h4>AFTER — 今回のプロンプトのGrok</h4><div class="ba-body">
-        <pre>## みのるんはKAGで技術を外へ届ける人
-KAGのテックエバンジェリストとして外へ技術を届ける
-- 本名は**御田 稔**、発信名はみのるん
-- 所属はKDDIアジャイル開発センター
-- <mark>KDDI株式会社のシニアエキスパートも兼務</mark>
-- クラウドと生成AIの内製開発に従事
-- メンバーの登壇やブログも後押しする</pre>
-        <p style="margin-top:.9em">句点も「である」も消え、項目が増えて情報量も上がりました。Sonnetの書き方に近づいています。</p>
+      <div class="after"><h4>AFTER — 例外の型で判定する</h4><div class="ba-body">
+        <pre>except <mark>KEY_LEVEL_ERRORS</mark> as e:
+    # UsageLimitExceeded / Forbidden / InvalidAPIKey
+    print(f"[WARN] Tavilyキー{key_number}が使えません…")
+    <mark>continue</mark></pre>
+        <p style="margin-top:.9em">枯渇・停止・無効はどれも「このキーの問題」なので、メッセージに関係なく次のキーへ進みます。どのキーが何で落ちたかもログに残るようにしました。</p>
+      </div></div>
+    </div>
+    <p class="note">修正前のコードに対してテストを流すと、空メッセージの3ケースと全枯渇の判定が落ちます（4件失敗）。修正後は159件すべて通ります。</p>
+  </section>
+
+  <section id="s3">
+    <span class="eyebrow">03</span>
+    <h2>数十秒の無音の正体</h2>
+    <p class="lead">最後の検索からスライドが出るまでの空白は、本番のイベントを時刻つきで記録して測りました。<b>78秒</b>ありました。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>時刻</th><th>届いたもの</th><th>画面の見え方</th></tr></thead>
+        <tbody>
+          <tr><td>13.7秒</td><td>6回目の検索</td><td>「Web検索中...」</td></tr>
+          <tr><td>27〜89秒</td><td class="lose">10秒ごとの生存確認だけ</td><td class="lose">何も変わらない（生存確認は画面に出ない条件だった）</td></tr>
+          <tr><td>91.7秒</td><td>スライド出力の開始</td><td>「スライドを作成中」</td></tr>
+          <tr><td>105.8秒</td><td>スライド完成</td><td>プレビューに反映</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Grokはツールの引数を分割せず、<b>スライド全文を書き終えてから一度に渡します</b>。そのため「作成中」の通知が最後まで来ません。Kimiは引数を分割して送るので早い段階で通知が出ており、ここがモデル間の体感差になっていました。直した点は2つです。</p>
+    <ul>
+      <li><b>10秒黙ったら「スライドを作成中」を先に出す。</b>Tipsも回るので、待ち時間が読めるようになりました。依頼の直後の考え込みと区別するため、一度なにか届いたあとに限定しています</li>
+      <li><b>推論の深さを下げた。</b>深く考えさせる利点が測定できなかったため <code>low</code> にしました。品質は下の表のとおり同等以上で、時間と費用が大きく下がります</li>
+    </ul>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>お題</th><th>推論の深さ</th><th>所要</th><th>はみ出し・構造違反</th><th>本文量</th><th>費用</th></tr></thead>
+        <tbody>
+          <tr><td>KAGのみのるん</td><td>medium</td><td class="lose">117秒</td><td>0 / 0</td><td>2,179字</td><td>31円</td></tr>
+          <tr><td>KAGのみのるん</td><td>low</td><td class="win">32秒</td><td>0 / 0</td><td class="win">2,353字</td><td class="win">15円</td></tr>
+          <tr><td>Claude CodeとCodexの比較</td><td>medium</td><td class="lose">171秒</td><td>0 / 1</td><td>2,175字</td><td>36円</td></tr>
+          <tr><td>Claude CodeとCodexの比較</td><td>low</td><td class="win">56秒</td><td class="win">0 / 0</td><td class="win">2,791字</td><td class="win">21円</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">費用は1ドル155円の参考換算。本番での実測は、検索ありの生成が106秒→63秒になりました。</p>
+  </section>
+
+  <section id="s4">
+    <span class="eyebrow">04</span>
+    <h2>語りかける調子の原因</h2>
+    <p class="lead">ご指摘のとおり、Kimi向けのチューニングが残っていました。ただし残っていた場所はシステムプロンプトではなく、<b><code>output_slide</code> ツールの説明文</b>でした。これは毎回モデルへ渡るので、システムプロンプトを削っても効き続けます。</p>
+
+    <div class="ba">
+      <div class="before"><h4>BEFORE — ツールの説明文に残っていた型</h4><div class="ba-body">
+        <pre>- <mark>見出し【重要】</mark>: `##` は、そのページの結論を
+  述語で言い切った1文にする
+- <mark>リード文【重要】</mark>: 見出しの直下に、結論を支える
+  1行を必ず置く
+- <mark>表現パターン【重要】</mark>: A〜Eをローテーションする
+  A. 主張+根拠型 / B. 小見出し型 / C. テーブル型
+  D. 因果型 / E. まとめ型</pre>
+        <p style="margin-top:.9em">Kimiが素っ気ない箇条書きになるのを防ぐために足したものです。Grokは元から資料調で書けるので、これが「語りかけ」に化けていました。</p>
+      </div></div>
+      <div class="after"><h4>AFTER — Marpの表示に要るものだけ</h4><div class="ba-body">
+        <pre>- <mark>見出しの階層【重要】</mark>: `#` は表紙と中タイトルだけ。
+  通常スライドは `##`、小見出しは `###`
+- 表: ヘッダー行の直後に区切り行を必ず置く
+- 1スライド9行が上限（このツールが自動検証）
+- 裏表紙・参考文献・中タイトルのクラス指定</pre>
+        <p style="margin-top:.9em">説明文は1,947字→1,307字、システムプロンプトは1,409字→968字になりました。</p>
       </div></div>
     </div>
 
-    <h3>参考：Sonnetは元からこの書き方だった</h3>
+    <h3>スライドの見え方がどう変わったか</h3>
     <div class="ba">
-      <div class="before"><h4>Sonnet 4.6（シンプルなプロンプト）</h4><div class="ba-body">
-        <pre>- 2019年：KDDI情報システム本部に入社、業務システムのAWS移行を経験
-- 2023年：KDDIアジャイル開発センター（KAG）へ出向
-- 現職：クラウド・生成AI領域の開発・プリセールス・技術コンサルティング</pre>
-        <p style="margin-top:.9em">句点なし、名詞句で止める、年号と固有名詞をそのまま残す。この3つが自然さの正体でした。</p>
+      <div class="before"><h4>BEFORE — 型あり</h4><div class="ba-body">
+        <pre>## <mark>AgentCoreはエージェントの本番基盤をまとめて渡す</mark>
+
+インフラを自分で組まずに、実行・権限・監視まで揃えられる
+
+- 任意のフレームワークと基盤モデルで動かせる
+- ツールとデータへ、権限付きでアクションを起こせる</pre>
+        <p style="margin-top:.9em">見出しが動詞で言い切る文になり、その下に必ず説明文が入ります。全ページが同じ形になるため、読者へ語りかけ続ける調子になります。</p>
       </div></div>
-      <div class="after"><h4>プロンプトへ足した指示</h4><div class="ba-body">
-        <pre>- <mark>「である」調を使わない。</mark>「〜である」「〜からである」を
-  見出し・リード文・箇条書きのどこにも書かない
-- <mark>箇条書きは句点（。）で終わらせない。</mark>
-  名詞句で止めるか、短い言い切りで終える
-- リード文は結論を支える事実を1行で書く。
-  「先に押さえると分かりやすい」のような
-  資料の読み方の説明を書かない
-- 年号・数字・固有名詞・書名は<mark>一般化せずそのまま残す</mark></pre>
+      <div class="after"><h4>AFTER — 型なし</h4><div class="ba-body">
+        <pre>## <mark>いま学ぶ理由</mark>
+
+- プロトタイプのエージェントを本番へ載せるのが難しい
+- インフラ、認証、ツール接続、監視を自前で揃えがち
+- AgentCoreはフルマネージドでその層を肩代わりする
+- 枠組みやモデルを問わず、サービス単位で組み合わせられる</pre>
+        <p style="margin-top:.9em">見出しが項目名に戻り、説明文の押し付けも消えました。ページごとに形が変わるようになっています。</p>
       </div></div>
     </div>
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>お題「KAGのみのるん」</th><th>「である」</th><th>句点で終わる箇条書き</th><th>本文量</th><th>費用</th></tr></thead>
+        <thead><tr><th>お題「KAGのみのるん」</th><th>言い切り見出し</th><th>「である」</th><th>句点で終わる箇条書き</th></tr></thead>
         <tbody>
-          <tr><td>Sonnet 4.6</td><td class="win">1件</td><td class="win">0 / 24</td><td>2,321字</td><td class="lose">46円</td></tr>
-          <tr><td>Grok（前回の本番）</td><td class="lose">8件</td><td class="lose">26 / 31</td><td>2,097字</td><td>20円</td></tr>
-          <tr><td>Grok（今回）</td><td class="win">0件</td><td class="win">0 / 35</td><td>2,119字</td><td class="win">20円</td></tr>
-          <tr><td>Grok（本番で実測）</td><td class="win">0件</td><td class="win">0 / 36</td><td>2,989字</td><td class="win">—</td></tr>
+          <tr><td>型あり（8月19日の本番）</td><td class="lose">8 / 10</td><td class="lose">8件</td><td class="lose">26 / 31</td></tr>
+          <tr><td>型あり＋日本語の指示</td><td class="lose">10 / 13</td><td>0件</td><td>0 / 46</td></tr>
+          <tr><td>型なし（今回）</td><td class="win">0 / 12</td><td class="win">0件</td><td class="win">0 / 16</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="note">費用は1ドル155円の参考換算。最終行は、デプロイ後の本番へ実際にリクエストを投げて受け取ったスライドの実測値です。</p>
-  </section>
+    <p class="note">途中の段階では「である調を使わない」「句点で終わらせない」という指示で対症療法をしていました。型そのものを外したので、その指示も不要になり削除しています。</p>
 
-  <section id="s3">
-    <span class="eyebrow">03</span>
-    <h2>検索ステータスの正体</h2>
-    <p class="lead">「1回の検索で3回ステータスが出る」に見えていた件は、本番の生イベントを取って数えました。結論として通知は重複しておらず、6回の検索がそれぞれ1回ずつ通知されていました。</p>
+    <h3>表紙とヘッダー階層</h3>
+    <p>表紙は依頼の題をそのまま主題に置く形へ直しました（「AgentCoreの最新機能は本番運用向けに揃った」→「Amazon Bedrock AgentCore 入門」）。また、型を外した直後は本文スライドの見出しが <code>#</code> になり、テーマがタイトル用の大きさで描いてしまう崩れが出ました。これは表示に直結するので、見出しの階層だけ規則として戻しています。</p>
 
-    <div class="ba">
-      <div class="before"><h4>BEFORE — 画面での見え方</h4><div class="ba-body">
-        <pre>✓ Web検索完了
-✓ Web検索完了
-✓ Web検索完了
-（テキスト）
-✓ Web検索完了
-✓ Web検索完了
-⟳ Web検索中... "御田稔 AWS AI Hero KAG 著書"</pre>
-        <p style="margin-top:.9em">完了した瞬間に検索語が消えるため、6本の別々の検索が同じ通知の繰り返しに見えていました。</p>
-      </div></div>
-      <div class="after"><h4>AFTER — 何を調べ終えたかを残す</h4><div class="ba-body">
-        <pre>✓ Web検索完了 <mark>"KAGのみのるん 概要"</mark>
-✓ Web検索完了 <mark>"KAGのみのるん 最新 事例"</mark>
-✓ Web検索完了 <mark>"KAGのみのるん 公式 ドキュメント"</mark>
-✓ Web検索完了 <mark>"KAGのみのるん 導入 判断"</mark>
-✓ スライドを確認しました
-✓ スライドを作成しました</pre>
-        <p style="margin-top:.9em">ブラウザで実際に送信して確認した表示です。進んでいることが読み取れるようになりました。</p>
-      </div></div>
-    </div>
-
-    <p>あわせて2つ直しました。ひとつは検索回数で、「論点を分けて4回までを目安、足りないときだけ6回まで」と上限を下げ、1回の検索に10秒前後かかることをプロンプトへ明記しています。もうひとつは、ツールの引数が分割して届いたときに同じ検索が複数行へ割れる経路で、こちらは以前 <code>http_request</code> で直したのと同じ「同じ行を書き換える」形へ揃えました。</p>
-  </section>
-
-  <section id="s4">
-    <span class="eyebrow">04</span>
-    <h2>対象の取り違え</h2>
-    <p class="lead">日本語を直した版で、別の問題が出ました。検索回数を絞った結果、Grokが「KAGのみのるん」の KAG を Knowledge Augmented Generation（別の技術）と解釈し、まったく違うスライドを作りました。</p>
-
-    <div class="ba">
-      <div class="before"><h4>BEFORE — 検索を絞った直後</h4><div class="ba-body">
-        <pre># 知識で生成を縛るKAG
-## Knowledge Augmented Generationの仕組みと使いどころ
-
-## KAGは文書検索ではなく知識で答えを組み立てる
-- **Knowledge Augmented Generation**の略
-- 知識グラフの構造とLLMの言語能力をつなぐ</pre>
-        <p style="margin-top:.9em">最初の検索結果に引きずられ、「みのるん」を拾わないまま構成へ進んでいます。</p>
-      </div></div>
-      <div class="after"><h4>AFTER — 取り違えを止める指示を追加</h4><div class="ba-body">
-        <pre>- <mark>検索結果が依頼とかみ合わない</mark>（略語が別の製品を
-  指している、同名の別人が出てくる等）ときは、
-  対象を絞る語を足して調べ直す。
-  <mark>回数の目安より、対象の取り違えを防ぐほうを優先する</mark>。
-  依頼文の語をすべて拾えているか確かめてから構成に入る</pre>
-        <p style="margin-top:.9em">同じお題で2回続けて正しく御田さんの資料になりました。本番でも「KAG みのるん」から入って人物へ寄せています。</p>
-      </div></div>
-    </div>
-
-    <div class="callout">
-      <p><b>回数を減らす調整は、単独では品質を下げます。</b>検索は待ち時間の主因なので減らしたいのですが、減らすほど最初の解釈に固定されます。今回は「取り違えを疑ったときだけ回数を超えてよい」と優先順位を明記する形で両立させました。</p>
+    <div class="callout blue">
+      <p><b>途中のセリフは止めていません。</b>「前置き・計画を文章で出さない」という抑制を外し、「何をしているかを短く言いながら進めるのは構わない」と書き換えました。止めるのは「作りますか」「この構成でよいですか」の確認質問だけです。</p>
     </div>
   </section>
 
   <section id="s5">
     <span class="eyebrow">05</span>
-    <h2>本番での実測</h2>
-    <p class="lead">デプロイ後の本番へ実際にリクエストを投げ、届いたイベントとスライドをそのまま数えた結果です。</p>
+    <h2>復旧後の実測</h2>
+    <p class="lead">デプロイ後の本番へ実際にリクエストを投げ、届いたものをそのまま数えた結果です。</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>項目</th><th>結果</th><th>中身</th></tr></thead>
         <tbody>
-          <tr><td>検索の通知</td><td>6件／6回</td><td>すべて別クエリ。重複した通知は無し</td></tr>
-          <tr><td>「である」</td><td>0件</td><td>スライド全文で1つも出ていない</td></tr>
-          <tr><td>句点で終わる箇条書き</td><td>0 / 36</td><td>すべて名詞句か短い言い切り</td></tr>
-          <tr><td>対象</td><td>正しい</td><td>御田 稔／みのるんの資料として構成された</td></tr>
-          <tr><td>構成検査</td><td>14/14合格</td><td>Mantle権限・環境変数・ドメインなど</td></tr>
-          <tr><td>スモーク</td><td>5/5合格</td><td>ログイン→生成→識別→PDF、およびGrokを選んだ生成</td></tr>
+          <tr><td>Web検索</td><td>復旧</td><td>3回の検索を経て3,242文字のスライドを生成</td></tr>
+          <tr><td>言い切り見出し</td><td>0 / 12</td><td>すべて項目名。語りかける調子が消えた</td></tr>
+          <tr><td>「である」</td><td>0件</td><td>句点で終わる箇条書きも 0 / 21</td></tr>
+          <tr><td>見出しの階層</td><td>正しい</td><td><code>#</code> は表紙のみ、本文は <code>##</code></td></tr>
+          <tr><td>所要</td><td class="win">33秒</td><td>当初は106秒（検索ありの依頼）。無音は最長11.7秒</td></tr>
+          <tr><td>構成検査</td><td>14/14合格</td><td>—</td></tr>
+          <tr><td>スモーク</td><td>6/6合格</td><td><b>検索を使う依頼の検査を新設</b>。今回の停止はこれで検知できる</td></tr>
         </tbody>
       </table>
     </div>
+    <p class="note">これまでのスモークは検索を使わない依頼だけを通していたため、検索が止まってもHTTPは200のままで、検査が素通りしていました。</p>
   </section>
 
   <section id="s6">
     <span class="eyebrow">06</span>
-    <h2>検証のやり方を直した</h2>
-    <p class="lead">同じ見落としが起きないよう、確認の手順そのものを変えました。</p>
+    <h2>判断していただきたい点</h2>
+    <p class="lead">復旧はしていますが、残量に余裕がありません。</p>
     <ul>
-      <li><b>画面を実際に動かす。</b>認証を挟まない <code>npm run dev:ui</code> で送信まで通し、ステータスの見え方をスクリーンショットで確認する</li>
-      <li><b>モックを本番の挙動に合わせる。</b>これまで検索は1回しか流れず、複数回検索したときの積み上がりをローカルで再現できなかった。4回検索するよう直した</li>
-      <li><b>生イベントを数える。</b>本番へ直接リクエストを投げ、通知の件数とクエリを機械で数える。画面の印象で判断しない</li>
-      <li><b>日本語を数える。</b>「である」の件数と、句点で終わる箇条書きの割合を毎回数える。表現の善し悪しを感覚で語らない</li>
-      <li><b>ステータスの重複はテストで固定した。</b>同じ検索の途中経過で行が増えないこと、別の検索なら行が分かれることを、それぞれテストにしている</li>
+      <li><b>検索の残量が約1,900回です。</b>キー2が45/1000、キー3が33/1000で、キー1のアカウントは今月分を使い切っています。1回のスライド作成で4〜6回使うので、<b>300〜400回ぶんの作成で尽きます</b></li>
+      <li>私の検証でも枠を使っています。今日の検証で30回ほど生成しており、そのぶんキー1の枠を消費しました。以後は検証の回数を絞ります</li>
+      <li>キーを増やすか有料プランへ上げるかは、みのるんの判断をお願いします。<b>キーを足す場合は Secrets Manager の <code>pawapo/tavily-api-keys</code> をカンマ区切りで更新するだけで、再デプロイは不要になりました</b></li>
     </ul>
+    <div class="callout">
+      <p><b>本番のシークレットを更新しました。</b>手元の <code>.env</code> にある3本を反映しています。ひとつ前の版は Secrets Manager に残っているので、戻すことはできます。</p>
+    </div>
   </section>
 
   <footer>
-    <p>比較データ：お題「KAGのみのるん」でSonnet 4.6・Grok（前回）・Grok（今回）を各1本、取り違えの確認に2本、本番の生SSEを3本。</p>
-    <p>コミット：<code>fd8a7fc Grokの日本語を自然にし、検索ステータスが同じ行の繰り返しに見えるのを直す</code>（mainへpush済み・本番反映済み）</p>
-    <p>作成：Claude Code ／ 2026年8月19日〜20日</p>
+    <p>調査データ：本番の生イベントを時刻つきで6本記録、モデル比較を8本、キーの残量はTavilyの利用状況APIで確認。</p>
+    <p>コミット：<code>d32370f</code> 例外の型で判定 ／ <code>b85792b</code> シークレットの読み直し ／ <code>ebf7168</code> 検索経路のスモーク ／ <code>2353329</code> 文章の型を撤去（すべてmainへpush済み・本番反映済み）</p>
+    <p>作成：Claude Code ／ 2026年8月20日</p>
   </footer>
 </div>
 
