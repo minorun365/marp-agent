@@ -36,7 +36,7 @@ USER_URL_PATTERN = re.compile(r'https?://[^\s<>"\'）】」]+')
 
 MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_EXTRACTED_CHARS = 50000  # 約25,000トークン
-STREAM_KEEPALIVE_INTERVAL = 10.0  # ストリーミング中のkeep-alive間隔（秒）
+STREAM_KEEPALIVE_INTERVAL = 5.0  # ストリーミング中のkeep-alive間隔（秒）
 
 _STREAM_SENTINEL = object()
 
@@ -270,7 +270,7 @@ async def invoke(payload, context=None):
                 # 1回だけ渡してくる。そのため最後の検索からoutput_slideの通知まで
                 # 実測で70〜80秒かかり、その間ずっと画面が無音になる（keep-aliveの
                 # 「処理中...」は、直前が検査ステータスの行だと画面へ出ない）。
-                # 一度なにか届いたあとに10秒以上黙ったら、本文を書いている最中なので、
+                # 一度なにか届いたあとに5秒黙ったら、本文を書いている最中なので、
                 # Kimiと同じ「スライドを作成中」の表示へ切り替えてTipsを回す。
                 # 「何か届いたあと」に限るのは、依頼の直後の考え込みで
                 # 検索より先に作成中と出さないため。

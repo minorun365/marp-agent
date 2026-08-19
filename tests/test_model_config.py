@@ -171,7 +171,9 @@ def test_grok_system_prompt_only_keeps_mechanical_rules():
 
     # 残すもの（無いと壊れる・取り違える）
     assert "そのままスライドまで作る" in prompt          # 確認質問をしない
-    assert "対象の取り違えを防ぐほうを優先する" in prompt  # 略語の読み違い対策
+    assert "取り違えを防ぐほうを優先する" in prompt        # 略語の読み違い対策
+    # 検索は回数の上限ではなく期待値を示す。「4回まで」と書くとその数まで使い切る
+    assert "多くの依頼は1〜2回で足りる" in prompt
     assert "依頼の題をそのまま短く置く" in prompt          # 表紙が主張文にならないように
     assert "正式な製品名を本文と表へそのまま書く" in prompt
     assert "<!-- source: https://... -->" in prompt        # 出典の検査に必要
