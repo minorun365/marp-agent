@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grok 4.6検証｜Kimi K2.5との品質比較</title>
+<style>
+:root{
+  --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
+  --blue-soft:#eaf2fb; --blue-line:#cfe0f2;
+  --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+  --ink:#15151a; --sub:#4a4a54; --mut:#767680; --line:#e8e8ee; --soft:#f7f8fa;
+  --gray-grad:linear-gradient(135deg,#2f2f37 0%,#474751 55%,#6a6a75 100%);
+  --gold:#f0b21f; --gold-deep:#8a5a00; --gold-soft:#fdf5e0;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  color:var(--ink);line-height:1.85;font-size:15.5px;-webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%;font-feature-settings:"palt" 1}
+.wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+p{margin:10px 0}
+
+.hero{background:var(--blue-grad);padding:calc(52px + env(safe-area-inset-top,0px)) 0 46px}
+.hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+.hero h1,.hero h2,.hero h3,.hero p,.hero ul,.hero li,
+.hero b,.hero strong,.hero a,.hero span,.hero div,.hero td,.hero th,.hero code{color:#fff}
+.hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+.hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+.hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+.hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+.hero-facts{width:100%;border-collapse:separate;border-spacing:0;margin-top:26px;font-size:12.5px}
+.hero-facts tr,.hero-facts td,.hero-facts th{background:transparent;border:0}
+.hero-facts th{width:150px;text-align:left;font-weight:600;opacity:.72;padding:5px 12px 5px 0;white-space:nowrap}
+.hero-facts td{padding:5px 0;opacity:.95;line-height:1.8}
+
+.toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+.toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+.toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;
+  grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.toc li{margin:0}
+.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;color:var(--sub);font-size:14px;padding:5px 0}
+.toc a:hover{color:var(--blue-deep)}
+.toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+
+section{position:relative;margin:0;padding:46px 0 36px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+section::before{content:"";position:absolute;top:-1px;left:0;width:72px;height:3px;border-radius:3px;background:var(--blue-grad)}
+section:first-of-type::before{display:none}
+.eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+  font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;
+  background:var(--blue-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);font-weight:700;letter-spacing:.005em}
+h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;
+  padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+.lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+
+.wrap .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));margin:20px 0}
+.wrap .card{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+.wrap .card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+.wrap .card>h4{margin:0;padding:11px 18px;background-image:var(--blue-grad);color:#fff;
+  font-size:14px;font-weight:700;letter-spacing:.02em;line-height:1.5}
+.wrap .card>h4 span{font-weight:600;font-size:11.5px;opacity:.82;margin-left:8px}
+.wrap .card.muted>h4{background-image:var(--gray-grad)}
+.wrap .card-body{padding:16px 20px 17px}
+.wrap .card-body>:first-child{margin-top:0}
+.wrap .card-body>:last-child{margin-bottom:0}
+.wrap .card-body p{margin:6px 0;font-size:14px;color:var(--sub);line-height:1.8}
+.wrap .card-body ul{margin:8px 0;padding-left:20px}
+.wrap .card-body li{font-size:13.8px;color:var(--sub);margin:5px 0;line-height:1.75}
+
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;margin:20px 0}
+.ba>section{border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;padding:0;margin:0;border-top:1px solid var(--line)}
+.ba>section::before{display:none}
+.ba>section.after{border-color:var(--blue-line)}
+.ba>section>h4{margin:0;padding:9px 16px;font-size:12px;font-weight:700;letter-spacing:.06em;color:#fff;line-height:1.5}
+.ba>section.before>h4{background-image:var(--gray-grad)}
+.ba>section.after>h4{background-image:var(--blue-grad)}
+.ba .ba-body{padding:14px 16px 15px}
+.ba .ba-body>:first-child{margin-top:0}
+.ba .ba-body>:last-child{margin-bottom:0}
+.ba .ba-body p{margin:0 0 .55em;line-height:1.8;font-size:13.5px;color:var(--sub)}
+.ba .ba-body p.hd{font-weight:700;color:var(--ink);font-size:14px}
+.ba mark{background:var(--gold-soft);padding:0 .15em;border-radius:2px}
+@media (max-width:760px){.ba{grid-template-columns:1fr}}
+
+.wrap .callout{position:relative;background:var(--gold-soft);padding:18px 22px 18px 26px;
+  border-radius:14px;margin:22px 0;overflow:hidden;font-size:14.5px}
+.wrap .callout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.wrap .callout b{color:var(--gold-deep)}
+.wrap .callout>:first-child{margin-top:0}
+.wrap .callout>:last-child{margin-bottom:0}
+.wrap .callout.blue{background:var(--blue-soft)}
+.wrap .callout.blue::before{background:var(--blue-grad)}
+.wrap .callout.blue b{color:var(--blue-deep)}
+
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;border:1px solid var(--line);border-radius:16px}
+.wrap table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px;min-width:620px}
+.wrap thead{background-image:var(--blue-grad)}
+.wrap th{background:transparent;color:#fff;font-weight:600;padding:12px 14px;text-align:left;
+  white-space:nowrap;letter-spacing:.02em;border:0}
+.wrap td{padding:12px 14px;text-align:left;vertical-align:top;border:0;border-bottom:1px solid var(--line);line-height:1.7}
+.wrap tbody tr:last-child td{border-bottom:0}
+.wrap tbody tr:hover{background:#fbfcfe}
+.wrap td:first-child{font-weight:700;color:var(--blue);white-space:nowrap}
+.wrap td.ok{background:#f0faf3;font-weight:700;color:#1a6b38;white-space:nowrap}
+.wrap td.ng{background:#fdf4f4;color:#8a3a3a;white-space:nowrap}
+.wrap td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{font-size:12.5px;color:var(--mut);margin:-6px 0 0;line-height:1.8}
+
+.tag{display:inline-block;font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700;
+  white-space:nowrap;vertical-align:2px;letter-spacing:.03em}
+.t-new{background:var(--gold);color:#4a3000}
+.t-fact{background:var(--blue-soft);color:var(--blue-deep)}
+
+.wrap ul,.wrap ol{margin:12px 0;padding-left:23px}
+.wrap li{margin:7px 0}
+footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut);line-height:1.9}
+footer p{margin:8px 0}
+.wrap code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
+  font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+@media (max-width:620px){
+  body{font-size:15px}
+  .hero{padding:calc(38px + env(safe-area-inset-top,0px)) 0 34px}
+  .hero h1{font-size:23px}
+  .hero-facts th{width:auto;display:block;padding-bottom:0}
+  .hero-facts td{display:block;padding-top:0;padding-bottom:10px}
+  h2{font-size:20px}
+  section{padding-top:38px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="kicker">パワポ作るマン ／ モデル検証</span>
+    <h1>Grok 4.6は、専用チューニング無しでも<br>いまのKimi K2.5を品質で上回る</h1>
+    <p class="sub">ただし1回あたりの費用は2〜4倍。切り替えるかは費用の見方しだいです。</p>
+    <table class="hero-facts">
+      <tbody>
+      <tr><th>検証日</th><td>2026年8月19日（Grok 4.6は8月18日リリース）</td></tr>
+      <tr><th>Grok 4.6</th><td>xai.grok-4.6 ／ bedrock-mantle ／ us-west-2 ／ 推論の深さ medium</td></tr>
+      <tr><th>Kimi K2.5（現行）</th><td>moonshotai.kimi-k2.5 ／ bedrock-runtime ／ us-east-1</td></tr>
+      <tr><th>トークン単価</th><td>Grok 入$2.20 出$6.60 ／ Kimi 入$0.60 出$3.00（100万トークンあたり）</td></tr>
+      <tr><th>検証量</th><td>お題2種 × 条件4種で10本を実生成し、アプリ内蔵の機械検査で採点</td></tr>
+      <tr><th>コードの状態</th><td>ブランチ grok-4.6-eval に実装済み・未デプロイ（本番の既定はKimiのまま）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li><a href="#s1"><span class="num">01</span>結論</a></li>
+    <li><a href="#s2"><span class="num">02</span>どう測ったか</a></li>
+    <li><a href="#s3"><span class="num">03</span>品質の結果</a></li>
+    <li><a href="#s4"><span class="num">04</span>見出しの質が最大の差</a></li>
+    <li><a href="#s5"><span class="num">05</span>費用と所要時間</a></li>
+    <li><a href="#s6"><span class="num">06</span>AWSクレジットは効くか</a></li>
+    <li><a href="#s7"><span class="num">07</span>実装で判明した注意点</a></li>
+    <li><a href="#s8"><span class="num">08</span>判断していただきたい点</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <span class="eyebrow">01</span>
+  <h2>結論</h2>
+  <p class="lead">Grokは、Kimi向けに積み上げてきた長いプロンプトを一切与えない素の状態でも、Kimiのチューニング済みより良いスライドを出しました。専用プロンプトを足すとさらに伸びます。</p>
+
+  <div class="grid">
+    <div class="card">
+      <h4>品質<span>Grokの明確な優位</span></h4>
+      <div class="card-body">
+        <ul>
+          <li>指定枚数は10本すべて一致。はみ出しも全本ゼロ。</li>
+          <li>機械検査の構造違反は、Grok調整版が6本中5本でゼロ。Kimiは4本すべてで1〜5件残った。</li>
+          <li>1回で出力が通る（output_slideの呼び出しが1回）。Kimiは毎回3回＝2回やり直している。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <h4>チューニングの効き方<span>方向が違う</span></h4>
+      <div class="card-body">
+        <ul>
+          <li>Grokは素で守れているので、専用プロンプトは「守らせる」より<b>中身を厚くする</b>方向に効いた。</li>
+          <li>本文の文字数が2,331→3,180字へ増え、見出しの主張文率が45%→89%へ上がった。</li>
+          <li>Kimi向けの「数えて守る」系の細かい指示は、Grokには不要だった。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card muted">
+      <h4>費用<span>ここだけKimi優位</span></h4>
+      <div class="card-body">
+        <ul>
+          <li>1回あたり Kimi 8.7〜9.7円に対し、Grokは12.9〜51.9円。</li>
+          <li>通常のお題で約2倍。出典チェックが厳しいお題では最大6倍まで跳ねた。</li>
+          <li>跳ねる理由は、Grokが指摘を真面目に直しにいくから。Kimiは直しきらずに打ち切っている。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout blue">
+    <p><b>おすすめは「Grokを選択肢として並べる」</b>。既定はKimiのまま残し、モデル選択に「高品質（Grok 4.6）」を足す形です。全面切り替えは費用が読みにくいので、選ばれた回数と費用を数日見てから判断するのが安全だと考えます。</p>
+  </div>
+</section>
+
+<section id="s2">
+  <span class="eyebrow">02</span>
+  <h2>どう測ったか</h2>
+  <p class="lead">「見た印象」で比べると差が言葉になりません。アプリが本番で使っている検査ロジックをそのまま採点に流用しました。</p>
+
+  <h3>採点に使ったもの</h3>
+  <p>output_slide が出力を受け取ったときに走らせている3種類の検査を、生成物へそのまま当てています。つまり<b>アプリが本番で不合格と判定する条件</b>がそのまま点数になります。</p>
+  <ul>
+    <li><b>はみ出し検査</b>：1枚9行相当を超えていないか、表が横幅96（半角換算）を超えていないか</li>
+    <li><b>構造検査</b>：指定枚数どおりか、中タイトルが多すぎないか、根拠のない数値を書いていないか、同じ表現パターンが続いていないか、出典URLが本文と対応しているか</li>
+    <li><b>見出しの主張文率</b>：本文スライドの見出しが述語で言い切られているか（体言止め・項目名でないか）</li>
+  </ul>
+
+  <h3>3つの条件</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>条件</th><th>与えたプロンプト</th><th>出典チェック</th><th>ねらい</th></tr></thead>
+      <tbody>
+        <tr><td>Grok 素</td><td>共通ルールのみ（モデル別の指示なし）</td><td>なし</td><td>チューニング前の地力を見る</td></tr>
+        <tr><td>Grok 調整</td><td>今回新しく書いたGrok専用プロンプト</td><td>なし</td><td>個別チューニングの効果を見る</td></tr>
+        <tr><td>Grok 調整＋出典</td><td>同上</td><td>あり</td><td>本番と同じ条件で見る</td></tr>
+        <tr><td>Kimi</td><td>現行のKimi専用プロンプト（チューニング済み）</td><td>なし／あり</td><td>比較の基準</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">お題は「Amazon Bedrock AgentCoreの最新アップデートを10枚」と「Claude CodeとCodexの企業導入比較を12枚」の2種類。後者はKimiが苦手な領域として、現行プロンプトに専用の対策が書き込まれているものです。</p>
+</section>
+
+<section id="s3">
+  <span class="eyebrow">03</span>
+  <h2>品質の結果</h2>
+  <p class="lead">10本すべての実測値です。違反件数は少ないほど良く、主張見出しは分母に対して多いほど良い数字です。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>条件</th><th>お題</th><th>枚数</th><th>はみ出し</th><th>構造違反</th><th>主張見出し</th><th>やり直し</th><th>本文量</th></tr></thead>
+      <tbody>
+        <tr><td>Grok 素</td><td>AgentCore</td><td class="num">10/10</td><td class="ok">0</td><td class="ok">0</td><td class="num">6/9</td><td class="num">1回</td><td class="num">2,598字</td></tr>
+        <tr><td>Grok 素</td><td>比較</td><td class="num">12/12</td><td class="ok">0</td><td class="ok">0</td><td class="num">5/11</td><td class="num">1回</td><td class="num">2,331字</td></tr>
+        <tr><td>Grok 調整</td><td>AgentCore</td><td class="num">10/10</td><td class="ok">0</td><td class="ok">0</td><td class="num">5/8</td><td class="num">1回</td><td class="num">3,303字</td></tr>
+        <tr><td>Grok 調整</td><td>比較</td><td class="num">12/12</td><td class="ok">0</td><td class="ok">0</td><td class="num">8/9</td><td class="num">1回</td><td class="num">3,180字</td></tr>
+        <tr><td>Grok 調整＋出典</td><td>AgentCore</td><td class="num">10/10</td><td class="ok">0</td><td class="ok">0</td><td class="num">6/8</td><td class="num">2回</td><td class="num">3,808字</td></tr>
+        <tr><td>Grok 調整＋出典</td><td>比較</td><td class="num">12/12</td><td class="ok">0</td><td class="ng">3</td><td class="num">7/9</td><td class="num">3回</td><td class="num">2,916字</td></tr>
+        <tr><td>Kimi</td><td>AgentCore</td><td class="num">10/10</td><td class="ok">0</td><td class="ng">4</td><td class="num">1/8</td><td class="num">3回</td><td class="num">3,207字</td></tr>
+        <tr><td>Kimi</td><td>比較</td><td class="num">12/12</td><td class="ok">0</td><td class="ng">2</td><td class="num">1/10</td><td class="num">3回</td><td class="num">3,374字</td></tr>
+        <tr><td>Kimi＋出典</td><td>AgentCore</td><td class="num">10/10</td><td class="ok">0</td><td class="ng">1</td><td class="num">0/9</td><td class="num">3回</td><td class="num">3,069字</td></tr>
+        <tr><td>Kimi＋出典</td><td>比較</td><td class="num">12/12</td><td class="ok">0</td><td class="ng">5</td><td class="num">0/10</td><td class="num">3回</td><td class="num">2,965字</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Kimiに残った違反の中身</h3>
+  <p>やり直しは毎回3回（上限）まで使い切っていますが、それでも違反が残ったまま出力されています。内訳は次のとおりです。</p>
+  <ul>
+    <li><b>根拠のない数値</b>（unsupported_quantified_claims）：検索結果に出てこない割合や金額をスライドへ書いている</li>
+    <li><b>同じ表現の連続</b>（pattern_repetition）：箇条書きだけのページが3枚続くなど、構成が単調になる</li>
+    <li><b>出典の不整合</b>（non_official / irrelevant_slide_sources）：公式でないブログを製品仕様の根拠にする、本文と関係ないURLを貼る</li>
+  </ul>
+  <p class="note">Grokで唯一違反が出た「調整＋出典・比較」の3件も出典系です。ここはモデルの差というより、いまの出典チェックが厳しすぎる可能性があり、別途見直す余地があります。</p>
+</section>
+
+<section id="s4">
+  <span class="eyebrow">04</span>
+  <h2>見出しの質が最大の差</h2>
+  <p class="lead">8月19日のコミットで「スライドを主張の文で組み立てさせる」方針に変えましたが、Kimiはプロンプトで指示しても項目名の羅列に戻ります。Grokは指示なしでも主張の文を書きます。同じお題・同じ12枚の見出しを並べます。</p>
+
+  <div class="ba">
+    <section class="before">
+      <h4>KIMI（現行・チューニング済み）</h4>
+      <div class="ba-body">
+        <p class="hd">AIコーディングエージェントの特徴</p>
+        <p class="hd">料金体系はシート制＋従量課金</p>
+        <p class="hd">Claude Code：ローカル実行重視の設計</p>
+        <p class="hd">OpenAI Codex：クラウドでの並列処理</p>
+        <p class="hd">セキュリティ：ローカル vs クラウドの違い</p>
+        <p class="hd">AI性能：ベンチマーク比較</p>
+        <p class="hd">組織特性に応じた選択の指針</p>
+        <p class="hd">導入前に確認すべきポイント</p>
+        <p class="hd">両者の対応プラットフォーム</p>
+        <p>縦に読むと<mark>項目の一覧</mark>で、話の筋が出てきません。読み手は各ページを開くまで結論が分からない構成です。</p>
+      </div>
+    </section>
+    <section class="after">
+      <h4>GROK 4.6（専用プロンプト適用）</h4>
+      <div class="ba-body">
+        <p class="hd">両製品とも、法人席と管理者機能が前提になってきた</p>
+        <p class="hd">個人アカウントのままでは、停止と監査が組織に残らない</p>
+        <p class="hd">契約区分を揃え、席料と従量課金を分けて比較する</p>
+        <p class="hd">監査と人事連携は、Enterprise同士で初めて揃う</p>
+        <p class="hd">席料は入口費用で、実費は利用量で上振れしやすい</p>
+        <p class="hd">データの預け先は、接続経路を先に決めると迷わない</p>
+        <p class="hd">必須の統制が揃うかが、製品比較より先の判断基準になる</p>
+        <p class="hd">少数席の法人契約で90日測り、必須統制だけを引き上げる</p>
+        <p>縦に読むだけで<mark>現状→課題→比較の方法→判断基準→次の一歩</mark>という筋が通り、最後が行動で終わっています。</p>
+      </div>
+    </section>
+  </div>
+
+  <h3>同じ論点のページを1枚ずつ比べる</h3>
+  <div class="ba">
+    <section class="before">
+      <h4>KIMI ／ 料金のページ</h4>
+      <div class="ba-body">
+        <p class="hd">料金体系はシート制＋従量課金</p>
+        <p>表でTeam／Enterprise／従量課金の金額を並べる。ただし<mark>検索結果に出てこない数値</mark>が混ざり、機械検査で「根拠のない数値」として検出された。</p>
+        <p>見出しからは、その数字をどう読めばよいかが分からない。</p>
+      </div>
+    </section>
+    <section class="after">
+      <h4>GROK ／ 料金のページ</h4>
+      <div class="ba-body">
+        <p class="hd">契約区分を揃え、席料と従量課金を分けて比較する</p>
+        <p>リード文「席料だけを並べると、コーディング量による上振れを見落とす。」を置いたうえで、<mark>比較のやり方</mark>を3項目で示す。</p>
+        <p>公式で確認できない金額は書かない判断をしており、そのぶん具体的な数字は少ない。</p>
+      </div>
+    </section>
+  </div>
+  <p class="note">数字の具体性ではKimiのページのほうが情報量が多く見えますが、その数字の一部は出所を確認できないものでした。どちらを良しとするかは資料の用途によります。</p>
+</section>
+
+<section id="s5">
+  <span class="eyebrow">05</span>
+  <h2>費用と所要時間</h2>
+  <p class="lead">1回のスライド生成にかかったモデル利用料の実測です。1ドル155円で換算しています。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>条件</th><th>お題</th><th>入力</th><th>出力</th><th>費用</th><th>所要</th></tr></thead>
+      <tbody>
+        <tr><td>Grok 素</td><td>AgentCore</td><td class="num">29,762</td><td class="num">6,977</td><td class="num">17.3円</td><td class="num">82秒</td></tr>
+        <tr><td>Grok 素</td><td>比較</td><td class="num">18,157</td><td class="num">6,542</td><td class="num">12.9円</td><td class="num">76秒</td></tr>
+        <tr><td>Grok 調整</td><td>AgentCore</td><td class="num">34,231</td><td class="num">6,200</td><td class="num">18.0円</td><td class="num">72秒</td></tr>
+        <tr><td>Grok 調整</td><td>比較</td><td class="num">33,001</td><td class="num">7,797</td><td class="num">19.2円</td><td class="num">85秒</td></tr>
+        <tr><td>Grok 調整＋出典</td><td>AgentCore</td><td class="num">41,919</td><td class="num">9,798</td><td class="num">24.3円</td><td class="num">86秒</td></tr>
+        <tr><td>Grok 調整＋出典</td><td>比較</td><td class="num">73,036</td><td class="num">26,367</td><td class="ng">51.9円</td><td class="ng">240秒</td></tr>
+        <tr><td>Kimi</td><td>AgentCore</td><td class="num">71,217</td><td class="num">5,248</td><td class="ok">9.1円</td><td class="num">85秒</td></tr>
+        <tr><td>Kimi</td><td>比較</td><td class="num">67,516</td><td class="num">5,416</td><td class="ok">8.8円</td><td class="num">111秒</td></tr>
+        <tr><td>Kimi＋出典</td><td>AgentCore</td><td class="num">79,532</td><td class="num">4,856</td><td class="ok">9.7円</td><td class="num">94秒</td></tr>
+        <tr><td>Kimi＋出典</td><td>比較</td><td class="num">66,985</td><td class="num">5,406</td><td class="ok">8.7円</td><td class="num">123秒</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <p><b>Kimiが安い理由の一部は「直そうとしないから」です。</b>出典チェックありの比較お題で、Grokは指摘を受けて3回やり直し、出力2.6万トークンを費やして直しにいきました（51.9円・240秒）。Kimiは同じ条件で3回やり直しても違反5件を残したまま終わっています（8.7円・123秒）。安さと品質はここで交換されています。</p>
+  </div>
+
+  <h3>月額でどう変わるか</h3>
+  <p>直近14日の実績は94セッション、月換算で約200セッションです。アカウント全体の費用は月2,607円（クレジット適用前）で、うちモデル利用料は月1,100円ほどにあたります。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>切り替え方</th><th>1回あたり</th><th>月200回の場合</th><th>現状との差</th></tr></thead>
+      <tbody>
+        <tr><td>現状（Kimiのみ）</td><td class="num">約9.1円</td><td class="num">約1,800円</td><td class="num">—</td></tr>
+        <tr><td>全部Grokへ切替</td><td class="num">約24〜38円</td><td class="num">約4,800〜7,600円</td><td class="num">＋3,000〜5,800円</td></tr>
+        <tr><td>2割がGrokを選択</td><td class="num">—</td><td class="num">約2,400〜2,900円</td><td class="num">＋600〜1,100円</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">1回あたりの幅は、出典チェックに引っかかるお題かどうかで決まります。利用が伸びれば差も比例して伸びます（直近4日は1日23.5回のペースで、この調子なら月700回＝上の3.5倍）。</p>
+</section>
+
+<section id="s6">
+  <span class="eyebrow">06</span>
+  <h2>AWSクレジットは効くか</h2>
+  <p class="lead">結論から言うと<b>効く見込みが高い</b>ですが、確定は明日の請求データで取れます。</p>
+
+  <h3>いま確認できたこと</h3>
+  <ul>
+    <li>8月のBedrock使用料は<b>4.81ドルで、全額がクレジットで相殺</b>されている（使用+4.81／クレジット−4.81）。</li>
+    <li>Kimiの課金項目は <code>USE1-moonshotai.kimi-k2.5-mantle-input-tokens-standard</code> という名前で、<b>すでにMantle経由として</b>「Amazon Bedrock」サービスに計上されている。</li>
+    <li>Grokも同じMantleの課金体系に乗るため、<code>USW2-xai.grok-4.6-mantle-*</code> として同じ「Amazon Bedrock」に載る見込み。AWS Marketplace の別サービスとしては計上されない。</li>
+    <li>傍証として、Grok 4.3 はAWSの料金APIに「Amazon Bedrock」の製品として登録済み（4.6はまだ未掲載）。</li>
+  </ul>
+
+  <div class="callout">
+    <p><b>確定させるには明日もう一度見るのが確実です。</b>今日のGrok呼び出しは請求データへまだ反映されていません（Cost Explorerは1日ほど遅れます）。明日このコマンドで <code>xai.grok-4.6</code> の行が出て、クレジットで相殺されていれば確定です。</p>
+  </div>
+  <p class="note">確認コマンド：<code>aws ce get-cost-and-usage --profile pawapo --region us-east-1 --time-period Start=2026-08-19,End=2026-08-21 --granularity DAILY --metrics UnblendedCost --group-by Type=DIMENSION,Key=USAGE_TYPE --filter '{"Dimensions":{"Key":"SERVICE","Values":["Amazon Bedrock"]}}'</code></p>
+</section>
+
+<section id="s7">
+  <span class="eyebrow">07</span>
+  <h2>実装で判明した注意点</h2>
+  <p class="lead">Grokをこのアプリへ載せるうえで、ドキュメントどおりに書くと動かない箇所が3つありました。</p>
+
+  <div class="grid">
+    <div class="card">
+      <h4>1. 使えるのはus-west-2のMantleだけ</h4>
+      <div class="card-body">
+        <p>AWSの資料には「全リージョンで利用可能」「bedrock-runtimeなら <code>global.xai.grok-4.6</code>」とありますが、<b>このアカウントでは推論プロファイルが存在せず</b>、呼び出すと「モデル識別子が不正」で弾かれます。</p>
+        <p>実際に動いたのは <code>us-west-2</code> のMantleエンドポイントのみ。東京リージョンからは呼べません。</p>
+      </div>
+    </div>
+    <div class="card">
+      <h4>2. Strandsの接続先が違う</h4>
+      <div class="card-body">
+        <p>Strands 1.47 は、モデルIDが <code>openai.gpt-5.</code> で始まるときだけ <code>/openai/v1</code> へ接続し、それ以外は <code>/v1</code> へ送ります。</p>
+        <p>Grokは <code>/openai/v1</code> でしか応答しないため、そのまま設定すると<b>無応答で固まります</b>。接続先とトークンを自前で組み立てて回避しました。</p>
+      </div>
+    </div>
+    <div class="card">
+      <h4>3. 料金APIにまだ載っていない</h4>
+      <div class="card-body">
+        <p>AWSの料金APIに登録されているxAIモデルは Grok 4.3 までで、4.6はまだ出ていません。</p>
+        <p>本レポートの単価はモデルカードの表（入2.20／出6.60ドル）を採用しています。請求が出たら実額で確認するのが確実です。</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>ブランチに入れた変更</h3>
+  <ul>
+    <li><code>config.py</code>：Grokのモデル設定と、専用プロンプト（Kimi版から「守らせる」系の指示を削った軽量版）を追加</li>
+    <li><code>session/manager.py</code>：Mantleの接続先問題を回避し、推論の深さ（low/medium/high/xhigh）を設定できるように</li>
+    <li><code>tools/output_slide.py</code>：枚数の上限と出典チェックの対象へGrokを追加</li>
+    <li>有効化は環境変数 <code>ENABLE_GROK=1</code> のときだけ。<b>本番の既定はKimiのまま</b>で、既存のテスト156本も全て通っています</li>
+  </ul>
+</section>
+
+<section id="s8">
+  <span class="eyebrow">08</span>
+  <h2>判断していただきたい点</h2>
+
+  <div class="grid">
+    <div class="card">
+      <h4>A. 出し方をどうするか</h4>
+      <div class="card-body">
+        <p>おすすめは<b>選択肢として並べる</b>（既定はKimi、選べば「高品質（Grok 4.6）」）。全面切替は費用が読みにくく、逆に検証止まりだと品質差が誰にも届きません。</p>
+      </div>
+    </div>
+    <div class="card">
+      <h4>B. 費用の増分を許容するか</h4>
+      <div class="card-body">
+        <p>全面切替なら月3,000〜5,800円の増、2割が選ぶ程度なら月600〜1,100円の増。クレジットが効けば実質の持ち出しはありませんが、クレジットの減りは早くなります。</p>
+      </div>
+    </div>
+    <div class="card muted">
+      <h4>C. 出典チェックを見直すか</h4>
+      <div class="card-body">
+        <p>今回、両モデルとも出典チェックだけは違反を残しました。Grokは直しにいって費用が跳ね、Kimiは諦めています。<b>ルールが厳しすぎる可能性</b>があり、別件として調べる価値があります。</p>
+      </div>
+    </div>
+  </div>
+
+  <p>Aで「並べる」を選ばれた場合、画面のモデル選択肢とテストの更新、そしてデプロイまで進めます。所要は1時間程度の見込みです。</p>
+</section>
+
+<footer>
+  <p>検証：2026年8月19日 ／ ブランチ grok-4.6-eval（未デプロイ）</p>
+  <p>生成した10本のMarkdownと採点結果は、検証用の一時領域に保存してあります。必要なら成果物として残します。</p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -20,10 +20,29 @@ def _create_model(model_type: str = "kimi") -> Model:
     config = get_model_config(model_type)
 
     if config["provider"] == "mantle":
+        params: dict = {"max_output_tokens": config["max_output_tokens"]}
+        if config.get("reasoning_effort"):
+            params["reasoning"] = {"effort": config["reasoning_effort"]}
+
+        # StrandsのMantle対応は、モデルIDが openai.gpt-5. で始まるときだけ
+        # /openai/v1 を使い、それ以外は /v1 へ送る。xai.grok-4.6 は /openai/v1
+        # でしか応答しないため、Mantle用のbase_urlとトークンを自前で組み立てる。
+        if not config["model_id"].startswith("openai.gpt-5."):
+            from aws_bedrock_token_generator import provide_token
+
+            return OpenAIResponsesModel(
+                model_id=config["model_id"],
+                client_args={
+                    "base_url": f"https://bedrock-mantle.{config['region']}.api.aws/openai/v1",
+                    "api_key": provide_token(region=config["region"]),
+                },
+                params=params,
+            )
+
         return OpenAIResponsesModel(
             model_id=config["model_id"],
             bedrock_mantle_config={"region": config["region"]},
-            params={"max_output_tokens": config["max_output_tokens"]},
+            params=params,
         )
 
     if config["cache_prompt"] is None:

@@ -374,7 +374,7 @@ def configure_slide_validation(user_message: str, model_type: str) -> None:
     if slide_counts:
         _expected_slide_count = int(slide_counts[-1])
         _maximum_slide_count = None
-    elif model_type == 'kimi':
+    elif model_type in ('kimi', 'grok'):
         # Sonnet実測と同等の情報量を許容しつつ、際限なく増えないようにする。
         _expected_slide_count = None
         _maximum_slide_count = 20
@@ -392,7 +392,7 @@ def configure_slide_validation(user_message: str, model_type: str) -> None:
     _required_official_source_rules = [
         rule
         for rule in OFFICIAL_SOURCE_RULES
-        if model_type == 'kimi'
+        if model_type in ('kimi', 'grok')
         and any(marker.lower() in user_message.lower() for marker in rule['markers'])
     ]
 
