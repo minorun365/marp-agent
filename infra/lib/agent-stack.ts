@@ -61,6 +61,9 @@ export class AgentStack extends cdk.Stack {
         OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
         OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
         BYPASS_TOOL_CONSENT: 'true',
+        BEDROCK_GROK_MODEL_ID: 'xai.grok-4.6',
+        // Grok 4.6はMantleのus-west-2でだけ提供される（2026-08-19実測）。
+        BEDROCK_GROK_REGION: 'us-west-2',
         BEDROCK_KIMI_MODEL_ID: 'moonshotai.kimi-k2.5',
         TAVILY_SECRET_ARN: props.foundation.tavilySecret.secretArn,
         SHARED_SLIDES_BUCKET: sharedSlidesBucketName,

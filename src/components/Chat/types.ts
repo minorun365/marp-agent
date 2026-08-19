@@ -1,5 +1,5 @@
 // バックエンドが認識できるモデル型。現在無効なモデルも型からは削除しない。
-export type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus' | 'sol';
+export type ModelType = 'grok' | 'kimi' | 'glm' | 'sol';
 
 export interface ModelOption {
   value: ModelType;
@@ -10,19 +10,10 @@ export interface ModelOption {
 
 // UIに表示するモデル一覧。2件以上になるとChatInputのセレクターが自動表示される。
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'kimi', label: '標準（Kimi K2.5）', shortLabel: '標準' },
-  {
-    value: 'sonnet',
-    label: '高品質（Claude Sonnet 4.6） ※資金不足により停止中',
-    shortLabel: '高品質',
-    disabled: true,
-  },
-  // Sonnet 4.6を再有効化するときは、disabledと停止理由を外し、config.pyのENABLED_MODEL_TYPESへ追加する。
-  // 再検証時は、以下の行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
-  // { value: 'sonnet5', label: 'Claude Sonnet 5', shortLabel: 'Sonnet 5' },
+  { value: 'grok', label: '標準（Grok 4.6）', shortLabel: '標準' },
+  // Kimi K2.5を再有効化するときは、この行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
+  // { value: 'kimi', label: 'Kimi K2.5', shortLabel: 'Kimi' },
   // { value: 'glm', label: 'GLM 5', shortLabel: 'GLM 5' },
-  // Opus 4.6を再有効化するときは、この行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
-  // { value: 'opus', label: 'Claude Opus 4.6', shortLabel: 'Opus 4.6' },
   // GPT-5.6 Solを再有効化するときは、この行とconfig.pyのENABLED_MODEL_TYPESを同時にコメント解除する。
   // { value: 'sol', label: '最高品質（GPT-5.6 Sol）', shortLabel: '最高品質' },
 ];

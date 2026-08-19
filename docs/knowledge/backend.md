@@ -60,33 +60,39 @@ tavily-python
 ### 利用可能なモデル（Bedrock）
 
 ```python
-# Claude Sonnet 4.6（設定保持・現在無効）
-"arn:aws:bedrock:us-east-1:<account-id>:application-inference-profile/<sonnet-profile-id>"
+# Grok 4.6（標準。Bedrock Mantle の us-west-2 でのみ提供）
+"xai.grok-4.6"
 
-# Kimi K2.5（試験運用中の標準）
+# Kimi K2.5（設定保持・現在無効）
 "moonshotai.kimi-k2.5"
 
-# GPT-5.6 Sol（最高品質、Bedrock Mantle Responses API）
+# GPT-5.6 Sol（Bedrock Mantle Responses API、設定保持・現在無効）
 "openai.gpt-5.6-sol"
 
-# Sonnet 5 / GLM-5 / Opus 4.6（設定保持・現在無効）
-"arn:aws:bedrock:us-east-1:<account-id>:application-inference-profile/<profile-id>"
+# GLM-5（設定保持・現在無効）
 "zai.glm-5"
-"arn:aws:bedrock:us-east-1:<account-id>:application-inference-profile/<opus-profile-id>"
 ```
+
+Claudeモデル（Sonnet 4.6 / Sonnet 5 / Opus 4.6）は 2026-08-19 に設定ごと削除した。
+既定をGrok 4.6へ移したため、停止中の選択肢として残す理由がなくなった。
 
 ### モデル別の設定差異
 
 | モデル | Strands provider / API | キャッシュ | 備考 |
 |--------|-------------------------|-----------|------|
-| Claude Sonnet 4.6 | `BedrockModel` / native | `cache_prompt="default"`, `cache_tools="default"` | 設定保持・現在無効 |
+| Grok 4.6 | `OpenAIResponsesModel` / Mantle `/openai/v1` | なし | 標準。us-west-2 のみ |
 | GPT-5.6 Sol | `OpenAIResponsesModel` / Mantle Responses | Strandsのキャッシュ引数なし、`stateful=False` | 設定保持・現在無効 |
-| Kimi K2.5 | `BedrockModel` / native | なし | 試験運用中の標準 |
-| Claude Sonnet 5 | `BedrockModel` / native | Sonnetと同じ | 設定保持・現在無効 |
+| Kimi K2.5 | `BedrockModel` / native | なし | 設定保持・現在無効 |
 | GLM-5 | `BedrockModel` / native | なし | 設定保持・現在無効 |
-| Claude Opus 4.6 | `BedrockModel` / native | Sonnetと同じ | 設定保持・現在無効 |
 
-試験運用中はKimi K2.5のみを有効にしている。Sonnet 4.6は停止理由を付けてUIへ残すが選択不可とし、GPT-5.6 Solなどと同様に接続設定だけを保持する。無効なモデルがAPIへ指定された場合はKimi K2.5へ正規化する。
+有効なのはGrok 4.6だけで、無効なモデルがAPIへ指定された場合もGrok 4.6へ正規化する。
+
+Grokだけは`bedrock_mantle_config`を使わない。Strandsは、モデルIDが`openai.gpt-5.`で始まるときだけ
+`/openai/v1`へ送り、それ以外は`/v1`へ送る。`xai.grok-4.6`は`/openai/v1`でしか応答しないため、
+`base_url`と短期トークン（`aws_bedrock_token_generator.provide_token`）を自前で組み立てている。
+
+Mantleは`bedrock:InvokeModel`では認可されない。実行ロールに`bedrock-mantle:CreateInference`と
+`bedrock-mantle:CallWithBearerToken`が要る（`infra/lib/workload-access-stack.ts`）。
 
 ### フロントエンドからのモデル切り替え
 
@@ -98,7 +104,7 @@ tavily-python
 
 ```typescript
 // types.ts - モデル選択肢の定義（ここを増減するだけでUIが自動対応）
-export type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus' | 'sol';
+export type ModelType = 'grok' | 'kimi' | 'glm' | 'sol';
 
 export interface ModelOption {
   value: ModelType;
@@ -108,11 +114,9 @@ export interface ModelOption {
 }
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'kimi', label: '標準（Kimi K2.5）', shortLabel: '標準' },
-  { value: 'sonnet', label: '高品質（Claude Sonnet 4.6） ※資金不足により停止中', shortLabel: '高品質', disabled: true },
-  // { value: 'sonnet5', label: 'Claude Sonnet 5', shortLabel: 'Sonnet 5' },
+  { value: 'grok', label: '標準（Grok 4.6）', shortLabel: '標準' },
+  // { value: 'kimi', label: 'Kimi K2.5', shortLabel: 'Kimi' },
   // { value: 'glm', label: 'GLM 5', shortLabel: 'GLM 5' },
-  // { value: 'opus', label: 'Claude Opus 4.6', shortLabel: 'Opus 4.6' },
   // { value: 'sol', label: '最高品質（GPT-5.6 Sol）', shortLabel: '最高品質' },
 ];
 
@@ -159,7 +163,7 @@ body: JSON.stringify({
 
 #### バックエンド（config.py）
 ```python
-def get_model_config(model_type: str = "kimi") -> dict:
+def get_model_config(model_type: str = "grok") -> dict:
     normalized_model_type = normalize_model_type(model_type)
     if normalized_model_type == "sol":
         return {
@@ -185,14 +189,14 @@ ENABLED_MODEL_TYPES = {
     # "sol",
 }
 
-def get_system_prompt(theme: str = "speee", model_type: str = "kimi") -> str:
+def get_system_prompt(theme: str = "speee", model_type: str = "grok") -> str:
     model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
     return f"""共通プロンプト
     {model_prompt}"""
 
 @app.entrypoint
 async def invoke(payload, context=None):
-    model_type = payload.get("model_type", "kimi")
+    model_type = payload.get("model_type", "grok")
     theme = payload.get("theme", "border")
     agent = get_or_create_agent(session_id, model_type, theme)
 ```

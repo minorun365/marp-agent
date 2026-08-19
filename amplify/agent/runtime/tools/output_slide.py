@@ -16,7 +16,7 @@ _overflow_retry_count: int = 0
 _expected_slide_count: int | None = None
 _maximum_slide_count: int | None = None
 _agenda_requested: bool = False
-_active_model_type: str = "sonnet"
+_active_model_type: str = "grok"
 _web_search_executed: bool = False
 _user_quantified_claims: set[str] = set()
 _required_official_source_rules: list[dict] = []
@@ -615,7 +615,7 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                 'claims': unsupported_claims,
             })
 
-    if _active_model_type in {'kimi', 'glm'}:
+    if _active_model_type in {'kimi', 'glm', 'grok'}:
         previous_pattern = None
         consecutive_pattern_count = 0
         for index, slide in enumerate(slides, start=1):
@@ -898,6 +898,42 @@ def _summarize_outline(markdown: str) -> list[str]:
     return lines
 
 
+def _repair_table_separators(markdown: str) -> str:
+    """ヘッダー行の直下に区切り行が無い表へ、区切り行を補う。
+
+    Markdownの表は `| --- | --- |` の区切り行が無いと表として描画されず、
+    パイプ付きの文字列がそのまま画面へ出る。モデルによっては数回に1回抜けるので、
+    出力を受け取った時点で確定的に直す。行数・表幅の検査は区切り行を除外して
+    数えているため、補っても判定結果は変わらない。
+    """
+    lines = markdown.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+    repaired: list[str] = []
+    inside_code_block = False
+    previous_is_row = False
+
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('```') or stripped.startswith('~~~'):
+            inside_code_block = not inside_code_block
+        is_row = (
+            not inside_code_block
+            and len(stripped) > 1
+            and stripped.startswith('|')
+            and stripped.endswith('|')
+        )
+        repaired.append(line)
+
+        if is_row and not previous_is_row:
+            next_line = lines[index + 1].strip() if index + 1 < len(lines) else ''
+            if not re.match(r'^\|[\s\-:|]+\|$', next_line):
+                column_count = len(stripped.strip('|').split('|'))
+                repaired.append('|' + '|'.join([' --- '] * column_count) + '|')
+
+        previous_is_row = is_row
+
+    return '\n'.join(repaired)
+
+
 def _repair_slides_mechanically(markdown: str) -> str:
     """LLMが直しきれなかった違反を、機械で確定的に解消する。
 
@@ -940,7 +976,7 @@ def reset_generated_markdown() -> None:
     _expected_slide_count = None
     _maximum_slide_count = None
     _agenda_requested = False
-    _active_model_type = "sonnet"
+    _active_model_type = "grok"
     _web_search_executed = False
     _user_quantified_claims = set()
     _required_official_source_rules = []
@@ -997,6 +1033,9 @@ def output_slide(markdown: str) -> str:
     if _slide_finalized:
         # 同じ依頼の中で確定済み。作り直しても内容は良くならないので受け付けない。
         return "スライドは出力済みです。同じ依頼の中で呼び直す必要はありません。"
+
+    # 表の区切り行の欠落は、モデルへ指摘して直させるより先に機械で補う。
+    markdown = _repair_table_separators(markdown)
 
     violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
 

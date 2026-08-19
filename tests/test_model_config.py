@@ -12,32 +12,52 @@ from config import (
 from tools.http_request import _html_to_text
 
 
-def test_only_kimi_is_enabled():
-    assert ENABLED_MODEL_TYPES == {"kimi"}
-    assert normalize_model_type("kimi") == "kimi"
+def test_only_grok_is_enabled():
+    assert ENABLED_MODEL_TYPES == {"grok"}
+    assert normalize_model_type("grok") == "grok"
 
 
 @pytest.mark.parametrize(
     "requested_model",
-    [None, "sonnet", "sonnet5", "glm", "opus", "opus4.7", "sol", "unknown"],
+    [None, "kimi", "glm", "sol", "sonnet", "opus", "unknown"],
 )
-def test_disabled_model_falls_back_to_kimi(requested_model):
-    assert normalize_model_type(requested_model) == "kimi"
+def test_disabled_model_falls_back_to_grok(requested_model):
+    assert normalize_model_type(requested_model) == "grok"
 
 
-@pytest.mark.parametrize(
-    "requested_model", ["sonnet", "sonnet5", "glm", "opus", "opus4.7"]
-)
-def test_get_model_config_uses_kimi_for_disabled_models(
+@pytest.mark.parametrize("requested_model", ["kimi", "glm", "sol", "sonnet"])
+def test_get_model_config_uses_grok_for_disabled_models(
     monkeypatch,
     requested_model,
 ):
-    monkeypatch.setenv("BEDROCK_KIMI_MODEL_ID", "moonshotai.kimi-k2.5")
+    monkeypatch.setenv("BEDROCK_GROK_MODEL_ID", "xai.grok-4.6")
 
-    assert get_model_config(requested_model)["model_id"] == "moonshotai.kimi-k2.5"
+    assert get_model_config(requested_model)["model_id"] == "xai.grok-4.6"
+
+
+def test_grok_runs_on_mantle_in_us_west_2(monkeypatch):
+    """Grok 4.6はMantleのus-west-2でだけ提供される（2026-08-19実測）。
+
+    bedrock-runtime側には推論プロファイルが無いため、既定リージョンのままだと
+    モデルが見つからない。
+    """
+    monkeypatch.setenv("BEDROCK_GROK_MODEL_ID", "xai.grok-4.6")
+    monkeypatch.delenv("BEDROCK_GROK_REGION", raising=False)
+    monkeypatch.delenv("GROK_REASONING_EFFORT", raising=False)
+
+    model_config = get_model_config("grok")
+
+    assert model_config == {
+        "provider": "mantle",
+        "model_id": "xai.grok-4.6",
+        "region": "us-west-2",
+        "max_output_tokens": 32768,
+        "reasoning_effort": "medium",
+    }
 
 
 def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "kimi"})
     monkeypatch.setenv("BEDROCK_KIMI_MODEL_ID", "moonshotai.kimi-k2.5")
 
     model_config = get_model_config("kimi")
@@ -51,7 +71,7 @@ def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
 
 
 def test_sol_config_is_ready_for_reenable(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sol"})
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "sol"})
     monkeypatch.setenv("BEDROCK_SOL_MODEL_ID", "openai.gpt-5.6-sol")
     monkeypatch.setenv("BEDROCK_MANTLE_REGION", "us-east-1")
 
@@ -65,22 +85,8 @@ def test_sol_config_is_ready_for_reenable(monkeypatch):
     }
 
 
-def test_get_model_config_uses_sonnet5_with_prompt_cache(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sonnet5"})
-    monkeypatch.setenv("BEDROCK_SONNET5_MODEL_ID", "sonnet5-profile-arn")
-
-    model_config = get_model_config("sonnet5")
-
-    assert model_config == {
-        "provider": "bedrock",
-        "model_id": "sonnet5-profile-arn",
-        "cache_prompt": "default",
-        "cache_tools": "default",
-    }
-
-
 def test_get_model_config_uses_glm_without_prompt_cache(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "glm"})
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "glm"})
     monkeypatch.setenv("BEDROCK_GLM_MODEL_ID", "zai.glm-5")
 
     model_config = get_model_config("glm")
@@ -93,22 +99,8 @@ def test_get_model_config_uses_glm_without_prompt_cache(monkeypatch):
     }
 
 
-def test_opus_profile_is_ready_for_reenable(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "opus"})
-    monkeypatch.setenv("BEDROCK_OPUS_MODEL_ID", "opus-profile-arn")
-
-    assert get_model_config("opus")["model_id"] == "opus-profile-arn"
-
-
-def test_get_model_config_rejects_missing_sonnet_environment_variable(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"kimi", "sonnet"})
-    monkeypatch.delenv("BEDROCK_SONNET_MODEL_ID", raising=False)
-
-    with pytest.raises(RuntimeError, match="BEDROCK_SONNET_MODEL_ID"):
-        get_model_config("sonnet")
-
-
 def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch):
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "kimi"})
     monkeypatch.delenv("BEDROCK_KIMI_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_KIMI_MODEL_ID"):
@@ -116,23 +108,15 @@ def test_get_model_config_rejects_missing_kimi_environment_variable(monkeypatch)
 
 
 def test_get_model_config_rejects_missing_sol_environment_variable(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sol"})
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "sol"})
     monkeypatch.delenv("BEDROCK_SOL_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_SOL_MODEL_ID"):
         get_model_config("sol")
 
 
-def test_get_model_config_rejects_missing_sonnet5_environment_variable(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sonnet5"})
-    monkeypatch.delenv("BEDROCK_SONNET5_MODEL_ID", raising=False)
-
-    with pytest.raises(RuntimeError, match="BEDROCK_SONNET5_MODEL_ID"):
-        get_model_config("sonnet5")
-
-
 def test_get_model_config_rejects_missing_glm_environment_variable(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "glm"})
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "glm"})
     monkeypatch.delenv("BEDROCK_GLM_MODEL_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="BEDROCK_GLM_MODEL_ID"):
@@ -172,6 +156,31 @@ def test_url_reference_mode_prompt_prioritizes_the_article():
     assert "最大2回" in prompt
 
 
+def test_grok_system_prompt_stays_short_and_covers_the_measured_gaps():
+    """Grok向けの指示は、実測で足りなかった点だけを足した短い契約に保つ。
+
+    2026-08-19の実測（Sonnet 4.6と同じシンプルなプロンプトで3お題ずつ）では、
+    Grokは指定枚数・はみ出し・構造違反・見出しの主張化をSonnetと同等以上に守れた。
+    Kimi向けに積み上げた枚数の内訳表や `site:` 指定は、Grokには不要だったので入れない。
+    補ったのは、Sonnetと比べて明確に劣っていた次の3点だけ。
+    """
+    prompt = get_system_prompt("speee", "grok")
+
+    assert "Grok 4.6実行契約" in prompt
+    # 1) 表の区切り行が7個中5個で抜け、表として描画されなかった
+    assert "区切り行を必ず入れる" in prompt
+    # 2) 本文量がSonnetの7割程度で、2〜3項目のページが混ざった
+    assert "本文の要素を4〜5つ並べる" in prompt
+    assert "要素が2〜3つで終わるページを作らない" in prompt
+    # 3) 密度を上げた版で製品名が「Code側」「両社」へ縮み、比較が読めなくなった
+    assert "正式な製品名を本文と表へそのまま書く" in prompt
+
+    # Kimi向けの重い指示を持ち込まない（持ち込むと薄く短い出力へ戻る）
+    assert "指定枚数を増減しない" not in prompt
+    assert "site:help.openai.com" not in prompt
+    assert len(prompt) < len(get_system_prompt("speee", "kimi"))
+
+
 def test_kimi_system_prompt_adds_slide_balance_rules():
     prompt = get_system_prompt("speee", "kimi")
 
@@ -209,35 +218,11 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
     assert "新しい説明・数値・出典を追加しない" in prompt
 
 
-def test_sonnet_system_prompt_does_not_add_kimi_rules():
-    prompt = get_system_prompt("speee", "sonnet")
-
-    assert "現在は2026年です。" not in prompt
-    assert "OSS系モデル向け" not in prompt
-    assert "自律実行ルール（最優先）" not in prompt
-    assert "theme: speee" in prompt
-
-
-def test_sonnet5_uses_the_same_system_prompt_as_sonnet46():
-    assert get_system_prompt("speee", "sonnet5") == get_system_prompt(
-        "speee", "sonnet"
-    )
-
-
 def test_glm_system_prompt_adds_oss_slide_rules():
     prompt = get_system_prompt("speee", "glm")
 
     assert "OSS系モデル向け" in prompt
     assert "参考文献1" in prompt
-
-
-def test_disabled_sol_uses_the_kimi_system_prompt():
-    normalized_model_type = normalize_model_type("sol")
-    prompt = get_system_prompt("speee", normalized_model_type)
-
-    assert "GPT-5.6 Sol向けの実行指示" not in prompt
-    assert "Kimi K2.5実行契約" in prompt
-    assert prompt == get_system_prompt("speee", "kimi")
 
 
 def test_kimi_system_prompt_requires_storytelling_over_bullet_lists():

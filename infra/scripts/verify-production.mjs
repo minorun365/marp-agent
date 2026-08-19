@@ -92,6 +92,9 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
     // モデルIDが落ちるとエージェントは起動時に落ちる。デプロイ前にここで気づく。
     // 2026-08-18: 旧Haiku要約用の BEDROCK_HAIKU_MODEL_ID が移行時に落ちたまま、
     // 要約が例外で潰れてURL本文が先頭5000文字に切られていた事故があった（要約自体を廃止済み）。
+    'BEDROCK_GROK_MODEL_ID',
+    // Grok 4.6はMantleのus-west-2でだけ提供される。既定リージョンのままだとモデルが見つからない。
+    'BEDROCK_GROK_REGION',
     'BEDROCK_KIMI_MODEL_ID',
     'TAVILY_SECRET_ARN',
     'SHARED_SLIDES_BUCKET',
@@ -102,6 +105,29 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
     'Runtimeに必須の環境変数がそろっている',
     missing.length === 0,
     missing.length ? `不足=${missing.join(', ')}` : `${requiredKeys.length}件すべてあり`,
+  );
+});
+
+guarded('RuntimeロールがMantle経由のGrokを呼べる', () => {
+  // 既定モデルのGrok 4.6はbedrock-mantleエンドポイントで動く。bedrock:InvokeModelだけでは
+  // 認可されず、生成のたびにAccessDeniedになる。構成の時点で気づけるようにする。
+  const roleName = 'pawapo-agentcore-runtime';
+  const policyNames = aws(['iam', 'list-role-policies', '--role-name', roleName]).PolicyNames || [];
+  const statements = policyNames.flatMap((policyName) => {
+    const policy = aws(['iam', 'get-role-policy', '--role-name', roleName, '--policy-name', policyName]);
+    const document = policy.PolicyDocument;
+    return Array.isArray(document.Statement) ? document.Statement : [document.Statement];
+  });
+  const actions = statements.flatMap((statement) =>
+    Array.isArray(statement.Action) ? statement.Action : [statement.Action],
+  );
+  const missing = ['bedrock-mantle:CreateInference', 'bedrock-mantle:CallWithBearerToken'].filter(
+    (needed) => !actions.includes(needed),
+  );
+  check(
+    'RuntimeロールがMantle経由のGrokを呼べる',
+    missing.length === 0,
+    missing.length ? `不足=${missing.join(', ')}` : '必要な2アクションあり',
   );
 });
 

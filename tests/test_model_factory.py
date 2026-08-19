@@ -17,23 +17,35 @@ import session.manager as manager
 import config
 
 
-def test_create_model_uses_bedrock_provider_for_sonnet(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"kimi", "sonnet"})
-    monkeypatch.setenv("BEDROCK_SONNET_MODEL_ID", "sonnet-profile-arn")
-    bedrock_model = MagicMock()
-    monkeypatch.setattr(manager, "BedrockModel", bedrock_model)
+def test_create_model_uses_mantle_endpoint_for_grok(monkeypatch):
+    """Grokは openai.gpt-5. で始まらないので、Mantleのbase_urlを自前で組み立てる。
 
-    manager._create_model("sonnet")
+    Strandsの bedrock_mantle_config は /v1 を叩くが、xai.grok-4.6 は /openai/v1
+    でしか応答しない（2026-08-19実測）。
+    """
+    monkeypatch.setenv("BEDROCK_GROK_MODEL_ID", "xai.grok-4.6")
+    monkeypatch.setenv("BEDROCK_GROK_REGION", "us-west-2")
+    monkeypatch.setenv("GROK_REASONING_EFFORT", "medium")
+    responses_model = MagicMock()
+    monkeypatch.setattr(manager, "OpenAIResponsesModel", responses_model)
+    token_module = ModuleType("aws_bedrock_token_generator")
+    token_module.provide_token = MagicMock(return_value="bearer-token")
+    sys.modules["aws_bedrock_token_generator"] = token_module
 
-    bedrock_model.assert_called_once_with(
-        model_id="sonnet-profile-arn",
-        cache_prompt="default",
-        cache_tools="default",
+    manager._create_model("grok")
+
+    responses_model.assert_called_once_with(
+        model_id="xai.grok-4.6",
+        client_args={
+            "base_url": "https://bedrock-mantle.us-west-2.api.aws/openai/v1",
+            "api_key": "bearer-token",
+        },
+        params={"max_output_tokens": 32768, "reasoning": {"effort": "medium"}},
     )
 
 
 def test_sol_model_factory_is_ready_for_reenable(monkeypatch):
-    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"sonnet", "sol"})
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "sol"})
     monkeypatch.setenv("BEDROCK_SOL_MODEL_ID", "openai.gpt-5.6-sol")
     monkeypatch.setenv("BEDROCK_MANTLE_REGION", "us-east-1")
     responses_model = MagicMock()

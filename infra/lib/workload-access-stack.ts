@@ -42,6 +42,16 @@ export class WorkloadAccessStack extends cdk.Stack {
         `arn:${this.partition}:bedrock:*:${this.account}:application-inference-profile/*`,
       ],
     }));
+    // Grok 4.6はbedrock-mantleエンドポイントで動く。bedrock:InvokeModelでは認可されず、
+    // Mantle側のCreateInferenceが要る。SigV4から短期トークンを作るのでCallWithBearerTokenも必要。
+    this.runtimeRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['bedrock-mantle:CreateInference', 'bedrock-mantle:Get*', 'bedrock-mantle:List*'],
+      resources: [`arn:${this.partition}:bedrock-mantle:*:${this.account}:project/*`],
+    }));
+    this.runtimeRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['bedrock:CallWithBearerToken', 'bedrock-mantle:CallWithBearerToken'],
+      resources: ['*'],
+    }));
     this.runtimeRole.addToPolicy(new iam.PolicyStatement({
       actions: ['logs:DescribeLogGroups'],
       resources: ['*'],

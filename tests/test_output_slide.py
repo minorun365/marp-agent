@@ -11,6 +11,8 @@ from tools.output_slide import (
     get_generated_markdown,
     reset_generated_markdown,
     _parse_slides,
+    _repair_table_separators,
+    _count_content_lines,
     _trim_excess_slides,
     _count_content_lines,
     _check_slide_overflow,
@@ -1221,3 +1223,30 @@ def test_output_slide_rejects_reoutput_after_finalized():
     reset_generated_markdown()
     configure_slide_validation("テスト", "kimi")
     assert "出力しました" in output_slide_tool(markdown)
+
+
+def test_repair_table_separators_restores_broken_tables():
+    """区切り行が抜けた表を、出力を受け取った時点で機械的に直す。
+
+    2026-08-19の実測でGrokは表7個のうち5個で `| --- |` を落としていた。
+    区切り行が無いとMarpは表として描画せず、パイプ付きの文字列がそのまま画面へ出る。
+    モデルへ指摘して直させるより、確定的に補うほうが速くて確実。
+    """
+    broken = "## 見出し\n\n| 観点 | A | B |\n| 実行 | 端末 | 雲 |\n"
+
+    repaired = _repair_table_separators(broken)
+
+    assert "| --- | --- | --- |" in repaired
+    assert repaired.splitlines()[3] == "| --- | --- | --- |"
+    # 行数の数え方は区切り行を除外しているので、補っても判定は変わらない
+    assert _count_content_lines(
+        broken
+    ) == _count_content_lines(repaired)
+
+
+def test_repair_table_separators_leaves_correct_tables_and_code_blocks_alone():
+    intact = "| 観点 | A |\n| --- | --- |\n| 実行 | 端末 |\n"
+    code = "```\n| a | b |\n| c | d |\n```\n"
+
+    assert _repair_table_separators(intact) == intact
+    assert _repair_table_separators(code) == code
