@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Grok本番投入｜Sonnet比較とプロンプト絞り込み</title>
+<title>Grok日本語の調整｜ステータス重複とスタイル修正</title>
 <style>
 :root{
   --blue-deep:#0e0d6a; --blue:#0a4695; --blue-mid:#0862aa; --blue-bright:#0aa0dc;
@@ -100,7 +100,7 @@ p{margin:10px 0}
 .ba .ba-body>:last-child{margin-bottom:0}
 .ba .ba-body p{margin:0 0 .7em;line-height:1.8;color:var(--sub)}
 .ba mark{background:var(--gold-soft);padding:0 .15em;border-radius:2px}
-.ba pre{margin:0;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.7;
+.ba pre{margin:0;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.75;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--sub)}
 @media (max-width:760px){.ba{grid-template-columns:1fr}}
 
@@ -126,17 +126,15 @@ footer p{margin:8px 0}
 
 <div class="hero">
   <div class="hero-in">
-    <span class="kicker">パワポ作るマン 公開版 ／ モデル切替の報告</span>
-    <h1>Grok 4.6を本番の選択肢として公開しました<br>標準はKimi K2.5のままです</h1>
-    <p class="sub">Sonnet 4.6と素のGrokを同じ短いプロンプトで比べ、劣っていた3点だけを補ったうえで出しています。</p>
+    <span class="kicker">パワポ作るマン 公開版 ／ Grokの調整（2回目）</span>
+    <h1>ご指摘の3点を直しました<br>日本語・検索の見え方・検証のやり方</h1>
+    <p class="sub">Sonnetと同じお題で並べて読み比べ、違和感の出どころを特定して直しています。</p>
     <table class="hero-facts">
       <tbody>
-      <tr><th>対象</th><td>パワポ作るマン 公開版（pawapo.minoruonda.com）／ KAG社内版は未対応</td></tr>
-      <tr><th>変更</th><td>モデル選択へ「新モデル（Grok 4.6）」を追加。標準は「標準（Kimi K2.5）」のまま。Sonnet 4.6は従来どおり停止中の表示で残す</td></tr>
-      <tr><th>実行環境</th><td>xai.grok-4.6 ／ bedrock-mantle ／ us-west-2 ／ 推論の深さ medium</td></tr>
-      <tr><th>検証</th><td>2026年8月19日。お題3種 × 条件3系統で12本を実生成し、アプリ本番の機械検査で採点</td></tr>
-      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモークテスト5/5が合格（Grokを選んだ経路も毎回検査する）</td></tr>
-      <tr><th>費用</th><td>1回あたり Grok 13〜36円（Kimi 約9円、Sonnet 40〜84円）。AWSクレジットの適用対象</td></tr>
+      <tr><th>対象</th><td>パワポ作るマン 公開版（pawapo.minoruonda.com）。標準は Kimi K2.5、選択肢に Grok 4.6</td></tr>
+      <tr><th>直した点</th><td>①「である」調と句点だらけの箇条書き ②検索の完了行が同じ文言で積み上がる ③対象の取り違え（KAGを別の技術と誤解）</td></tr>
+      <tr><th>検証</th><td>お題「KAGのみのるん」でSonnetとGrokを比較。本番の生SSEも取得し、画面の表示はブラウザで実際に確認</td></tr>
+      <tr><th>状態</th><td>本番へデプロイ済み。構成検査14/14・スモーク5/5合格</td></tr>
       </tbody>
     </table>
   </div>
@@ -146,216 +144,199 @@ footer p{margin:8px 0}
   <nav class="toc">
     <h2>目次</h2>
     <ol>
-      <li><a href="#s1"><span class="num">01</span>結論</a></li>
-      <li><a href="#s2"><span class="num">02</span>どう比べたか</a></li>
-      <li><a href="#s3"><span class="num">03</span>実測の結果</a></li>
-      <li><a href="#s4"><span class="num">04</span>劣っていた3点と、その埋め方</a></li>
-      <li><a href="#s5"><span class="num">05</span>プロンプトのBefore/After</a></li>
-      <li><a href="#s6"><span class="num">06</span>本番反映と検査</a></li>
-      <li><a href="#s7"><span class="num">07</span>判断していただきたい点</a></li>
+      <li><a href="#s1"><span class="num">01</span>何が起きていたか</a></li>
+      <li><a href="#s2"><span class="num">02</span>日本語をSonnetと比べる</a></li>
+      <li><a href="#s3"><span class="num">03</span>検索ステータスの正体</a></li>
+      <li><a href="#s4"><span class="num">04</span>対象の取り違え</a></li>
+      <li><a href="#s5"><span class="num">05</span>本番での実測</a></li>
+      <li><a href="#s6"><span class="num">06</span>検証のやり方を直した</a></li>
     </ol>
   </nav>
 
   <section id="s1">
     <span class="eyebrow">01</span>
-    <h2>結論</h2>
-    <p class="lead">Grokは、Sonnet 4.6と同じ短いプロンプトを与えただけで、Sonnetと同等以上のスライドを出しました。そこで長い指示を積むのをやめ、実測で劣っていた3点だけを足しています。標準へ上げる前に、まず選択肢として本番で試せる状態にしました。</p>
+    <h2>何が起きていたか</h2>
+    <p class="lead">前回はハーネス（バックエンド）とAPIレベルの検査だけで済ませ、画面と日本語の質を見ていませんでした。ご指摘の2点は原因が別々で、うち1つはこちらが足した指示が直接の犯人でした。</p>
 
     <div class="grid">
       <div class="card">
-        <h4>守るべきことは素で守れた<span>指示なしで同点</span></h4>
+        <h4>日本語の硬さ<span>こちらの指示が原因</span></h4>
         <div class="card-body">
-          <p>指定枚数は9本すべて一致、はみ出しは全本ゼロ、構造違反もほぼゼロ。見出しを結論の文で言い切る率は、Sonnetを上回りました。</p>
-          <p>Kimi向けに積み上げた枚数の内訳表や公式ドメインの指定は、Grokには要りませんでした。</p>
+          <p>「箇条書きは句点で終わる1文にする」という指示を、Kimi向けのプロンプトからそのまま持ち込んでいました。Grokはこれを真面目に守り、全項目を「〜である。」で締める文体になっていました。</p>
         </div>
       </div>
       <div class="card">
-        <h4>劣っていたのは3点だけ<span>すべて対処済み</span></h4>
+        <h4>ステータスの繰り返し<span>重複ではなかった</span></h4>
         <div class="card-body">
-          <p>表の区切り行の欠落、1枚あたりの本文量、密度を上げた際の製品名の省略。前者は機械修正、後2つはプロンプト2行で埋めました。</p>
+          <p>本番の生イベントを取ったところ、通知はすべて別クエリの本物の検索でした。完了すると全部「Web検索完了」の一言に潰れるため、同じ行が積み上がって見えていました。</p>
         </div>
       </div>
-      <div class="card">
-        <h4>費用はSonnetの約3分の1<span>Kimiの約2倍</span></h4>
+      <div class="card muted">
+        <h4>検証の穴<span>再発防止</span></h4>
         <div class="card-body">
-          <p>チューニング後は1回13〜36円。Sonnetの40〜84円より安く、Kimiの約9円よりは高くなります。AWSクレジットの適用対象なので、切り替えの障害にはなりません。</p>
+          <p>画面を一度も見ずに完了と報告していました。今回はブラウザで実際に送信して確認し、モックも本番同様に複数回検索するよう直しています。</p>
         </div>
       </div>
-    </div>
-
-    <div class="callout blue">
-      <p><b>プロンプトは3,500字から1,100字へ減りました。</b>Kimi向けの指示は「守らせる」ための細かい規則の積み上げでしたが、Grokでは同じ規則がむしろ出力を薄くします。実際、密度の指示を足したときに製品名が「Code側」へ縮む退行が出ており、指示を増やすほど良くなる関係ではありませんでした。</p>
     </div>
   </section>
 
   <section id="s2">
     <span class="eyebrow">02</span>
-    <h2>どう比べたか</h2>
-    <p class="lead">「ソネットの時はうまくいっていた」を基準にするため、Sonnet 4.6が実際に使っていた条件、つまりモデル別の追加指示なしの状態を土台にしました。同じ短いプロンプトをGrokにも与えて、差がどこに出るかを見ています。</p>
+    <h2>日本語をSonnetと比べる</h2>
+    <p class="lead">お題「KAGのみのるん」で、Sonnet（シンプルなプロンプト）とGrok（前回の本番プロンプト）を並べました。同じ内容を書いているのに、読後感がまったく違います。</p>
+
+    <div class="ba">
+      <div class="before"><h4>BEFORE — 前回の本番プロンプトのGrok</h4><div class="ba-body">
+        <pre>## みのるんはKAGから現場知見を外へ届ける人<mark>である</mark>
+本名と所属を先に押さえると、以降の肩書が追いやすくなる。
+- 本名は**御田稔**で、通称はみのるん<mark>である。</mark>
+- 所属はKDDIアジャイル開発センター<mark>である。</mark>
+- 肩書はテックエバンジェリスト<mark>である。</mark>
+- クラウドと生成AIの内製開発を外へ出す<mark>。</mark></pre>
+        <p style="margin-top:.9em">「である」が4行続き、事実を言い換えただけの項目が並びます。リード文も資料の読み方の説明になっています。</p>
+      </div></div>
+      <div class="after"><h4>AFTER — 今回のプロンプトのGrok</h4><div class="ba-body">
+        <pre>## みのるんはKAGで技術を外へ届ける人
+KAGのテックエバンジェリストとして外へ技術を届ける
+- 本名は**御田 稔**、発信名はみのるん
+- 所属はKDDIアジャイル開発センター
+- <mark>KDDI株式会社のシニアエキスパートも兼務</mark>
+- クラウドと生成AIの内製開発に従事
+- メンバーの登壇やブログも後押しする</pre>
+        <p style="margin-top:.9em">句点も「である」も消え、項目が増えて情報量も上がりました。Sonnetの書き方に近づいています。</p>
+      </div></div>
+    </div>
+
+    <h3>参考：Sonnetは元からこの書き方だった</h3>
+    <div class="ba">
+      <div class="before"><h4>Sonnet 4.6（シンプルなプロンプト）</h4><div class="ba-body">
+        <pre>- 2019年：KDDI情報システム本部に入社、業務システムのAWS移行を経験
+- 2023年：KDDIアジャイル開発センター（KAG）へ出向
+- 現職：クラウド・生成AI領域の開発・プリセールス・技術コンサルティング</pre>
+        <p style="margin-top:.9em">句点なし、名詞句で止める、年号と固有名詞をそのまま残す。この3つが自然さの正体でした。</p>
+      </div></div>
+      <div class="after"><h4>プロンプトへ足した指示</h4><div class="ba-body">
+        <pre>- <mark>「である」調を使わない。</mark>「〜である」「〜からである」を
+  見出し・リード文・箇条書きのどこにも書かない
+- <mark>箇条書きは句点（。）で終わらせない。</mark>
+  名詞句で止めるか、短い言い切りで終える
+- リード文は結論を支える事実を1行で書く。
+  「先に押さえると分かりやすい」のような
+  資料の読み方の説明を書かない
+- 年号・数字・固有名詞・書名は<mark>一般化せずそのまま残す</mark></pre>
+      </div></div>
+    </div>
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>条件</th><th>モデル</th><th>与えたプロンプト</th><th>ねらい</th></tr></thead>
+        <thead><tr><th>お題「KAGのみのるん」</th><th>「である」</th><th>句点で終わる箇条書き</th><th>本文量</th><th>費用</th></tr></thead>
         <tbody>
-          <tr><td>基準</td><td>Sonnet 4.6</td><td>共通ルール＋短い進め方8行</td><td>うまくいっていた頃の品質を測り直す</td></tr>
-          <tr><td>素のGrok</td><td>Grok 4.6</td><td>同上（同じ文面）</td><td>チューニング前の地力を見る</td></tr>
-          <tr><td>調整版</td><td>Grok 4.6</td><td>上に3点だけ追加</td><td>補った効果を確かめる</td></tr>
+          <tr><td>Sonnet 4.6</td><td class="win">1件</td><td class="win">0 / 24</td><td>2,321字</td><td class="lose">46円</td></tr>
+          <tr><td>Grok（前回の本番）</td><td class="lose">8件</td><td class="lose">26 / 31</td><td>2,097字</td><td>20円</td></tr>
+          <tr><td>Grok（今回）</td><td class="win">0件</td><td class="win">0 / 35</td><td>2,119字</td><td class="win">20円</td></tr>
+          <tr><td>Grok（本番で実測）</td><td class="win">0件</td><td class="win">0 / 36</td><td>2,989字</td><td class="win">—</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="note">お題は「Amazon Bedrock AgentCoreの最新アップデートを10枚」「Claude CodeとCodexの企業導入比較を12枚」「生成AIエージェントの社内導入の勉強会資料を12枚」の3種。採点には、output_slideが本番で不合格を返すのと同じ検査（はみ出し・構造・出典）をそのまま使い、加えて見出しの主張文率・本文量・表の区切り行の欠落を数えました。</p>
+    <p class="note">費用は1ドル155円の参考換算。最終行は、デプロイ後の本番へ実際にリクエストを投げて受け取ったスライドの実測値です。</p>
   </section>
 
   <section id="s3">
     <span class="eyebrow">03</span>
-    <h2>実測の結果</h2>
-    <p class="lead">違反件数は少ないほど、主張見出しと本文量は多いほど良い数字です。緑がその行で優れている側、赤が劣っている側です。</p>
+    <h2>検索ステータスの正体</h2>
+    <p class="lead">「1回の検索で3回ステータスが出る」に見えていた件は、本番の生イベントを取って数えました。結論として通知は重複しておらず、6回の検索がそれぞれ1回ずつ通知されていました。</p>
 
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>お題</th><th>条件</th><th>枚数</th><th>はみ出し</th><th>構造違反</th><th>主張見出し</th><th>本文量</th><th>表の欠落</th><th>費用</th></tr></thead>
-        <tbody>
-          <tr><td>AgentCore</td><td>Sonnet 4.6</td><td>10/10</td><td>0</td><td>0</td><td>7/8</td><td class="win">2,331字</td><td class="win">0/1</td><td class="lose">39.8円</td></tr>
-          <tr><td>AgentCore</td><td>素のGrok</td><td>10/10</td><td>0</td><td>0</td><td>7/8</td><td class="lose">1,646字</td><td class="lose">2/2</td><td>24.1円</td></tr>
-          <tr><td>AgentCore</td><td>調整版Grok</td><td>10/10</td><td>0</td><td>0</td><td>7/8</td><td>1,742字</td><td class="win">0/2</td><td class="win">13.0円</td></tr>
-          <tr><td>比較</td><td>Sonnet 4.6</td><td>12/12</td><td>0</td><td>0</td><td class="lose">8/11</td><td class="win">2,887字</td><td class="win">0/2</td><td class="lose">84.2円</td></tr>
-          <tr><td>比較</td><td>素のGrok</td><td>12/12</td><td>0</td><td>0</td><td class="win">9/10</td><td class="lose">2,122字</td><td class="lose">3/3</td><td>32.1円</td></tr>
-          <tr><td>比較</td><td>調整版Grok</td><td>12/12</td><td>0</td><td>0</td><td class="win">9/10</td><td>2,673字</td><td class="win">0/3</td><td class="win">25.4円</td></tr>
-          <tr><td>勉強会</td><td>Sonnet 4.6</td><td>12/12</td><td>0</td><td>0</td><td class="lose">7/11</td><td class="win">2,683字</td><td class="win">0/3</td><td class="lose">71.5円</td></tr>
-          <tr><td>勉強会</td><td>素のGrok</td><td>12/12</td><td>0</td><td>0</td><td>9/11</td><td class="lose">1,853字</td><td class="win">0/2</td><td>19.2円</td></tr>
-          <tr><td>勉強会</td><td>調整版Grok</td><td>12/12</td><td>0</td><td>0</td><td>8/10</td><td>2,439字</td><td class="win">0/2</td><td class="win">17.1円</td></tr>
-        </tbody>
-      </table>
+    <div class="ba">
+      <div class="before"><h4>BEFORE — 画面での見え方</h4><div class="ba-body">
+        <pre>✓ Web検索完了
+✓ Web検索完了
+✓ Web検索完了
+（テキスト）
+✓ Web検索完了
+✓ Web検索完了
+⟳ Web検索中... "御田稔 AWS AI Hero KAG 著書"</pre>
+        <p style="margin-top:.9em">完了した瞬間に検索語が消えるため、6本の別々の検索が同じ通知の繰り返しに見えていました。</p>
+      </div></div>
+      <div class="after"><h4>AFTER — 何を調べ終えたかを残す</h4><div class="ba-body">
+        <pre>✓ Web検索完了 <mark>"KAGのみのるん 概要"</mark>
+✓ Web検索完了 <mark>"KAGのみのるん 最新 事例"</mark>
+✓ Web検索完了 <mark>"KAGのみのるん 公式 ドキュメント"</mark>
+✓ Web検索完了 <mark>"KAGのみのるん 導入 判断"</mark>
+✓ スライドを確認しました
+✓ スライドを作成しました</pre>
+        <p style="margin-top:.9em">ブラウザで実際に送信して確認した表示です。進んでいることが読み取れるようになりました。</p>
+      </div></div>
     </div>
-    <p class="note">「表の欠落」は、区切り行が無く画面で崩れる表の数と、そのスライドに含まれる表の総数です。費用は1ドル155円の参考換算（2026年8月19日時点）。Web検索を使わない依頼も1本試し、根拠のない数値の作り込みが起きないことを確認しています（検出ゼロ、8.2円）。</p>
+
+    <p>あわせて2つ直しました。ひとつは検索回数で、「論点を分けて4回までを目安、足りないときだけ6回まで」と上限を下げ、1回の検索に10秒前後かかることをプロンプトへ明記しています。もうひとつは、ツールの引数が分割して届いたときに同じ検索が複数行へ割れる経路で、こちらは以前 <code>http_request</code> で直したのと同じ「同じ行を書き換える」形へ揃えました。</p>
   </section>
 
   <section id="s4">
     <span class="eyebrow">04</span>
-    <h2>劣っていた3点と、その埋め方</h2>
-    <p class="lead">Sonnetと比べて明確に悪かったのはこの3点だけでした。1点目は指示ではなく機械修正で消し、2点目と3点目はプロンプト2行で埋めています。</p>
+    <h2>対象の取り違え</h2>
+    <p class="lead">日本語を直した版で、別の問題が出ました。検索回数を絞った結果、Grokが「KAGのみのるん」の KAG を Knowledge Augmented Generation（別の技術）と解釈し、まったく違うスライドを作りました。</p>
 
-    <h3>1. 表の区切り行が抜けて、表が崩れる</h3>
-    <p>Grokは表7個のうち5個で、ヘッダー行の下に置くべき <code>| --- | --- |</code> を落としていました。Sonnetは6個すべてで正しく書いています。この行が無いと、Marpは表として描画せず、パイプ記号つきの文字列がそのまま画面に出ます。</p>
     <div class="ba">
-      <div class="before"><h4>BEFORE — 生成された表</h4><div class="ba-body">
-        <pre>| 観点 | Claude Code | Codex |
-| 実行場所 | 手元の端末 | クラウド砂箱 |
-| 判断 | 都度合意 | 先に委任 |</pre>
-        <p style="margin-top:.8em">区切り行が無いので、3行がただの文章として並びます。</p>
-      </div></div>
-      <div class="after"><h4>AFTER — 出力を受け取った時点で補う</h4><div class="ba-body">
-        <pre>| 観点 | Claude Code | Codex |
-<mark>| --- | --- | --- |</mark>
-| 実行場所 | 手元の端末 | クラウド砂箱 |
-| 判断 | 都度合意 | 先に委任 |</pre>
-        <p style="margin-top:.8em">列数を数えて機械的に挿入します。行数・表幅の検査はもともと区切り行を除外して数えているので、補っても判定結果は変わりません。</p>
-      </div></div>
-    </div>
-    <p class="note">モデルへ指摘して直させる方式は採りませんでした。指摘のたびに1往復ぶんの時間と費用がかかるうえ、直る保証もないためです。プロンプトにも1行だけ入れて、そもそも書き落としにくくしています。</p>
+      <div class="before"><h4>BEFORE — 検索を絞った直後</h4><div class="ba-body">
+        <pre># 知識で生成を縛るKAG
+## Knowledge Augmented Generationの仕組みと使いどころ
 
-    <h3>2. 1枚あたりの本文量がSonnetの7割しかない</h3>
-    <p>要素が2〜3個で終わるページが混ざり、スライドとして薄く見えていました。「4〜5つ並べる」と数で指定したところ、勉強会のお題で1,853字から2,439字へ増え、Sonnetの2,683字に近づいています。</p>
-    <div class="ba">
-      <div class="before"><h4>BEFORE — 素のプロンプト</h4><div class="ba-body">
-        <pre>1枚に詰め込まない。見出しを除いた
-本文の要素は5つまでを目安にする</pre>
-        <p style="margin-top:.8em">上限だけを伝えると、Grokは安全側に寄せて2〜3要素で切り上げます。</p>
+## KAGは文書検索ではなく知識で答えを組み立てる
+- **Knowledge Augmented Generation**の略
+- 知識グラフの構造とLLMの言語能力をつなぐ</pre>
+        <p style="margin-top:.9em">最初の検索結果に引きずられ、「みのるん」を拾わないまま構成へ進んでいます。</p>
       </div></div>
-      <div class="after"><h4>AFTER — 下限も数で示す</h4><div class="ba-body">
-        <pre>見出しの直下へリード文を1行置き、
-その下に本文の要素を<mark>4〜5つ並べる</mark>。
-<mark>要素が2〜3つで終わるページを作らない</mark></pre>
+      <div class="after"><h4>AFTER — 取り違えを止める指示を追加</h4><div class="ba-body">
+        <pre>- <mark>検索結果が依頼とかみ合わない</mark>（略語が別の製品を
+  指している、同名の別人が出てくる等）ときは、
+  対象を絞る語を足して調べ直す。
+  <mark>回数の目安より、対象の取り違えを防ぐほうを優先する</mark>。
+  依頼文の語をすべて拾えているか確かめてから構成に入る</pre>
+        <p style="margin-top:.9em">同じお題で2回続けて正しく御田さんの資料になりました。本番でも「KAG みのるん」から入って人物へ寄せています。</p>
       </div></div>
     </div>
 
-    <h3>3. 密度を上げると、製品名が略される</h3>
-    <p>2点目を入れた版で新たに出た退行です。文字数を詰める過程で「Claude Code」が「Code側」へ、主語が「両社」へ縮み、比較資料として読めなくなっていました。出典の検査も、製品名が消えたせいで根拠URLが無関係と判定されて1件不合格になっています。</p>
-    <div class="ba">
-      <div class="before"><h4>BEFORE — 略された比較スライド</h4><div class="ba-body">
-        <pre>## 料金は定額シートと従量の組み立てが違う
-シート単価だけを比べると月次予算の見立てが外れる。
-席に枠がある契約と、席料に従量を足す契約がある。
-
-| 項目 | <mark>Code側</mark> | Codex |
-| SSO | 組織プラン | 組織契約 |</pre>
-        <p style="margin-top:.8em">どちらの製品の話か、本文からは分かりません。</p>
-      </div></div>
-      <div class="after"><h4>AFTER — 名前を残す指示を1行追加</h4><div class="ba-body">
-        <pre>比較や製品を扱うページでは、正式な製品名を
-本文と表へそのまま書く。「両社」「双方」
-「Code側」のように略さない。文字数が
-足りないときは、<mark>名前を削らず要素を1つ減らす</mark></pre>
-        <p style="margin-top:.8em">再生成では「Claude Code」が12回登場し、略語はゼロ。構造違反も0件へ戻り、本文量は2,673字とSonnet並みになりました。</p>
-      </div></div>
+    <div class="callout">
+      <p><b>回数を減らす調整は、単独では品質を下げます。</b>検索は待ち時間の主因なので減らしたいのですが、減らすほど最初の解釈に固定されます。今回は「取り違えを疑ったときだけ回数を超えてよい」と優先順位を明記する形で両立させました。</p>
     </div>
   </section>
 
   <section id="s5">
     <span class="eyebrow">05</span>
-    <h2>プロンプトのBefore/After</h2>
-    <p class="lead">前のセッションで用意したGrok用プロンプトは、Kimi向けの契約をほぼそのまま写したものでした。実測でGrokに不要と分かった部分を落としています。</p>
-    <div class="ba">
-      <div class="before"><h4>BEFORE — 3,500字（Kimi契約の写し）</h4><div class="ba-body">
-        <p>枚数の内訳表（8枚・10枚・12枚・15枚・20枚 × 検索あり／なしの10通り）、公式ドメインを <code>site:</code> で指定する検索手順、製品名の境界、役割の割り当て、はみ出し時の優先順位表など、7節構成。</p>
-        <p>いずれもKimiが守れなかったことを1つずつ言語化して積み上げたもので、Grokでは実測上どれも不要でした。</p>
-      </div></div>
-      <div class="after"><h4>AFTER — 1,100字（4節）</h4><div class="ba-body">
-        <p>進め方（自律実行・枚数・検索回数・事実の扱い）、中身（結論見出し・リード文・<mark>要素4〜5つ</mark>・<mark>製品名を略さない</mark>）、<mark>表の区切り行</mark>、出典の4節だけ。</p>
-        <p>枚数の内訳表と <code>site:</code> 指定は削除しました。Grokは指定枚数を9本すべて一致させ、公式ドメインも指示なしで選んでいます。</p>
-      </div></div>
-    </div>
-    <div class="callout">
-      <p><b>Kimi用のプロンプトはコードに残してあります。</b>UIの選択肢からは外しましたが、<code>config.py</code> と <code>types.ts</code> の1行ずつを戻せば再び有効にできます。Claudeモデルは設定ごと削除しました。</p>
+    <h2>本番での実測</h2>
+    <p class="lead">デプロイ後の本番へ実際にリクエストを投げ、届いたイベントとスライドをそのまま数えた結果です。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>項目</th><th>結果</th><th>中身</th></tr></thead>
+        <tbody>
+          <tr><td>検索の通知</td><td>6件／6回</td><td>すべて別クエリ。重複した通知は無し</td></tr>
+          <tr><td>「である」</td><td>0件</td><td>スライド全文で1つも出ていない</td></tr>
+          <tr><td>句点で終わる箇条書き</td><td>0 / 36</td><td>すべて名詞句か短い言い切り</td></tr>
+          <tr><td>対象</td><td>正しい</td><td>御田 稔／みのるんの資料として構成された</td></tr>
+          <tr><td>構成検査</td><td>14/14合格</td><td>Mantle権限・環境変数・ドメインなど</td></tr>
+          <tr><td>スモーク</td><td>5/5合格</td><td>ログイン→生成→識別→PDF、およびGrokを選んだ生成</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
   <section id="s6">
     <span class="eyebrow">06</span>
-    <h2>本番反映と検査</h2>
-    <p class="lead">mainへマージしてデプロイ済みです。検査は2本とも合格しました。</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>項目</th><th>結果</th><th>内容</th></tr></thead>
-        <tbody>
-          <tr><td>差分</td><td>削除0件</td><td>3スタックの更新のみ。Googleログインやドメインの削除差分は出ていない</td></tr>
-          <tr><td>構成検査</td><td>14/14合格</td><td>Mantleを呼べるかの検査を1項目追加した（後述）</td></tr>
-          <tr><td>スモーク</td><td>5/5合格</td><td>ログイン→生成→利用者の記録→PDF書き出しに加え、Grokを選んだ生成も毎回通す</td></tr>
-          <tr><td>配信物</td><td>確認済み</td><td>本番のJavaScriptに「標準（Kimi K2.5）」「新モデル（Grok 4.6）」の両方が入っている</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="callout blue">
-      <p><b>標準がKimiのままなので、Grokの経路はスモークテストへ足しました。</b>既定の生成だけを試す形では、Grokを選んだときだけ壊れている状態に誰も気づけません。Mantleは別エンドポイントなので、認可や接続だけが落ちることが実際に起こりえます。</p>
-    </div>
-    <div class="callout">
-      <p><b>MantleはIAMの体系が別でした。</b>Grokは <code>bedrock-mantle</code> というエンドポイントで動き、これまでの <code>bedrock:InvokeModel</code> では認可されません。実行ロールへ <code>bedrock-mantle:CreateInference</code> と <code>bedrock-mantle:CallWithBearerToken</code> を追加し、この2つが本番に反映されているかを構成検査へ足しました。落ちると生成のたびに権限エラーになる箇所です。</p>
-    </div>
-  </section>
-
-  <section id="s7">
-    <span class="eyebrow">07</span>
-    <h2>判断していただきたい点</h2>
-    <p class="lead">費用はクレジットの適用対象なので解消済みです。残るのは、いつGrokを標準へ上げるかだけです。</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>モデル</th><th>1回あたり</th><th>100万トークン単価</th><th>いまの扱い</th></tr></thead>
-        <tbody>
-          <tr><td>Kimi K2.5</td><td>約9円</td><td>入力 $0.60 ／ 出力 $3.00</td><td>標準</td></tr>
-          <tr><td>Grok 4.6</td><td>13〜36円</td><td>入力 $2.20 ／ 出力 $6.60</td><td>選択肢として公開（今回）</td></tr>
-          <tr><td>Claude Sonnet 4.6</td><td>40〜84円</td><td>入力 $3.00 ／ 出力 $15.00</td><td>停止中の表示のまま</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>実際に触っていただいて問題がなければ、標準をGrokへ上げます。切り替えはUIの1行と <code>config.py</code> の1行だけなので、デプロイ1回で済みます。</p>
-    <p>あわせて2点だけ共有します。ひとつは、今回のスモークテストで<b>Kimiが1回だけ無出力で落ちた</b>ことです。エラーログは出ず、再実行で通りました。ローカルで同じ依頼を再現したところ正常に出力できたので、コードの問題ではなくKimi側のばらつきと見ています。検証でもKimiは毎回3回output_slideを呼び直しており、Grokは1〜3回で収まっていました。</p>
-    <p>もうひとつは、KAG社内版（別リポジトリ）が今回の対象外という点です。公開版の様子を見てから同じ変更を入れるのがよいと考えています。</p>
+    <h2>検証のやり方を直した</h2>
+    <p class="lead">同じ見落としが起きないよう、確認の手順そのものを変えました。</p>
+    <ul>
+      <li><b>画面を実際に動かす。</b>認証を挟まない <code>npm run dev:ui</code> で送信まで通し、ステータスの見え方をスクリーンショットで確認する</li>
+      <li><b>モックを本番の挙動に合わせる。</b>これまで検索は1回しか流れず、複数回検索したときの積み上がりをローカルで再現できなかった。4回検索するよう直した</li>
+      <li><b>生イベントを数える。</b>本番へ直接リクエストを投げ、通知の件数とクエリを機械で数える。画面の印象で判断しない</li>
+      <li><b>日本語を数える。</b>「である」の件数と、句点で終わる箇条書きの割合を毎回数える。表現の善し悪しを感覚で語らない</li>
+      <li><b>ステータスの重複はテストで固定した。</b>同じ検索の途中経過で行が増えないこと、別の検索なら行が分かれることを、それぞれテストにしている</li>
+    </ul>
   </section>
 
   <footer>
-    <p>検証データ：お題3種 × 条件3系統で12本を実生成。採点は本番の output_slide が使う検査ロジックをそのまま流用。</p>
-    <p>変更のコミット：<code>1e6497f 標準モデルをGrok 4.6へ切り替え、専用プロンプトを実測ベースで絞り込む</code>（mainへマージ済み・push済み）</p>
-    <p>作成：Claude Code ／ 2026年8月19日</p>
+    <p>比較データ：お題「KAGのみのるん」でSonnet 4.6・Grok（前回）・Grok（今回）を各1本、取り違えの確認に2本、本番の生SSEを3本。</p>
+    <p>コミット：<code>fd8a7fc Grokの日本語を自然にし、検索ステータスが同じ行の繰り返しに見えるのを直す</code>（mainへpush済み・本番反映済み）</p>
+    <p>作成：Claude Code ／ 2026年8月19日〜20日</p>
   </footer>
 </div>
 
