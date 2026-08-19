@@ -276,6 +276,11 @@ def test_output_slide_doc_keeps_only_marp_requirements():
 
     # Marpの表示と、このツール自身の検査に必要なものは残す
     assert "見出しの階層【重要】" in doc
+    # 表現の幅（表・引用・太字の使い分けとセクション区切り）は、型の指定ではなく
+    # 道具の提示なので残す。これを外すと資料が箇条書きだけの質素な見た目になる
+    assert "3〜5枚ごとに" in doc
+    assert "箇条書きだけを続けない" in doc
+    assert "決まった型に当てはめない" in doc
     assert "通常スライドの見出しは `##`" in doc
     assert "区切り行を必ず置く" in doc
     assert "_class: end" in doc
