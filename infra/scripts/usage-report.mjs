@@ -207,16 +207,21 @@ if (tavilyKeys.length > 0) {
         headers: { Authorization: `Bearer ${key}` },
         signal: AbortSignal.timeout(10_000),
       }).then((response) => response.json());
-      const used = usage.account?.current_plan_usage ?? usage.key?.usage ?? 0;
+      // 残量はキー単体ではなくアカウント単位で決まる。同じアカウントに別のキーがぶら下がっていると、
+      // キー単体の使用量だけでは枯渇したかどうかを判定できない。
+      const used = usage.account?.plan_usage ?? usage.account?.current_plan_usage ?? usage.key?.usage ?? 0;
       const limit = usage.account?.plan_limit ?? usage.key?.limit ?? 0;
+      const keyUsed = usage.key?.usage ?? 0;
       const remaining = Math.max(limit - used, 0);
       totalRemaining += remaining;
-      console.log(`  キー${index + 1}   ${used} / ${limit} 使用（残り ${remaining}）`);
+      const note = remaining === 0 ? '  ← 枯渇' : '';
+      const sibling = used > keyUsed ? `（うちこのキー ${keyUsed}）` : '';
+      console.log(`  キー${index + 1}   ${used} / ${limit} 使用${sibling}（残り ${remaining}）${note}`);
     } catch (error) {
       console.log(`  キー${index + 1}   取得できず（${error.message.split('\n')[0]}）`);
     }
   }
-  console.log(`\n  残りの合計          ${totalRemaining} クレジット`);
+  console.log(`\n  残りの合計          ${totalRemaining} クレジット（毎月1日にリセット）`);
 }
 
 console.log(`\n${'─'.repeat(56)}\n`);
