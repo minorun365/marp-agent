@@ -25,5 +25,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "amplify_outputs.json"]
+  "include": ["src"]
 }

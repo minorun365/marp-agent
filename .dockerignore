@@ -9,7 +9,7 @@ node_modules
 coverage
 .env
 .env.*
-amplify_outputs.json
+runtime-config.local.json
 docs
 tests
 agent

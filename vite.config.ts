@@ -4,32 +4,29 @@ import tailwindcss from '@tailwindcss/vite'
 import { readFileSync } from 'node:fs'
 import type { Plugin } from 'vite'
 
+const LOCAL_RUNTIME_CONFIG = 'runtime-config.local.json'
+
+// 本番では画面配信Lambdaが /runtime-config.json を返す。ローカルでは同じ形のファイルをそのまま返し、
+// ブラウザから見た経路を本番とそろえる。
 function localRuntimeConfig(): Plugin {
   return {
     name: 'pawapo-local-runtime-config',
     configureServer(server) {
       server.middlewares.use('/runtime-config.json', (_request, response) => {
         try {
-          const outputs = JSON.parse(readFileSync('amplify_outputs.json', 'utf8'))
+          const config = JSON.parse(readFileSync(LOCAL_RUNTIME_CONFIG, 'utf8'))
+          if (!config.auth?.userPoolId || !config.agent?.runtimeArn) {
+            throw new Error('auth.userPoolId と agent.runtimeArn が必要です')
+          }
           response.statusCode = 200
           response.setHeader('Content-Type', 'application/json; charset=utf-8')
           response.setHeader('Cache-Control', 'no-store')
-          response.end(JSON.stringify({
-            auth: {
-              region: outputs.auth.aws_region,
-              userPoolId: outputs.auth.user_pool_id,
-              userPoolClientId: outputs.auth.user_pool_client_id,
-            },
-            agent: {
-              runtimeArn: outputs.custom.agentRuntimeArn,
-              protocol: 'HTTP',
-            },
-            sharing: { baseUrl: `https://${outputs.custom.sharedSlidesPublicDomain}` },
-            environment: outputs.custom.environment,
-          }))
-        } catch {
+          response.end(JSON.stringify(config))
+        } catch (error) {
           response.statusCode = 503
-          response.end('amplify_outputs.json is required for authenticated local development')
+          response.end(
+            `${LOCAL_RUNTIME_CONFIG} を読めませんでした（認証つきのローカル開発に必要です）: ${String(error)}`,
+          )
         }
       })
     },

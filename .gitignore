@@ -24,8 +24,8 @@ cdk.out
 *.sln
 *.sw?
 
-# ローカル開発用の実行時設定（Amplify 時代の名前のまま。中身は Cognito と AgentCore の識別子）
-amplify_outputs*
+# 認証つきローカル開発の接続設定（本番の /runtime-config.json と同じ形）
+runtime-config.local.json
 
 # CSSテーマ（ビルド時にsrc/themes/からコピー）
 agent/*.css

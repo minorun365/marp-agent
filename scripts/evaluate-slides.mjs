@@ -114,8 +114,15 @@ function analyzeMarkdown(markdown, prompt) {
   };
 }
 
-async function authenticate(outputs, env) {
-  Amplify.configure(outputs);
+async function authenticate(runtimeConfig, env) {
+  Amplify.configure({
+    Auth: {
+      Cognito: {
+        userPoolId: runtimeConfig.auth.userPoolId,
+        userPoolClientId: runtimeConfig.auth.userPoolClientId,
+      },
+    },
+  });
   await signIn({
     username: env.TEST_USER_EMAIL,
     password: env.TEST_USER_PASSWORD,
@@ -127,8 +134,8 @@ async function authenticate(outputs, env) {
   return token;
 }
 
-async function invokeRuntime({ outputs, accessToken, model, prompt, theme }) {
-  const runtimeArn = outputs.custom.agentRuntimeArn;
+async function invokeRuntime({ runtimeConfig, accessToken, model, prompt, theme }) {
+  const runtimeArn = runtimeConfig.agent.runtimeArn;
   const region = runtimeArn.split(':')[3];
   const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodeURIComponent(runtimeArn)}/invocations?qualifier=DEFAULT`;
   const startedAt = Date.now();
@@ -177,15 +184,15 @@ async function main() {
   const model = args.model || 'sonnet';
   const outputBase = path.resolve(args.output || `/tmp/marp-agent-eval/${model}`);
   const root = path.resolve(import.meta.dirname, '..');
-  const [outputsText, envText] = await Promise.all([
-    readFile(path.join(root, 'amplify_outputs.json'), 'utf8'),
+  const [runtimeConfigText, envText] = await Promise.all([
+    readFile(path.join(root, 'runtime-config.local.json'), 'utf8'),
     readFile(path.join(root, '.env'), 'utf8'),
   ]);
-  const outputs = JSON.parse(outputsText);
+  const runtimeConfig = JSON.parse(runtimeConfigText);
   const env = parseEnv(envText);
-  const accessToken = await authenticate(outputs, env);
+  const accessToken = await authenticate(runtimeConfig, env);
   const result = await invokeRuntime({
-    outputs,
+    runtimeConfig,
     accessToken,
     model,
     prompt: args.prompt || DEFAULT_PROMPT,

@@ -37,6 +37,33 @@ Git への push では本番 AWS は変わりません。本番反映は CDKD �
 - `npm run dev:full` は CloudFront 相当経路（http://localhost:8080）まで含める
 - AWS を使う入口では `AWS_PROFILE` を付けるか、デフォルトの認証情報チェーンを使う
 
+### 認証つきで起動するときの接続設定
+
+`npm run dev` / `npm run dev:full` はログインを通すので、リポジトリ直下に
+`runtime-config.local.json` が要る。**本番の `/runtime-config.json` と同じ形**にしてあるので、
+ローカルと本番でブラウザから見た経路が変わらない。Git 管理外なので端末ごとに置く。
+
+```json
+{
+  "auth": {
+    "region": "us-east-1",
+    "userPoolId": "us-east-1_xxxxxxxxx",
+    "userPoolClientId": "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "agent": {
+    "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:<アカウント>:runtime/pawapo_agent-xxxxxxxx",
+    "protocol": "HTTP"
+  },
+  "sharing": { "baseUrl": "https://pawapo.minoruonda.com/slides" },
+  "environment": "local"
+}
+```
+
+値は本番の Web スタックの出力から引ける。ファイルが無い、または `auth.userPoolId` と
+`agent.runtimeArn` が欠けていると、Vite が `/runtime-config.json` に 503 と理由を返す。
+
+`npm run dev:ui` と `npm run dev:auth` はモックなので、このファイルは要らない。
+
 ---
 
 ## インフラ（CDK / CDKD）
