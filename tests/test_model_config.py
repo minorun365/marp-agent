@@ -175,13 +175,12 @@ def test_url_reference_mode_prompt_keeps_the_normal_structure_rules():
     for section in ("4-1", "4-2", "4-3", "（5）", "（6）"):
         assert section not in prompt
 
-    # 枚数はURLモード自身が具体的に持つ
-    assert "10〜16枚" in prompt
-    assert "本文スライドは最低6枚" in prompt
-
-    # 短い記事では検索での補完を必須にする（Grokの検索抑制への明示的な例外）
-    assert "2000文字に満たない場合" in prompt
-    assert "例外にあたる" in prompt
+    # 枚数を押し付けない。記事が短ければ短いまま終えてよい
+    # （2026-08-20、枚数を満たす方向へ寄せた指示をみのるんが却下した）
+    assert "枚数を先に決めない" in prompt
+    assert "少ない枚数で終えてよい" in prompt
+    assert "10〜16枚" not in prompt
+    assert "最低6枚" not in prompt
 
     # 1枚へ詰め込ませない
     assert "1枚へ詰め込まない" in prompt
@@ -232,7 +231,6 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
 
     assert "現在は2026年です。" in prompt
     assert "Kimi K2.5実行契約" in prompt
-    assert "狭いテーマは10〜12枚" in prompt
     # レイアウト指示は、Kimiが自分で数えられる単位で与える。
     # 実測（2026-08-19）で行の56%が折り返していたため、文字数ではなく
     # 「折り返す前提で要素数を数える」形にした
@@ -240,8 +238,9 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
     assert "全角32文字を超えると2行として数えられる" in prompt
     # ユーザーが貼ったURLは、検索結果URLと違って本文を取りに行く
     assert "ユーザーが自分でメッセージへ貼ったURLは別で" in prompt
-    assert "複数の機能や論点を扱うテーマは14〜18枚" in prompt
-    assert "最大20枚" in prompt
+    # 枚数の指定がないときに目安を押し付けない（2026-08-20 みのるん指示）
+    assert "指定がなければ枚数を先に決めない" in prompt
+    assert "内容の薄いページを足さない" in prompt
     assert "論点を分けて4〜6回検索" in prompt
     assert "最初の可視応答" in prompt
     assert "修正します。" in prompt
