@@ -6,7 +6,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 def test_runtime_dockerfile_copies_all_top_level_python_modules():
     dockerfile = (
-        REPOSITORY_ROOT / "amplify" / "agent" / "runtime" / "Dockerfile"
+        REPOSITORY_ROOT / "agent" / "Dockerfile"
     ).read_text()
 
     assert "COPY *.py ./" in dockerfile

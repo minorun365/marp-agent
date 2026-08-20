@@ -7,6 +7,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
-    include: ['src/**/*.test.{ts,tsx}', 'amplify/auth/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'infra/lambda/auth/**/*.test.ts'],
   },
 });

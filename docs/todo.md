@@ -125,7 +125,7 @@ function VersionBadge() {
 
 **概要**: 表の中の文字と表の枠の間のパディングが少ないため、見た目のバランスが悪い。
 
-**修正ファイル**: `src/themes/*.css` + `amplify/agent/runtime/*.css`
+**修正ファイル**: `src/themes/*.css` + `agent/*.css`
 
 **実装コード（各テーマCSSの末尾に追加）**:
 ```css
@@ -240,7 +240,7 @@ section table tr:nth-child(even) td {
 - 再生成時のLLM出力: ~1,500トークン → ~150トークン（1/10）
 - セッション単価: -$0.03〜0.04
 
-**参考ファイル**: `amplify/agent/runtime/tools/output_slide.py`, `amplify/agent/runtime/config.py`
+**参考ファイル**: `agent/tools/output_slide.py`, `agent/config.py`
 
 **工数**: 1-2時間
 

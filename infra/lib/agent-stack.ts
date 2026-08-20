@@ -25,7 +25,7 @@ export class AgentStack extends cdk.Stack {
     super(scope, id, props);
 
     const runtimeImage = new ecrAssets.DockerImageAsset(this, 'RuntimeImage', {
-      directory: path.join(currentDir, '../../amplify/agent/runtime'),
+      directory: path.join(currentDir, '../../agent'),
       platform: ecrAssets.Platform.LINUX_ARM64,
       exclude: ['.venv', '**/__pycache__', '**/*.pyc', '.pytest_cache', '.ruff_cache'],
       ignoreMode: cdk.IgnoreMode.GLOB,

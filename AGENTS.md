@@ -65,11 +65,13 @@ npm run infra:dry-run
 | `src/components/Chat/hooks/` | Chat専用フック（useChatMessages, useStreamingText, useTipRotation） |
 | `src/components/` | その他UIコンポーネント（SlidePreview, ShareConfirmModal, ShareResultModal） |
 | `infra/` | CDK アプリ（Foundation / Auth / Agent / Web） |
-| `amplify/agent/runtime/` | Pythonエージェント本体（現行本番もこのパス） |
-| `amplify/agent/runtime/tools/` | ツール定義（output_slide, web_search, generate_tweet_url, http_request） |
-| `amplify/agent/runtime/exports/` | PDF/PPTX変換（slide_exporter） |
-| `amplify/agent/runtime/session/` | セッション管理（manager） |
-| `amplify/agent/runtime/sharing/` | 共有機能（s3_uploader） |
+| `infra/lambda/auth/` | 認証まわりの Lambda（user-migration, google-link, google-idp-manager, legacy-pools） |
+| `infra/web/` | React を配信する Lambda（Lambda Web Adapter） |
+| `agent/` | Pythonエージェント本体。AgentCore Runtime のコンテナはこのフォルダから作る |
+| `agent/tools/` | ツール定義（output_slide, web_search, generate_tweet_url, http_request） |
+| `agent/exports/` | PDF/PPTX変換（slide_exporter） |
+| `agent/session/` | セッション管理（manager） |
+| `agent/sharing/` | 共有機能（s3_uploader） |
 | `docs/knowledge/` | 詳細なナレッジベース（下記参照） |
 
 ### 主要な技術スタック
@@ -142,7 +144,7 @@ git merge-base --is-ancestor <sha> HEAD     # 特定コミットが main にあ�
 > 「コードは巻き戻っていない」と誤って報告した。過去の対応レポートに実装内容が書かれていたので、
 > **リポジトリの履歴より先に、共有くんの過去レポートを読むほうが速い場面がある**。
 
-テーマCSS（`amplify/agent/runtime/*.css` は `.gitignore` 対象のコピー）は
+テーマCSS（`agent/*.css` は `.gitignore` 対象のコピー）は
 `npm run infra:synth` / `infra:diff` / `infra:dry-run` / `infra:deploy` が `copy-themes` を実行して配る。
 手で `cdkd` を直接叩くときは、先に `npm run copy-themes` を実行する（忘れるとプレビューだけ直って書き出しが古いままになる）。
 
@@ -220,14 +222,22 @@ aws ecr get-login-password --profile <本番profile> --region us-east-1 | docker
 
 KAG社内版は完全に別のGitHubリポジトリ（`minorun365/marp-agent-kag`）で管理されている（ローカル: `../marp-agent-kag`）。
 
-KAG社内版に変更を反映する際は、**KAG社内版リポジトリに移動してチェリーピック** する：
+⛔ **KAG社内版への同期（チェリーピック）は 2026-08-20 から停止している。実行しない。**
 
-```bash
-cd ../marp-agent-kag
-git fetch upstream
-git cherry-pick <commit-hash>
-git push origin main
-```
+一般公開版はディレクトリ構成を刷新したが、KAG社内版は Amplify Gen2 時代の構成のままで、
+同じファイルが別の場所にある（公開版 `agent/` ⇔ KAG版 `amplify/agent/runtime/`、
+公開版 `infra/lambda/auth/` ⇔ KAG版 `amplify/auth/`）。この状態でチェリーピックすると、
+**エラーで止まらないまま同じ内容のファイルが2か所にできる**。ビルドもテストも通るので後から気づけない。
+
+**再開の条件**：KAG を新しいAWSアカウントへ移し、一般公開版と同じ構成へリアーキテクチャしたとき
+（2026-08-20 にみのるんが方針として明示）。それまでは両リポジトリを独立して進める。
+
+両リポジトリの `.githooks/prepare-commit-msg` が機械的に拒否する。`.git/hooks/` にも実体を
+置いてあるので `core.hooksPath` の設定に関係なく効く。新しいクローンでは
+`npm run setup:git-hooks` を実行する。例外的に通す必要があるときだけ
+`ALLOW_CHERRY_PICK=1 git cherry-pick <コミット>` を使うが、みのるんの明示指示があるときに限る。
+
+両方へ同じ修正を入れたいと言われたら、迂回手段を勝手に選ばず進め方を確認する（`sync-to-kag` スキル）。
 
 **注意**: 公開リポジトリには、実際の AWS アカウントID、User Pool ID、証明書ARN、IAM Role ARN などの具体値を書かない。KAG社内版固有の設定やデプロイ先詳細は KAG社内版リポジトリ側だけに保持する。
 

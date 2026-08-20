@@ -62,7 +62,7 @@ export class AuthStack extends cdk.Stack {
       const functionName = 'pawapo-user-migration';
       migrationFunction = new lambdaNodejs.NodejsFunction(this, 'UserMigrationFunction', {
         functionName,
-        entry: path.join(currentDir, '../../amplify/auth/user-migration/handler.ts'),
+        entry: path.join(currentDir, '../../infra/lambda/auth/user-migration/handler.ts'),
         runtime: lambda.Runtime.NODEJS_24_X,
         architecture: lambda.Architecture.ARM_64,
         timeout: cdk.Duration.seconds(15),
@@ -87,7 +87,7 @@ export class AuthStack extends cdk.Stack {
       const functionName = 'pawapo-google-link';
       googleLinkFunction = new lambdaNodejs.NodejsFunction(this, 'GoogleLinkFunction', {
         functionName,
-        entry: path.join(currentDir, '../../amplify/auth/google-link/handler.ts'),
+        entry: path.join(currentDir, '../../infra/lambda/auth/google-link/handler.ts'),
         runtime: lambda.Runtime.NODEJS_24_X,
         architecture: lambda.Architecture.ARM_64,
         timeout: cdk.Duration.seconds(15),
@@ -156,7 +156,7 @@ export class AuthStack extends cdk.Stack {
     if (googleEnabled) {
       const googleIdpManagerFunction = new lambdaNodejs.NodejsFunction(this, 'GoogleIdpManagerFunction', {
         functionName: 'pawapo-google-idp-manager',
-        entry: path.join(currentDir, '../../amplify/auth/google-idp-manager/handler.ts'),
+        entry: path.join(currentDir, '../../infra/lambda/auth/google-idp-manager/handler.ts'),
         runtime: lambda.Runtime.NODEJS_24_X,
         architecture: lambda.Architecture.ARM_64,
         timeout: cdk.Duration.seconds(30),

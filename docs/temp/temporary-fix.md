@@ -99,7 +99,7 @@
 
 | ファイル | 修正内容 |
 |---------|---------|
-| `amplify/agent/runtime/config.py` | システムプロンプトの書き換え（課題1 + 課題2） |
+| `agent/config.py` | システムプロンプトの書き換え（課題1 + 課題2） |
 
 ※ コード側（output_slide.py, http_request.py）の変更は不要。プロンプト修正のみで対応。
 

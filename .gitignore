@@ -24,13 +24,11 @@ cdk.out
 *.sln
 *.sw?
 
-# Amplify
-.amplify
+# ローカル開発用の実行時設定（Amplify 時代の名前のまま。中身は Cognito と AgentCore の識別子）
 amplify_outputs*
-amplifyconfiguration*
 
 # CSSテーマ（ビルド時にsrc/themes/からコピー）
-amplify/agent/runtime/*.css
+agent/*.css
 
 # Python
 .venv

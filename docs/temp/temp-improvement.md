@@ -18,7 +18,7 @@
 
 ### 改善1: http_request ツールにHaiku要約を導入 ✅
 
-**ファイル**: `amplify/agent/runtime/tools/http_request.py`（新規）、`tools/__init__.py`（変更）
+**ファイル**: `agent/tools/http_request.py`（新規）、`tools/__init__.py`（変更）
 
 - `strands_tools` のビルトイン `http_request` → カスタムラッパーに差し替え
 - HTMLレスポンスはタグ除去してテキスト化
@@ -29,7 +29,7 @@
 
 ### 改善2: per_turn=True の導入 → 即座に撤回 ❌
 
-**ファイル**: `amplify/agent/runtime/session/manager.py`
+**ファイル**: `agent/session/manager.py`
 
 - `SlidingWindowConversationManager(window_size=6, per_turn=True)` に変更
 - **Strands の並列ツール実行と非互換**: ツール結果が1件ずつ追加される際にトリミングが走り、LLMが情報不足と判断して再検索を繰り返す正のフィードバックループが発生
@@ -51,9 +51,9 @@
 
 | ファイル | 変更内容 | 状態 |
 |----------|----------|------|
-| `amplify/agent/runtime/tools/http_request.py` | Haiku要約付きHTTPラッパー（新規） | ✅ |
-| `amplify/agent/runtime/tools/__init__.py` | import先を strands_tools → ローカルに変更 | ✅ |
-| `amplify/agent/runtime/session/manager.py` | per_turn=True → False に戻し（変更なし） | ✅ |
+| `agent/tools/http_request.py` | Haiku要約付きHTTPラッパー（新規） | ✅ |
+| `agent/tools/__init__.py` | import先を strands_tools → ローカルに変更 | ✅ |
+| `agent/session/manager.py` | per_turn=True → False に戻し（変更なし） | ✅ |
 | `docs/knowledge/backend.md` | ナレッジ反映 | ✅ |
 
 ## 効果測定（2/20 23:30〜23:59 JST サンドボックステスト）

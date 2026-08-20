@@ -41,5 +41,5 @@ sys.modules["bedrock_agentcore"] = MagicMock()
 sys.modules["boto3"] = MagicMock()
 sys.modules["requests"] = MagicMock()
 
-# ランタイムディレクトリをパスに追加
-sys.path.insert(0, str(Path(__file__).parent.parent / "amplify" / "agent" / "runtime"))
+# エージェント本体をパスに追加
+sys.path.insert(0, str(Path(__file__).parent.parent / "agent"))

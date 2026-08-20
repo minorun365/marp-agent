@@ -81,7 +81,7 @@ export class WebStack extends cdk.Stack {
           'docs',
           'infra/scripts',
           'tests',
-          'amplify/agent/runtime/.venv',
+          'agent',
           '**/__pycache__',
         ],
         ignoreMode: cdk.IgnoreMode.GLOB,

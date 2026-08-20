@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# KAG社内版との cherry-pick を止めるガード。
+#
+# 一般公開版（marp-agent）はディレクトリ構成を刷新済みで、KAG社内版（marp-agent-kag）は
+# まだ Amplify Gen2 時代の構成のまま。パスが食い違うため cherry-pick は
+# 「エラーで止まらずに、同じ内容のファイルが2か所へできる」という壊れ方をする。
+#
+# KAG を新AWSアカウントへ移行してリアーキテクチャするまで、両リポジトリ間の同期はしない。
+# どうしても通す必要があるときだけ ALLOW_CHERRY_PICK=1 を付ける。
+
+set -euo pipefail
+
+if [[ "${ALLOW_CHERRY_PICK:-}" == "1" ]]; then
+  exit 0
+fi
+
+cherry_pick_head=$(git rev-parse --git-path CHERRY_PICK_HEAD)
+if [[ -f "$cherry_pick_head" ]]; then
+  cat >&2 <<'MSG'
+
+  ⛔ cherry-pick は現在停止しています
+
+  一般公開版（marp-agent）と KAG社内版（marp-agent-kag）は、ディレクトリ構成が
+  食い違っています。公開版は agent/ と infra/lambda/auth/、KAG版は Amplify 時代の
+  amplify/agent/runtime/ と amplify/auth/ のままです。
+
+  この状態で cherry-pick すると、エラーにならないまま同じ内容のファイルが
+  2か所にできます。テストもビルドも通るので、あとから気づけません。
+
+  再開の条件：KAG を新しいAWSアカウントへ移して、公開版と同じ構成へ
+              リアーキテクチャしたとき。
+
+  いま元に戻すには：
+      git cherry-pick --abort
+
+  それでも通す場合のみ：
+      ALLOW_CHERRY_PICK=1 git cherry-pick <コミット>
+
+MSG
+  exit 1
+fi
+
+exit 0

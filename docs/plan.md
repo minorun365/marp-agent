@@ -66,36 +66,30 @@ Amplify Console の `deploy-time-build` は Gen2 時代の手段。自己ホス�
 
 ### 変更反映の責務
 
+⛔ **2026-08-20 から、両リポジトリ間の cherry-pick は停止している。**
+一般公開版がディレクトリ構成を刷新し、KAG社内版は Amplify 時代の構成のままなので、
+cherry-pick すると同じ内容のファイルが2か所にできる（エラーにならない）。
+再開は KAG を新AWSアカウントへ移してリアーキテクチャしたとき。詳細は `sync-to-kag` スキル。
+
 | 変更内容 | 作業場所 | 反映方法 |
 |---------|----------|---------|
-| 共通のバグ修正・機能追加 | 一般公開版 | `src/` と `amplify/agent/runtime/` を選んで cherry-pick。`infra/` と `cdk.json` は持っていかない |
+| 共通のバグ修正・機能追加 | 一般公開版 | KAG社内版へは持っていかない（同期停止中）。両方に要るなら進め方をみのるんへ確認する |
 | 一般公開版のドキュメント更新 | 一般公開版 | 公開してよい内容のみ記載 |
 | KAG社内版固有（テーマ、ドメイン、認証制限） | KAG社内版 | KAG社内版のみに保持 |
 
 ### 運用コマンド
 
-**一般公開版の変更をKAG社内版に反映:**
-```bash
-cd ../marp-agent-kag
-git cherry-pick <commit-hash>
-git push
-```
-
-**特定のコミットだけ反映（cherry-pick）:**
-```bash
-# KAG社内版で行った共通バグ修正を一般公開版にも適用したい場合
-cd ../marp-agent
-git cherry-pick <commit-hash>
-git push
-```
+**同期コマンドはいまは無い。** cherry-pick は両リポジトリの `.githooks/prepare-commit-msg` が
+拒否する。手で叩いても止まる。停止前の手順はこのファイルの Git 履歴（2026-08-20 以前の版）にある。
 
 ### 注意事項
 
 - KAG社内版固有の設定を一般公開版へ混ぜない
 - 公開ドキュメントには、実際のAWSアカウントID、User Pool ID、証明書ARN、デプロイ先名などを書かない
-- 共通のアプリコードは一般公開版で開発し、必要に応じて KAG社内版へ cherry-pick する
+- 共通のアプリコードは一般公開版で開発する。KAG社内版への持ち込みは同期の再開まで待つ
 - 公開版 `main` は CDK、KAG 社内版は当面 Amplify のまま。インフラ定義を丸ごと混ぜない
-- KAG の CDK 移行は公開版が安定してから、公開版と同じ切替手順を会社アカウント向けにやり直す
+- KAG の CDK 移行は、KAG環境のAWSアカウント移行に合わせて実施する。そのとき
+  ディレクトリ構成も一般公開版と同じ `agent/` + `infra/` へ揃え、cherry-pick を再開する
 
 ## タスク管理
 
@@ -114,7 +108,7 @@ git push
 marp-agent/
 ├── docs/                        # ドキュメント
 ├── infra/                       # 現行の CDK（Foundation / Auth / Agent / Web）
-├── amplify/agent/runtime/       # Python エージェント本体
+├── agent/                       # Python エージェント本体（AgentCore Runtime のコンテナ）
 ├── src/                         # React フロントエンド
 └── package.json
 ```

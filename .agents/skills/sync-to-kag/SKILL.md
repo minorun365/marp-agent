@@ -1,90 +1,66 @@
 ---
 name: sync-to-kag
 model: sonnet
-description: mainリポジトリの変更をkagリポジトリにも適用する。「kagにも反映して」「kag環境にも適用して」と言われたらこのスキルを使う。mainとkagは別リポジトリなのでマージではなくチェリーピックで適用する。
-allowed-tools: Bash(git:*), Bash(cd:*), Bash(cp:*)
+description: 【停止中】mainリポジトリからKAG社内版へのチェリーピックは現在止めている。「kagにも反映して」「kag環境にも適用して」と言われたら、実行せずこのスキルの停止理由と再開条件を伝える。
+allowed-tools: Bash(git:*)
 ---
 
-# mainの変更をkagリポジトリに適用
+# KAG社内版への同期は停止中
 
-ユーザーが「kagにも適用して」「kag環境にも反映して」と言った場合、このスキルに従ってチェリーピックを実行する。
+**チェリーピックを実行しない。** 依頼を受けたら、下の理由と再開条件を伝えて止める。
 
-## 構成
+## なぜ止めているか
 
-mainとkagは**完全に別のGitHubリポジトリ**として管理されている：
+一般公開版（`minorun365/marp-agent`）は 2026-08-20 にディレクトリ構成を刷新した。
+KAG社内版（`minorun365/marp-agent-kag`）は今も Amplify Gen2 時代の構成のままなので、
+**同じファイルが両リポジトリで別の場所にある**。
 
-| 環境 | リポジトリ | ローカルパス | ブランチ |
-|------|-----------|------------|---------|
-| main（本番） | `minorun365/marp-agent` | `../marp-agent` | main |
-| kag | `minorun365/marp-agent-kag` | `../marp-agent-kag` | main |
+| 中身 | 一般公開版（現在） | KAG社内版（現在） |
+|---|---|---|
+| Pythonエージェント本体 | `agent/` | `amplify/agent/runtime/` |
+| 認証まわりの Lambda | `infra/lambda/auth/` | `amplify/auth/` |
+| インフラ定義 | `infra/`（CDK + CDKD） | `amplify/`（Amplify Gen2） |
 
-kagリポジトリには `upstream` リモートとして marp-agent が登録されている。
+この状態でチェリーピックすると、**エラーで止まらないまま、同じ内容のファイルが2か所にできる**。
+ビルドもテストも通るので、後から気づけない。いちばん危ない壊れ方をする。
 
-## 重要：なぜチェリーピックなのか
+## 再開の条件
 
-- mainとkagは**別リポジトリ**で独立して開発されている
-- `git merge` するとコンフリクトが大量発生する
-- **必要な変更だけをチェリーピックで適用する**のが正しい方法
+みのるんの方針（2026-08-20）：
 
-## 同期対象
+> KAG環境もぼちぼちAWSアカウント移行することになりそうなので、
+> そのタイミングでメイン版と同じようにリアーキテクチャする。
+> それまではしばらくチェリーピックを使わない。
 
-| カテゴリ | 対象 | 例 |
-|---------|------|-----|
-| **機能** | アプリのコード変更 | agent.py, コンポーネント |
-| **Codex設定** | スキル、サブエージェント | `.agents/skills/`, `.agents/agents/` |
+つまり **KAG を新しいAWSアカウントへ移し、一般公開版と同じ構成（`agent/` + `infra/`）へ
+作り直したとき**が再開のタイミング。それまでは両リポジトリを独立して進める。
 
-**同期しないもの:**
-- `docs/` 配下のドキュメント - kagは差分のみ記載する方針のため、mainのドキュメント変更は反映しない
-- `docs/todo.md` - リポジトリ別に管理
-- 環境固有の設定（resource.ts の環境変数など）
+## 機械的な歯止め
 
-## 手順
+両リポジトリの `.githooks/prepare-commit-msg` が `CHERRY_PICK_HEAD` を見て、
+チェリーピックのコミットを拒否する。手で叩いても止まる。
 
-### 1. mainリポジトリで適用するコミットを確認
+- 元に戻す: `git cherry-pick --abort`
+- 例外的に通す: `ALLOW_CHERRY_PICK=1 git cherry-pick <コミット>`（みのるんの明示指示があるときだけ）
 
-```bash
-git log main --oneline -5
-```
+フックは `.git/hooks/` へも実体を置いてあるため、`core.hooksPath` の設定有無にかかわらず効く。
+新しくクローンした環境では `npm run setup:git-hooks` を実行して有効化する。
 
-直近でコミットした内容を確認し、**コード変更のみ**をチェリーピック対象とする（ドキュメント変更は除外）。
+## それでも反映が必要と言われたら
 
-### 2. kagリポジトリに移動してチェリーピック
+「両方に同じ修正を入れたい」と頼まれた場合は、チェリーピックを迂回する手段を勝手に選ばず、
+**どちらの進め方にするかをみのるんへ確認する**。
 
-```bash
-cd ../marp-agent-kag
-git pull origin main
-git fetch upstream
-git cherry-pick <commit-hash>
-```
+1. KAG側で同じ修正を手で書く（1〜2ファイルの小さな修正ならこれが速い）
+2. KAG のリアーキテクチャまで待って、まとめて揃える
+3. 今回だけ `ALLOW_CHERRY_PICK=1` で通し、パスの食い違いを手で直す
 
-### 3. プッシュしてmainリポジトリに戻る
+## 参考：停止前の運用
 
-```bash
-git push origin main
-cd ../marp-agent
-```
+チェリーピック方式の詳細な手順は、このファイルの Git 履歴（2026-08-20 以前の版）にある。
+再開するときはそこから復元する。
 
-## ワンライナー版
+## Codex設定の同期
 
-```bash
-cd ../marp-agent-kag && git pull origin main && git fetch upstream && git cherry-pick <commit-hash> && git push origin main && cd ../marp-agent
-```
-
-## コンフリクト発生時
-
-```bash
-# コンフリクトファイル確認
-git diff --name-only --diff-filter=U
-
-# 手動解決後
-git add <files>
-git cherry-pick --continue
-
-# 中止する場合
-git cherry-pick --abort
-```
-
-## 注意
-
-- 環境固有の設定ファイル（resource.ts等）はkag側で別の値になっている可能性あり
-- コンフリクト発生時はユーザーに確認を取ること
+スキルやサブエージェント（`.agents/skills/, .agents/agents/`）の同期も、いまは同じ理由で止めている。
+必要になったら手でコピーする。

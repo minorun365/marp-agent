@@ -215,8 +215,8 @@ async def invoke(payload, context=None):
 | ファイル | 修正内容 |
 |---------|---------|
 | `src/components/Chat/types.ts` | `ModelType` 型と `MODEL_OPTIONS` に追加（型定義の一元管理場所） |
-| `amplify/agent/runtime/config.py` | `get_model_config()` に新モデルの設定を追加 |
-| `amplify/agent/runtime/session/manager.py` | native以外のproviderなら生成分岐を追加 |
+| `agent/config.py` | `get_model_config()` に新モデルの設定を追加 |
+| `agent/session/manager.py` | native以外のproviderなら生成分岐を追加 |
 | `amplify/agent/resource.ts` | モデルID、環境変数、必要なIAM権限を追加 |
 | `requirements.txt` / `pyproject.toml` | providerのextra依存を追加 |
 | `tests/` | 設定・provider生成・UI選択肢のテストを追加 |

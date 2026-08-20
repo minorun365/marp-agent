@@ -67,7 +67,7 @@ paginate: true
 
 **ファイル配置**:
 - `src/themes/border.css` - フロントエンド（Marp Core）用
-- `amplify/agent/runtime/border.css` - PDF/PPTX生成（Marp CLI）用
+- `agent/border.css` - PDF/PPTX生成（Marp CLI）用
 
 **参考**: https://rnd195.github.io/marp-community-themes/theme/border.html
 
@@ -267,4 +267,4 @@ leadクラスなどでCSS変数（`--color-foreground`等）を上書きする�
 - HTMLの見出し（`h2`等）はブラウザデフォルトで太字（`bold`）になる。太字にしたくない場合は`font-weight: normal`を明示的に指定する必要がある
 
 #### テーマファイルの2箇所管理
-runtime用CSS（`amplify/agent/runtime/`）とフロントエンド用CSS（`src/themes/`）の2箇所にテーマファイルが存在する。`npm run copy-themes`で同期する運用のため、片方だけ編集すると不整合が起きる。
+runtime用CSS（`agent/`）とフロントエンド用CSS（`src/themes/`）の2箇所にテーマファイルが存在する。`npm run copy-themes`で同期する運用のため、片方だけ編集すると不整合が起きる。
