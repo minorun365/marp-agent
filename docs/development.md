@@ -48,7 +48,8 @@ Git への push では本番 AWS は変わりません。本番反映は CDKD �
   "auth": {
     "region": "us-east-1",
     "userPoolId": "us-east-1_xxxxxxxxx",
-    "userPoolClientId": "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "userPoolClientId": "xxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "cognitoDomain": "pawapo-minoruonda.auth.us-east-1.amazoncognito.com"
   },
   "agent": {
     "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:<アカウント>:runtime/pawapo_agent-xxxxxxxx",
@@ -59,8 +60,23 @@ Git への push では本番 AWS は変わりません。本番反映は CDKD �
 }
 ```
 
-値は本番の Web スタックの出力から引ける。ファイルが無い、または `auth.userPoolId` と
-`agent.runtimeArn` が欠けていると、Vite が `/runtime-config.json` に 503 と理由を返す。
+**いちばん確実なのは、本番が返しているものをそのまま持ってくること。**
+`environment` だけ `local` に書き換えて、取り違えを防ぐ。
+
+```bash
+curl -sS https://pawapo.minoruonda.com/runtime-config.json > runtime-config.local.json
+```
+
+`cognitoDomain` を入れるとローカルでも Google ログインが使える
+（Cognito のアプリクライアントに `http://localhost:5173/` が登録済み）。
+外すと Google のボタンが出なくなり、メールとパスワードだけになる。
+
+ファイルが無い、または `auth.userPoolId` と `agent.runtimeArn` が欠けていると、
+Vite が `/runtime-config.json` に 503 と理由を返す。
+
+`npm run dev` は `VITE_AGENT_ENDPOINT=/local-agent` を渡すので、スライド生成は
+手元の AgentCore へ向く。`agent.runtimeArn` が本番を指していても、生成は本番へ飛ばない。
+ログインだけは本番の Cognito を通る（専用の検証用 User Pool は移行時に廃止した）。
 
 `npm run dev:ui` と `npm run dev:auth` はモックなので、このファイルは要らない。
 
