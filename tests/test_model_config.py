@@ -167,10 +167,17 @@ def test_url_reference_mode_prompt_keeps_the_normal_structure_rules():
     """
     prompt = config.URL_REFERENCE_MODE_PROMPT
 
-    # 上書きの範囲を限定し、通常のルールを名指しで残す
+    # 上書きの範囲を限定する
     assert "最優先" not in prompt
-    assert "構成の骨格（4-1）" in prompt
-    assert "枚数の目安" in prompt
+
+    # モデルごとに節構成が違うので、節番号への参照を持たない
+    # （Grokのシステムプロンプトには 4-1 などの節が存在しない）
+    for section in ("4-1", "4-2", "4-3", "（5）", "（6）"):
+        assert section not in prompt
+
+    # 枚数はURLモード自身が具体的に持つ
+    assert "10〜16枚" in prompt
+    assert "本文スライドは最低6枚" in prompt
 
     # 1枚へ詰め込ませない
     assert "1枚へ詰め込まない" in prompt
