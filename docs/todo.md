@@ -177,6 +177,9 @@ section table tr:nth-child(even) td {
 
 ### #14 環境識別子リネーム
 
+> ⚠️ Amplify Gen2 時代に書いたTODO。ここで挙げているファイルは 2026-08-20 の構成刷新で削除済み。
+> 着手するなら `infra/` の CDK を対象に書き直すこと。
+
 **変更内容**: dev→sandbox
 
 **変更が必要なファイル**:
@@ -276,7 +279,7 @@ section table tr:nth-child(even) td {
 #### 推奨: 案A（シンプル版）
 
 ```typescript
-// amplify/agent/resource.ts
+// Amplify Gen2 時代の案。現行なら infra/lib/agent-stack.ts が対象
 if (!isSandbox) {
   // ECRリポジトリを自前で作成
   const repository = new ecr.Repository(stack, 'MarpAgentRepository', {
