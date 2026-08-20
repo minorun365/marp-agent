@@ -68,6 +68,9 @@ export class AgentStack extends cdk.Stack {
         GROK_REASONING_EFFORT: 'low',
         BEDROCK_KIMI_MODEL_ID: 'moonshotai.kimi-k2.5',
         TAVILY_SECRET_ARN: props.foundation.tavilySecret.secretArn,
+        // 試験用のモデル種別を選んだときだけ、Tavilyの代わりにこのGatewayを引く。
+        AGENTCORE_WEBSEARCH_GATEWAY_URL: props.foundation.webSearchGateway.attrGatewayUrl,
+        AGENTCORE_WEBSEARCH_TOOL_NAME: props.foundation.webSearchToolName,
         SHARED_SLIDES_BUCKET: sharedSlidesBucketName,
         SHARED_SLIDES_PUBLIC_DOMAIN: props.appDomain,
       },

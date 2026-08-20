@@ -89,6 +89,28 @@ MAX_SEARCH_CALLS = 6
 MAX_SEARCH_CALLS_WITH_URL = 2
 
 
+# 検索の実行先。既定はTavilyで、試験用のモデル種別を選んだリクエストだけ
+# AgentCoreのWeb Searchへ切り替える（agent.pyがリクエストごとに設定する）。
+SEARCH_BACKEND_TAVILY = "tavily"
+SEARCH_BACKEND_AGENTCORE = "agentcore"
+_search_backend: str = SEARCH_BACKEND_TAVILY
+
+
+def set_search_backend(backend: str) -> None:
+    """このリクエストで使う検索の実行先を決める。"""
+    global _search_backend
+    _search_backend = (
+        SEARCH_BACKEND_AGENTCORE
+        if backend == SEARCH_BACKEND_AGENTCORE
+        else SEARCH_BACKEND_TAVILY
+    )
+
+
+def get_search_backend() -> str:
+    """いま選ばれている検索の実行先。"""
+    return _search_backend
+
+
 def get_last_search_result() -> str | None:
     """最後の検索結果を取得"""
     return _last_search_result
@@ -96,9 +118,11 @@ def get_last_search_result() -> str | None:
 
 def reset_last_search_result() -> None:
     """検索結果をリセット"""
-    global _last_search_result, _search_call_count
+    global _last_search_result, _search_call_count, _search_backend
     _last_search_result = None
     _search_call_count = 0
+    # 実行先はリクエストごとに決め直す。前のリクエストの選択を持ち越さない。
+    _search_backend = SEARCH_BACKEND_TAVILY
 
 
 @tool
@@ -121,7 +145,7 @@ def web_search(query: str) -> str:
     Returns:
         検索結果のテキスト
     """
-    global _search_call_count
+    global _search_call_count, _last_search_result
     url_fetched = get_url_fetched()
     call_limit = MAX_SEARCH_CALLS_WITH_URL if url_fetched else MAX_SEARCH_CALLS
     if _search_call_count >= call_limit:
@@ -132,6 +156,15 @@ def web_search(query: str) -> str:
             )
         return "Web検索は上限6回に達しました。これまでの検索結果だけを使ってスライドを作成してください。"
     _search_call_count += 1
+
+    if _search_backend == SEARCH_BACKEND_AGENTCORE:
+        agentcore_result = _search_with_agentcore(query)
+        if agentcore_result is not None:
+            _last_search_result = agentcore_result
+            return agentcore_result
+        # 試験中に検索そのものが止まると資料が作れないので、Tavilyへ落として続行する。
+        # 落ちたことはログに残るので、あとから実行先の内訳を数えられる。
+        print("[WARN] AgentCore Web Searchが使えないためTavilyへフォールバックします")
 
     if not tavily_clients:
         return "Web検索機能は現在利用できません（APIキー未設定）"
@@ -208,3 +241,126 @@ def _search_with_current_keys(query: str) -> str | None:
             return f"検索エラー: {str(e)}"
 
     return None
+
+
+# ── AgentCore Web Search（試験用） ────────────────────────────────
+# AgentCore GatewayにWeb Searchコネクタを1つぶら下げ、MCPの tools/call をSigV4で叩く。
+# Tavilyと違ってAPIキーが要らず、料金はAWSからの請求になるためクレジットで払える。
+# Gatewayを経由するのは、コネクタを直接呼ぶ公開APIが無いため（2026-08-20時点）。
+AGENTCORE_SEARCH_MAX_RESULTS = 3
+AGENTCORE_SEARCH_TIMEOUT_SECONDS = 30
+
+
+def _agentcore_gateway_url() -> str:
+    url = os.environ.get("AGENTCORE_WEBSEARCH_GATEWAY_URL", "").strip().rstrip("/")
+    if not url:
+        return ""
+    # CloudFormationが返すGatewayのURLは末尾の /mcp を含む場合と含まない場合がある。
+    return url if url.endswith("/mcp") else f"{url}/mcp"
+
+
+def _agentcore_region(url: str) -> str:
+    # https://<id>.gateway.bedrock-agentcore.<region>.amazonaws.com/mcp
+    parts = url.split(".")
+    for index, part in enumerate(parts):
+        if part == "bedrock-agentcore" and index + 1 < len(parts):
+            return parts[index + 1]
+    return os.environ.get("AWS_REGION", "us-east-1")
+
+
+def _extract_json_payload(raw_body: str) -> dict:
+    """MCPのStreamable HTTPはJSONとSSEのどちらでも返る。両方を受ける。"""
+    stripped = raw_body.lstrip()
+    if stripped.startswith("{"):
+        return json.loads(stripped)
+    for line in raw_body.splitlines():
+        if line.startswith("data:"):
+            return json.loads(line[len("data:"):].strip())
+    raise ValueError(f"MCPの応答を解釈できませんでした: {raw_body[:200]}")
+
+
+def _search_with_agentcore(query: str) -> str | None:
+    """AgentCoreのWeb Searchで検索する。使えなければNoneを返す。"""
+    url = _agentcore_gateway_url()
+    if not url:
+        print("[WARN] AGENTCORE_WEBSEARCH_GATEWAY_URL が未設定です")
+        return None
+
+    # botocore はランタイムのコンテナにだけ入っている。テスト環境を壊さないよう遅延importする。
+    import urllib.error
+    import urllib.request
+
+    from botocore.auth import SigV4Auth
+    from botocore.awsrequest import AWSRequest
+    from botocore.session import Session
+
+    tool_name = os.environ.get(
+        "AGENTCORE_WEBSEARCH_TOOL_NAME", "web-search-tool___WebSearch"
+    )
+    body = json.dumps({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": tool_name,
+            "arguments": {"query": query[:200], "maxResults": AGENTCORE_SEARCH_MAX_RESULTS},
+        },
+    }).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2025-03-26",
+    }
+
+    try:
+        credentials = Session().get_credentials()
+        if credentials is None:
+            print("[WARN] AgentCore Web Search: AWS認証情報を取得できませんでした")
+            return None
+        signed = AWSRequest(method="POST", url=url, data=body, headers=headers)
+        SigV4Auth(
+            credentials.get_frozen_credentials(), "bedrock-agentcore", _agentcore_region(url)
+        ).add_auth(signed)
+
+        request = urllib.request.Request(
+            url, data=body, headers=dict(signed.headers), method="POST"
+        )
+        with urllib.request.urlopen(
+            request, timeout=AGENTCORE_SEARCH_TIMEOUT_SECONDS
+        ) as response:
+            payload = _extract_json_payload(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:300]
+        print(f"[WARN] AgentCore Web Searchが失敗しました（HTTP {error.code}）: {detail}")
+        return None
+    except Exception as error:
+        print(f"[WARN] AgentCore Web Searchが失敗しました（{type(error).__name__}: {error}）")
+        return None
+
+    if "error" in payload:
+        print(f"[WARN] AgentCore Web Searchがエラーを返しました: {str(payload['error'])[:300]}")
+        return None
+
+    result = payload.get("result", {})
+    if result.get("isError"):
+        print(f"[WARN] AgentCore Web Searchがエラー応答を返しました: {str(result)[:300]}")
+        return None
+
+    contents = result.get("content") or []
+    if not contents:
+        return "検索結果がありませんでした"
+    try:
+        rows = json.loads(contents[0].get("text", "{}")).get("results", [])
+    except json.JSONDecodeError:
+        print("[WARN] AgentCore Web Searchの結果を解釈できませんでした")
+        return None
+
+    formatted_results = []
+    for row in rows:
+        title = row.get("title") or row.get("url", "")
+        text = row.get("text", "")
+        source_url = row.get("url", "")
+        formatted_results.append(f"**{title}**\n{text}\nURL: {source_url}")
+
+    print(f"[INFO] AgentCore Web Searchで{len(rows)}件取得しました")
+    return "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"

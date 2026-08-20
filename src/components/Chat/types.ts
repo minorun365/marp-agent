@@ -1,5 +1,13 @@
 // バックエンドが認識できるモデル型。現在無効なモデルも型からは削除しない。
-export type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus' | 'sol' | 'grok';
+export type ModelType =
+  | 'sonnet'
+  | 'sonnet5'
+  | 'kimi'
+  | 'glm'
+  | 'opus'
+  | 'sol'
+  | 'grok'
+  | 'grok_websearch';
 
 export interface ModelOption {
   value: ModelType;
@@ -11,6 +19,13 @@ export interface ModelOption {
 // UIに表示するモデル一覧。2件以上になるとChatInputのセレクターが自動表示される。
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'grok', label: '標準（Grok 4.6）', shortLabel: '標準' },
+  // モデルはGrokのまま、Web検索だけAgentCoreのWeb Searchへ切り替える試験用の選択肢。
+  // 検索の品質と鮮度を本番のトラフィックで見比べるために置いている。
+  {
+    value: 'grok_websearch',
+    label: '試験的（Grok 4.6 + AgentCore Web Search）',
+    shortLabel: '試験的',
+  },
   {
     value: 'sonnet',
     label: '高品質（Claude Sonnet 4.6） ※資金不足により停止中',

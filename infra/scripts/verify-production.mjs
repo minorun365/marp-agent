@@ -99,6 +99,10 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
     'GROK_REASONING_EFFORT',
     'BEDROCK_KIMI_MODEL_ID',
     'TAVILY_SECRET_ARN',
+    // 試験用の「Grok + AgentCore Web Search」の接続先。落ちてもエラーにはならず、
+    // 検索が黙ってTavilyへ戻るだけなので、画面からは試験できているように見えてしまう。
+    'AGENTCORE_WEBSEARCH_GATEWAY_URL',
+    'AGENTCORE_WEBSEARCH_TOOL_NAME',
     'SHARED_SLIDES_BUCKET',
     'SHARED_SLIDES_PUBLIC_DOMAIN',
   ];

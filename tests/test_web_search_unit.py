@@ -102,3 +102,54 @@ def test_web_search_stops_after_six_calls():
 
     assert "上限6回" in result
     assert mock_client.search.call_count == 6
+
+
+# ── 検索の実行先の切り替え（試験用のGrok+AgentCore Web Search） ────────────
+
+
+def test_search_backend_defaults_to_tavily():
+    from tools.web_search import get_search_backend
+
+    reset_last_search_result()
+    assert get_search_backend() == "tavily"
+
+
+def test_reset_returns_backend_to_tavily():
+    """実行先はリクエストごとに決め直す。前のリクエストの選択を持ち越さない。"""
+    from tools.web_search import get_search_backend, set_search_backend
+
+    set_search_backend("agentcore")
+    assert get_search_backend() == "agentcore"
+    reset_last_search_result()
+    assert get_search_backend() == "tavily"
+
+
+def test_agentcore_backend_skips_tavily():
+    from tools.web_search import set_search_backend
+
+    tavily = MagicMock()
+    set_search_backend("agentcore")
+    with patch("tools.web_search.tavily_clients", [tavily]), \
+         patch("tools.web_search._search_with_agentcore", return_value="AgentCoreの結果"):
+        result = web_search(query="test")
+
+    assert result == "AgentCoreの結果"
+    assert get_last_search_result() == "AgentCoreの結果"
+    tavily.search.assert_not_called()
+
+
+def test_agentcore_failure_falls_back_to_tavily():
+    """試験中に検索が止まると資料が作れないので、落ちたらTavilyで続行する。"""
+    from tools.web_search import set_search_backend
+
+    tavily = MagicMock()
+    tavily.search.return_value = {
+        "results": [{"title": "T", "content": "C", "url": "https://example.com"}]
+    }
+    set_search_backend("agentcore")
+    with patch("tools.web_search.tavily_clients", [tavily]), \
+         patch("tools.web_search._search_with_agentcore", return_value=None):
+        result = web_search(query="test")
+
+    tavily.search.assert_called_once()
+    assert "https://example.com" in result

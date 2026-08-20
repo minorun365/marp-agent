@@ -52,6 +52,12 @@ export class WorkloadAccessStack extends cdk.Stack {
       actions: ['bedrock:CallWithBearerToken', 'bedrock-mantle:CallWithBearerToken'],
       resources: ['*'],
     }));
+    // AgentCore Web Searchを試すための経路。GatewayをMCPで呼ぶ権限を、
+    // このアプリのGatewayだけに絞って渡す。
+    this.runtimeRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['bedrock-agentcore:InvokeGateway'],
+      resources: [props.foundation.webSearchGateway.attrGatewayArn],
+    }));
     this.runtimeRole.addToPolicy(new iam.PolicyStatement({
       actions: ['logs:DescribeLogGroups'],
       resources: ['*'],

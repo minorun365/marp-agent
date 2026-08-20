@@ -21,9 +21,14 @@ MODEL_ENVIRONMENT_VARIABLES = {
     "grok": "BEDROCK_GROK_MODEL_ID",
 }
 
+# 試験用。モデルはGrokのまま、Web検索だけTavilyからAgentCoreのWeb Searchへ切り替える。
+# 検索の品質と鮮度を本番のトラフィックで見比べるための選択肢。
+GROK_WEB_SEARCH_MODEL_TYPE = "grok_websearch"
+
 # UIのMODEL_OPTIONSでdisabledではないモデルだけを有効化する。
 ENABLED_MODEL_TYPES = {
     "grok",
+    GROK_WEB_SEARCH_MODEL_TYPE,
     # "kimi",
     # "sonnet",
     # "sonnet5",
@@ -32,15 +37,32 @@ ENABLED_MODEL_TYPES = {
     # "sol",
 }
 
+# 「モデルは同じで周辺だけ変える」選択肢を、素のモデル種別へ寄せる対応表。
+# ここに載せた種別は、モデル設定もシステムプロンプトも右側の種別と同じものを使う。
+MODEL_TYPE_ALIASES = {
+    GROK_WEB_SEARCH_MODEL_TYPE: "grok",
+}
+
 
 def normalize_model_type(model_type: str | None) -> str:
     """未有効のモデル指定をGrokへ安全にフォールバックする。"""
     return model_type if model_type in ENABLED_MODEL_TYPES else "grok"
 
 
+def resolve_base_model_type(model_type: str | None) -> str:
+    """試験用の種別を、実際に呼ぶモデルの種別へ解決する。"""
+    normalized = normalize_model_type(model_type)
+    return MODEL_TYPE_ALIASES.get(normalized, normalized)
+
+
+def uses_agentcore_web_search(model_type: str | None) -> bool:
+    """Web検索をTavilyではなくAgentCoreのWeb Searchで行う種別かどうか。"""
+    return normalize_model_type(model_type) == GROK_WEB_SEARCH_MODEL_TYPE
+
+
 def get_model_config(model_type: str = "grok") -> dict:
     """有効化されているモデルの設定を返す。"""
-    normalized_model_type = normalize_model_type(model_type)
+    normalized_model_type = resolve_base_model_type(model_type)
 
     if normalized_model_type == "grok":
         # Grok 4.6はMantleのus-west-2でだけ提供される（bedrock-runtime側は
@@ -275,7 +297,11 @@ MODEL_SPECIFIC_PROMPTS = {
 
 def get_system_prompt(theme: str = "speee", model_type: str = "grok") -> str:
     """テーマに応じたシステムプロンプトを生成"""
-    model_prompt = MODEL_SPECIFIC_PROMPTS.get(model_type, "")
+    # ここでは normalize しない。無効化中のモデル（kimi・glm）でもプロンプトを
+    # 取り出せる状態を保つため、別名だけを解決する。
+    model_prompt = MODEL_SPECIFIC_PROMPTS.get(
+        MODEL_TYPE_ALIASES.get(model_type, model_type), ""
+    )
     return f"""あなたは「パワポ作るマン」、Marp形式スライド作成AIアシスタントです。
 ユーザーと壁打ちしながらスライドの完成度を高めます。
 スライドのフロントマターには `theme: {theme}` を使用してください。

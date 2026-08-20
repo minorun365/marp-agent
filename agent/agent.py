@@ -9,7 +9,7 @@ import re
 import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
 
-from config import URL_REFERENCE_MODE_PROMPT, normalize_model_type
+from config import URL_REFERENCE_MODE_PROMPT, normalize_model_type, uses_agentcore_web_search
 from identity import log_session_identity
 from tools import (
     web_search,
@@ -23,7 +23,11 @@ from tools import (
     get_generated_tweet_url,
     reset_generated_tweet_url,
 )
-from tools.web_search import get_last_search_result, reset_last_search_result
+from tools.web_search import (
+    get_last_search_result,
+    reset_last_search_result,
+    set_search_backend,
+)
 from tools.http_request import reset_url_fetched
 from exports import generate_pdf, generate_pptx, generate_editable_pptx
 from sharing import share_slide
@@ -86,6 +90,8 @@ async def invoke(payload, context=None):
     action = payload.get("action", "chat")
     current_markdown = payload.get("markdown", "")
     model_type = normalize_model_type(payload.get("model_type"))
+    # Web検索の実行先はモデル種別で決まる。試験用の種別だけAgentCoreのWeb Searchを使う。
+    set_search_backend("agentcore" if uses_agentcore_web_search(model_type) else "tavily")
     session_id = getattr(context, 'session_id', None) if context else None
     theme = payload.get("theme", "border")
     reference_file = payload.get("reference_file")
