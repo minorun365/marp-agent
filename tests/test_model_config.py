@@ -13,11 +13,8 @@ from tools.http_request import _html_to_text
 
 
 def test_only_grok_is_enabled():
-    """標準はGrok。試験用のGrok+AgentCore検索だけを併設し、他は無効のまま残す。
-
-    Sonnet 4.6は停止中の表示だけUIへ残し、Kimiは設定だけ保持する。
-    """
-    assert ENABLED_MODEL_TYPES == {"grok", "grok_websearch"}
+    """標準はGrok。Sonnet 4.6は停止中の表示だけUIへ残し、Kimiは設定だけ保持する。"""
+    assert ENABLED_MODEL_TYPES == {"grok"}
     assert normalize_model_type("grok") == "grok"
 
 
@@ -332,25 +329,3 @@ def test_output_slide_doc_keeps_only_marp_requirements():
         "因果型",
     ):
         assert banned not in doc, f"文章の型が残っている: {banned}"
-
-
-# ── 試験用の「Grok + AgentCore Web Search」 ─────────────────────────────
-
-
-def test_grok_websearch_uses_the_same_model_as_grok(monkeypatch):
-    """検索の実行先だけを変える選択肢なので、モデル設定はGrokと一致させる。"""
-    monkeypatch.setenv("BEDROCK_GROK_MODEL_ID", "xai.grok-4.6")
-    assert get_model_config("grok_websearch") == get_model_config("grok")
-
-
-def test_grok_websearch_uses_the_same_system_prompt_as_grok():
-    """プロンプトまで変えると、検索の違いなのかプロンプトの違いなのか切り分けられない。"""
-    assert get_system_prompt("speee", "grok_websearch") == get_system_prompt("speee", "grok")
-
-
-def test_only_grok_websearch_switches_the_search_backend():
-    assert config.uses_agentcore_web_search("grok_websearch") is True
-    assert config.uses_agentcore_web_search("grok") is False
-    # 未有効の指定はGrokへ落ちるので、検索もTavilyのまま
-    assert config.uses_agentcore_web_search("kimi") is False
-    assert config.uses_agentcore_web_search(None) is False

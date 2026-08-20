@@ -89,28 +89,6 @@ MAX_SEARCH_CALLS = 6
 MAX_SEARCH_CALLS_WITH_URL = 2
 
 
-# 検索の実行先。既定はTavilyで、試験用のモデル種別を選んだリクエストだけ
-# AgentCoreのWeb Searchへ切り替える（agent.pyがリクエストごとに設定する）。
-SEARCH_BACKEND_TAVILY = "tavily"
-SEARCH_BACKEND_AGENTCORE = "agentcore"
-_search_backend: str = SEARCH_BACKEND_TAVILY
-
-
-def set_search_backend(backend: str) -> None:
-    """このリクエストで使う検索の実行先を決める。"""
-    global _search_backend
-    _search_backend = (
-        SEARCH_BACKEND_AGENTCORE
-        if backend == SEARCH_BACKEND_AGENTCORE
-        else SEARCH_BACKEND_TAVILY
-    )
-
-
-def get_search_backend() -> str:
-    """いま選ばれている検索の実行先。"""
-    return _search_backend
-
-
 def get_last_search_result() -> str | None:
     """最後の検索結果を取得"""
     return _last_search_result
@@ -118,11 +96,9 @@ def get_last_search_result() -> str | None:
 
 def reset_last_search_result() -> None:
     """検索結果をリセット"""
-    global _last_search_result, _search_call_count, _search_backend
+    global _last_search_result, _search_call_count
     _last_search_result = None
     _search_call_count = 0
-    # 実行先はリクエストごとに決め直す。前のリクエストの選択を持ち越さない。
-    _search_backend = SEARCH_BACKEND_TAVILY
 
 
 @tool
@@ -157,29 +133,29 @@ def web_search(query: str) -> str:
         return "Web検索は上限6回に達しました。これまでの検索結果だけを使ってスライドを作成してください。"
     _search_call_count += 1
 
-    if _search_backend == SEARCH_BACKEND_AGENTCORE:
-        agentcore_result = _search_with_agentcore(query)
-        if agentcore_result is not None:
-            _last_search_result = agentcore_result
-            return agentcore_result
-        # 試験中に検索そのものが止まると資料が作れないので、Tavilyへ落として続行する。
-        # 落ちたことはログに残るので、あとから実行先の内訳を数えられる。
-        print("[WARN] AgentCore Web Searchが使えないためTavilyへフォールバックします")
-
-    if not tavily_clients:
-        return "Web検索機能は現在利用できません（APIキー未設定）"
-
-    result = _search_with_current_keys(query)
-    if result is not None:
-        return result
-
-    # 全キーが使えなかった。キーを差し替えた直後かもしれないので1度だけ読み直す。
-    if _refresh_tavily_clients():
+    if tavily_clients:
         result = _search_with_current_keys(query)
         if result is not None:
             return result
 
-    print(f"[ERROR] Tavilyのキー{len(tavily_clients)}本すべてが使えませんでした")
+        # 全キーが使えなかった。キーを差し替えた直後かもしれないので1度だけ読み直す。
+        if _refresh_tavily_clients():
+            result = _search_with_current_keys(query)
+            if result is not None:
+                return result
+        print(f"[ERROR] Tavilyのキー{len(tavily_clients)}本すべてが使えませんでした")
+    else:
+        print("[WARN] TavilyのAPIキーが設定されていません")
+
+    # Tavilyが尽きたときの受け皿。AgentCoreのWeb Searchは無料枠ではなくAWSの従量課金
+    # （$7/1,000クエリ）なので、キーの復旧を待たずに検索を続けられる。
+    # 日本語の固有名詞にはTavilyのほうが強いため、あくまで代役として後ろに置く。
+    agentcore_result = _search_with_agentcore(query)
+    if agentcore_result is not None:
+        print("[INFO] Tavilyが枯渇したためAgentCore Web Searchで代替しました")
+        _last_search_result = agentcore_result
+        return agentcore_result
+
     return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
 
 

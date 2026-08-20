@@ -133,4 +133,61 @@ describe('applyToolUse', () => {
       'Web検索中... "KDDIアジャイル開発センター 会社概要"',
     ]);
   });
+
+  // 2026-08-20の表示崩れ。検索に5秒以上かかると、バックエンドの無音検知が
+  // 「スライドを作成中」を先出ししてしまう。その後で検索が再開すると、
+  // 作成中の下に検索の行が積まれて順番が壊れ、検索の行は完了にならないまま
+  // スライドのストリーミングと並走していた。
+  it('作成中を先出しした後に検索へ戻ったら、作成中の行を取り下げて検索を最後に置く', () => {
+    let messages = applyToolUse([], 'web_search', '生成AI 導入事例');
+    messages = applyToolUse(messages, 'output_slide');            // 無音検知による先出し
+    messages = applyToolUse(messages, 'web_search', '生成AI 市場規模');
+
+    expect(messages.map(message => message.statusText)).toEqual([
+      'Web検索完了 "生成AI 導入事例"',
+      'Web検索中... "生成AI 市場規模"',
+    ]);
+    expect(
+      messages.some(message => message.statusText === MESSAGES.SLIDE_GENERATING),
+    ).toBe(false);
+  });
+
+  it('作成中を先出しした後にページ取得へ戻っても同じように取り下げる', () => {
+    let messages = applyToolUse([], 'output_slide');
+    messages = applyToolUse(messages, 'http_request', 'https://example.com/article');
+
+    expect(messages.map(message => message.statusText)).toEqual([
+      'Webページを読み込み中... https://example.com/article',
+    ]);
+  });
+
+  it('検索が終わって本当に作成へ進んだら、作成中の行は1本だけ立つ', () => {
+    let messages = applyToolUse([], 'web_search', '生成AI 導入事例');
+    messages = applyToolUse(messages, 'output_slide');
+
+    expect(messages.map(message => message.statusText)).toEqual([
+      'Web検索完了 "生成AI 導入事例"',
+      MESSAGES.SLIDE_GENERATING,
+    ]);
+  });
+
+  it('スライドの修正中は、検索へ戻っても取り下げない（Kimiのはみ出し修正待ち）', () => {
+    const messages = applyToolUse(
+      [
+        createMessage({
+          role: 'assistant',
+          content: '',
+          isStatus: true,
+          statusText: MESSAGES.SLIDE_FIXING,
+        }),
+      ],
+      'web_search',
+      '生成AI 市場規模',
+    );
+
+    expect(messages.map(message => message.statusText)).toEqual([
+      MESSAGES.SLIDE_FIXING,
+      'Web検索中... "生成AI 市場規模"',
+    ]);
+  });
 });

@@ -24,10 +24,15 @@ def test_reset_last_search_result():
 
 
 def test_web_search_no_api_key():
-    """APIキー未設定の場合はエラーメッセージを返す"""
-    with patch("tools.web_search.tavily_clients", []):
+    """APIキーもAgentCoreも無い場合は、案内文を返して検索を諦める。
+
+    キーが無いときはAgentCoreのWeb Searchを試すようになったので、
+    「両方だめだったとき」だけがこの経路になる。
+    """
+    with patch("tools.web_search.tavily_clients", []), \
+         patch("tools.web_search._search_with_agentcore", return_value=None):
         result = web_search(query="test query")
-        assert "利用できません" in result
+        assert "枯渇" in result
 
 
 def test_web_search_formats_results():
@@ -104,52 +109,49 @@ def test_web_search_stops_after_six_calls():
     assert mock_client.search.call_count == 6
 
 
-# ── 検索の実行先の切り替え（試験用のGrok+AgentCore Web Search） ────────────
+# ── Tavilyが枯渇したときのAgentCore Web Searchへの自動フォールバック ────────
 
 
-def test_search_backend_defaults_to_tavily():
-    from tools.web_search import get_search_backend
-
-    reset_last_search_result()
-    assert get_search_backend() == "tavily"
-
-
-def test_reset_returns_backend_to_tavily():
-    """実行先はリクエストごとに決め直す。前のリクエストの選択を持ち越さない。"""
-    from tools.web_search import get_search_backend, set_search_backend
-
-    set_search_backend("agentcore")
-    assert get_search_backend() == "agentcore"
-    reset_last_search_result()
-    assert get_search_backend() == "tavily"
-
-
-def test_agentcore_backend_skips_tavily():
-    from tools.web_search import set_search_backend
-
+def test_agentcore_is_not_used_while_tavily_works():
+    """Tavilyで引けている間はAgentCoreを呼ばない（無駄な課金をしない）。"""
     tavily = MagicMock()
-    set_search_backend("agentcore")
+    tavily.search.return_value = {
+        "results": [{"title": "T", "content": "C", "url": "https://example.com"}]
+    }
     with patch("tools.web_search.tavily_clients", [tavily]), \
+         patch("tools.web_search._search_with_agentcore") as agentcore:
+        result = web_search(query="test")
+
+    agentcore.assert_not_called()
+    assert "https://example.com" in result
+
+
+def test_falls_back_to_agentcore_when_all_keys_are_exhausted():
+    """全キーが枯渇したら、エラーを返す前にAgentCoreで代替する。"""
+    with patch("tools.web_search.tavily_clients", [MagicMock()]), \
+         patch("tools.web_search._search_with_current_keys", return_value=None), \
+         patch("tools.web_search._refresh_tavily_clients", return_value=False), \
          patch("tools.web_search._search_with_agentcore", return_value="AgentCoreの結果"):
         result = web_search(query="test")
 
     assert result == "AgentCoreの結果"
     assert get_last_search_result() == "AgentCoreの結果"
-    tavily.search.assert_not_called()
 
 
-def test_agentcore_failure_falls_back_to_tavily():
-    """試験中に検索が止まると資料が作れないので、落ちたらTavilyで続行する。"""
-    from tools.web_search import set_search_backend
+def test_falls_back_to_agentcore_when_no_key_is_configured():
+    """キーが1本も無い場合も、諦める前にAgentCoreを試す。"""
+    with patch("tools.web_search.tavily_clients", []), \
+         patch("tools.web_search._search_with_agentcore", return_value="AgentCoreの結果"):
+        result = web_search(query="test")
 
-    tavily = MagicMock()
-    tavily.search.return_value = {
-        "results": [{"title": "T", "content": "C", "url": "https://example.com"}]
-    }
-    set_search_backend("agentcore")
-    with patch("tools.web_search.tavily_clients", [tavily]), \
+    assert result == "AgentCoreの結果"
+
+
+def test_reports_exhaustion_only_when_agentcore_also_fails():
+    with patch("tools.web_search.tavily_clients", [MagicMock()]), \
+         patch("tools.web_search._search_with_current_keys", return_value=None), \
+         patch("tools.web_search._refresh_tavily_clients", return_value=False), \
          patch("tools.web_search._search_with_agentcore", return_value=None):
         result = web_search(query="test")
 
-    tavily.search.assert_called_once()
-    assert "https://example.com" in result
+    assert "枯渇" in result

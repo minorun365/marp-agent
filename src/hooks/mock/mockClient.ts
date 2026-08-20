@@ -46,9 +46,16 @@ export async function invokeAgentMock(
       `${prompt} 公式 ドキュメント`,
       `${prompt} 導入 判断`,
     ];
-    for (const query of mockQueries) {
+    for (const [index, query] of mockQueries.entries()) {
       callbacks.onToolUse('web_search', query);
       await sleep(700);
+      // 本番は、検索に5秒以上かかるとバックエンドが「スライドを作成中」を先出しする。
+      // その後で検索へ戻る流れを再現しておかないと、2026-08-20に起きた
+      // 「作成中の下に検索の行が積まれて順番が壊れる」崩れをローカルで見つけられない。
+      if (index === 1) {
+        callbacks.onToolUse('output_slide');
+        await sleep(700);
+      }
     }
   }
 

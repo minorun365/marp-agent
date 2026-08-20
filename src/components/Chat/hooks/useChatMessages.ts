@@ -34,6 +34,19 @@ export function appendSlideProgress(messages: Message[], message: string): Messa
   ];
 }
 
+// 検索やページ取得が始まったということは、まだ本文を書いていない。
+// 先出しした「スライドを作成中」の行が残っていると、検索の行がその下へ積まれて
+// 画面の順番が壊れるので、取り下げる（2026-08-20に発生した表示崩れの対策）。
+// 「修正中」はKimiのはみ出し検査からの復帰待ちなので残す。
+function dropPendingSlideStatus(messages: Message[]): Message[] {
+  return messages.filter(
+    message => !(
+      message.isStatus
+      && message.statusText?.startsWith(MESSAGES.SLIDE_GENERATING_PREFIX)
+    )
+  );
+}
+
 function completeActiveWebStatuses(messages: Message[]): Message[] {
   return messages.map(message => {
     if (message.isStatus && message.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
@@ -96,7 +109,7 @@ export function applyToolUse(messages: Message[], toolName: string, query?: stri
     }
 
     return [
-      ...completeActiveWebStatuses(settledMessages),
+      ...dropPendingSlideStatus(completeActiveWebStatuses(settledMessages)),
       createMessage({ role: 'assistant', content: '', isStatus: true, statusText: searchStatus }),
     ];
   }
@@ -126,7 +139,7 @@ export function applyToolUse(messages: Message[], toolName: string, query?: stri
     }
 
     return [
-      ...completeActiveWebStatuses(settledMessages),
+      ...dropPendingSlideStatus(completeActiveWebStatuses(settledMessages)),
       createMessage({ role: 'assistant', content: '', isStatus: true, statusText: fetchStatus }),
     ];
   }
@@ -363,6 +376,10 @@ export function useChatMessages({
 
           if (toolName === 'output_slide') {
             startTipRotation(setMessages);
+          }
+          // 検索・取得へ戻ったら、先出しした作成中の行ごとTipsも下ろす。
+          if (toolName === 'web_search' || toolName === 'http_request') {
+            stopTipRotation();
           }
         },
         onMarkdown: (markdown) => {

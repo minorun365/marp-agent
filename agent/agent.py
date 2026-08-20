@@ -9,7 +9,7 @@ import re
 import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
 
-from config import URL_REFERENCE_MODE_PROMPT, normalize_model_type, uses_agentcore_web_search
+from config import URL_REFERENCE_MODE_PROMPT, normalize_model_type
 from identity import log_session_identity
 from tools import (
     web_search,
@@ -23,11 +23,7 @@ from tools import (
     get_generated_tweet_url,
     reset_generated_tweet_url,
 )
-from tools.web_search import (
-    get_last_search_result,
-    reset_last_search_result,
-    set_search_backend,
-)
+from tools.web_search import get_last_search_result, reset_last_search_result
 from tools.http_request import reset_url_fetched
 from exports import generate_pdf, generate_pptx, generate_editable_pptx
 from sharing import share_slide
@@ -90,8 +86,6 @@ async def invoke(payload, context=None):
     action = payload.get("action", "chat")
     current_markdown = payload.get("markdown", "")
     model_type = normalize_model_type(payload.get("model_type"))
-    # Web検索の実行先はモデル種別で決まる。試験用の種別だけAgentCoreのWeb Searchを使う。
-    set_search_backend("agentcore" if uses_agentcore_web_search(model_type) else "tavily")
     session_id = getattr(context, 'session_id', None) if context else None
     theme = payload.get("theme", "border")
     reference_file = payload.get("reference_file")
@@ -253,6 +247,9 @@ async def invoke(payload, context=None):
     slide_compose_announced = False
     # 検索やテキストが一度でも届いたか。届く前の考え込みと区別する。
     activity_seen = False
+    # ツール（検索・ページ取得）が実行中か。ツールの実行中はモデルのストリームが
+    # 止まるので、この無音を「スライドを書いている」と読み違えないための目印。
+    tool_in_flight = False
 
     def get_slide_progress_event():
         """Kimiの内部文ではなく、検査ツールが確定した進捗だけを返す。"""
@@ -285,6 +282,11 @@ async def invoke(payload, context=None):
                     and activity_seen
                     and not slide_outputted
                     and not slide_compose_announced
+                    # ツールの実行中は「本文を書いている無音」ではない。ここを見ないと、
+                    # 検索に5秒以上かかった瞬間に「スライドを作成中」を先出ししてしまい、
+                    # 検索中の行が完了へ化けたうえ、検索が返ったあとの行が作成中の下へ
+                    # 積まれて画面の順番が壊れる（2026-08-20に発生）。
+                    and not tool_in_flight
                 ):
                     slide_compose_announced = True
                     yield {"type": "tool_use", "data": "output_slide"}
@@ -293,6 +295,9 @@ async def invoke(payload, context=None):
                 continue
             silent_intervals = 0
             activity_seen = True
+            # ツールが返るとモデルのストリームが再開する。次のイベントが届いた時点で
+            # 実行中ではなくなっている。
+            tool_in_flight = False
             event = pending.result()
             if event is _STREAM_SENTINEL:
                 break
@@ -357,6 +362,11 @@ async def invoke(payload, context=None):
                                 "data": tool_name,
                                 "query": search_query,
                             }
+                    tool_in_flight = True
+                    # また検索へ戻ったということは、まだ本文を書いていない。
+                    # 作成中の先出しをやり直せるようにしておく（画面側もこの時点で
+                    # 作成中の行を取り下げる）。
+                    slide_compose_announced = False
                 elif tool_name == "http_request":
                     # KimiはURLが埋まる前のスナップショットを先に流してくる。URL無しで
                     # 通知すると、画面に「読み込み中」がURL付きと2行に分かれて立ち、
@@ -371,6 +381,9 @@ async def invoke(payload, context=None):
                     if fetch_url and not is_stale:
                         announced_fetch_urls.append(fetch_url)
                         yield {"type": "tool_use", "data": tool_name, "query": fetch_url}
+                    # ページ取得も外部通信で数秒止まる。検索と同じ扱いにする。
+                    tool_in_flight = True
+                    slide_compose_announced = False
                 else:
                     yield {"type": "tool_use", "data": tool_name}
 
