@@ -179,6 +179,10 @@ def test_url_reference_mode_prompt_keeps_the_normal_structure_rules():
     assert "10〜16枚" in prompt
     assert "本文スライドは最低6枚" in prompt
 
+    # 短い記事では検索での補完を必須にする（Grokの検索抑制への明示的な例外）
+    assert "2000文字に満たない場合" in prompt
+    assert "例外にあたる" in prompt
+
     # 1枚へ詰め込ませない
     assert "1枚へ詰め込まない" in prompt
 
