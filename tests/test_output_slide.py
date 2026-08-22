@@ -29,7 +29,10 @@ from tools.output_slide import (
 def test_output_slide_stores_markdown():
     """output_slideがマークダウンを保存する"""
     reset_generated_markdown()
-    markdown = "---\nmarp: true\n---\n# テスト"
+    markdown = (
+        "---\nmarp: true\n---\n# テスト\n"
+        "- 項目1は説明つき\n- 項目2は説明つき\n- 項目3は説明つき\n- 項目4は説明つき"
+    )
 
     result = output_slide(markdown=markdown)
 
@@ -159,11 +162,12 @@ def test_output_slide_overwrites():
     同じ依頼の中での呼び直しは受け付けない（確定後の空振りを止めるため）。
     実運用では invoke ごとに reset_generated_markdown が走る。
     """
+    body = "\n- 項目1の説明\n- 項目2の説明\n- 項目3の説明\n- 項目4の説明"
     reset_generated_markdown()
-    output_slide(markdown="# first")
+    output_slide(markdown="# first" + body)
     reset_generated_markdown()  # ユーザーからの次の指示
-    output_slide(markdown="# second")
-    assert get_generated_markdown() == "# second"
+    output_slide(markdown="# second" + body)
+    assert get_generated_markdown() == "# second" + body
 
 
 # --- 表示幅計算テスト ---
@@ -429,7 +433,7 @@ class TestOutputSlideOverflowValidation:
     def test_valid_slide_accepted(self):
         """9行以内のスライドは正常出力"""
         reset_generated_markdown()
-        md = "---\nmarp: true\n---\n\n## Title\n\n- Item 1\n- Item 2\n- Item 3"
+        md = "---\nmarp: true\n---\n\n## Title\n\n- Item 1\n- Item 2\n- Item 3\n- Item 4"
         result = output_slide(markdown=md)
         assert result == "スライドを出力しました。"
         assert get_generated_markdown() == md
@@ -1250,3 +1254,48 @@ def test_repair_table_separators_leaves_correct_tables_and_code_blocks_alone():
 
     assert _repair_table_separators(intact) == intact
     assert _repair_table_separators(code) == code
+
+
+class TestThinSlideValidation:
+    """薄いページ検知（Grokのみ）のテスト"""
+
+    def _build(self, body_line_count):
+        body = "\n".join(f"- 項目{i}の説明" for i in range(1, body_line_count + 1))
+        return (
+            "---\nmarp: true\n---\n\n"
+            "<!-- _class: top -->\n# タイトル\n\n---\n\n"
+            f"## 本文\n{body}\n\n---\n\n"
+            "<!-- _class: end -->\n# Thank you!"
+        )
+
+    def test_thin_slide_rejected_for_grok(self):
+        """見出しを除いて3行以下の本文スライドは肉付けの修正指示が返る"""
+        reset_generated_markdown()
+        configure_slide_validation("スライドを作って", "grok")
+        result = output_slide(markdown=self._build(3))
+        assert "薄い" in result
+
+    def test_enough_body_lines_accepted(self):
+        """4行あれば通る"""
+        reset_generated_markdown()
+        configure_slide_validation("スライドを作って", "grok")
+        result = output_slide(markdown=self._build(4))
+        assert result == "スライドを出力しました。"
+
+    def test_thin_slide_not_checked_for_kimi(self):
+        """Kimiでは薄さ検知を適用しない"""
+        reset_generated_markdown()
+        configure_slide_validation("スライドを作って", "kimi")
+        result = output_slide(markdown=self._build(3))
+        assert result == "スライドを出力しました。"
+
+    def test_special_slides_exempt(self):
+        """タイトル・裏表紙などの特殊スライドは薄さ検知の対象外"""
+        reset_generated_markdown()
+        configure_slide_validation("スライドを作って", "grok")
+        md = (
+            "---\nmarp: true\n---\n\n<!-- _class: top -->\n# タイトル\n\n---\n\n"
+            "<!-- _class: end -->\n# Thank you!"
+        )
+        result = output_slide(markdown=md)
+        assert result == "スライドを出力しました。"

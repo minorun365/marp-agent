@@ -83,6 +83,10 @@ MAX_LINES_PER_SLIDE = 9
 # 「折り返して2行」と誤って数えていた。そのため実際には余白を残して
 # 収まっているスライドが「行数超過」と判定され、再生成が毎回2〜3回走っていた。
 MAX_DISPLAY_WIDTH_PER_LINE = 64
+# 本文スライドの実質行数（見出しを除く）の下限。これ未満は「薄いページ」として
+# 修正指示を返す。Grokは指示がないと2〜3項目の体言止めで切り上げる癖があり、
+# プロンプトの指示だけでは時間とともに効きが揺れるため、機械の下限を持つ（2026-08-22）。
+MIN_BODY_LINES_PER_SLIDE = 4
 # テーブル行の最大表示幅（半角換算）
 # 2026-08-19実測: 表はセル内で折り返すので横にはみ出さない（旧コメントの
 # 「折り返されず横にはみ出す」は誤り）。3列×1セル16字＝行全体で半角96でも
@@ -311,6 +315,31 @@ def _count_content_lines(slide_content: str) -> int:
             continue  # 表セパレーター行スキップ
 
         # 折り返しを考慮した実質行数を加算
+        count += _estimate_visual_lines(stripped)
+
+    return count
+
+
+def _count_body_lines(slide_content: str) -> int:
+    """見出しを除いたコンテンツ行数をカウント（折り返し考慮）。薄いページ検知用"""
+    count = 0
+    in_code_block = False
+
+    for line in slide_content.split('\n'):
+        stripped = line.strip()
+
+        if stripped.startswith('```'):
+            in_code_block = not in_code_block
+            continue
+        if not stripped:
+            continue
+        if re.match(r'^<!--.*-->$', stripped):
+            continue
+        if re.match(r'^\|[\s\-:|]+\|$', stripped):
+            continue
+        if re.match(r'^#{1,6}\s', stripped):
+            continue
+
         count += _estimate_visual_lines(stripped)
 
     return count
@@ -615,6 +644,20 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                 'claims': unsupported_claims,
             })
 
+    if _active_model_type == 'grok':
+        # 薄いページの検知。上限（9行）の逆側で、見出しを除いて実質3行以下なら
+        # 肉付けの修正指示を返す。表が主役のページを巻き込まないよう控えめな値にする。
+        for index, slide in enumerate(slides, start=1):
+            if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
+                continue
+            body_line_count = _count_body_lines(slide)
+            if body_line_count < MIN_BODY_LINES_PER_SLIDE:
+                violations.append({
+                    'type': 'thin_slide',
+                    'slide_number': index,
+                    'line_count': body_line_count,
+                })
+
     if _active_model_type in {'kimi', 'glm', 'grok'}:
         previous_pattern = None
         consecutive_pattern_count = 0
@@ -679,6 +722,8 @@ def _format_slide_progress(violations: list[dict]) -> str:
         categories.append('本文が日本語になっていない箇所')
     if violation_types & {'line_overflow', 'table_overflow'}:
         categories.append('文字や表のはみ出し')
+    if 'thin_slide' in violation_types:
+        categories.append('内容の薄いページ')
     if violation_types & {
         'slide_count',
         'slide_count_max',
@@ -1068,6 +1113,12 @@ def output_slide(markdown: str) -> str:
             elif v['type'] == 'table_overflow':
                 details.append(
                     f"  - スライド{v['slide_number']}: 表の横幅超過（{v['max_width']}文字、上限{MAX_TABLE_ROW_WIDTH}文字）"
+                )
+            elif v['type'] == 'thin_slide':
+                details.append(
+                    f"  - スライド{v['slide_number']}: 本文が実質{v['line_count']}行しかなく薄い。"
+                    f"検索結果の背景・数字・具体例や前提知識の補足で{MIN_BODY_LINES_PER_SLIDE}〜6行へ肉付けする"
+                    "（根拠のない数値は足さない。単語の羅列ではなく1行を1文にする）"
                 )
             elif v['type'] == 'slide_count':
                 difference = v['actual'] - v['expected']
