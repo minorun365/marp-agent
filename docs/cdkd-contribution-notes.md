@@ -239,3 +239,170 @@ the raw intrinsic shape, which may cause 'cdkd destroy' to fail on this resource
 実際には、そのまま `cdkd deploy` すれば兄弟リソースが作られて解決する。
 **警告文が `destroy` の失敗だけに触れていて、「次の deploy で解消する」normal path を書いていない**ため、
 状態が壊れたのかと不安になる。一文足すだけで印象が変わる。
+
+---
+
+## 上記6件の検証結果（2026-08-22）
+
+上の6件を、npm で配布されている CDKD **0.284.37**（当日の最新）と、本リポジトリが固定している
+**0.283.20** の両方について、公開パッケージ同梱の source map から元のTypeScriptを取り出して確認した。
+`cdkd synth --state-prefix` だけは 0.284.37 を実際に実行して再現させている。
+結論として、**upstreamへ出すべきは1件、出せるが小粒なものが2件、出すべきでないものが3件**。
+
+| # | 追記した見立て | 検証結果 |
+|---|----------------|----------|
+| 1 | `--output` でアセットのコピーが再帰する | **CDKDの不具合ではない**。出さない |
+| 2 | import しただけでは Outputs が state に無い | **仕様。エラー文も既に案内済み**。出さない |
+| 3 | 子リソースの複合物理IDがエラー文から読めない | 改善余地あり（小）。候補B |
+| 4 | `--state-prefix` が `synth` に無い | 0.284.37 で再現。候補C（小） |
+| 5 | `--full-wait` ＋ DNS検証待ちで永久に待ち state を失う | **前提は誤り。ただし孤児化は別原因の実バグ**。候補A（本命） |
+| 6 | 部分取り込みの警告に normal path が無い | 既に対処済みの文言。単独では出さない |
+
+### 1. `--output` の再帰は CDKD ではなく aws-cdk-lib の挙動
+
+aws-cdk-lib 2.264.0 の `AssetStaging` が除外へ自動で足すのは `.is_custom_resource` だけで、
+**アセンブリの出力先ディレクトリを除外しない**（`core/lib/asset-staging.js`）。
+コピー本体の `FileSystem.copyDirectory` にも自己コピーを止める仕掛けは無い（`core/lib/fs/copy.js`）。
+CDKD も本家 `cdk` CLI も、出力先は `CDK_OUTDIR` 環境変数でアプリへ渡すだけなので
+（`src/synthesis/app-executor.ts:64`）、この再帰は**どちらのCLIでも同じように起きる**。
+CLIを介さず `CDK_OUTDIR=cdk.out.rehearsal node app.mjs` を直接実行しても出力先がアセットへ入ることを確認した。
+
+つまり原因は、こちらのアプリ側で除外名を `cdk.out` と直書きしていること
+（`infra/lib/web-stack.ts` の `exclude`、`agent-stack.ts` も同様）。
+出力先を変える運用を続けるなら、除外を `cdk.out*` 相当へ広げるのがこちらの直し。
+上流へ出すとしても宛先は aws-cdk であって CDKD ではない。
+
+### 2. import が Outputs を書かないのは仕様、案内も既にある
+
+`src/cli/commands/import.ts` の `buildStackState` に
+「the import flow never derives outputs (they're computed at deploy time from each resource's attributes)」
+と明記されている。`Fn::ImportValue` 側のエラー文も 0.284.37 では
+`Make sure the exporting stack has been deployed and the Output has an Export.Name property.`
+まで書いてあり、「取り込んだだけでまだ deploy していない」状況はこの一文で射程に入る。
+これ単独ではissueにしない。
+
+### 3. 複合物理IDのエラー文（候補B・小）
+
+`Identifier ... is not valid for identifier [...]` は Cloud Control API が返す文面で、CDKD は加工していない。
+ただし CDKD は CFn schema の `primaryIdentifier` を自前で持っている（`src/cli/commands/export.ts` に多数の参照）ので、
+`import` の失敗時に期待する複合形を組み立てて添えることは可能。過去に
+[#1651](https://github.com/go-to-k/cdkd/issues/1651)（Glue Table の `<db>|<table>`）で同種の問題を扱っている。
+
+### 4. `--state-prefix` が `synth` に無い（候補C・小）
+
+0.284.37 で再現した。
+
+```
+$ cdkd synth --state-prefix foo --app "node -e 1"
+error: unknown option '--state-prefix'
+```
+
+`src/cli/commands/synth.ts` は `appOptions` / `commonOptions` / `contextOptions` /
+`annotationMessageOptions` だけを取り、`stateOptions` を取らない。synth は state を読まないので
+挙動としては正しいが、`import` / `diff` / `deploy` と同じ引数列を頭のサブコマンドだけ替えて回す使い方では落ちる。
+「受理して無視」を求める小さな要望として出せる。
+
+### 5. 孤児化の真因は「タイムアウト時に取得済みのARNを捨てている」こと（候補A・本命）
+
+追記した見立てのうち、次の2点は**0.283.20 の時点で既に満たされていた**ので、そのままでは出せない。
+
+- 「永久に待つ」→ 待機は無制限ではなく**既定10分**（60回 × 10秒。`CDKD_ACM_POLL_ATTEMPTS` /
+  `CDKD_ACM_POLL_INTERVAL_MS` で変更可、`--resource-timeout` でも上書き可）
+- 「検証レコードを提示してほしい」→ 最初の `PENDING_VALIDATION` で
+  `logger.info` により CNAME 一式を表示済み（`logValidationOptions`）
+- Ctrl+C の場合も、待機ループは中断フラグを見て**正常 return** するので ARN は state へ入る
+
+一方で、**孤児が出る経路は実在する**。`ACMCertificateProvider.create()` は
+`RequestCertificate` が返した `certificateArn` を握っているのに、待機がタイムアウトすると
+素の `Error` を投げ（`acm-certificate-provider.ts:600`）、外側の catch がそれを
+`ProvisioningError` へ包み直す際に **physicalId へ明示的に `undefined` を渡している**（同 227行目）。
+`DomainValidation` が `FAILED` / `VALIDATION_TIMED_OUT` などの終了状態に落ちた経路（同 575行目）も同じ。
+
+CDKD には「CREATE が実体を作った後で失敗した」ための受け皿があり、
+`ProvisioningError.physicalId` を見て残骸を掃除する実装が Cloud Control 側にある
+（`src/provisioning/cloud-control-provider.ts:381-435`）。`glue-provider.ts:968` は実際に physicalId を渡している。
+ACM プロバイダーだけがこの線路に乗っていない。しかも `RequestCertificate` は
+`IdempotencyToken` を付けず、既存の同一ドメイン証明書を再利用もしないので、
+**再実行のたびに新しい証明書が増える**。
+
+これが「デプロイは失敗、AWS には証明書が残る、state には無い」の説明になる。修正は
+`throw new ProvisioningError(msg, resourceType, logicalId, certificateArn, cause)` に相当する小さな変更で、
+リポジトリ自身の既存パターンと一致する。issueとして出す価値が最も高い。
+
+### 6. 部分取り込みの警告は既に案内入り
+
+0.283.20 と 0.284.37 で文言は同一で、`import.ts` の該当行は既に
+`re-import once every referenced sibling is in state, or remove this resource via 'cdkd state orphan'`
+まで書いている。足すとしたら「次の deploy で解消する」の一文だけなので、候補Bへ同梱するなら可、単独では出さない。
+
+### 出すときの本文（候補A）
+
+````text
+Title: fix(acm): a certificate whose ISSUED wait times out is lost — create() drops the ARN it already holds, so each retry orphans another certificate
+
+Version: 0.284.37 (same code in 0.283.20)
+
+## What happens
+
+`ACMCertificateProvider.create()` calls `RequestCertificate`, then waits for the
+certificate to reach `ISSUED` (default 60 polls x 10s = 10 minutes).
+
+For a DNS-validated certificate the wait can only finish once the validation
+records are live, so a first deploy that creates the certificate before its
+validation records exist reliably reaches the timeout.
+
+On that path the ARN is thrown away:
+
+- `waitForCertificateIssued()` throws a plain `Error` whose only reference to the
+  certificate is inside the message text (acm-certificate-provider.ts:600). The
+  terminal-status branch (FAILED / VALIDATION_TIMED_OUT / ...) does the same
+  (line 575).
+- `create()`'s catch wraps it in a `ProvisioningError` and passes `undefined` for
+  `physicalId` (line 227), even though `certificateArn` is in scope.
+
+The certificate exists in AWS at that moment, but nothing downstream can name it:
+it is not written to state, and `ProvisioningError.physicalId` — the field the
+failed-CREATE remnant cleanup keys on (cloud-control-provider.ts:381-435) — is
+empty. `RequestCertificate` is also called without an `IdempotencyToken`, and
+`create()` does not look for an existing certificate for the same domain, so the
+next `cdkd deploy` requests another one.
+
+We hit this while migrating an existing environment: the deploy failed, and the
+certificate stayed behind with no record of it in state. It had to be located by
+hand and re-adopted with `cdkd import`.
+
+## Expected
+
+The ARN that `RequestCertificate` already returned should survive the failure,
+e.g.
+
+```ts
+throw new ProvisioningError(message, resourceType, logicalId, certificateArn, cause);
+```
+
+the way `glue-provider.ts:968` does, so the existing failed-CREATE handling can
+record or clean up the certificate instead of losing track of it. Whether the
+remnant should then be deleted or kept for the retry is your call — a
+`PENDING_VALIDATION` certificate the user has already added DNS records for may
+be worth keeping.
+
+## Steps to reproduce
+
+1. Define a DNS-validated `AWS::CertificateManager::Certificate` for a domain
+   whose validation records are not in place.
+2. `cdkd deploy <stack>`.
+3. After ~10 minutes: `ACM certificate <id> (<arn>) did not reach ISSUED status
+   within 600s`.
+4. `cdkd state show <stack>` has no entry for the certificate, while
+   `aws acm list-certificates` shows it as `PENDING_VALIDATION`.
+5. Re-running the deploy creates a second certificate.
+
+## Notes
+
+- The wait itself looks right: it is bounded, and `logValidationOptions()` prints
+  the CNAMEs to add on the first `PENDING_VALIDATION` poll. SIGINT during the
+  wait also returns normally, so that path keeps the ARN. This report is only
+  about the throw paths.
+- Steps 1-5 describe the shape of the failure we hit in a real migration; the
+  code references above are from the published 0.284.37 bundle's source maps.
+````
