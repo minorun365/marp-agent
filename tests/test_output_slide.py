@@ -1347,3 +1347,35 @@ class TestThinSlideValidation:
         )
         result = output_slide(markdown=md)
         assert result == "スライドを出力しました。"
+
+
+def test_grok_does_not_regenerate_for_cosmetic_violations_only():
+    """太字の使いすぎだけでは作り直させず、機械で詰めてそのまま出力する
+
+    Grok 4.6は応答開始までの待ちが長く、1往復増えるだけで体感が数十秒延びる。
+    太字は機械で確実に減らせるので、待ってまでモデルへ直させない。
+    """
+    reset_generated_markdown()
+    configure_slide_validation("MCPの記事をまとめて", "grok")
+    body = "\n".join(f"**項目{i}**：ここに説明の文章を書いておく" for i in range(1, 5))
+    markdown = "---\nmarp: true\n---\n\n## 見出し\n\n" + body
+
+    result = output_slide(markdown=markdown)
+
+    assert result == "スライドを出力しました。"
+    generated = get_generated_markdown()
+    assert generated is not None
+    assert len(re.findall(r"\*\*.+?\*\*", generated)) <= 2
+
+
+def test_grok_still_regenerates_for_overflow():
+    """はみ出しは従来どおり作り直させる（見た目の指摘と同じ扱いにしない）"""
+    reset_generated_markdown()
+    configure_slide_validation("MCPの記事をまとめて", "grok")
+    lines = ["## 見出し"] + [f"- 項目{i}" for i in range(1, 11)]
+    markdown = "---\nmarp: true\n---\n\n" + "\n".join(lines)
+
+    result = output_slide(markdown=markdown)
+
+    assert "あふれ検出または構成違反" in result
+    assert get_generated_markdown() is None

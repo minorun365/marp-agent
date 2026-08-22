@@ -65,6 +65,18 @@ KIMI_RETRY_PRIORITY = {
     'slide_count': 1,
     'slide_count_max': 1,
 }
+# 見た目の体裁だけを指摘する違反。モデルへ差し戻しても、直る内容より
+# 応答開始までの待ちが1往復ぶん増える損のほうが大きい。
+# 2026-08-22にGrok 4.6の本番ログ62回を集計したところ、総所要1304秒のうち
+# 1088秒（83%）が「最初の1トークンが返るまでの待ち」で、最長は101秒だった。
+# 出力が10トークンでも46秒待つ回があり、待ちは生成量と無関係に発生する。
+# つまり体感を縮める手段は「モデルを呼ぶ回数を減らす」しかない。
+# 太字は _repair_slides_mechanically が確実に詰められるので、待たずにそちらへ回す。
+COSMETIC_VIOLATION_TYPES = frozenset({
+    'bold_overuse',
+    'pattern_repetition',
+    'lead_count',
+})
 # 英語記事のURLを渡されると本文がそのまま英語で出てくるため、日本語率で検知する。
 # 製品名・略語が多い日本語スライドを誤検知しないよう、
 # 判定対象は文字数が一定以上あるスライドだけに絞る。
@@ -1035,7 +1047,7 @@ def output_slide(markdown: str) -> str:
 
     ## Marpフォーマットルール
 
-    - **言語【最優先】**: 見出し・本文・表・図の説明はすべて日本語で書く。参考資料やユーザーが貼ったURLの記事が英語でも、内容を日本語へ訳して載せる（製品名・サービス名・引用URLは原語のまま。このツールが自動検証）
+    - **言語【最優先】**: 見出し・本文・表・図の説明はすべて日本語で書く。参考資料やユーザーが貼ったURLの記事が英語でも、内容を日本語へ訳して載せる（製品名・サービス名・引用URLは原語のまま。このツールが自動検証）。訳すときは原文の語順をなぞった直訳にせず、日本語として普通の言い方へ組み替える
     - フロントマター: `marp: true`, `theme: {テーマ名}`, `size: 16:9`, `paginate: true`
     - スライド区切り: `---`
     - **総枚数【最優先】**: ユーザーが枚数を指定した場合、タイトル・中タイトル・参考文献・裏表紙をすべて含めて指定枚数ちょうどにする。出力前に必ず数える
@@ -1094,10 +1106,19 @@ def output_slide(markdown: str) -> str:
         )
     else:
         retry_limit = 4 if _active_model_type == 'glm' else MAX_OVERFLOW_RETRIES
-        retry_violations = violations
+        retry_violations = [
+            violation
+            for violation in violations
+            if violation['type'] not in COSMETIC_VIOLATION_TYPES
+        ]
 
     if retry_violations and _overflow_retry_count < retry_limit:
         _overflow_retry_count += 1
+        print(
+            f"[INFO] Slide retry {_overflow_retry_count}/{retry_limit} "
+            f"(model={_active_model_type}): "
+            + ", ".join(sorted({v['type'] for v in retry_violations}))
+        )
         _slide_progress_message = _format_slide_progress(retry_violations)
         details = []
         for v in retry_violations:
