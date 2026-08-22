@@ -399,7 +399,8 @@ def configure_slide_validation(user_message: str, model_type: str) -> None:
     global _expected_slide_count, _maximum_slide_count
     global _agenda_requested, _active_model_type, _user_quantified_claims
     global _required_official_source_rules
-    slide_counts = re.findall(r'(\d{1,2})\s*枚', user_message)
+    # 「2枚目を直して」は枚数の指定ではないので「枚目」を除く
+    slide_counts = re.findall(r'(\d{1,2})\s*枚(?!目)', user_message)
     if slide_counts:
         _expected_slide_count = int(slide_counts[-1])
         _maximum_slide_count = None

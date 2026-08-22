@@ -534,6 +534,54 @@ class TestOutputSlideOverflowValidation:
         assert "あふれ検出" in result
 
 
+class TestSlideCountReadsOnlyUserRequest:
+    """枚数の指定は利用者自身の文からだけ読む（2026-08-22）。
+
+    以前は現在のスライド全文・PDFの抽出テキスト・URL資料モードのプロンプトを
+    連結したメッセージから拾っていたため、「2枚目を直して」や、URLを貼っただけの
+    依頼が「1枚ちょうどにしろ」という差し戻しになっていた。
+    """
+
+    def test_ordinal_reference_is_not_a_count(self):
+        """「2枚目を直して」は枚数の指定ではない"""
+        reset_generated_markdown()
+        configure_slide_validation("2枚目の表現をやわらかくして", "grok")
+        slides = [f"## スライド{i}\n\n- 項目" for i in range(1, 12)]
+        md = "---\nmarp: true\n---\n" + "\n---\n".join(slides)
+
+        result = output_slide(markdown=md)
+
+        assert "指定は2枚" not in result
+
+    def test_agent_passes_only_the_user_prompt(self):
+        """呼び出し元が、装飾済みメッセージではなく利用者の文を渡していること。
+
+        user_message には現在のスライド全文・PDFの抽出テキスト・URL資料モードの
+        プロンプトが連結される。URL資料モードの本文には「1枚」が含まれるため、
+        そちらを渡すと URLを貼っただけの依頼が毎回「指定は1枚」で差し戻される。
+        設定が外れてもエラーが出ないので、呼び出し元をソースで押さえる。
+        """
+        from pathlib import Path
+
+        agent_source = (
+            Path(__file__).resolve().parents[1] / "agent" / "agent.py"
+        ).read_text()
+
+        assert 'configure_slide_validation(payload.get("prompt", ""), model_type)' in agent_source
+        assert "configure_slide_validation(user_message" not in agent_source
+
+    def test_explicit_count_still_enforced(self):
+        """本来の枚数指定はこれまでどおり効く"""
+        reset_generated_markdown()
+        configure_slide_validation("10枚で作って", "grok")
+        slides = [f"## スライド{i}\n\n- 項目" for i in range(1, 12)]
+        md = "---\nmarp: true\n---\n" + "\n---\n".join(slides)
+
+        result = output_slide(markdown=md)
+
+        assert "11枚（指定は10枚）" in result
+
+
 class TestOutputSlideStructureValidation:
     def test_rejects_wrong_requested_slide_count(self):
         reset_generated_markdown()

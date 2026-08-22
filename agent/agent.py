@@ -228,7 +228,10 @@ async def invoke(payload, context=None):
         user_message = f"{URL_REFERENCE_MODE_PROMPT}\n\n{user_message}"
 
     reset_generated_markdown()
-    configure_slide_validation(user_message, model_type)
+    # 枚数の指定は利用者自身の文からだけ読む。user_message には現在のスライド全文・
+    # PDFの抽出テキスト・URL資料モードのプロンプトが連結されており、そこに含まれる
+    # 「1枚」「10枚」まで指定枚数として拾ってしまう。
+    configure_slide_validation(payload.get("prompt", ""), model_type)
     web_search_executed = False
     slide_outputted = False
     suppress_text = False
