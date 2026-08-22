@@ -34,7 +34,12 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     const unsubscribe = Hub.listen('auth', ({ payload }) => {
-      if (payload.event === 'signedIn' || payload.event === 'signInWithRedirect') {
+      // signedIn は画面側の signIn() が成功した瞬間に飛ぶ。ここで画面を差し替えると、
+      // ログイン後にパスキー登録を案内する画面（AuthScreen の offer）へ進む前に
+      // AuthScreen ごと消えてしまい、案内が一度も出ない。
+      // 画面内のログインは AuthScreen が onAuthenticated() で明示的に閉じるので、
+      // ここで拾うのは戻り先が画面の外にある Google リダイレクトだけにする。
+      if (payload.event === 'signInWithRedirect') {
         setRedirectError('');
         setAuthenticated(true);
       }
