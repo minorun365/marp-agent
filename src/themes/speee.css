@@ -125,24 +125,10 @@ pre code svg[data-marp-fitting=svg] {
 
 blockquote {
   margin: 1em 0 0 0;
-  padding: 0 1em;
-  position: relative;
-}
-blockquote::after, blockquote::before {
-  content: "\201C";
-  display: block;
-  font-family: "Times New Roman", serif;
-  font-weight: bold;
-  position: absolute;
-}
-blockquote::before {
-  top: 0;
-  left: 0;
-}
-blockquote::after {
-  right: 0;
-  bottom: 0;
-  transform: rotate(180deg);
+  padding: 0.5em 1em 0.55em 1.05em;
+  background: var(--color-background-stripe);
+  border-left: 0.22em solid var(--color-highlight);
+  border-radius: 0 0.3em 0.3em 0;
 }
 blockquote > *:first-child {
   margin-top: 0;
@@ -241,9 +227,7 @@ section pre > code {
 }
 section header,
 section footer,
-section section::after,
-section blockquote::before,
-section blockquote::after {
+section section::after {
   color: var(--color-dimmed);
 }
 section table th,
