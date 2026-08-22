@@ -151,3 +151,91 @@ CDKD 0.283.20では、Secrets ManagerとSSM SecureStringの動的参照を解決
 - 症状: 証明書を別スタックのCloudFrontが利用中のまま置換すると、新証明書の作成後に旧証明書の削除を試み、`ResourceInUseException` の警告が出る。デプロイ状態は新証明書を指すが、旧証明書は残る。
 - 回避策: 証明書スタック、利用側スタックの順に完全待機でデプロイし、最後に `InUseBy` が空になった旧証明書だけを削除する。
 - コントリビュート候補: スタック間の利用関係がある置換では削除を遅延するか、未削除リソースを後続のcleanup対象として記録する。
+
+---
+
+以下は 2026-08-22、既存Cognitoを取り込んで新基盤へ移す作業で踏んだもの。
+
+## `--output` を既定以外にすると、アセットのコピーが再帰して落ちる
+
+`cdkd synth PawapoAuth --output cdk.out.rehearsal` のように出力先を変えると、
+`DockerImageCode.fromImageAsset(<リポジトリルート>)` のステージングが**出力先ごと**コピーし、
+`cdk.out.rehearsal/asset.xxx/cdk.out.rehearsal/asset.xxx/...` と入れ子を作り続けて
+`ENAMETOOLONG` で異常終了する。
+
+原因は、除外設定が `cdk.json` の `output`（既定 `cdk.out`）や利用者の `exclude` に
+書かれた名前だけを見ていて、**実行時に `--output` で指定されたディレクトリが除外に加わらない**こと。
+
+- 期待する挙動: 実行時の出力ディレクトリを、アセットステージングの除外へ自動的に足す
+- 影響: 「本番用の cdk.out を汚さずに別構成を synth したい」という自然な使い方が必ず失敗する
+- 回避策: `--output` を使わず既定の `cdk.out` を使う
+
+## 取り込んだだけでは Outputs / Export が state に無く、依存スタックが解決できない
+
+`cdkd import` でリソースを state へ入れても、そのスタックの Outputs は記録されない。
+その状態で依存側を deploy すると、次のように止まる。
+
+```
+Failed to create RuntimeRoleDefaultPolicy...: Fn::ImportValue: export
+'PawapoFoundation:ExportsOutputFnGetAttWebSearchGatewayGatewayArnBA97E0DC' not found in any stack.
+```
+
+エラー文は正確だが、**「import 後に一度 deploy すれば解決する」ことがどこにも書かれていない**。
+実際、差分ゼロのまま `cdkd deploy` を1回流すと（`Unchanged: 5`）Outputs が記録され、依存側が通る。
+
+- 期待する挙動: import 時に Outputs も解決して state へ書く。難しければ、
+  この Fn::ImportValue エラーに「取り込み済みで未デプロイのスタックがあります。
+  一度 `cdkd deploy <stack>` を流してください」と示す
+- 影響: 取り込みを伴う移行で必ず1回踏む。エラーだけ見ると「Export 名が違う」と誤診しやすい
+
+## 子リソースの物理IDが複合キーであることを、エラー文から読み取れない
+
+User Pool Client や User Pool Domain のような子リソースは、物理IDを `<親ID>|<子ID>` で渡す必要がある。
+子IDだけを渡すとこうなる。
+
+```
+Failed to import UserPoolWebClient...: Identifier 1h57kexampleclientid00 is not valid
+for identifier [/properties/UserPoolId, /properties/ClientId]
+```
+
+必要な**プロパティ名は出ているが、区切り文字と順序が書かれていない**ため、
+`|` 区切りだと分かるまで試行錯誤になる。
+
+- 期待する挙動: メッセージに具体例を添える
+  （例: `expected "<UserPoolId>|<ClientId>", e.g. us-east-1_ABC123|1h57kfxxxxx`）
+- 影響: 既存リソースの取り込みは初回が最も不安な作業なので、ここで詰まると心理的コストが高い
+
+## `--state-prefix` が `synth` にだけ無い
+
+`import` / `diff` / `deploy` は `--state-prefix` を受け付けるが、`synth` は
+`error: unknown option '--state-prefix'` で落ちる。
+
+同じ context 一式を並べたコマンドを、頭のサブコマンドだけ替えて実行する使い方
+（リハーサル環境の検証）で確実に踏む。synth は state を読まないので**無視でよいから受理してほしい**。
+
+## `--full-wait` ＋ DNS検証待ちの証明書で、永久に待って state を失う
+
+`cdkd deploy PawapoFoundation --full-wait` は、ACM 証明書が `ISSUED` になるまで待つ。
+DNS 検証は**利用者が検証レコードを入れるまで完了しない**ので、自力では決して終わらない。
+待ち続けた末に中断すると、**AWS 上にはリソースが作られているのに state が書かれない**。
+結果、5つの孤児リソース（証明書・IAMロール・インラインポリシー・Gateway・GatewayTarget）を
+手で物理IDを調べて import し直すことになった。
+
+- 期待する挙動: DNS検証待ちの証明書は待機の対象から外す。
+  少なくとも「検証レコードをこのゾーンへ入れてください」と提示して待機を打ち切る
+- あわせて: 中断時に、それまでに作成できたリソースを state へ書き出してほしい
+  （孤児化を防ぐのが本質。ロールバックできる場合はロールバックでもよい）
+
+## 部分取り込みで未解決になった intrinsic の直し方が示されない
+
+一部だけ取り込むと、まだ state に無い兄弟リソースを指す `Fn::GetAtt` が解決できず、警告が出る。
+
+```
+Failed to resolve intrinsics in Properties for imported resource 'UserPool...':
+Resource GoogleLinkFunctionFB2A52DF not found for Fn::GetAtt. State will be written with
+the raw intrinsic shape, which may cause 'cdkd destroy' to fail on this resource
+```
+
+実際には、そのまま `cdkd deploy` すれば兄弟リソースが作られて解決する。
+**警告文が `destroy` の失敗だけに触れていて、「次の deploy で解消する」normal path を書いていない**ため、
+状態が壊れたのかと不安になる。一文足すだけで印象が変わる。
