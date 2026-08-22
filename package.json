@@ -35,8 +35,7 @@
     "prod:usage": "node --env-file-if-exists=.env --env-file-if-exists=.env.production.local infra/scripts/usage-report.mjs",
     "copy-themes": "cp src/themes/*.css agent/",
     "test": "vitest run",
-    "setup:git-hooks": "git config --local core.hooksPath .githooks",
-    "push:approve": "bash scripts/approve-push-scope.sh"
+    "setup:git-hooks": "git config --local core.hooksPath .githooks"
   },
   "dependencies": {
     "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.236.0-alpha.0",

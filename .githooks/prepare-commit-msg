@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-# KAG社内版との cherry-pick を止めるガード。
-#
-# 一般公開版（marp-agent）はディレクトリ構成を刷新済みで、KAG社内版（marp-agent-kag）は
-# まだ Amplify Gen2 時代の構成のまま。パスが食い違うため cherry-pick は
-# 「エラーで止まらずに、同じ内容のファイルが2か所へできる」という壊れ方をする。
-#
-# KAG を新AWSアカウントへ移行してリアーキテクチャするまで、両リポジトリ間の同期はしない。
-# どうしても通す必要があるときだけ ALLOW_CHERRY_PICK=1 を付ける。
+# 公開版（marp-agent）と KAG社内版（marp-agent-kag）の同期は merge 方式に一本化している。
+# cherry-pick は使わないので、ここで止める（2026-08-22 に方針を確定）。
 
 set -euo pipefail
 
@@ -18,17 +12,17 @@ cherry_pick_head=$(git rev-parse --git-path CHERRY_PICK_HEAD)
 if [[ -f "$cherry_pick_head" ]]; then
   cat >&2 <<'MSG'
 
-  ⛔ cherry-pick は現在停止しています
+  ⛔ cherry-pick は使いません（merge 方式に一本化しています）
 
-  一般公開版（marp-agent）と KAG社内版（marp-agent-kag）は、ディレクトリ構成が
-  食い違っています。公開版は agent/ と infra/lambda/auth/、KAG版は Amplify 時代の
-  amplify/agent/runtime/ と amplify/auth/ のままです。
+  KAG社内版は公開版から280コミット以上先行しているため、必要な変更を
+  1つずつ拾い上げる方式は破綻します。公開版の変更は merge で流してください。
 
-  この状態で cherry-pick すると、エラーにならないまま同じ内容のファイルが
-  2か所にできます。テストもビルドも通るので、あとから気づけません。
+    公開版で作業した後:  sync-to-kag スキルを実行する
+    KAG版で直接やる場合:  git fetch upstream && git merge upstream/main
 
-  再開の条件：KAG を新しいAWSアカウントへ移して、公開版と同じ構成へ
-              リアーキテクチャしたとき。
+  逆方向（KAG版 → 公開版）のマージもしません。KAG版には社内固有のテーマ・
+  ドメイン・移行元リソースIDが入っており、公開リポジトリへ社内情報が出る
+  経路になるためです。公開版にも当てはまる変更は、公開版側で書き直します。
 
   いま元に戻すには：
       git cherry-pick --abort
