@@ -1,66 +1,117 @@
 ---
 name: sync-to-kag
 model: sonnet
-description: 【停止中】mainリポジトリからKAG社内版へのチェリーピックは現在止めている。「kagにも反映して」「kag環境にも適用して」と言われたら、実行せずこのスキルの停止理由と再開条件を伝える。
-allowed-tools: Bash(git:*)
+description: 一般公開版（marp-agent）の変更を、KAG社内版（marp-agent-kag）へマージで取り込む。公開版を本番へデプロイしたら必ず実行する。「kagにも反映して」「kag環境にも適用して」「同期して」で起動。
+allowed-tools: Bash
 ---
 
-# KAG社内版への同期は停止中
+# KAG社内版へ取り込む（マージ方式）
 
-**チェリーピックを実行しない。** 依頼を受けたら、下の理由と再開条件を伝えて止める。
+公開版 `marp-agent` の変更を、KAG社内版 `marp-agent-kag`（ローカル `../marp-agent-kag`）へ
+`git merge` で流す。**方向は公開版 → KAG版の一方向だけ。**
 
-## なぜ止めているか
+## いつ実行するか
 
-一般公開版（`minorun365/marp-agent`）は 2026-08-20 にディレクトリ構成を刷新した。
-KAG社内版（`minorun365/marp-agent-kag`）は今も Amplify Gen2 時代の構成のままなので、
-**同じファイルが両リポジトリで別の場所にある**。
+**公開版を本番へデプロイしたら、その場で実行する。** `deploy-prod` の完了条件に入っている。
+みのるんは「本番側を触らせたときに自動で発動すればいい」と明示している（2026-08-22）ので、
+**聞かずに実行する。**「KAGにも反映しますか？」と確認しない。
 
-| 中身 | 一般公開版（現在） | KAG社内版（現在） |
-|---|---|---|
-| Pythonエージェント本体 | `agent/` | `amplify/agent/runtime/` |
-| 認証まわりの Lambda | `infra/lambda/auth/` | `amplify/auth/` |
-| インフラ定義 | `infra/`（CDK + CDKD） | `amplify/`（Amplify Gen2） |
+デプロイを伴わないコード変更でも、公開版の `main` へ push したなら実行してよい。
 
-この状態でチェリーピックすると、**エラーで止まらないまま、同じ内容のファイルが2か所にできる**。
-ビルドもテストも通るので、後から気づけない。いちばん危ない壊れ方をする。
+## ⚠️ チェリーピックは使わない
 
-## 再開の条件
+KAG版は公開版から**280コミット以上先行**している（版設定の抽象化、GHE対応、社内テーマ）。
+必要なものを1つずつ拾う方式は破綻するので、`git merge` だけを使う。
+両リポジトリの `.githooks/prepare-commit-msg` がチェリーピックを機械的に拒否する。
 
-みのるんの方針（2026-08-20）：
+2026-08-20 に「ディレクトリ構成が食い違うので同期そのものを停止」していたが、
+**2026-08-22 のリアーキテクチャで構成が揃い、停止は解除された。**
+実測では `agent/` 配下は自動マージで通り、コンフリクトしたのは
+両側で別々に育てたドキュメント1件だけだった。
 
-> KAG環境もぼちぼちAWSアカウント移行することになりそうなので、
-> そのタイミングでメイン版と同じようにリアーキテクチャする。
-> それまではしばらくチェリーピックを使わない。
+## 手順
 
-つまり **KAG を新しいAWSアカウントへ移し、一般公開版と同じ構成（`agent/` + `infra/`）へ
-作り直したとき**が再開のタイミング。それまでは両リポジトリを独立して進める。
+### 1. 公開版がpush済みか確かめる
 
-## 機械的な歯止め
+```bash
+git -C ~/git/minorun365/marp-agent status --short
+git -C ~/git/minorun365/marp-agent log --oneline @{u}..HEAD
+```
 
-両リポジトリの `.githooks/prepare-commit-msg` が `CHERRY_PICK_HEAD` を見て、
-チェリーピックのコミットを拒否する。手で叩いても止まる。
+未pushのコミットがあれば先にpushする（マージはリモートの `upstream/main` を見るため）。
 
-- 元に戻す: `git cherry-pick --abort`
-- 例外的に通す: `ALLOW_CHERRY_PICK=1 git cherry-pick <コミット>`（みのるんの明示指示があるときだけ）
+### 2. KAG版の作業ツリーが空いているか確かめる
 
-フックは `.git/hooks/` へも実体を置いてあるため、`core.hooksPath` の設定有無にかかわらず効く。
-新しくクローンした環境では `npm run setup:git-hooks` を実行して有効化する。
+```bash
+git -C ~/git/minorun365/marp-agent-kag status --short
+git -C ~/git/minorun365/marp-agent-kag branch --show-current
+```
 
-## それでも反映が必要と言われたら
+⚠️ **未コミットの変更があったら、そこで止めてみのるんへ報告する。**
+みのるんは20本以上の並行セッションを回しており、**別のセッションがKAG版で作業中の可能性がある**。
+勝手に stash したりコミットしたりしない。ブランチが `main` でない場合も同じく止める。
 
-「両方に同じ修正を入れたい」と頼まれた場合は、チェリーピックを迂回する手段を勝手に選ばず、
-**どちらの進め方にするかをみのるんへ確認する**。
+### 3. 取り込む
 
-1. KAG側で同じ修正を手で書く（1〜2ファイルの小さな修正ならこれが速い）
-2. KAG のリアーキテクチャまで待って、まとめて揃える
-3. 今回だけ `ALLOW_CHERRY_PICK=1` で通し、パスの食い違いを手で直す
+```bash
+git -C ~/git/minorun365/marp-agent-kag fetch upstream
+git -C ~/git/minorun365/marp-agent-kag log --oneline main..upstream/main
+```
 
-## 参考：停止前の運用
+差分が無ければ「取り込むものはありません」と報告して終わる。あれば：
 
-チェリーピック方式の詳細な手順は、このファイルの Git 履歴（2026-08-20 以前の版）にある。
-再開するときはそこから復元する。
+```bash
+git -C ~/git/minorun365/marp-agent-kag merge upstream/main
+```
 
-## Codex設定の同期
+### 4. コンフリクトしたら
 
-スキルやサブエージェント（`.agents/skills/, .agents/agents/`）の同期も、いまは同じ理由で止めている。
-必要になったら手でコピーする。
+**自分の判断で解決してよいのは、次の場合だけ。**
+
+| 状況 | 解決 |
+|---|---|
+| KAG版固有の設定（ドメイン・モデル・テーマ・デプロイ手順） | **KAG版側を採る** |
+| 公開版で直したロジック・バグ修正 | **公開版側を採る** |
+| 両側で別々に書き足したドキュメント | **両方を残す**（並べて統合する） |
+
+判断がつかないものが1つでもあれば、`git merge --abort` して**みのるんへ聞く**。
+中途半端に解決してpushしない。
+
+`.gitattributes` で `merge=ours` を指定しているファイル（`cdk.json` `AGENTS.md` `CLAUDE.md`
+`README.md` `LICENSE`）は、そもそもコンフリクトせずKAG版の内容が残る。
+新しくそういうファイルが増えたら `.gitattributes` へ足す。
+
+### 5. テストを通してからpush
+
+```bash
+cd ~/git/minorun365/marp-agent-kag/agent && uv run --with pytest python -m pytest ../tests/ -q
+cd ~/git/minorun365/marp-agent-kag && npm run lint && npm run test
+```
+
+**落ちたら push しない。** マージで壊れたということなので、原因を直すか `git merge --abort` する。
+
+通ったら push する。KAG版は `github`（GitHub.com・プライベート）と `origin`（GHE）の
+2つのリモートを持つので、**現在のブランチが追跡している側へ push する**（`git push` だけでよい）。
+
+### 6. 本番へ反映するかは別の判断
+
+**マージしただけではKAG版の本番は変わらない。** 取り込んだ内容がエージェントの挙動や
+画面に影響するなら、KAG版のデプロイが要る:
+
+```bash
+cd ~/git/minorun365/marp-agent-kag && npm run infra:diff   # 削除差分が無いことを先に確認
+cd ~/git/minorun365/marp-agent-kag && npm run infra:deploy
+cd ~/git/minorun365/marp-agent-kag && npm run prod:verify
+cd ~/git/minorun365/marp-agent-kag && npm run prod:smoke
+```
+
+ドキュメントだけの取り込みならデプロイは不要。**判断して、やるなら実行し、報告に書く。**
+
+## KAG版で得た知見を公開版へ戻したいとき
+
+**この経路では戻さない。** KAG版には社内固有のテーマ・ドメイン・移行元リソースIDが入っており、
+逆方向のマージは**公開リポジトリへ社内情報が流れる経路**になる。
+公開版にも当てはまる知見は、**公開版側で書き直してコミットする**。
+
+そのため、共通のドキュメント（`docs/knowledge/` など）は**公開版で書き、マージで流す**のが正しい向き。
+KAG固有の記述はKAG版の `docs/knowledge/kag-specific.md` と `docs/kag-migration.md` にだけ置く。
