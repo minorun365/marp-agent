@@ -93,20 +93,33 @@ def test_web_search_rate_limit_fallback():
     assert "Fallback" in result
 
 
-def test_web_search_stops_after_six_calls():
-    """1依頼で7回目以降は外部検索を実行しない"""
+def test_web_search_stops_after_call_limit():
+    """1依頼で上限を超えたら外部検索を実行しない（上限は定数から取る）"""
+    from tools.web_search import MAX_SEARCH_CALLS
+
     mock_client = MagicMock()
     mock_client.search.return_value = {
         "results": [{"title": "OK", "content": "Result", "url": "https://example.com"}]
     }
 
     with patch("tools.web_search.tavily_clients", [mock_client]):
-        for index in range(6):
+        for index in range(MAX_SEARCH_CALLS):
             assert "OK" in web_search(query=f"query {index}")
-        result = web_search(query="query 7")
+        result = web_search(query="over the limit")
 
-    assert "上限6回" in result
-    assert mock_client.search.call_count == 6
+    assert f"上限{MAX_SEARCH_CALLS}回" in result
+    assert mock_client.search.call_count == MAX_SEARCH_CALLS
+
+
+def test_search_call_limit_stays_small():
+    """上限そのものが増えていないことを見張る。
+
+    「最大6回まで」と書いていた頃、モデルはそれを予算とみなして毎回使い切り、
+    1依頼でTavilyのクレジットを6消費していた（2026-08-22）。
+    """
+    from tools.web_search import MAX_SEARCH_CALLS
+
+    assert MAX_SEARCH_CALLS <= 3
 
 
 # ── Tavilyが枯渇したときのAgentCore Web Searchへの自動フォールバック ────────

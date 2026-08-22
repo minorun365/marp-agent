@@ -241,7 +241,7 @@ def test_kimi_system_prompt_adds_slide_balance_rules():
     # 枚数の指定がないときに目安を押し付けない（2026-08-20 みのるん指示）
     assert "指定がなければ枚数を先に決めない" in prompt
     assert "内容の薄いページを足さない" in prompt
-    assert "論点を分けて4〜6回検索" in prompt
+    assert "論点を分けて2〜3回検索" in prompt
     assert "最初の可視応答" in prompt
     assert "修正します。" in prompt
     assert "指定枚数を増減しない" in prompt
