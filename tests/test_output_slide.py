@@ -31,7 +31,9 @@ def test_output_slide_stores_markdown():
     reset_generated_markdown()
     markdown = (
         "---\nmarp: true\n---\n# テスト\n"
-        "- 項目1は説明つき\n- 項目2は説明つき\n- 項目3は説明つき\n- 項目4は説明つき"
+        "- 項目1は理由と影響まで含めて説明します。\n"
+        "- 項目2は理由と影響まで含めて説明します。\n"
+        "- 項目3は理由と影響まで含めて説明します。"
     )
 
     result = output_slide(markdown=markdown)
@@ -129,7 +131,7 @@ def test_trim_excess_slides_preserves_special_slides_and_distributes_body():
 def test_slide_validation_progress_is_consumed_once():
     """検査結果は簡潔な進捗として1回だけ取得できる"""
     reset_generated_markdown()
-    lines = ["## 見出し"] + [f"- 項目{i}" for i in range(1, 11)]
+    lines = ["## 見出し"] + [f"説明文{i}をここへ置きます。" for i in range(1, 11)]
     markdown = "---\nmarp: true\n---\n\n" + "\n".join(lines)
 
     output_slide(markdown=markdown)
@@ -162,7 +164,11 @@ def test_output_slide_overwrites():
     同じ依頼の中での呼び直しは受け付けない（確定後の空振りを止めるため）。
     実運用では invoke ごとに reset_generated_markdown が走る。
     """
-    body = "\n- 項目1の説明\n- 項目2の説明\n- 項目3の説明\n- 項目4の説明"
+    body = (
+        "\n- 項目1は理由と影響まで含めて説明します。"
+        "\n- 項目2は理由と影響まで含めて説明します。"
+        "\n- 項目3は理由と影響まで含めて説明します。"
+    )
     reset_generated_markdown()
     output_slide(markdown="# first" + body)
     reset_generated_markdown()  # ユーザーからの次の指示
@@ -433,7 +439,12 @@ class TestOutputSlideOverflowValidation:
     def test_valid_slide_accepted(self):
         """9行以内のスライドは正常出力"""
         reset_generated_markdown()
-        md = "---\nmarp: true\n---\n\n## Title\n\n- Item 1\n- Item 2\n- Item 3\n- Item 4"
+        md = (
+            "---\nmarp: true\n---\n\n## 見出し\n\n"
+            "- 項目1は理由と期待する効果まで説明します。\n"
+            "- 項目2は理由と期待する効果まで説明します。\n"
+            "- 項目3は理由と期待する効果まで説明します。"
+        )
         result = output_slide(markdown=md)
         assert result == "スライドを出力しました。"
         assert get_generated_markdown() == md
@@ -1316,18 +1327,46 @@ class TestThinSlideValidation:
             "<!-- _class: end -->\n# Thank you!"
         )
 
-    def test_thin_slide_rejected_for_grok(self):
-        """見出しを除いて3行以下の本文スライドは肉付けの修正指示が返る"""
+    def test_short_fragments_are_rejected_for_grok(self):
+        """短い断片だけの本文は肉付けの修正指示が返る"""
         reset_generated_markdown()
         configure_slide_validation("スライドを作って", "grok")
         result = output_slide(markdown=self._build(3))
-        assert "薄い" in result
+        assert "情報量が少ない" in result
 
-    def test_enough_body_lines_accepted(self):
-        """4行あれば通る"""
+    def test_enough_body_text_is_accepted(self):
+        """通常の文章で合計の情報量があれば通る"""
         reset_generated_markdown()
         configure_slide_validation("スライドを作って", "grok")
-        result = output_slide(markdown=self._build(4))
+        md = (
+            "---\nmarp: true\n---\n\n## 本文\n\n"
+            "対象データを限定すると、機密情報の持ち出しを防げます。\n\n"
+            "出力を人が確認すると、誤りを業務へ流さずに済みます。"
+        )
+        result = output_slide(markdown=md)
+        assert result == "スライドを出力しました。"
+
+    def test_two_substantive_bullets_are_accepted(self):
+        """項目数を増やさず、内容のある2項目で説明してよい"""
+        reset_generated_markdown()
+        configure_slide_validation("スライドを作って", "grok")
+        md = self._build(2).replace(
+            "- 項目1の説明\n- 項目2の説明",
+            "- 対象データを限定すると、機密情報の持ち出しを防げます。\n"
+            "- 出力を人が確認すると、誤りを業務へ流さずに済みます。",
+        )
+        result = output_slide(markdown=md)
+        assert result == "スライドを出力しました。"
+
+    def test_quote_slide_is_not_treated_as_thin(self):
+        """引用・定義が主役のページは、行数を埋めるために増量しない"""
+        reset_generated_markdown()
+        configure_slide_validation("スライドを作って", "grok")
+        md = (
+            "---\nmarp: true\n---\n\n## 定義\n\n"
+            "> AIエージェントは、目標に向けて道具を使いながら処理を進めます。"
+        )
+        result = output_slide(markdown=md)
         assert result == "スライドを出力しました。"
 
     def test_thin_slide_not_checked_for_kimi(self):
@@ -1346,6 +1385,96 @@ class TestThinSlideValidation:
             "<!-- _class: end -->\n# Thank you!"
         )
         result = output_slide(markdown=md)
+        assert result == "スライドを出力しました。"
+
+
+class TestGrokListVarietyValidation:
+    """Grokが5項目の箇条書きを連続させる回帰を防ぐ。"""
+
+    @staticmethod
+    def _slide(title, item_count):
+        items = "\n".join(
+            f"- {title}の論点{i}を、理由と判断への影響まで説明します。"
+            for i in range(1, item_count + 1)
+        )
+        return f"## {title}\n\n{items}"
+
+    def test_four_list_items_are_rejected_for_grok(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        result = output_slide(markdown=self._slide("課題", 4))
+        assert "リストが4項目" in result
+        assert "3項目以内" in result
+
+    def test_three_list_items_are_accepted_for_grok(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        result = output_slide(markdown=self._slide("課題", 3))
+        assert result == "スライドを出力しました。"
+
+    def test_third_consecutive_list_slide_is_rejected_for_grok(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        markdown = "\n\n---\n\n".join([
+            self._slide("現状", 2),
+            self._slide("課題", 2),
+            self._slide("対策", 2),
+        ])
+        result = output_slide(markdown=markdown)
+        assert "リスト中心のページが3枚連続" in result
+
+    def test_prose_breaks_consecutive_list_run(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        prose = (
+            "## 転換点\n\n"
+            "課題を並べるだけでは優先順位を決められません。"
+            "影響の大きさと直しやすさを見比べて、着手順を決めます。"
+        )
+        markdown = "\n\n---\n\n".join([
+            self._slide("現状", 2),
+            self._slide("課題", 2),
+            prose,
+            self._slide("対策", 2),
+        ])
+        result = output_slide(markdown=markdown)
+        assert result == "スライドを出力しました。"
+
+    def test_six_body_slides_need_three_formats(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        prose = (
+            "## 見出し{index}\n\n"
+            "背景を説明する通常の文章を置きます。判断への影響まで書きます。"
+        )
+        markdown = "\n\n---\n\n".join(
+            prose.format(index=index) for index in range(1, 7)
+        )
+        result = output_slide(markdown=markdown)
+        assert "見せ方が1種類しかない" in result
+        assert "最低3種類" in result
+
+    def test_three_formats_pass_the_deck_level_check(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        prose = (
+            "## 背景{index}\n\n"
+            "背景を説明する通常の文章を置きます。判断への影響と、"
+            "次に選ぶべき対応まで具体的に書きます。"
+        )
+        table = (
+            "## 比較\n\n| 観点 | A | B |\n| --- | --- | --- |\n"
+            "| 費用 | 小 | 大 |\n| 時間 | 短 | 長 |"
+        )
+        markdown = "\n\n---\n\n".join([
+            prose.format(index=1),
+            self._slide("現状", 2),
+            table,
+            prose.format(index=2),
+            self._slide("対策", 2),
+            prose.format(index=3),
+        ])
+        result = output_slide(markdown=markdown)
         assert result == "スライドを出力しました。"
 
 

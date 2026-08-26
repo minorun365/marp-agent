@@ -189,8 +189,8 @@ def test_url_reference_mode_prompt_keeps_the_normal_structure_rules():
     assert "読んでいない前提" in prompt
 
 
-def test_grok_system_prompt_only_keeps_mechanical_rules():
-    """Grok向けの指示は、Marpの表示と検査に必要なものだけに絞る。
+def test_grok_system_prompt_keeps_layout_variety_without_sentence_templates():
+    """Grok向けの指示は、文章の型を固定せず見せ方の偏りだけを防ぐ。
 
     Kimi向けに積み上げた文章の型（結論を言い切る見出し、リード文を必ず置く、
     表現パターンA〜Eのローテーション）をGrokへ持ち込むと、資料が読者へ
@@ -212,6 +212,15 @@ def test_grok_system_prompt_only_keeps_mechanical_rules():
     # 途中の発話は止めない。「検索します」程度の一言はあってよい
     assert "何をしているかを短く言いながら進めるのは構わない" in prompt
     assert "前置き" not in prompt
+
+    # 箇条書きの量と連続は数えられる形で制限する
+    assert "箇条書きと番号付きリストは1枚2〜3項目まで" in prompt
+    assert "4項目以上を並べない" in prompt
+    assert "箇条書き中心のページを3枚連続させない" in prompt
+    assert "最低3種類を使う" in prompt
+    assert "同じ形を3枚連続させない" in prompt
+    assert "各行へ `-` を付けず" in prompt
+    assert "引用枠へ気の利いた格言を作らない" in prompt
 
     # 文章の型は指示しない
     for banned in (

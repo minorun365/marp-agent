@@ -72,6 +72,7 @@ KIMI_RETRY_PRIORITY = {
 # 出力が10トークンでも46秒待つ回があり、待ちは生成量と無関係に発生する。
 # つまり体感を縮める手段は「モデルを呼ぶ回数を減らす」しかない。
 # 太字は _repair_slides_mechanically が確実に詰められるので、待たずにそちらへ回す。
+# 同じ型の3枚連続だけは、機械変換できないGrokに限り再生成で直す。
 COSMETIC_VIOLATION_TYPES = frozenset({
     'bold_overuse',
     'pattern_repetition',
@@ -95,10 +96,14 @@ MAX_LINES_PER_SLIDE = 9
 # 「折り返して2行」と誤って数えていた。そのため実際には余白を残して
 # 収まっているスライドが「行数超過」と判定され、再生成が毎回2〜3回走っていた。
 MAX_DISPLAY_WIDTH_PER_LINE = 64
-# 本文スライドの実質行数（見出しを除く）の下限。これ未満は「薄いページ」として
-# 修正指示を返す。Grokは指示がないと2〜3項目の体言止めで切り上げる癖があり、
-# プロンプトの指示だけでは時間とともに効きが揺れるため、機械の下限を持つ（2026-08-22）。
-MIN_BODY_LINES_PER_SLIDE = 4
+# 本文の総表示幅がこれ未満なら「薄いページ」とする。行数だけを下限にすると、
+# 内容のある2〜3項目まで増量させ、5項目の箇条書きを量産する副作用が出た。
+# 全角36文字ぶんあれば、短い箇条書き2〜3項目でも十分な情報量とみなす。
+MIN_BODY_DISPLAY_WIDTH = 72
+# Grokは「4〜6要素」の指示を、5項目の箇条書きとして満たしやすい。
+# Sonnet時代の出力に合わせ、リストは1枚3項目まで、3ページ連続は禁止する。
+MAX_LIST_ITEMS_PER_SLIDE = 3
+MAX_CONSECUTIVE_LIST_SLIDES = 2
 # テーブル行の最大表示幅（半角換算）
 # 2026-08-19実測: 表はセル内で折り返すので横にはみ出さない（旧コメントの
 # 「折り返されず横にはみ出す」は誤り）。3列×1セル16字＝行全体で半角96でも
@@ -332,29 +337,63 @@ def _count_content_lines(slide_content: str) -> int:
     return count
 
 
-def _count_body_lines(slide_content: str) -> int:
-    """見出しを除いたコンテンツ行数をカウント（折り返し考慮）。薄いページ検知用"""
-    count = 0
-    in_code_block = False
+LIST_ITEM_PATTERN = re.compile(r'^\s*(?:[-*+]|\d+[.)])\s+')
 
+
+def _count_list_items(slide_content: str) -> int:
+    """箇条書きと番号付きリストの項目数を数える。"""
+    return sum(
+        bool(LIST_ITEM_PATTERN.match(line))
+        for line in slide_content.split('\n')
+    )
+
+
+def _body_display_width(slide_content: str) -> int:
+    """見出し・コメント・表区切りを除いた本文の総表示幅を返す。"""
+    width = 0
     for line in slide_content.split('\n'):
         stripped = line.strip()
-
         if stripped.startswith('```'):
-            in_code_block = not in_code_block
             continue
-        if not stripped:
-            continue
-        if re.match(r'^<!--.*-->$', stripped):
+        if not stripped or re.match(r'^<!--.*-->$', stripped):
             continue
         if re.match(r'^\|[\s\-:|]+\|$', stripped):
             continue
         if re.match(r'^#{1,6}\s', stripped):
             continue
+        width += _get_display_width(_strip_markdown_formatting(stripped))
+    return width
 
-        count += _estimate_visual_lines(stripped)
 
-    return count
+def _has_visual_main_content(slide_content: str) -> bool:
+    """少ない文字でも成立する表・引用・コード・画像中心のページか。"""
+    return bool(
+        re.search(r'^\|.*\|$', slide_content, re.MULTILINE)
+        or re.search(r'^>\s+', slide_content, re.MULTILINE)
+        or re.search(r'^```', slide_content, re.MULTILINE)
+        or re.search(r'!\[[^\]]*\]\([^\)]+\)', slide_content)
+        or re.search(r'<(?:img|svg|div)\b', slide_content, re.IGNORECASE)
+    )
+
+
+def _classify_slide_format(slide_content: str) -> str:
+    """見せ方の連続と資料全体の多様性を検査するための分類。"""
+    if re.search(r'^\|.*\|$', slide_content, re.MULTILINE):
+        return 'table'
+    if re.search(r'^>\s+', slide_content, re.MULTILINE):
+        return 'quote'
+    if re.search(r'^```', slide_content, re.MULTILINE):
+        return 'code'
+    if (
+        re.search(r'!\[[^\]]*\]\([^\)]+\)', slide_content)
+        or re.search(r'<(?:img|svg|div)\b', slide_content, re.IGNORECASE)
+    ):
+        return 'visual'
+    if re.search(r'^###\s+', slide_content, re.MULTILINE):
+        return 'subheading'
+    if _count_list_items(slide_content) >= 2:
+        return 'list'
+    return 'prose'
 
 
 def _check_table_width(slide_content: str) -> int:
@@ -658,18 +697,49 @@ def _check_slide_structure(markdown: str) -> list[dict]:
             })
 
     if _active_model_type == 'grok':
-        # 薄いページの検知。上限（9行）の逆側で、見出しを除いて実質3行以下なら
-        # 肉付けの修正指示を返す。表が主役のページを巻き込まないよう控えめな値にする。
+        consecutive_list_slides = 0
+        body_formats = []
         for index, slide in enumerate(slides, start=1):
             if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
+                consecutive_list_slides = 0
                 continue
-            body_line_count = _count_body_lines(slide)
-            if body_line_count < MIN_BODY_LINES_PER_SLIDE:
+            body_formats.append(_classify_slide_format(slide))
+            list_item_count = _count_list_items(slide)
+            if list_item_count > MAX_LIST_ITEMS_PER_SLIDE:
+                violations.append({
+                    'type': 'list_item_overload',
+                    'slide_number': index,
+                    'count': list_item_count,
+                    'maximum': MAX_LIST_ITEMS_PER_SLIDE,
+                })
+            if list_item_count >= 2:
+                consecutive_list_slides += 1
+            else:
+                consecutive_list_slides = 0
+            if consecutive_list_slides > MAX_CONSECUTIVE_LIST_SLIDES:
+                violations.append({
+                    'type': 'list_page_run',
+                    'slide_number': index,
+                    'run_length': consecutive_list_slides,
+                    'maximum': MAX_CONSECUTIVE_LIST_SLIDES,
+                })
+
+            if (
+                not _has_visual_main_content(slide)
+                and _body_display_width(slide) < MIN_BODY_DISPLAY_WIDTH
+            ):
                 violations.append({
                     'type': 'thin_slide',
                     'slide_number': index,
-                    'line_count': body_line_count,
+                    'display_width': _body_display_width(slide),
                 })
+        if len(body_formats) >= 6 and len(set(body_formats)) < 3:
+            violations.append({
+                'type': 'format_diversity',
+                'actual': len(set(body_formats)),
+                'minimum': 3,
+                'formats': sorted(set(body_formats)),
+            })
 
     if _active_model_type in {'kimi', 'glm', 'grok'}:
         previous_pattern = None
@@ -686,14 +756,7 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                     'slide_number': index,
                     'count': bold_count,
                 })
-            if re.search(r'^\|.*\|$', slide, re.MULTILINE):
-                pattern = 'table'
-            elif re.search(r'^###\s+', slide, re.MULTILINE):
-                pattern = 'subheading'
-            elif len(re.findall(r'^[-*+]\s+', slide, re.MULTILINE)) >= 3:
-                pattern = 'bullets'
-            else:
-                pattern = 'prose'
+            pattern = _classify_slide_format(slide)
             if pattern == previous_pattern:
                 consecutive_pattern_count += 1
             else:
@@ -754,7 +817,13 @@ def _format_slide_progress(violations: list[dict]) -> str:
         'unsupported_quantified_claims',
     }:
         categories.append('出典・根拠の不足')
-    if violation_types & {'bold_overuse', 'pattern_repetition'}:
+    if violation_types & {
+        'bold_overuse',
+        'pattern_repetition',
+        'list_item_overload',
+        'list_page_run',
+        'format_diversity',
+    }:
         categories.append('見せ方の偏り')
 
     summary = '、'.join(categories) if categories else '調整が必要な箇所'
@@ -1109,7 +1178,13 @@ def output_slide(markdown: str) -> str:
         retry_violations = [
             violation
             for violation in violations
-            if violation['type'] not in COSMETIC_VIOLATION_TYPES
+            if (
+                violation['type'] not in COSMETIC_VIOLATION_TYPES
+                or (
+                    _active_model_type == 'grok'
+                    and violation['type'] == 'pattern_repetition'
+                )
+            )
         ]
 
     if retry_violations and _overflow_retry_count < retry_limit:
@@ -1138,9 +1213,25 @@ def output_slide(markdown: str) -> str:
                 )
             elif v['type'] == 'thin_slide':
                 details.append(
-                    f"  - スライド{v['slide_number']}: 本文が実質{v['line_count']}行しかなく薄い。"
-                    f"検索結果の背景・数字・具体例や前提知識の補足で{MIN_BODY_LINES_PER_SLIDE}〜6行へ肉付けする"
-                    "（根拠のない数値は足さない。単語の羅列ではなく1行を1文にする）"
+                    f"  - スライド{v['slide_number']}: 本文の情報量が少ない。"
+                    "検索結果の背景・数字・具体例や前提知識を通常の文章で補う"
+                    "（根拠のない数値や箇条書きの項目数は増やさない）"
+                )
+            elif v['type'] == 'list_item_overload':
+                details.append(
+                    f"  - スライド{v['slide_number']}: リストが{v['count']}項目。"
+                    f"{v['maximum']}項目以内へ絞り、残りは表・通常の文章・別ページへ組み替える"
+                )
+            elif v['type'] == 'list_page_run':
+                details.append(
+                    f"  - スライド{v['slide_number']}: リスト中心のページが{v['run_length']}枚連続。"
+                    "3枚目を表・通常の文章・引用・定義・コードのいずれかへ組み替える"
+                )
+            elif v['type'] == 'format_diversity':
+                details.append(
+                    f"  - 本文全体の見せ方が{v['actual']}種類しかない"
+                    f"（現在: {', '.join(v['formats'])}）。"
+                    f"通常の文章・リスト・表・引用や定義・コードから最低{v['minimum']}種類を使う"
                 )
             elif v['type'] == 'slide_count':
                 difference = v['actual'] - v['expected']
@@ -1178,8 +1269,14 @@ def output_slide(markdown: str) -> str:
                     f"  - スライド{v['slide_number']}: 太字が{v['count']}か所。太字ラベルを外し、太字は最大2か所にする"
                 )
             elif v['type'] == 'pattern_repetition':
+                alternatives = {
+                    'prose': 'リスト2〜3項目・表・引用・定義・コード',
+                    'list': '通常の文章・表・引用・定義・コード',
+                    'table': '通常の文章・リスト2〜3項目・引用・コード',
+                }.get(v['pattern'], '別の見せ方')
                 details.append(
-                    f"  - スライド{v['slide_number']}: {v['pattern']}型が3枚連続。表・小見出し・本文型のいずれかへ変更する"
+                    f"  - スライド{v['slide_number']}: {v['pattern']}型が3枚連続。"
+                    f"3枚目を{alternatives}のいずれかへ変更する"
                 )
             elif v['type'] == 'missing_sources':
                 details.append(

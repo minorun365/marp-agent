@@ -54,17 +54,19 @@ function visualLineCount(slide) {
   }).length;
 }
 
+function listItemCount(slide) {
+  return (slide.match(/^\s*(?:[-*+]|\d+[.)])\s+/gm) || []).length;
+}
+
 function classifySlide(slide) {
   if (/_class:\s*top/.test(slide)) return 'top';
   if (/_class:\s*lead/.test(slide)) return 'lead';
   if (/_class:\s*end/.test(slide)) return 'end';
   if (/_class:\s*tinytext/.test(slide)) return 'sources';
   if (/^\|.*\|$/m.test(slide)) return 'table';
+  if (/^>\s+/m.test(slide)) return 'quote';
   if (/^###\s+/m.test(slide)) return 'subheading';
-  const bulletCount = (slide.match(/^[-*+]\s+/gm) || []).length;
-  if (bulletCount >= 5) return 'bullets';
-  if (bulletCount >= 3 && /\*\*.+\*\*\s*$/.test(slide)) return 'summary';
-  if (bulletCount >= 3) return 'mixed';
+  if (listItemCount(slide) >= 2) return 'list';
   return 'prose';
 }
 
@@ -77,6 +79,7 @@ function analyzeMarkdown(markdown, prompt) {
   const classified = slides.map((slide) => ({
     type: classifySlide(slide),
     visualLines: visualLineCount(slide),
+    listItems: listItemCount(slide),
   }));
   const regular = classified.filter(({ type }) => !['top', 'lead', 'end', 'sources'].includes(type));
   const repeatedPatterns = [];
@@ -85,6 +88,32 @@ function analyzeMarkdown(markdown, prompt) {
       repeatedPatterns.push({ index: index + 1, type: regular[index].type });
     }
   }
+
+  let consecutiveListSlides = 0;
+  let maxConsecutiveListSlides = 0;
+  for (const slide of regular) {
+    if (slide.type === 'list') {
+      consecutiveListSlides += 1;
+      maxConsecutiveListSlides = Math.max(maxConsecutiveListSlides, consecutiveListSlides);
+    } else {
+      consecutiveListSlides = 0;
+    }
+  }
+  const listItemCounts = regular.map(({ listItems }) => listItems);
+  const contentFormats = new Set(regular.map(({ type }) => type));
+  const listQualityGate = {
+    maximumItemsPerSlide: Math.max(0, ...listItemCounts),
+    slidesOverThreeItems: listItemCounts.filter((count) => count > 3).length,
+    maxConsecutiveListSlides,
+  };
+  listQualityGate.passed = listQualityGate.slidesOverThreeItems === 0
+    && listQualityGate.maxConsecutiveListSlides <= 2;
+  const formatQualityGate = {
+    contentFormatCount: contentFormats.size,
+    minimum: regular.length >= 6 ? 3 : null,
+  };
+  formatQualityGate.passed = formatQualityGate.minimum === null
+    || formatQualityGate.contentFormatCount >= formatQualityGate.minimum;
 
   return {
     slideCount: slides.length,
@@ -102,6 +131,10 @@ function analyzeMarkdown(markdown, prompt) {
       .map(({ visualLines }, index) => ({ slide: index + 1, visualLines }))
       .filter(({ visualLines }) => visualLines > 9),
     sparseRegularSlides: regular.filter(({ visualLines }) => visualLines < 5).length,
+    listItemCounts,
+    listQualityGate,
+    contentFormatCount: contentFormats.size,
+    formatQualityGate,
     repeatedPatterns,
     patternCounts: Object.fromEntries(
       [...new Set(regular.map(({ type }) => type))]
@@ -216,6 +249,12 @@ async function main() {
     writeFile(`${outputBase}.json`, `${JSON.stringify(report, null, 2)}\n`),
   ]);
   console.log(JSON.stringify(report, null, 2));
+  if (
+    args.strict === 'true'
+    && (!report.analysis.listQualityGate.passed || !report.analysis.formatQualityGate.passed)
+  ) {
+    process.exitCode = 1;
+  }
 }
 
 await main();
