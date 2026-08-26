@@ -28,7 +28,7 @@ strands-agents
 tavily-python
 ```
 ※ fastapi/uvicorn は不要（SDKに内包）
-※ `aws login` 認証を使う場合は `botocore[crt]` も必要（pyproject.tomlに追加済み）
+※ `botocore[crt]` は `pyproject.toml` に追加済み
 
 ### エンドポイント
 - `POST /invocations` - エージェント実行

@@ -121,7 +121,7 @@ aws secretsmanager put-secret-value --secret-id pawapo/google-oauth-client-secre
 ## ローカル開発
 
 ```bash
-aws login
+aws sso login --profile <SSOプロファイル>
 npm run dev:ui     # メイン画面だけ（AWS不要、モックで動きます）
 npm run dev        # Cognito と AgentCore ローカル
 npm run dev:full   # CloudFront 相当の配信経路まで含めた確認

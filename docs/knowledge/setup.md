@@ -44,8 +44,7 @@ uv add strands-agents bedrock-agentcore
 uv run python script.py
 ```
 
-### AWS CLI login 認証を使う場合
+### AWS CRT を使う場合
 ```bash
 uv add 'botocore[crt]'
 ```
-※ `aws login` で認証した場合、botocore[crt] が必要

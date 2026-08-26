@@ -10,7 +10,8 @@ This file provides guidance to coding agents (Claude Code / Codex) when working 
 
 ```bash
 # AWS認証（バックエンド付きのローカル起動前に必要）
-aws login
+# 利用するアカウントのSSOプロファイルを指定する
+aws sso login --profile <SSOプロファイル>
 
 # メイン画面だけ（AWS不要）
 npm run dev:ui
