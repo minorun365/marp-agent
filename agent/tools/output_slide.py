@@ -121,6 +121,10 @@ MIN_BODY_DISPLAY_WIDTH = 72
 # Sonnet時代の出力に合わせ、リストは1枚3項目まで、3ページ連続は禁止する。
 MAX_LIST_ITEMS_PER_SLIDE = 3
 MAX_CONSECUTIVE_LIST_SLIDES = 2
+# 箇条書きを抑えすぎて段落だけの資料へ戻らないよう、本文枚数に応じて
+# 2〜3項目のリストを1〜3枚使う。上限と下限を両方持つことで単調さを防ぐ。
+MIN_BODY_SLIDES_FOR_LIST_BALANCE = 3
+MAX_BALANCED_LIST_SLIDES = 3
 # テーブル行の最大表示幅（半角換算）
 # 2026-08-19実測: 表はセル内で折り返すので横にはみ出さない（旧コメントの
 # 「折り返されず横にはみ出す」は誤り）。3列×1セル16字＝行全体で半角96でも
@@ -363,6 +367,13 @@ def _count_list_items(slide_content: str) -> int:
         bool(LIST_ITEM_PATTERN.match(line))
         for line in slide_content.split('\n')
     )
+
+
+def _minimum_balanced_list_slides(body_slide_count: int) -> int:
+    """本文枚数に応じた、資料全体の最低リスト枚数を返す。"""
+    if body_slide_count < MIN_BODY_SLIDES_FOR_LIST_BALANCE:
+        return 0
+    return min(MAX_BALANCED_LIST_SLIDES, max(1, (body_slide_count + 2) // 4))
 
 
 def _body_display_width(slide_content: str) -> int:
@@ -1212,6 +1223,61 @@ def _list_to_prose(slide: str) -> str:
     return '\n'.join(lines)
 
 
+def _prose_to_list(slide: str) -> str:
+    """通常文の2〜3段落を、内容を変えず同数の箇条書きへ整える。"""
+    if _classify_slide_format(slide) != 'prose':
+        return slide
+
+    lines = slide.split('\n')
+    body_line_indices = [
+        index
+        for index, line in enumerate(lines)
+        if line.strip()
+        and not re.match(r'^#{1,6}\s', line.strip())
+        and not re.match(r'^<!--.*-->$', line.strip())
+    ]
+    if not body_line_indices:
+        return slide
+
+    first_body = body_line_indices[0]
+    last_body = body_line_indices[-1]
+    body_lines = lines[first_body:last_body + 1]
+    if any(
+        re.match(r'^(?:#{1,6}\s|<!--.*-->|\||```|>)', line.strip())
+        for line in body_lines
+        if line.strip()
+    ):
+        return slide
+
+    paragraphs = []
+    current = []
+    for line in body_lines:
+        stripped = line.strip()
+        if stripped:
+            current.append(stripped)
+        elif current:
+            paragraphs.append(' '.join(current))
+            current = []
+    if current:
+        paragraphs.append(' '.join(current))
+
+    if len(paragraphs) == 1:
+        sentences = [
+            sentence.strip()
+            for sentence in re.findall(r'[^。！？]+[。！？]?', paragraphs[0])
+            if sentence.strip()
+        ]
+        if 2 <= len(sentences) <= MAX_LIST_ITEMS_PER_SLIDE:
+            paragraphs = sentences
+
+    if not 2 <= len(paragraphs) <= MAX_LIST_ITEMS_PER_SLIDE:
+        return slide
+
+    list_lines = [f'- {paragraph}' for paragraph in paragraphs]
+    rebuilt = lines[:first_body] + list_lines + lines[last_body + 1:]
+    return '\n'.join(rebuilt)
+
+
 def _add_subheading(slide: str) -> str:
     """本文に小見出しを1つ加え、文章ページへ視覚的な区切りを作る。"""
     if re.search(r'^###\s+', slide, re.MULTILINE):
@@ -1244,7 +1310,7 @@ def _add_callout(slide: str) -> str:
 
 
 def _repair_slide_variety_mechanically(markdown: str) -> str:
-    """既存本文を保ったまま、箇条書き過多と同じ型の連続を崩す。"""
+    """既存本文を保ったまま、箇条書きの過不足と同じ型の連続を崩す。"""
     if _active_model_type != 'grok':
         return markdown
     slides = _parse_slides(markdown)
@@ -1262,6 +1328,55 @@ def _repair_slide_variety_mechanically(markdown: str) -> str:
         if item_count > MAX_LIST_ITEMS_PER_SLIDE or consecutive_lists > MAX_CONSECUTIVE_LIST_SLIDES:
             slides[index] = _list_to_prose(slides[index])
             consecutive_lists = 0
+
+    # 箇条書きが少なすぎる場合は、2〜3段落ある通常文だけを均等に選んで
+    # 同数のリストへ整える。モデルの再呼び出しは増やさない。
+    minimum_list_slides = _minimum_balanced_list_slides(len(body_indices))
+    current_list_indices = [
+        index for index in body_indices if _classify_slide_format(slides[index]) == 'list'
+    ]
+    missing_list_slides = max(0, minimum_list_slides - len(current_list_indices))
+    if missing_list_slides:
+        convertible = []
+        body_positions = {index: position for position, index in enumerate(body_indices)}
+        occupied_positions = {
+            body_positions[index] for index in current_list_indices
+        }
+        for position, index in enumerate(body_indices):
+            if _classify_slide_format(slides[index]) != 'prose':
+                continue
+            if any(
+                abs(position - occupied_position) <= 1
+                for occupied_position in occupied_positions
+            ):
+                continue
+            transformed = _prose_to_list(slides[index])
+            if transformed != slides[index]:
+                convertible.append((position, index, transformed))
+
+        selected = []
+        while len(selected) < missing_list_slides:
+            blockers = occupied_positions | {position for position, _, _ in selected}
+            candidates = [
+                candidate
+                for candidate in convertible
+                if candidate not in selected
+                and all(abs(candidate[0] - blocker) > 1 for blocker in blockers)
+            ]
+            if not candidates:
+                break
+            edge_blockers = blockers | {-2, len(body_indices) + 1}
+            chosen = max(
+                candidates,
+                key=lambda candidate: (
+                    min(abs(candidate[0] - blocker) for blocker in edge_blockers),
+                    -abs(candidate[0] - (len(body_indices) - 1) / 2),
+                ),
+            )
+            selected.append(chosen)
+
+        for _, index, transformed in selected:
+            slides[index] = transformed
 
     # 同じ型が3枚続いたら、3枚目だけを小見出しか要点ボックスへ変える。
     previous_format = None
@@ -1372,7 +1487,7 @@ def output_slide(markdown: str, tool_context: ToolContext | None = None) -> str:
     - **見出しの階層【重要】**: タイトルスライドと中タイトル（`_class: lead`）の主題だけが `#`。通常スライドの見出しは `##`、小見出しは必要なときだけ `###`。テーマは `#` をタイトル用の大きさで描くので、通常スライドで使うと文字がはみ出す
     - **アジェンダ・目次**: ユーザーが明示した場合だけ作る。短い資料へ自動追加しない
     - **セクション区切り**: 8枚以下では作らない。10枚以上なら3〜5枚ごとに `<!-- _class: lead -->` の中タイトルスライドを挟む（12枚以下では最大2枚）
-    - **1枚の形【重要】**: 箇条書きだけを続けない。比較・一覧・対応関係は表、定義や引用は `> 引用`、要点は太字を使い分ける。同じ形が3枚続かないようにする（このツールが自動検証）。どう書くかはページの中身しだいで、決まった型に当てはめない
+    - **1枚の形【重要】**: 箇条書きだけを続けない。一方で箇条書きをゼロにせず、本文3〜5枚なら1枚、6〜9枚なら2枚、10枚以上なら3枚を目安に、2〜3項目の箇条書きページを離して配置する。比較・一覧・対応関係は表、定義や引用は `> 引用`、要点は太字を使い分ける。同じ形が3枚続かないようにする（このツールが自動検証）。どう書くかはページの中身しだいで、決まった型に当てはめない
     - **出典スライド**: Web検索時は最後に `<!-- _class: tinytext -->` 付きの参考文献スライドを追加
     - **裏表紙【必須】**: 最後のスライドは `<!-- _class: end --><!-- _paginate: skip -->` を付けて「Thank you!」とだけ表示
     - **表【重要】**: ヘッダー行の直後に `| --- | --- | --- |` の区切り行を必ず置く。無いと表として描画されない。2〜3列にし、セル内容は全角10文字以内（横幅はこのツールが自動検証）

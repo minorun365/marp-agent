@@ -19,6 +19,8 @@ from tools.output_slide import (
     _check_slide_overflow,
     _check_slide_structure,
     _classify_slide_format,
+    _count_list_items,
+    _minimum_balanced_list_slides,
     _repair_slides_mechanically,
     _get_display_width,
     _strip_markdown_formatting,
@@ -1431,6 +1433,13 @@ class TestThinSlideValidation:
 
 
 class TestGrokListVarietyValidation:
+    @pytest.mark.parametrize(
+        ("body_slide_count", "expected"),
+        [(2, 0), (3, 1), (5, 1), (6, 2), (9, 2), (10, 3), (16, 3)],
+    )
+    def test_minimum_balanced_list_slides(self, body_slide_count, expected):
+        assert _minimum_balanced_list_slides(body_slide_count) == expected
+
     """Grokが5項目の箇条書きを連続させる回帰を防ぐ。"""
 
     @staticmethod
@@ -1457,6 +1466,65 @@ class TestGrokListVarietyValidation:
         configure_slide_validation("資料を作って", "grok")
         result = output_slide(markdown=self._slide("課題", 3))
         assert result == "スライドを出力しました。"
+
+    def test_six_prose_slides_gain_two_spaced_list_slides(self):
+        """段落だけの資料は、離れた2枚を2項目のリストへ整える。"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        prose = (
+            "## 見出し{index}\n\n"
+            "最初の論点を理由とともに説明します。\n\n"
+            "次の論点が判断へ与える影響を説明します。"
+        )
+        markdown = "\n\n---\n\n".join(
+            prose.format(index=index) for index in range(1, 7)
+        )
+
+        result = output_slide(markdown=markdown)
+        generated = get_generated_markdown()
+
+        assert result == "スライドを出力しました。"
+        assert generated is not None
+        formats = [
+            _classify_slide_format(slide) for slide in _parse_slides(generated)
+        ]
+        list_positions = [
+            index for index, slide_format in enumerate(formats) if slide_format == "list"
+        ]
+        assert len(list_positions) == 2
+        assert list_positions[1] - list_positions[0] > 1
+        assert all(
+            _count_list_items(_parse_slides(generated)[index]) == 2
+            for index in list_positions
+        )
+
+    def test_existing_balanced_list_is_preserved(self):
+        """本文4枚にリストが1枚あれば、通常文を追加変換しない。"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        prose = (
+            "## 背景{index}\n\n"
+            "背景を通常の文章で説明し、現在起きている変化と理由を整理します。\n\n"
+            "判断への影響も通常の文章で説明し、次に選ぶ対応を明確にします。"
+        )
+        existing_list = self._slide("論点", 2)
+        markdown = "\n\n---\n\n".join([
+            prose.format(index=1),
+            existing_list,
+            prose.format(index=2),
+            prose.format(index=3),
+        ])
+
+        result = output_slide(markdown=markdown)
+        generated = get_generated_markdown()
+
+        assert result == "スライドを出力しました。"
+        assert generated is not None
+        assert sum(
+            _classify_slide_format(slide) == "list"
+            for slide in _parse_slides(generated)
+        ) == 1
+        assert "- 論点の論点1" in generated
 
     def test_third_consecutive_list_slide_is_reformatted_without_grok_retry(self):
         reset_generated_markdown()
