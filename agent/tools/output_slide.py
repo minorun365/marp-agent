@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from strands import tool
 
 from .http_request import get_url_fetched
+from .web_search import get_search_result_urls
 
 # スライド出力用のグローバル変数
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
@@ -77,6 +78,21 @@ COSMETIC_VIOLATION_TYPES = frozenset({
     'bold_overuse',
     'pattern_repetition',
     'lead_count',
+})
+# Grokへ全文を書き直させるのは、機械処理では意味を保って直せない問題だけに絞る。
+# 出典コメント・参考文献・見せ方の連続は、検索済みURLと既存本文だけで補正する。
+GROK_RETRY_VIOLATION_TYPES = frozenset({
+    'non_japanese_body',
+    'line_overflow',
+    'table_overflow',
+    'slide_count',
+    'slide_count_max',
+    'unrequested_agenda',
+    'thin_slide',
+    'missing_sources',
+    'missing_official_sources',
+    'non_official_slide_sources',
+    'irrelevant_slide_sources',
 })
 # 英語記事のURLを渡されると本文がそのまま英語で出てくるため、日本語率で検知する。
 # 製品名・略語が多い日本語スライドを誤検知しないよう、
@@ -1061,6 +1077,230 @@ def _repair_table_separators(markdown: str) -> str:
     return '\n'.join(repaired)
 
 
+SOURCE_HEADING_PATTERN = re.compile(
+    r'^#{1,3}\s+.*(?:参考文献|出典|Sources?)',
+    re.MULTILINE | re.IGNORECASE,
+)
+SOURCE_COMMENT_PATTERN = re.compile(
+    r'<!--\s*source:\s*(https?://[^\s>]+)\s*-->',
+    re.IGNORECASE,
+)
+
+
+def _rebuild_markdown(markdown: str, slides: list[str]) -> str:
+    """既存のフロントマターを保ったままスライドを組み直す。"""
+    frontmatter = _extract_frontmatter(markdown)
+    content = '\n\n---\n\n'.join(slides)
+    return f'{frontmatter}\n\n{content}\n' if frontmatter else f'{content}\n'
+
+
+def _insert_source_comment(slide: str, source_url: str) -> str:
+    """本文スライドの見出し直下へ、表示されない根拠URLを補う。"""
+    lines = slide.split('\n')
+    insertion_index = 0
+    for index, line in enumerate(lines):
+        if re.match(r'^#{1,3}\s+', line.strip()):
+            insertion_index = index + 1
+            break
+    lines.insert(insertion_index, f'<!-- source: {source_url} -->')
+    return '\n'.join(lines)
+
+
+def _repair_sources_mechanically(markdown: str) -> str:
+    """検索済みURLだけを使い、参考文献とスライド単位の出典を補完する。"""
+    if not _web_search_executed:
+        return markdown
+
+    slides = _parse_slides(markdown)
+    if not slides:
+        return markdown
+
+    search_urls = get_search_result_urls()
+    source_slide_index = next(
+        (index for index, slide in enumerate(slides) if SOURCE_HEADING_PATTERN.search(slide)),
+        None,
+    )
+    reference_urls = []
+    if source_slide_index is not None:
+        reference_urls = [
+            url.rstrip('.,、。')
+            for url in re.findall(r'https?://[^\s)>]+', slides[source_slide_index])
+        ]
+    comment_urls = [
+        match.group(1).rstrip('.,、。')
+        for slide in slides
+        for match in SOURCE_COMMENT_PATTERN.finditer(slide)
+    ]
+    candidate_urls = list(dict.fromkeys(search_urls + reference_urls + comment_urls))
+
+    if not candidate_urls:
+        return markdown
+
+    # 本文ページの根拠URLは、対象製品が明示されていれば対応する公式URLを優先する。
+    for index, slide in enumerate(slides):
+        if _is_special_slide(slide) or SOURCE_HEADING_PATTERN.search(slide):
+            continue
+        active_rules = [
+            rule
+            for rule in _required_official_source_rules
+            if any(marker.lower() in slide.lower() for marker in rule['markers'])
+        ]
+        official_url = next(
+            (
+                url
+                for rule in active_rules
+                for url in candidate_urls
+                if _url_matches_official_rule(url, rule)
+            ),
+            None,
+        )
+        existing_urls = [
+            match.group(1).rstrip('.,、。')
+            for match in SOURCE_COMMENT_PATTERN.finditer(slide)
+        ]
+        selected_url = official_url or (existing_urls[0] if existing_urls else candidate_urls[0])
+
+        if active_rules and official_url:
+            slide = SOURCE_COMMENT_PATTERN.sub('', slide).strip()
+            slide = _insert_source_comment(slide, official_url)
+        elif not existing_urls:
+            slide = _insert_source_comment(slide, selected_url)
+        slides[index] = slide
+        if selected_url not in candidate_urls:
+            candidate_urls.append(selected_url)
+
+    if source_slide_index is None:
+        can_add = (
+            (_expected_slide_count is None and _maximum_slide_count is None)
+            or (_expected_slide_count is not None and len(slides) < _expected_slide_count)
+            or (_maximum_slide_count is not None and len(slides) < _maximum_slide_count)
+        )
+        if can_add:
+            reference_slide = '<!-- _class: tinytext -->\n\n## 参考文献'
+            insert_at = next(
+                (index for index, slide in enumerate(slides) if re.search(r'_class:\s*end', slide)),
+                len(slides),
+            )
+            slides.insert(insert_at, reference_slide)
+            source_slide_index = insert_at
+
+    if source_slide_index is not None:
+        source_slide = slides[source_slide_index]
+        if not re.search(r'_class:\s*tinytext', source_slide):
+            source_slide = f'<!-- _class: tinytext -->\n\n{source_slide}'
+        existing_reference_urls = {
+            url.rstrip('.,、。')
+            for url in re.findall(r'https?://[^\s)>]+', source_slide)
+        }
+        missing_urls = [url for url in candidate_urls if url not in existing_reference_urls]
+        if missing_urls:
+            source_slide = source_slide.rstrip() + '\n\n' + '\n'.join(
+                f'- {url}' for url in missing_urls
+            )
+        slides[source_slide_index] = source_slide
+
+    return _rebuild_markdown(markdown, slides)
+
+
+def _list_to_prose(slide: str) -> str:
+    """箇条書きの内容を削らず、短い通常段落へ戻す。"""
+    lines = []
+    for line in slide.split('\n'):
+        match = LIST_ITEM_PATTERN.match(line)
+        lines.append(line[match.end():].strip() if match else line)
+    return '\n'.join(lines)
+
+
+def _add_subheading(slide: str) -> str:
+    """本文に小見出しを1つ加え、文章ページへ視覚的な区切りを作る。"""
+    if re.search(r'^###\s+', slide, re.MULTILINE):
+        return slide
+    lines = slide.split('\n')
+    for index, line in enumerate(lines):
+        if re.match(r'^##\s+', line.strip()):
+            lines.insert(index + 1, '### 要点')
+            return '\n'.join(lines)
+    return slide
+
+
+def _add_callout(slide: str) -> str:
+    """本文の1行を要点ボックスとして見せ、内容を変えずにメリハリを付ける。"""
+    if re.search(r'^>\s+', slide, re.MULTILINE):
+        return slide
+    lines = slide.split('\n')
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if (
+            not stripped
+            or stripped.startswith(('#', '<!--', '|', '```'))
+            or re.match(r'^\d+[.)]\s+', stripped)
+        ):
+            continue
+        body = LIST_ITEM_PATTERN.sub('', stripped)
+        lines[index] = f'> {body}'
+        return '\n'.join(lines)
+    return slide
+
+
+def _repair_slide_variety_mechanically(markdown: str) -> str:
+    """既存本文を保ったまま、箇条書き過多と同じ型の連続を崩す。"""
+    if _active_model_type != 'grok':
+        return markdown
+    slides = _parse_slides(markdown)
+    if not slides:
+        return markdown
+    original_slides = slides.copy()
+
+    body_indices = [index for index, slide in enumerate(slides) if not _is_special_slide(slide)]
+
+    # 4項目以上の箇条書きと、リスト3枚目以降を通常段落へ戻す。
+    consecutive_lists = 0
+    for index in body_indices:
+        item_count = _count_list_items(slides[index])
+        consecutive_lists = consecutive_lists + 1 if item_count >= 2 else 0
+        if item_count > MAX_LIST_ITEMS_PER_SLIDE or consecutive_lists > MAX_CONSECUTIVE_LIST_SLIDES:
+            slides[index] = _list_to_prose(slides[index])
+            consecutive_lists = 0
+
+    # 同じ型が3枚続いたら、3枚目だけを小見出しか要点ボックスへ変える。
+    previous_format = None
+    run_length = 0
+    for index in body_indices:
+        current_format = _classify_slide_format(slides[index])
+        run_length = run_length + 1 if current_format == previous_format else 1
+        previous_format = current_format
+        if run_length < 3:
+            continue
+        if current_format == 'list':
+            slides[index] = _list_to_prose(slides[index])
+        elif current_format == 'prose' and _count_content_lines(slides[index]) < MAX_LINES_PER_SLIDE:
+            slides[index] = _add_subheading(slides[index])
+        elif current_format not in {'table', 'code', 'visual'}:
+            slides[index] = _add_callout(slides[index])
+        previous_format = _classify_slide_format(slides[index])
+        run_length = 1
+
+    # 本文が6枚以上なら、最低3種類になるまで要点ボックスと小見出しを1枚ずつ使う。
+    formats = {_classify_slide_format(slides[index]) for index in body_indices}
+    if len(body_indices) >= 6 and len(formats) < 3:
+        for transform in (_add_callout, _add_subheading):
+            if len(formats) >= 3:
+                break
+            for index in body_indices:
+                current_format = _classify_slide_format(slides[index])
+                if current_format in {'table', 'code', 'visual', 'quote', 'subheading'}:
+                    continue
+                if transform is _add_subheading and _count_content_lines(slides[index]) >= MAX_LINES_PER_SLIDE:
+                    continue
+                transformed = transform(slides[index])
+                if transformed != slides[index]:
+                    slides[index] = transformed
+                    formats = {_classify_slide_format(slides[i]) for i in body_indices}
+                    break
+
+    return markdown if slides == original_slides else _rebuild_markdown(markdown, slides)
+
+
 def _repair_slides_mechanically(markdown: str) -> str:
     """LLMが直しきれなかった違反を、機械で確定的に解消する。
 
@@ -1157,8 +1397,19 @@ def output_slide(markdown: str) -> str:
 
     # 表の区切り行の欠落は、モデルへ指摘して直させるより先に機械で補う。
     markdown = _repair_table_separators(markdown)
-
+    initial_violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
+    markdown = _repair_sources_mechanically(markdown)
+    markdown = _repair_slide_variety_mechanically(markdown)
     violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
+    resolved_types = sorted(
+        {violation['type'] for violation in initial_violations}
+        - {violation['type'] for violation in violations}
+    )
+    if resolved_types:
+        print(
+            "[INFO] Mechanical pre-repair resolved without model retry: "
+            + ", ".join(resolved_types)
+        )
 
     if _active_model_type == 'kimi':
         # Kimiは軽微な見た目の指摘でも全文を作り直しやすい。再生成は
@@ -1173,18 +1424,19 @@ def output_slide(markdown: str) -> str:
             ),
             key=lambda violation: KIMI_RETRY_PRIORITY[violation['type']],
         )
+    elif _active_model_type == 'grok':
+        retry_limit = MAX_OVERFLOW_RETRIES
+        retry_violations = [
+            violation
+            for violation in violations
+            if violation['type'] in GROK_RETRY_VIOLATION_TYPES
+        ]
     else:
         retry_limit = 4 if _active_model_type == 'glm' else MAX_OVERFLOW_RETRIES
         retry_violations = [
             violation
             for violation in violations
-            if (
-                violation['type'] not in COSMETIC_VIOLATION_TYPES
-                or (
-                    _active_model_type == 'grok'
-                    and violation['type'] == 'pattern_repetition'
-                )
-            )
+            if violation['type'] not in COSMETIC_VIOLATION_TYPES
         ]
 
     if retry_violations and _overflow_retry_count < retry_limit:

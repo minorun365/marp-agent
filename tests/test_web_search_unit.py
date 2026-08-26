@@ -6,6 +6,7 @@ import pytest
 from tools.web_search import (
     web_search,
     get_last_search_result,
+    get_search_result_urls,
     reset_last_search_result,
 )
 
@@ -52,6 +53,35 @@ def test_web_search_formats_results():
     assert "Test content" in result
     assert "https://example.com" in result
     assert "---" in result  # セパレータ
+
+
+def test_search_urls_accumulate_across_queries_without_duplicates():
+    """複数回の検索結果を、機械的な参考文献補完へ渡せる。"""
+    mock_client = MagicMock()
+    mock_client.search.side_effect = [
+        {
+            "results": [
+                {"title": "A", "content": "A", "url": "https://example.com/a"},
+                {"title": "共通", "content": "共通", "url": "https://example.com/common"},
+            ]
+        },
+        {
+            "results": [
+                {"title": "B", "content": "B", "url": "https://example.com/b"},
+                {"title": "共通", "content": "共通", "url": "https://example.com/common"},
+            ]
+        },
+    ]
+
+    with patch("tools.web_search.tavily_clients", [mock_client]):
+        web_search(query="first")
+        web_search(query="second")
+
+    assert get_search_result_urls() == [
+        "https://example.com/a",
+        "https://example.com/common",
+        "https://example.com/b",
+    ]
 
 
 def test_web_search_empty_results():

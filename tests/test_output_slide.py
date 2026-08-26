@@ -16,6 +16,8 @@ from tools.output_slide import (
     _trim_excess_slides,
     _count_content_lines,
     _check_slide_overflow,
+    _check_slide_structure,
+    _classify_slide_format,
     _repair_slides_mechanically,
     _get_display_width,
     _strip_markdown_formatting,
@@ -496,7 +498,7 @@ class TestOutputSlideOverflowValidation:
         assert _check_slide_overflow(generated) == []
         # 見出しと冒頭の項目は残っている
         assert "## 見出し" in generated
-        assert "- 項目1" in generated
+        assert "項目1" in generated
 
     def test_retry_counter_resets_on_success(self):
         """正常出力後にリトライカウンターがリセットされる"""
@@ -1399,12 +1401,16 @@ class TestGrokListVarietyValidation:
         )
         return f"## {title}\n\n{items}"
 
-    def test_four_list_items_are_rejected_for_grok(self):
+    def test_four_list_items_are_converted_without_grok_retry(self):
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "grok")
         result = output_slide(markdown=self._slide("課題", 4))
-        assert "リストが4項目" in result
-        assert "3項目以内" in result
+        generated = get_generated_markdown()
+
+        assert result == "スライドを出力しました。"
+        assert generated is not None
+        assert "- 課題の論点" not in generated
+        assert "課題の論点4" in generated
 
     def test_three_list_items_are_accepted_for_grok(self):
         reset_generated_markdown()
@@ -1412,7 +1418,7 @@ class TestGrokListVarietyValidation:
         result = output_slide(markdown=self._slide("課題", 3))
         assert result == "スライドを出力しました。"
 
-    def test_third_consecutive_list_slide_is_rejected_for_grok(self):
+    def test_third_consecutive_list_slide_is_reformatted_without_grok_retry(self):
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "grok")
         markdown = "\n\n---\n\n".join([
@@ -1421,7 +1427,15 @@ class TestGrokListVarietyValidation:
             self._slide("対策", 2),
         ])
         result = output_slide(markdown=markdown)
-        assert "リスト中心のページが3枚連続" in result
+        generated = get_generated_markdown()
+
+        assert result == "スライドを出力しました。"
+        assert generated is not None
+        assert [_classify_slide_format(slide) for slide in _parse_slides(generated)] == [
+            "list",
+            "list",
+            "prose",
+        ]
 
     def test_prose_breaks_consecutive_list_run(self):
         reset_generated_markdown()
@@ -1440,19 +1454,70 @@ class TestGrokListVarietyValidation:
         result = output_slide(markdown=markdown)
         assert result == "スライドを出力しました。"
 
-    def test_six_body_slides_need_three_formats(self):
+    def test_six_body_slides_are_varied_without_grok_retry(self):
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "grok")
         prose = (
             "## 見出し{index}\n\n"
-            "背景を説明する通常の文章を置きます。判断への影響まで書きます。"
+            "背景を説明する通常の文章を置きます。判断への影響と、"
+            "次に選ぶべき対応まで具体的に書きます。"
         )
         markdown = "\n\n---\n\n".join(
             prose.format(index=index) for index in range(1, 7)
         )
         result = output_slide(markdown=markdown)
-        assert "見せ方が1種類しかない" in result
-        assert "最低3種類" in result
+        generated = get_generated_markdown()
+
+        assert result == "スライドを出力しました。"
+        assert generated is not None
+        formats = {_classify_slide_format(slide) for slide in _parse_slides(generated)}
+        assert len(formats) >= 3
+
+    def test_source_and_variety_repairs_avoid_full_deck_retry(self, monkeypatch):
+        """実障害の3違反を、検索済みURLと既存本文だけで解消する。"""
+        reset_generated_markdown()
+        configure_slide_validation("MCPロードマップを調べて資料を作って", "grok")
+        mark_web_search_executed()
+        import importlib
+
+        output_slide_module = importlib.import_module("tools.output_slide")
+        monkeypatch.setattr(
+            output_slide_module,
+            "get_search_result_urls",
+            lambda: [
+                "https://example.com/roadmap",
+                "https://example.com/identity",
+                "https://example.com/messaging",
+            ],
+        )
+        prose = (
+            "## 見出し{index}\n\n"
+            "背景と現在地を通常の文章で説明します。判断への影響と、"
+            "次に選ぶべき対応まで具体的に書きます。"
+        )
+        markdown = "\n\n---\n\n".join([
+            *(prose.format(index=index) for index in range(1, 7)),
+            "<!-- _class: tinytext -->\n\n## 参考文献\n\n- https://example.com/roadmap",
+        ])
+
+        result = output_slide(markdown=markdown)
+        generated = get_generated_markdown()
+
+        assert result == "スライドを出力しました。"
+        assert consume_slide_progress() is None
+        assert generated is not None
+        remaining_types = {
+            violation["type"] for violation in _check_slide_structure(generated)
+        }
+        assert not remaining_types & {
+            "format_diversity",
+            "missing_sources",
+            "missing_slide_sources",
+            "pattern_repetition",
+        }
+        assert generated.count("<!-- source:") == 6
+        assert "https://example.com/identity" in generated
+        assert "https://example.com/messaging" in generated
 
     def test_three_formats_pass_the_deck_level_check(self):
         reset_generated_markdown()

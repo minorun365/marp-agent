@@ -2,6 +2,7 @@
 
 import os
 import json
+import re
 import time
 
 import boto3
@@ -82,6 +83,7 @@ def _refresh_tavily_clients() -> bool:
 # Web検索結果用のグローバル変数
 # NOTE: ContextVarはStrands Agentsがツールを別スレッドで実行するため値が共有されない
 _last_search_result: str | None = None
+_search_results: list[str] = []
 _search_call_count: int = 0
 # 検索1回につきTavilyのクレジットを1消費し、待ち時間も10秒前後増える。
 # 「最大6回まで」と書いていた頃は、モデルがそれを予算とみなして毎回6回使い切っていた
@@ -97,10 +99,29 @@ def get_last_search_result() -> str | None:
     return _last_search_result
 
 
+def get_search_result_urls() -> list[str]:
+    """この依頼で取得した全検索結果から、URLを検索順に重複なく返す。"""
+    urls: list[str] = []
+    for result in _search_results:
+        for url in re.findall(r'https?://[^\s)>]+', result):
+            normalized = url.rstrip('.,、。')
+            if normalized not in urls:
+                urls.append(normalized)
+    return urls
+
+
+def _remember_search_result(result: str) -> None:
+    """最後の検索結果との互換性を保ちつつ、依頼内の全結果を蓄積する。"""
+    global _last_search_result
+    _last_search_result = result
+    _search_results.append(result)
+
+
 def reset_last_search_result() -> None:
     """検索結果をリセット"""
-    global _last_search_result, _search_call_count
+    global _last_search_result, _search_results, _search_call_count
     _last_search_result = None
+    _search_results = []
     _search_call_count = 0
 
 
@@ -146,12 +167,14 @@ def web_search(query: str) -> str:
     if tavily_clients:
         result = _search_with_current_keys(query)
         if result is not None:
+            _remember_search_result(result)
             return result
 
         # 全キーが使えなかった。キーを差し替えた直後かもしれないので1度だけ読み直す。
         if _refresh_tavily_clients():
             result = _search_with_current_keys(query)
             if result is not None:
+                _remember_search_result(result)
                 return result
         print(f"[ERROR] Tavilyのキー{len(tavily_clients)}本すべてが使えませんでした")
     else:
@@ -163,7 +186,7 @@ def web_search(query: str) -> str:
     agentcore_result = _search_with_agentcore(query)
     if agentcore_result is not None:
         print("[INFO] Tavilyが枯渇したためAgentCore Web Searchで代替しました")
-        _last_search_result = agentcore_result
+        _remember_search_result(agentcore_result)
         return agentcore_result
 
     return "現在、利用殺到でみのるんの検索API無料枠が枯渇したようです。修正をお待ちください"
@@ -204,8 +227,6 @@ def _search_with_current_keys(query: str) -> str | None:
                 url = result.get("url", "")
                 formatted_results.append(f"**{title}**\n{content}\nURL: {url}")
             search_result = "\n\n---\n\n".join(formatted_results) if formatted_results else "検索結果がありませんでした"
-            global _last_search_result
-            _last_search_result = search_result  # フォールバック用に保存
             return search_result
         except KEY_LEVEL_ERRORS as e:
             # 枯渇・停止・無効キーはこのキーの問題なので、必ず次のキーを試す。
