@@ -17,7 +17,6 @@ from tools import (
     configure_slide_validation,
     mark_web_search_executed,
     generate_tweet_url,
-    consume_slide_progress,
     get_generated_markdown,
     reset_generated_markdown,
     get_generated_tweet_url,
@@ -28,6 +27,7 @@ from tools.http_request import reset_url_fetched
 from exports import generate_pdf, generate_pptx, generate_editable_pptx
 from sharing import share_slide
 from session import get_or_create_agent
+from streaming_events import consume_slide_progress_event
 
 app = BedrockAgentCoreApp()
 
@@ -254,15 +254,6 @@ async def invoke(payload, context=None):
     # 止まるので、この無音を「スライドを書いている」と読み違えないための目印。
     tool_in_flight = False
 
-    def get_slide_progress_event():
-        """Kimiの内部文ではなく、検査ツールが確定した進捗だけを返す。"""
-        if model_type != "kimi":
-            return None
-        progress_message = consume_slide_progress()
-        if not progress_message:
-            return None
-        return {"type": "slide_progress", "data": progress_message}
-
     try:
         stream = agent.stream_async(user_message)
         stream_iter = stream.__aiter__()
@@ -305,7 +296,7 @@ async def invoke(payload, context=None):
             if event is _STREAM_SENTINEL:
                 break
 
-            slide_progress_event = get_slide_progress_event()
+            slide_progress_event = consume_slide_progress_event()
             if slide_progress_event:
                 yield slide_progress_event
 
@@ -323,7 +314,10 @@ async def invoke(payload, context=None):
                         chunk = event["data"]
                         if model_type == "kimi":
                             kimi_text_buffer.append(chunk)
-                        else:
+                        elif not slide_compose_announced:
+                            # スライド作成へ入った後のGrokの説明文は、利用者への返答ではなく
+                            # 検査差し戻し時の独り言。表示すると作成中ステータスが完了へ化け、
+                            # 再生成中なのに画面が止まって見えるため送らない。
                             yield {"type": "text", "data": chunk}
 
             elif "current_tool_use" in event:
@@ -387,6 +381,9 @@ async def invoke(payload, context=None):
                     # ページ取得も外部通信で数秒止まる。検索と同じ扱いにする。
                     tool_in_flight = True
                     slide_compose_announced = False
+                elif tool_name == "output_slide":
+                    slide_compose_announced = True
+                    yield {"type": "tool_use", "data": tool_name}
                 else:
                     yield {"type": "tool_use", "data": tool_name}
 
@@ -398,7 +395,7 @@ async def invoke(payload, context=None):
                             if model_type == "kimi":
                                 if not kimi_slide_workflow_started:
                                     kimi_text_buffer.append(content.text)
-                            else:
+                            elif not slide_compose_announced:
                                 yield {"type": "text", "data": content.text}
 
                 # ツール完了直後にマークダウンを送信（スピナーを即座に停止）
@@ -447,7 +444,7 @@ async def invoke(payload, context=None):
                 if retry_event is _STREAM_SENTINEL:
                     break
 
-                slide_progress_event = get_slide_progress_event()
+                slide_progress_event = consume_slide_progress_event()
                 if slide_progress_event:
                     yield slide_progress_event
 

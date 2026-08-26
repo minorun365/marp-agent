@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { MESSAGES } from '../constants';
 import { createMessage } from '../types';
-import { appendSlideProgress, applyToolUse } from './useChatMessages';
+import { appendSlideProgress, applyToolUse, settleMessagesBeforeText } from './useChatMessages';
+
+describe('settleMessagesBeforeText', () => {
+  it('Grokの途中テキストが届いてもスライド修正中を完了へ変えない', () => {
+    const messages = [
+      createMessage({
+        role: 'assistant',
+        content: '',
+        isStatus: true,
+        statusText: MESSAGES.SLIDE_FIXING,
+      }),
+    ];
+
+    const result = settleMessagesBeforeText(messages);
+
+    expect(result[0].statusText).toBe(MESSAGES.SLIDE_FIXING);
+  });
+
+  it('途中テキストの前にWeb検索は完了へ切り替える', () => {
+    const messages = applyToolUse([], 'web_search', 'MCP roadmap');
+
+    const result = settleMessagesBeforeText(messages);
+
+    expect(result[0].statusText).toBe('Web検索完了 "MCP roadmap"');
+  });
+});
 
 describe('appendSlideProgress', () => {
   it('作成中表示を完了させてから検査結果を会話へ追加する', () => {

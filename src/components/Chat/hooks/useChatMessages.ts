@@ -29,7 +29,7 @@ export function appendSlideProgress(messages: Message[], message: string): Messa
     }),
     createMessage({ role: 'assistant', content: message }),
     // 検査結果を伝えた直後に修正中の表示を立てる。次のoutput_slideが届くまで
-    // Kimiはスライド全文を作り直すため、ここを空けると画面が無言のまま止まる。
+    // モデルはスライド全文を作り直すため、ここを空けると画面が無言のまま止まる。
     createMessage({ role: 'assistant', content: '', isStatus: true, statusText: MESSAGES.SLIDE_FIXING, tipIndex: undefined }),
   ];
 }
@@ -57,6 +57,13 @@ function completeActiveWebStatuses(messages: Message[]): Message[] {
     }
     return message;
   });
+}
+
+export function settleMessagesBeforeText(messages: Message[]): Message[] {
+  // モデルの文章が届いても、スライドはMarkdownを受け取るまで完了ではない。
+  // 検査差し戻し時の途中テキストで「作成しました」へ変えると、再生成中なのに
+  // 画面が止まったように見える。検索・取得だけを完了へ切り替える。
+  return completeActiveWebStatuses(messages);
 }
 
 export function applyToolUse(messages: Message[], toolName: string, query?: string): Message[] {
@@ -328,18 +335,7 @@ export function useChatMessages({
           setStatus('');
           stopTipRotation();
           setMessages(prev => {
-            const msgs = prev.map(msg => {
-              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
-                return { ...msg, statusText: toCompletedWebStatus(msg.statusText) };
-              }
-              if (msg.isStatus && msg.statusText?.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
-                return { ...msg, statusText: toCompletedWebStatus(msg.statusText) };
-              }
-              if (msg.isStatus && isSlideInProgressStatus(msg.statusText)) {
-                return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
-              }
-              return msg;
-            });
+            const msgs = settleMessagesBeforeText(prev);
             let lastStatusIdx = -1;
             let lastTextAssistantIdx = -1;
             for (let i = msgs.length - 1; i >= 0; i--) {
@@ -365,7 +361,7 @@ export function useChatMessages({
           setStatus('');
           stopTipRotation();
           setMessages(prev => appendSlideProgress(prev, message));
-          // 修正中の待ち時間もTipsを回す。Kimiはスライド全文を作り直すので長い
+          // 修正中の待ち時間もTipsを回す。スライド全文を作り直すので長い
           startTipRotation(setMessages);
         },
         onStatus: (newStatus) => {
