@@ -1,14 +1,42 @@
 """テスト用の共通設定 - 外部モジュールのモック"""
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 from unittest.mock import MagicMock
 
 # strands, tavily, bedrock_agentcore, boto3, requests をモック（ローカルにはインストールされていない）
 mock_strands = MagicMock()
-mock_strands.tool = lambda func: setattr(func, 'tool_func', func) or func
+
+
+def mock_tool(func=None, **_kwargs):
+    def decorate(wrapped):
+        setattr(wrapped, 'tool_func', wrapped)
+        return wrapped
+
+    return decorate(func) if func is not None else decorate
+
+
+mock_strands.tool = mock_tool
 sys.modules["strands"] = mock_strands
 sys.modules["strands.models"] = MagicMock()
+
+mock_strands_types = ModuleType("strands.types")
+mock_strands_types_tools = ModuleType("strands.types.tools")
+
+
+@dataclass
+class ToolContext:
+    tool_use: dict[str, Any]
+    agent: Any
+    invocation_state: dict[str, Any]
+
+
+mock_strands_types_tools.ToolContext = ToolContext
+mock_strands_types.tools = mock_strands_types_tools
+sys.modules["strands.types"] = mock_strands_types
+sys.modules["strands.types.tools"] = mock_strands_types_tools
 
 mock_tavily = MagicMock()
 sys.modules["tavily"] = mock_tavily

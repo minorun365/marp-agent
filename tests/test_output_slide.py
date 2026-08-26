@@ -2,6 +2,7 @@
 import re
 
 import pytest
+from strands.types.tools import ToolContext
 
 from tools.output_slide import (
     configure_slide_validation,
@@ -42,6 +43,45 @@ def test_output_slide_stores_markdown():
 
     assert result == "スライドを出力しました。"
     assert get_generated_markdown() == markdown
+
+
+def test_successful_output_stops_agent_before_final_model_call():
+    """確定後の空の終了返答のために、Grokをもう1回呼ばない。"""
+    reset_generated_markdown()
+    invocation_state = {"request_state": {}}
+    tool_context = ToolContext(
+        tool_use={"toolUseId": "tool-1", "name": "output_slide", "input": {}},
+        agent=None,
+        invocation_state=invocation_state,
+    )
+    markdown = (
+        "## テスト\n\n"
+        "処理内容と判断への影響を、十分な情報量の通常文章で説明します。"
+        "利用者が次に選ぶべき対応と、その理由まで具体的に示します。"
+    )
+
+    result = output_slide(markdown=markdown, tool_context=tool_context)
+
+    assert result == "スライドを出力しました。"
+    assert invocation_state["request_state"]["stop_event_loop"] is True
+
+
+def test_rejected_output_keeps_agent_loop_running():
+    """修正が必要なときだけは、同じループでGrokへ直させる。"""
+    reset_generated_markdown()
+    configure_slide_validation("1枚の資料を作って", "grok")
+    invocation_state = {"request_state": {}}
+    tool_context = ToolContext(
+        tool_use={"toolUseId": "tool-2", "name": "output_slide", "input": {}},
+        agent=None,
+        invocation_state=invocation_state,
+    )
+    markdown = "## 1枚目\n\n十分な内容です。\n\n---\n\n## 2枚目\n\n余分なページです。"
+
+    result = output_slide(markdown=markdown, tool_context=tool_context)
+
+    assert "総枚数" in result
+    assert invocation_state["request_state"].get("stop_event_loop") is not True
 
 
 def test_get_generated_markdown_initial_none():

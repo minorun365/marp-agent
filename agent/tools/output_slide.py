@@ -6,6 +6,7 @@ import unicodedata
 from urllib.parse import urlparse
 
 from strands import tool
+from strands.types.tools import ToolContext
 
 from .http_request import get_url_fetched
 from .web_search import get_search_result_urls
@@ -1350,8 +1351,8 @@ def reset_generated_markdown() -> None:
     _slide_progress_message = None
 
 
-@tool
-def output_slide(markdown: str) -> str:
+@tool(context=True)
+def output_slide(markdown: str, tool_context: ToolContext | None = None) -> str:
     """生成したスライドのマークダウンを出力します。スライドを作成・編集したら必ずこのツールを使って出力してください（テキストで直接書き出さない）。
 
     ## Marpフォーマットルール
@@ -1625,4 +1626,8 @@ def output_slide(markdown: str) -> str:
     _generated_markdown = markdown
     _overflow_retry_count = 0
     _slide_finalized = True
+    if tool_context is not None:
+        request_state = tool_context.invocation_state.setdefault('request_state', {})
+        request_state['stop_event_loop'] = True
+        print("[INFO] output_slide finalized; stopping agent loop before final model call")
     return "スライドを出力しました。"
