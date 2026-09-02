@@ -70,17 +70,50 @@ function classifySlide(slide) {
   return 'prose';
 }
 
+function normalSlideHeading(slide) {
+  return slide.match(/^##\s+(.+)$/m)?.[1]?.replace(/[*_`]/g, '').trim() || '';
+}
+
+function proseSentenceCount(slide) {
+  const body = slide
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !/^#{1,6}\s/.test(line) && !/^<!--.*-->$/.test(line))
+    .join('');
+  return (body.match(/[。！？]/g) || []).length;
+}
+
+function isNarrativeHeading(heading) {
+  if (!heading) return false;
+  if ([...heading].length > 22) return true;
+  const sentenceEnding = /(?:する|した|なる|なった|動く|残らない|変わる|変わった|決める|進める|防ぐ)$/.test(heading);
+  return sentenceEnding && (
+    heading.includes('、')
+    || heading.includes('ことが')
+    || heading.includes('ことより')
+    || /(?:て|で)(?:動く|進める)$/.test(heading)
+  );
+}
+
 function analyzeMarkdown(markdown, prompt) {
   const slides = splitSlides(markdown);
   const requestedCounts = [...prompt.matchAll(/(\d{1,2})\s*枚/g)];
   const requestedSlideCount = requestedCounts.length
     ? Number(requestedCounts.at(-1)[1])
     : null;
-  const classified = slides.map((slide) => ({
-    type: classifySlide(slide),
-    visualLines: visualLineCount(slide),
-    listItems: listItemCount(slide),
-  }));
+  const classified = slides.map((slide, index) => {
+    const type = classifySlide(slide);
+    const heading = normalSlideHeading(slide);
+    return {
+      slide: index + 1,
+      type,
+      heading,
+      narrativeHeading: isNarrativeHeading(heading),
+      proseSentences: type === 'prose' ? proseSentenceCount(slide) : 0,
+      visualLines: visualLineCount(slide),
+      listItems: listItemCount(slide),
+    };
+  });
   const regular = classified.filter(({ type }) => !['top', 'lead', 'end', 'sources'].includes(type));
   const repeatedPatterns = [];
   for (let index = 1; index < regular.length; index += 1) {
@@ -106,14 +139,21 @@ function analyzeMarkdown(markdown, prompt) {
     slidesOverThreeItems: listItemCounts.filter((count) => count > 3).length,
     maxConsecutiveListSlides,
   };
-  listQualityGate.passed = listQualityGate.slidesOverThreeItems === 0
-    && listQualityGate.maxConsecutiveListSlides <= 2;
-  const formatQualityGate = {
-    contentFormatCount: contentFormats.size,
-    minimum: regular.length >= 6 ? 3 : null,
+  listQualityGate.passed = listQualityGate.slidesOverThreeItems === 0;
+  const proseSlides = regular.filter(({ type }) => type === 'prose');
+  const languageStyleGate = {
+    narrativeHeadings: regular
+      .filter(({ narrativeHeading }) => narrativeHeading)
+      .map(({ slide, heading }) => ({ slide, heading })),
+    documentLikeProseSlides: proseSlides
+      .filter(({ proseSentences }) => proseSentences >= 3)
+      .map(({ slide, proseSentences }) => ({ slide, sentenceCount: proseSentences })),
+    proseSlideCount: proseSlides.length,
+    maximumProseSlides: Math.max(1, Math.ceil(regular.length * 0.25)),
   };
-  formatQualityGate.passed = formatQualityGate.minimum === null
-    || formatQualityGate.contentFormatCount >= formatQualityGate.minimum;
+  languageStyleGate.passed = languageStyleGate.narrativeHeadings.length === 0
+    && languageStyleGate.documentLikeProseSlides.length === 0
+    && languageStyleGate.proseSlideCount <= languageStyleGate.maximumProseSlides;
 
   return {
     slideCount: slides.length,
@@ -134,7 +174,7 @@ function analyzeMarkdown(markdown, prompt) {
     listItemCounts,
     listQualityGate,
     contentFormatCount: contentFormats.size,
-    formatQualityGate,
+    languageStyleGate,
     repeatedPatterns,
     patternCounts: Object.fromEntries(
       [...new Set(regular.map(({ type }) => type))]
@@ -167,19 +207,21 @@ async function authenticate(runtimeConfig, env) {
   return token;
 }
 
-async function invokeRuntime({ runtimeConfig, accessToken, model, prompt, theme }) {
-  const runtimeArn = runtimeConfig.agent.runtimeArn;
-  const region = runtimeArn.split(':')[3];
-  const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodeURIComponent(runtimeArn)}/invocations?qualifier=DEFAULT`;
+async function invokeRuntime({ runtimeConfig, accessToken, endpoint, model, prompt, theme }) {
+  const runtimeArn = runtimeConfig?.agent.runtimeArn;
+  const region = runtimeArn?.split(':')[3];
+  const url = endpoint
+    || `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodeURIComponent(runtimeArn)}/invocations?qualifier=DEFAULT`;
   const startedAt = Date.now();
+  const headers = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json',
+    'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': randomUUID(),
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      Accept: 'text/event-stream',
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': randomUUID(),
-    },
+    headers,
     body: JSON.stringify({ prompt, markdown: '', model_type: model, theme }),
   });
   if (!response.ok || !response.body) {
@@ -217,16 +259,21 @@ async function main() {
   const model = args.model || 'sonnet';
   const outputBase = path.resolve(args.output || `/tmp/marp-agent-eval/${model}`);
   const root = path.resolve(import.meta.dirname, '..');
-  const [runtimeConfigText, envText] = await Promise.all([
-    readFile(path.join(root, 'runtime-config.local.json'), 'utf8'),
-    readFile(path.join(root, '.env'), 'utf8'),
-  ]);
-  const runtimeConfig = JSON.parse(runtimeConfigText);
-  const env = parseEnv(envText);
-  const accessToken = await authenticate(runtimeConfig, env);
+  let runtimeConfig;
+  let accessToken;
+  if (!args.endpoint) {
+    const [runtimeConfigText, envText] = await Promise.all([
+      readFile(path.join(root, 'runtime-config.local.json'), 'utf8'),
+      readFile(path.join(root, '.env'), 'utf8'),
+    ]);
+    runtimeConfig = JSON.parse(runtimeConfigText);
+    const env = parseEnv(envText);
+    accessToken = await authenticate(runtimeConfig, env);
+  }
   const result = await invokeRuntime({
     runtimeConfig,
     accessToken,
+    endpoint: args.endpoint,
     model,
     prompt: args.prompt || DEFAULT_PROMPT,
     theme: args.theme || 'speee',
@@ -251,7 +298,7 @@ async function main() {
   console.log(JSON.stringify(report, null, 2));
   if (
     args.strict === 'true'
-    && (!report.analysis.listQualityGate.passed || !report.analysis.formatQualityGate.passed)
+    && (!report.analysis.listQualityGate.passed || !report.analysis.languageStyleGate.passed)
   ) {
     process.exitCode = 1;
   }

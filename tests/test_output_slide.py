@@ -20,7 +20,6 @@ from tools.output_slide import (
     _check_slide_structure,
     _classify_slide_format,
     _count_list_items,
-    _minimum_balanced_list_slides,
     _repair_slides_mechanically,
     _get_display_width,
     _strip_markdown_formatting,
@@ -175,7 +174,7 @@ def test_trim_excess_slides_preserves_special_slides_and_distributes_body():
 def test_slide_validation_progress_is_consumed_once():
     """検査結果は簡潔な進捗として1回だけ取得できる"""
     reset_generated_markdown()
-    lines = ["## 見出し"] + [f"説明文{i}をここへ置きます。" for i in range(1, 11)]
+    lines = ["## 見出し"] + [f"説明文{i}をここへ置きます" for i in range(1, 11)]
     markdown = "---\nmarp: true\n---\n\n" + "\n".join(lines)
 
     output_slide(markdown=markdown)
@@ -1432,15 +1431,8 @@ class TestThinSlideValidation:
         assert result == "スライドを出力しました。"
 
 
-class TestGrokListVarietyValidation:
-    @pytest.mark.parametrize(
-        ("body_slide_count", "expected"),
-        [(2, 0), (3, 1), (5, 1), (6, 2), (9, 2), (10, 3), (16, 3)],
-    )
-    def test_minimum_balanced_list_slides(self, body_slide_count, expected):
-        assert _minimum_balanced_list_slides(body_slide_count) == expected
-
-    """Grokが5項目の箇条書きを連続させる回帰を防ぐ。"""
+class TestGrokJapaneseSlideStyleValidation:
+    """Grokが説明文を並べた読み物へ戻る回帰を防ぐ。"""
 
     @staticmethod
     def _slide(title, item_count):
@@ -1450,16 +1442,12 @@ class TestGrokListVarietyValidation:
         )
         return f"## {title}\n\n{items}"
 
-    def test_four_list_items_are_converted_without_grok_retry(self):
+    def test_four_list_items_request_grok_revision(self):
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "grok")
         result = output_slide(markdown=self._slide("課題", 4))
-        generated = get_generated_markdown()
-
-        assert result == "スライドを出力しました。"
-        assert generated is not None
-        assert "- 課題の論点" not in generated
-        assert "課題の論点4" in generated
+        assert "リストが4項目" in result
+        assert get_generated_markdown() is None
 
     def test_three_list_items_are_accepted_for_grok(self):
         reset_generated_markdown()
@@ -1467,186 +1455,56 @@ class TestGrokListVarietyValidation:
         result = output_slide(markdown=self._slide("課題", 3))
         assert result == "スライドを出力しました。"
 
-    def test_six_prose_slides_gain_two_spaced_list_slides(self):
-        """段落だけの資料は、離れた2枚を2項目のリストへ整える。"""
+    @pytest.mark.parametrize(
+        "heading",
+        [
+            "作ることより、見つけ統治することがボトルネックになった",
+            "在庫がなく、他チームは見つけられず、監査も残らない",
+            "統治の面と発見の面を分けて動く",
+        ],
+    )
+    def test_narrative_heading_requests_grok_revision(self, heading):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        markdown = f"## {heading}\n\n- 論点A\n- 論点B"
+        result = output_slide(markdown=markdown)
+        assert "説明文になっている" in result
+        assert get_generated_markdown() is None
+
+    def test_three_sentence_prose_requests_grok_revision(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
+        markdown = (
+            "## 導入の背景\n\n"
+            "各チームが個別に管理しています。検索できません。監査記録も残りません。"
+        )
+        result = output_slide(markdown=markdown)
+        assert "通常文が3文続いて読み物" in result
+        assert get_generated_markdown() is None
+
+    def test_prose_heavy_deck_requests_grok_revision(self):
         reset_generated_markdown()
         configure_slide_validation("資料を作って", "grok")
         prose = (
             "## 見出し{index}\n\n"
-            "最初の論点を理由とともに説明します。\n\n"
-            "次の論点が判断へ与える影響を説明します。"
+            "短い補足を置きます。次の観点も補います。"
         )
+        markdown = "\n\n---\n\n".join([
+            *(prose.format(index=index) for index in range(1, 5)),
+            self._slide("対策", 2),
+            self._slide("手順", 2),
+        ])
+        result = output_slide(markdown=markdown)
+        assert "通常文だけのページが4枚" in result
+        assert get_generated_markdown() is None
+
+    def test_consecutive_short_list_slides_are_accepted(self):
+        """普通の資料で自然な箇条書きの連続を、形式の数だけで崩さない。"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "grok")
         markdown = "\n\n---\n\n".join(
-            prose.format(index=index) for index in range(1, 7)
+            self._slide(title, 2) for title in ("現状", "課題", "対策")
         )
-
-        result = output_slide(markdown=markdown)
-        generated = get_generated_markdown()
-
-        assert result == "スライドを出力しました。"
-        assert generated is not None
-        formats = [
-            _classify_slide_format(slide) for slide in _parse_slides(generated)
-        ]
-        list_positions = [
-            index for index, slide_format in enumerate(formats) if slide_format == "list"
-        ]
-        assert len(list_positions) == 2
-        assert list_positions[1] - list_positions[0] > 1
-        assert all(
-            _count_list_items(_parse_slides(generated)[index]) == 2
-            for index in list_positions
-        )
-
-    def test_existing_balanced_list_is_preserved(self):
-        """本文4枚にリストが1枚あれば、通常文を追加変換しない。"""
-        reset_generated_markdown()
-        configure_slide_validation("資料を作って", "grok")
-        prose = (
-            "## 背景{index}\n\n"
-            "背景を通常の文章で説明し、現在起きている変化と理由を整理します。\n\n"
-            "判断への影響も通常の文章で説明し、次に選ぶ対応を明確にします。"
-        )
-        existing_list = self._slide("論点", 2)
-        markdown = "\n\n---\n\n".join([
-            prose.format(index=1),
-            existing_list,
-            prose.format(index=2),
-            prose.format(index=3),
-        ])
-
-        result = output_slide(markdown=markdown)
-        generated = get_generated_markdown()
-
-        assert result == "スライドを出力しました。"
-        assert generated is not None
-        assert sum(
-            _classify_slide_format(slide) == "list"
-            for slide in _parse_slides(generated)
-        ) == 1
-        assert "- 論点の論点1" in generated
-
-    def test_third_consecutive_list_slide_is_reformatted_without_grok_retry(self):
-        reset_generated_markdown()
-        configure_slide_validation("資料を作って", "grok")
-        markdown = "\n\n---\n\n".join([
-            self._slide("現状", 2),
-            self._slide("課題", 2),
-            self._slide("対策", 2),
-        ])
-        result = output_slide(markdown=markdown)
-        generated = get_generated_markdown()
-
-        assert result == "スライドを出力しました。"
-        assert generated is not None
-        assert [_classify_slide_format(slide) for slide in _parse_slides(generated)] == [
-            "list",
-            "list",
-            "prose",
-        ]
-
-    def test_prose_breaks_consecutive_list_run(self):
-        reset_generated_markdown()
-        configure_slide_validation("資料を作って", "grok")
-        prose = (
-            "## 転換点\n\n"
-            "課題を並べるだけでは優先順位を決められません。"
-            "影響の大きさと直しやすさを見比べて、着手順を決めます。"
-        )
-        markdown = "\n\n---\n\n".join([
-            self._slide("現状", 2),
-            self._slide("課題", 2),
-            prose,
-            self._slide("対策", 2),
-        ])
-        result = output_slide(markdown=markdown)
-        assert result == "スライドを出力しました。"
-
-    def test_six_body_slides_are_varied_without_grok_retry(self):
-        reset_generated_markdown()
-        configure_slide_validation("資料を作って", "grok")
-        prose = (
-            "## 見出し{index}\n\n"
-            "背景を説明する通常の文章を置きます。判断への影響と、"
-            "次に選ぶべき対応まで具体的に書きます。"
-        )
-        markdown = "\n\n---\n\n".join(
-            prose.format(index=index) for index in range(1, 7)
-        )
-        result = output_slide(markdown=markdown)
-        generated = get_generated_markdown()
-
-        assert result == "スライドを出力しました。"
-        assert generated is not None
-        formats = {_classify_slide_format(slide) for slide in _parse_slides(generated)}
-        assert len(formats) >= 3
-
-    def test_source_and_variety_repairs_avoid_full_deck_retry(self, monkeypatch):
-        """実障害の3違反を、検索済みURLと既存本文だけで解消する。"""
-        reset_generated_markdown()
-        configure_slide_validation("MCPロードマップを調べて資料を作って", "grok")
-        mark_web_search_executed()
-        import importlib
-
-        output_slide_module = importlib.import_module("tools.output_slide")
-        monkeypatch.setattr(
-            output_slide_module,
-            "get_search_result_urls",
-            lambda: [
-                "https://example.com/roadmap",
-                "https://example.com/identity",
-                "https://example.com/messaging",
-            ],
-        )
-        prose = (
-            "## 見出し{index}\n\n"
-            "背景と現在地を通常の文章で説明します。判断への影響と、"
-            "次に選ぶべき対応まで具体的に書きます。"
-        )
-        markdown = "\n\n---\n\n".join([
-            *(prose.format(index=index) for index in range(1, 7)),
-            "<!-- _class: tinytext -->\n\n## 参考文献\n\n- https://example.com/roadmap",
-        ])
-
-        result = output_slide(markdown=markdown)
-        generated = get_generated_markdown()
-
-        assert result == "スライドを出力しました。"
-        assert consume_slide_progress() is None
-        assert generated is not None
-        remaining_types = {
-            violation["type"] for violation in _check_slide_structure(generated)
-        }
-        assert not remaining_types & {
-            "format_diversity",
-            "missing_sources",
-            "missing_slide_sources",
-            "pattern_repetition",
-        }
-        assert generated.count("<!-- source:") == 6
-        assert "https://example.com/identity" in generated
-        assert "https://example.com/messaging" in generated
-
-    def test_three_formats_pass_the_deck_level_check(self):
-        reset_generated_markdown()
-        configure_slide_validation("資料を作って", "grok")
-        prose = (
-            "## 背景{index}\n\n"
-            "背景を説明する通常の文章を置きます。判断への影響と、"
-            "次に選ぶべき対応まで具体的に書きます。"
-        )
-        table = (
-            "## 比較\n\n| 観点 | A | B |\n| --- | --- | --- |\n"
-            "| 費用 | 小 | 大 |\n| 時間 | 短 | 長 |"
-        )
-        markdown = "\n\n---\n\n".join([
-            prose.format(index=1),
-            self._slide("現状", 2),
-            table,
-            prose.format(index=2),
-            self._slide("対策", 2),
-            prose.format(index=3),
-        ])
         result = output_slide(markdown=markdown)
         assert result == "スライドを出力しました。"
 

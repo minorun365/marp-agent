@@ -94,6 +94,10 @@ GROK_RETRY_VIOLATION_TYPES = frozenset({
     'missing_official_sources',
     'non_official_slide_sources',
     'irrelevant_slide_sources',
+    'list_item_overload',
+    'narrative_heading',
+    'document_like_prose',
+    'prose_page_overload',
 })
 # 英語記事のURLを渡されると本文がそのまま英語で出てくるため、日本語率で検知する。
 # 製品名・略語が多い日本語スライドを誤検知しないよう、
@@ -118,13 +122,12 @@ MAX_DISPLAY_WIDTH_PER_LINE = 64
 # 全角36文字ぶんあれば、短い箇条書き2〜3項目でも十分な情報量とみなす。
 MIN_BODY_DISPLAY_WIDTH = 72
 # Grokは「4〜6要素」の指示を、5項目の箇条書きとして満たしやすい。
-# Sonnet時代の出力に合わせ、リストは1枚3項目まで、3ページ連続は禁止する。
+# Sonnet時代の出力に合わせ、リストは1枚3項目までとする。
 MAX_LIST_ITEMS_PER_SLIDE = 3
-MAX_CONSECUTIVE_LIST_SLIDES = 2
-# 箇条書きを抑えすぎて段落だけの資料へ戻らないよう、本文枚数に応じて
-# 2〜3項目のリストを1〜3枚使う。上限と下限を両方持つことで単調さを防ぐ。
-MIN_BODY_SLIDES_FOR_LIST_BALANCE = 3
-MAX_BALANCED_LIST_SLIDES = 3
+# 通常文ページは資料全体の4分の1程度まで。形式の配分を固定するためではなく、
+# 説明文の段落だけが続く「読み物」への回帰を検知する上限として使う。
+MAX_PROSE_SLIDE_RATIO = 0.25
+MAX_NARRATIVE_HEADING_WIDTH = 44
 # テーブル行の最大表示幅（半角換算）
 # 2026-08-19実測: 表はセル内で折り返すので横にはみ出さない（旧コメントの
 # 「折り返されず横にはみ出す」は誤り）。3列×1セル16字＝行全体で半角96でも
@@ -369,13 +372,6 @@ def _count_list_items(slide_content: str) -> int:
     )
 
 
-def _minimum_balanced_list_slides(body_slide_count: int) -> int:
-    """本文枚数に応じた、資料全体の最低リスト枚数を返す。"""
-    if body_slide_count < MIN_BODY_SLIDES_FOR_LIST_BALANCE:
-        return 0
-    return min(MAX_BALANCED_LIST_SLIDES, max(1, (body_slide_count + 2) // 4))
-
-
 def _body_display_width(slide_content: str) -> int:
     """見出し・コメント・表区切りを除いた本文の総表示幅を返す。"""
     width = 0
@@ -422,6 +418,48 @@ def _classify_slide_format(slide_content: str) -> str:
     if _count_list_items(slide_content) >= 2:
         return 'list'
     return 'prose'
+
+
+def _normal_slide_heading(slide_content: str) -> str:
+    """通常スライドの見出し本文を返す。"""
+    match = re.search(r'^##\s+(.+)$', slide_content, re.MULTILINE)
+    return _strip_markdown_formatting(match.group(1)).strip() if match else ''
+
+
+def _is_narrative_heading(heading: str) -> bool:
+    """項目名ではなく、複数節をつないだ説明文になっている見出しを検知する。"""
+    if not heading:
+        return False
+    if _get_display_width(heading) > MAX_NARRATIVE_HEADING_WIDTH:
+        return True
+    sentence_ending = re.search(
+        r'(?:する|した|なる|なった|動く|残らない|変わる|変わった|決める|進める|防ぐ)$',
+        heading,
+    )
+    return bool(
+        sentence_ending
+        and (
+            '、' in heading
+            or 'ことが' in heading
+            or 'ことより' in heading
+            or re.search(r'(?:て|で)(?:動く|進める)$', heading)
+        )
+    )
+
+
+def _prose_sentence_count(slide_content: str) -> int:
+    """通常文ページの本文にある文末記号の数を返す。"""
+    body_lines = []
+    for line in slide_content.split('\n'):
+        stripped = line.strip()
+        if (
+            not stripped
+            or re.match(r'^#{1,6}\s', stripped)
+            or re.match(r'^<!--.*-->$', stripped)
+        ):
+            continue
+        body_lines.append(_strip_markdown_formatting(stripped))
+    return len(re.findall(r'[。！？]', ''.join(body_lines)))
 
 
 def _check_table_width(slide_content: str) -> int:
@@ -725,13 +763,13 @@ def _check_slide_structure(markdown: str) -> list[dict]:
             })
 
     if _active_model_type == 'grok':
-        consecutive_list_slides = 0
         body_formats = []
+        prose_slide_numbers = []
         for index, slide in enumerate(slides, start=1):
             if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
-                consecutive_list_slides = 0
                 continue
-            body_formats.append(_classify_slide_format(slide))
+            slide_format = _classify_slide_format(slide)
+            body_formats.append(slide_format)
             list_item_count = _count_list_items(slide)
             if list_item_count > MAX_LIST_ITEMS_PER_SLIDE:
                 violations.append({
@@ -740,17 +778,24 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                     'count': list_item_count,
                     'maximum': MAX_LIST_ITEMS_PER_SLIDE,
                 })
-            if list_item_count >= 2:
-                consecutive_list_slides += 1
-            else:
-                consecutive_list_slides = 0
-            if consecutive_list_slides > MAX_CONSECUTIVE_LIST_SLIDES:
+
+            heading = _normal_slide_heading(slide)
+            if _is_narrative_heading(heading):
                 violations.append({
-                    'type': 'list_page_run',
+                    'type': 'narrative_heading',
                     'slide_number': index,
-                    'run_length': consecutive_list_slides,
-                    'maximum': MAX_CONSECUTIVE_LIST_SLIDES,
+                    'heading': heading,
                 })
+
+            if slide_format == 'prose':
+                prose_slide_numbers.append(index)
+                sentence_count = _prose_sentence_count(slide)
+                if sentence_count >= 3:
+                    violations.append({
+                        'type': 'document_like_prose',
+                        'slide_number': index,
+                        'sentence_count': sentence_count,
+                    })
 
             if (
                 not _has_visual_main_content(slide)
@@ -761,21 +806,19 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                     'slide_number': index,
                     'display_width': _body_display_width(slide),
                 })
-        if len(body_formats) >= 6 and len(set(body_formats)) < 3:
+
+        maximum_prose_slides = max(1, math.ceil(len(body_formats) * MAX_PROSE_SLIDE_RATIO))
+        if len(prose_slide_numbers) > maximum_prose_slides:
             violations.append({
-                'type': 'format_diversity',
-                'actual': len(set(body_formats)),
-                'minimum': 3,
-                'formats': sorted(set(body_formats)),
+                'type': 'prose_page_overload',
+                'slides': prose_slide_numbers,
+                'actual': len(prose_slide_numbers),
+                'maximum': maximum_prose_slides,
             })
 
     if _active_model_type in {'kimi', 'glm', 'grok'}:
-        previous_pattern = None
-        consecutive_pattern_count = 0
         for index, slide in enumerate(slides, start=1):
             if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
-                previous_pattern = None
-                consecutive_pattern_count = 0
                 continue
             bold_count = len(re.findall(r'\*\*.+?\*\*', slide))
             if bold_count > 2:
@@ -784,6 +827,15 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                     'slide_number': index,
                     'count': bold_count,
                 })
+
+    if _active_model_type in {'kimi', 'glm'}:
+        previous_pattern = None
+        consecutive_pattern_count = 0
+        for index, slide in enumerate(slides, start=1):
+            if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
+                previous_pattern = None
+                consecutive_pattern_count = 0
+                continue
             pattern = _classify_slide_format(slide)
             if pattern == previous_pattern:
                 consecutive_pattern_count += 1
@@ -849,10 +901,14 @@ def _format_slide_progress(violations: list[dict]) -> str:
         'bold_overuse',
         'pattern_repetition',
         'list_item_overload',
-        'list_page_run',
-        'format_diversity',
     }:
         categories.append('見せ方の偏り')
+    if violation_types & {
+        'narrative_heading',
+        'document_like_prose',
+        'prose_page_overload',
+    }:
+        categories.append('文章の調子')
 
     summary = '、'.join(categories) if categories else '調整が必要な箇所'
     return f'{summary}を検知したので、スライドを修正します'
@@ -1214,209 +1270,6 @@ def _repair_sources_mechanically(markdown: str) -> str:
     return _rebuild_markdown(markdown, slides)
 
 
-def _list_to_prose(slide: str) -> str:
-    """箇条書きの内容を削らず、短い通常段落へ戻す。"""
-    lines = []
-    for line in slide.split('\n'):
-        match = LIST_ITEM_PATTERN.match(line)
-        lines.append(line[match.end():].strip() if match else line)
-    return '\n'.join(lines)
-
-
-def _prose_to_list(slide: str) -> str:
-    """通常文の2〜3段落を、内容を変えず同数の箇条書きへ整える。"""
-    if _classify_slide_format(slide) != 'prose':
-        return slide
-
-    lines = slide.split('\n')
-    body_line_indices = [
-        index
-        for index, line in enumerate(lines)
-        if line.strip()
-        and not re.match(r'^#{1,6}\s', line.strip())
-        and not re.match(r'^<!--.*-->$', line.strip())
-    ]
-    if not body_line_indices:
-        return slide
-
-    first_body = body_line_indices[0]
-    last_body = body_line_indices[-1]
-    body_lines = lines[first_body:last_body + 1]
-    if any(
-        re.match(r'^(?:#{1,6}\s|<!--.*-->|\||```|>)', line.strip())
-        for line in body_lines
-        if line.strip()
-    ):
-        return slide
-
-    paragraphs = []
-    current = []
-    for line in body_lines:
-        stripped = line.strip()
-        if stripped:
-            current.append(stripped)
-        elif current:
-            paragraphs.append(' '.join(current))
-            current = []
-    if current:
-        paragraphs.append(' '.join(current))
-
-    if len(paragraphs) == 1:
-        sentences = [
-            sentence.strip()
-            for sentence in re.findall(r'[^。！？]+[。！？]?', paragraphs[0])
-            if sentence.strip()
-        ]
-        if 2 <= len(sentences) <= MAX_LIST_ITEMS_PER_SLIDE:
-            paragraphs = sentences
-
-    if not 2 <= len(paragraphs) <= MAX_LIST_ITEMS_PER_SLIDE:
-        return slide
-
-    list_lines = [f'- {paragraph}' for paragraph in paragraphs]
-    rebuilt = lines[:first_body] + list_lines + lines[last_body + 1:]
-    return '\n'.join(rebuilt)
-
-
-def _add_subheading(slide: str) -> str:
-    """本文に小見出しを1つ加え、文章ページへ視覚的な区切りを作る。"""
-    if re.search(r'^###\s+', slide, re.MULTILINE):
-        return slide
-    lines = slide.split('\n')
-    for index, line in enumerate(lines):
-        if re.match(r'^##\s+', line.strip()):
-            lines.insert(index + 1, '### 要点')
-            return '\n'.join(lines)
-    return slide
-
-
-def _add_callout(slide: str) -> str:
-    """本文の1行を要点ボックスとして見せ、内容を変えずにメリハリを付ける。"""
-    if re.search(r'^>\s+', slide, re.MULTILINE):
-        return slide
-    lines = slide.split('\n')
-    for index, line in enumerate(lines):
-        stripped = line.strip()
-        if (
-            not stripped
-            or stripped.startswith(('#', '<!--', '|', '```'))
-            or re.match(r'^\d+[.)]\s+', stripped)
-        ):
-            continue
-        body = LIST_ITEM_PATTERN.sub('', stripped)
-        lines[index] = f'> {body}'
-        return '\n'.join(lines)
-    return slide
-
-
-def _repair_slide_variety_mechanically(markdown: str) -> str:
-    """既存本文を保ったまま、箇条書きの過不足と同じ型の連続を崩す。"""
-    if _active_model_type != 'grok':
-        return markdown
-    slides = _parse_slides(markdown)
-    if not slides:
-        return markdown
-    original_slides = slides.copy()
-
-    body_indices = [index for index, slide in enumerate(slides) if not _is_special_slide(slide)]
-
-    # 4項目以上の箇条書きと、リスト3枚目以降を通常段落へ戻す。
-    consecutive_lists = 0
-    for index in body_indices:
-        item_count = _count_list_items(slides[index])
-        consecutive_lists = consecutive_lists + 1 if item_count >= 2 else 0
-        if item_count > MAX_LIST_ITEMS_PER_SLIDE or consecutive_lists > MAX_CONSECUTIVE_LIST_SLIDES:
-            slides[index] = _list_to_prose(slides[index])
-            consecutive_lists = 0
-
-    # 箇条書きが少なすぎる場合は、2〜3段落ある通常文だけを均等に選んで
-    # 同数のリストへ整える。モデルの再呼び出しは増やさない。
-    minimum_list_slides = _minimum_balanced_list_slides(len(body_indices))
-    current_list_indices = [
-        index for index in body_indices if _classify_slide_format(slides[index]) == 'list'
-    ]
-    missing_list_slides = max(0, minimum_list_slides - len(current_list_indices))
-    if missing_list_slides:
-        convertible = []
-        body_positions = {index: position for position, index in enumerate(body_indices)}
-        occupied_positions = {
-            body_positions[index] for index in current_list_indices
-        }
-        for position, index in enumerate(body_indices):
-            if _classify_slide_format(slides[index]) != 'prose':
-                continue
-            if any(
-                abs(position - occupied_position) <= 1
-                for occupied_position in occupied_positions
-            ):
-                continue
-            transformed = _prose_to_list(slides[index])
-            if transformed != slides[index]:
-                convertible.append((position, index, transformed))
-
-        selected = []
-        while len(selected) < missing_list_slides:
-            blockers = occupied_positions | {position for position, _, _ in selected}
-            candidates = [
-                candidate
-                for candidate in convertible
-                if candidate not in selected
-                and all(abs(candidate[0] - blocker) > 1 for blocker in blockers)
-            ]
-            if not candidates:
-                break
-            edge_blockers = blockers | {-2, len(body_indices) + 1}
-            chosen = max(
-                candidates,
-                key=lambda candidate: (
-                    min(abs(candidate[0] - blocker) for blocker in edge_blockers),
-                    -abs(candidate[0] - (len(body_indices) - 1) / 2),
-                ),
-            )
-            selected.append(chosen)
-
-        for _, index, transformed in selected:
-            slides[index] = transformed
-
-    # 同じ型が3枚続いたら、3枚目だけを小見出しか要点ボックスへ変える。
-    previous_format = None
-    run_length = 0
-    for index in body_indices:
-        current_format = _classify_slide_format(slides[index])
-        run_length = run_length + 1 if current_format == previous_format else 1
-        previous_format = current_format
-        if run_length < 3:
-            continue
-        if current_format == 'list':
-            slides[index] = _list_to_prose(slides[index])
-        elif current_format == 'prose' and _count_content_lines(slides[index]) < MAX_LINES_PER_SLIDE:
-            slides[index] = _add_subheading(slides[index])
-        elif current_format not in {'table', 'code', 'visual'}:
-            slides[index] = _add_callout(slides[index])
-        previous_format = _classify_slide_format(slides[index])
-        run_length = 1
-
-    # 本文が6枚以上なら、最低3種類になるまで要点ボックスと小見出しを1枚ずつ使う。
-    formats = {_classify_slide_format(slides[index]) for index in body_indices}
-    if len(body_indices) >= 6 and len(formats) < 3:
-        for transform in (_add_callout, _add_subheading):
-            if len(formats) >= 3:
-                break
-            for index in body_indices:
-                current_format = _classify_slide_format(slides[index])
-                if current_format in {'table', 'code', 'visual', 'quote', 'subheading'}:
-                    continue
-                if transform is _add_subheading and _count_content_lines(slides[index]) >= MAX_LINES_PER_SLIDE:
-                    continue
-                transformed = transform(slides[index])
-                if transformed != slides[index]:
-                    slides[index] = transformed
-                    formats = {_classify_slide_format(slides[i]) for i in body_indices}
-                    break
-
-    return markdown if slides == original_slides else _rebuild_markdown(markdown, slides)
-
-
 def _repair_slides_mechanically(markdown: str) -> str:
     """LLMが直しきれなかった違反を、機械で確定的に解消する。
 
@@ -1487,7 +1340,7 @@ def output_slide(markdown: str, tool_context: ToolContext | None = None) -> str:
     - **見出しの階層【重要】**: タイトルスライドと中タイトル（`_class: lead`）の主題だけが `#`。通常スライドの見出しは `##`、小見出しは必要なときだけ `###`。テーマは `#` をタイトル用の大きさで描くので、通常スライドで使うと文字がはみ出す
     - **アジェンダ・目次**: ユーザーが明示した場合だけ作る。短い資料へ自動追加しない
     - **セクション区切り**: 8枚以下では作らない。10枚以上なら3〜5枚ごとに `<!-- _class: lead -->` の中タイトルスライドを挟む（12枚以下では最大2枚）
-    - **1枚の形【重要】**: 箇条書きだけを続けない。一方で箇条書きをゼロにせず、本文3〜5枚なら1枚、6〜9枚なら2枚、10枚以上なら3枚を目安に、2〜3項目の箇条書きページを離して配置する。比較・一覧・対応関係は表、定義や引用は `> 引用`、要点は太字を使い分ける。同じ形が3枚続かないようにする（このツールが自動検証）。どう書くかはページの中身しだいで、決まった型に当てはめない
+    - **1枚の形【重要】**: 並列する要点は2〜3項目の箇条書き、比較・一覧・対応関係は表、定義や実在する発言は `> 引用` を使う。通常の文章だけを置く場合は短い2文までにする。資料全体の形式を固定の枚数や順番へ当てはめない
     - **出典スライド**: Web検索時は最後に `<!-- _class: tinytext -->` 付きの参考文献スライドを追加
     - **裏表紙【必須】**: 最後のスライドは `<!-- _class: end --><!-- _paginate: skip -->` を付けて「Thank you!」とだけ表示
     - **表【重要】**: ヘッダー行の直後に `| --- | --- | --- |` の区切り行を必ず置く。無いと表として描画されない。2〜3列にし、セル内容は全角10文字以内（横幅はこのツールが自動検証）
@@ -1515,7 +1368,6 @@ def output_slide(markdown: str, tool_context: ToolContext | None = None) -> str:
     markdown = _repair_table_separators(markdown)
     initial_violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
     markdown = _repair_sources_mechanically(markdown)
-    markdown = _repair_slide_variety_mechanically(markdown)
     violations = _check_slide_overflow(markdown) + _check_slide_structure(markdown)
     resolved_types = sorted(
         {violation['type'] for violation in initial_violations}
@@ -1590,16 +1442,20 @@ def output_slide(markdown: str, tool_context: ToolContext | None = None) -> str:
                     f"  - スライド{v['slide_number']}: リストが{v['count']}項目。"
                     f"{v['maximum']}項目以内へ絞り、残りは表・通常の文章・別ページへ組み替える"
                 )
-            elif v['type'] == 'list_page_run':
+            elif v['type'] == 'narrative_heading':
                 details.append(
-                    f"  - スライド{v['slide_number']}: リスト中心のページが{v['run_length']}枚連続。"
-                    "3枚目を表・通常の文章・引用・定義・コードのいずれかへ組み替える"
+                    f"  - スライド{v['slide_number']}: 見出し「{v['heading']}」が説明文になっている。"
+                    "結論や物語を言い切らず、このページの項目名を4〜18文字の短い名詞句で付ける"
                 )
-            elif v['type'] == 'format_diversity':
+            elif v['type'] == 'document_like_prose':
                 details.append(
-                    f"  - 本文全体の見せ方が{v['actual']}種類しかない"
-                    f"（現在: {', '.join(v['formats'])}）。"
-                    f"通常の文章・リスト・表・引用や定義・コードから最低{v['minimum']}種類を使う"
+                    f"  - スライド{v['slide_number']}: 通常文が{v['sentence_count']}文続いて読み物になっている。"
+                    "並列する要点を2〜3項目へ分け、通常文なら短い2文までにする"
+                )
+            elif v['type'] == 'prose_page_overload':
+                details.append(
+                    f"  - 通常文だけのページが{v['actual']}枚（上限{v['maximum']}枚、該当: {v['slides']}）。"
+                    "背景や理由も説明段落にせず、短い要点・表・定義など内容に合う形へ直す"
                 )
             elif v['type'] == 'slide_count':
                 difference = v['actual'] - v['expected']

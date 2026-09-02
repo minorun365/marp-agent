@@ -189,14 +189,15 @@ def test_url_reference_mode_prompt_keeps_the_normal_structure_rules():
     assert "読んでいない前提" in prompt
 
 
-def test_grok_system_prompt_keeps_layout_variety_without_sentence_templates():
-    """Grok向けの指示は、文章の型を固定せず見せ方の偏りだけを防ぐ。
+def test_grok_system_prompt_keeps_plain_japanese_slide_style():
+    """Grok向けの指示は、物語調と説明段落を普通の資料へ戻す。
 
     Kimi向けに積み上げた文章の型（結論を言い切る見出し、リード文を必ず置く、
     表現パターンA〜Eのローテーション）をGrokへ持ち込むと、資料が読者へ
     語りかける調子になって不自然になる（2026-08-20にみのるんから指摘）。
-    素のGrokは指示が無いほうが淡々とした資料調で書くので、足すのは
-    「無いと崩れる・検査に落ちる」ものだけにする。
+    2026-08-26〜27の箇条書き偏重対策で「背景・理由・結論は通常の文章」
+    と形式の固定配分が入り、同じ読み物調が再発した。文章の型を増やさず、
+    普通の短い項目名と要点へ戻す。
     """
     prompt = get_system_prompt("speee", "grok")
 
@@ -213,14 +214,25 @@ def test_grok_system_prompt_keeps_layout_variety_without_sentence_templates():
     assert "何をしているかを短く言いながら進めるのは構わない" in prompt
     assert "前置き" not in prompt
 
-    # 箇条書きの量と連続は数えられる形で制限する
+    # 普通の資料として、短い見出しと要点を使う
+    assert "原則4〜18文字の短い名詞句" in prompt
+    assert "結論を一文で言い切ったり" in prompt
+    assert "3文以上の説明段落を置かない" in prompt
+    assert "通常の文章だけを置くページは例外" in prompt
     assert "箇条書きと番号付きリストは1枚2〜3項目まで" in prompt
     assert "4項目以上を並べない" in prompt
-    assert "箇条書き中心のページを3枚連続させない" in prompt
-    assert "最低3種類を使う" in prompt
-    assert "同じ形を3枚連続させない" in prompt
-    assert "各行へ `-` を付けず" in prompt
+    assert "ページ形式の使用枚数や並び順を数で決めない" in prompt
     assert "引用枠へ気の利いた格言を作らない" in prompt
+
+    # 実際に再発した見出しを否定例として固定する
+    assert "作ることより、見つけ統治することがボトルネックになった" in prompt
+    assert "在庫がなく、他チームは見つけられず、監査も残らない" in prompt
+    assert "統治の面と発見の面を分けて動く" in prompt
+
+    # 形式の固定配分は文章を歪めるので戻さない
+    assert "本文3〜5枚なら1枚" not in prompt
+    assert "最低3種類を使う" not in prompt
+    assert "各行へ `-` を付けず" not in prompt
 
     # 文章の型は指示しない
     for banned in (
@@ -322,8 +334,8 @@ def test_output_slide_doc_keeps_only_marp_requirements():
     # 表現の幅（表・引用・太字の使い分けとセクション区切り）は、型の指定ではなく
     # 道具の提示なので残す。これを外すと資料が箇条書きだけの質素な見た目になる
     assert "3〜5枚ごとに" in doc
-    assert "箇条書きだけを続けない" in doc
-    assert "決まった型に当てはめない" in doc
+    assert "並列する要点は2〜3項目の箇条書き" in doc
+    assert "固定の枚数や順番へ当てはめない" in doc
     assert "通常スライドの見出しは `##`" in doc
     assert "区切り行を必ず置く" in doc
     assert "_class: end" in doc
