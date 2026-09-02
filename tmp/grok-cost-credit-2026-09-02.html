@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0d6a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Grok移行後のAWS利用料｜クレジット全額適用を確認</title>
+  <style>
+    :root{
+      --blue-deep:#0e0d6a;--blue:#0a4695;--blue-mid:#0862aa;--blue-bright:#0aa0dc;
+      --blue-soft:#eaf2fb;--blue-line:#cfe0f2;
+      --blue-grad:linear-gradient(135deg,#0e0d6a 0%,#0a4695 45%,#0862aa 68%,#01b6ec 100%);
+      --ink:#15151a;--sub:#4a4a54;--mut:#767680;--line:#e8e8ee;--soft:#f7f8fa;
+      --gray-grad:linear-gradient(135deg,#2f2f37 0%,#474751 55%,#6a6a75 100%);
+      --gold:#f0b21f;--gold-deep:#8a5a00;--gold-soft:#fdf5e0;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+      color:var(--ink);line-height:1.85;font-size:15.5px;-webkit-font-smoothing:antialiased;
+      -webkit-text-size-adjust:100%;font-feature-settings:"palt" 1}
+    .wrap{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+    .wrap p{margin:10px 0}
+
+    .hero{background:var(--blue-grad);padding:calc(64px + env(safe-area-inset-top,0px)) 0 46px}
+    .hero-in{max-width:940px;margin:0 auto;padding:0 max(22px,env(safe-area-inset-left))}
+    .hero,.hero *{color:#fff}
+    .hero code{color:#fff;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.3)}
+    .hero .kicker{font-size:12px;letter-spacing:.16em;font-weight:700;opacity:.72;display:block;margin-bottom:14px}
+    .hero h1{font-size:31px;line-height:1.36;margin:0 0 16px;letter-spacing:.005em;font-weight:700}
+    .hero .sub{font-size:15px;opacity:.93;margin:0;font-weight:500}
+    .hero .meta{font-size:12.5px;opacity:.74;margin-top:26px;padding-top:16px;
+      border-top:1px solid rgba(255,255,255,.22);line-height:1.9}
+
+    .toc{margin:34px 0 0;padding:20px 24px;background:var(--soft);border-radius:16px}
+    .toc h2{font-size:12px;letter-spacing:.14em;color:var(--mut);margin:0 0 12px;font-weight:700}
+    .toc ol{margin:0;padding:0;list-style:none;display:grid;gap:2px 28px;
+      grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+    .toc li{margin:0}.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;
+      color:var(--sub);font-size:14px;padding:5px 0}.toc a:hover{color:var(--blue-deep)}
+    .toc a .num{font-size:11.5px;font-weight:700;color:var(--blue-bright);
+      font-variant-numeric:tabular-nums;flex:none;min-width:18px}
+
+    section{position:relative;margin:0;padding:46px 0 36px;border-top:1px solid var(--line)}
+    section:first-of-type{border-top:0}
+    section::before{content:"";position:absolute;top:-1px;left:0;width:72px;height:3px;
+      border-radius:3px;background:var(--blue-grad)}
+    section:first-of-type::before{display:none}
+    .eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.14em;margin:0 0 8px;
+      font-variant-numeric:tabular-nums;color:var(--blue);width:max-content;background:var(--blue-grad);
+      -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    h2{font-size:23px;line-height:1.45;margin:0 0 12px;color:var(--blue-deep);
+      font-weight:700;letter-spacing:.005em}
+    h3{font-size:16.5px;margin:34px 0 8px;color:var(--blue-deep);font-weight:700;
+      padding-left:13px;border-left:3px solid var(--blue-bright);line-height:1.5}
+    .lead{color:var(--sub);margin:0 0 20px;font-size:14.5px;line-height:1.85}
+
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));margin:20px 0}
+    .card{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden;
+      transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+    .card:hover{border-color:var(--blue-line);box-shadow:0 6px 22px rgba(14,13,106,.07);transform:translateY(-2px)}
+    .card>h4{margin:0;padding:11px 18px;background-image:var(--blue-grad);color:#fff;
+      font-size:14px;font-weight:700;letter-spacing:.02em;line-height:1.5}
+    .card>h4 span{font-weight:600;font-size:11.5px;opacity:.82;margin-left:8px}
+    .card.muted>h4{background-image:var(--gray-grad)}
+    .card-body{padding:16px 20px 17px}.card-body>:first-child{margin-top:0}.card-body>:last-child{margin-bottom:0}
+    .card-body p{margin:6px 0;font-size:14px;color:var(--sub);line-height:1.8}
+    .metric{font-size:26px;font-weight:800;color:var(--blue-deep);font-variant-numeric:tabular-nums;line-height:1.25}
+    .metric small{display:block;font-size:12px;color:var(--mut);font-weight:600;margin-top:4px}
+
+    .callout{background:var(--gold-soft);padding:18px 22px;border:1px solid #f2e2b5;
+      border-radius:14px;margin:22px 0;font-size:14.5px}
+    .callout b{color:var(--gold-deep)}.callout>:first-child{margin-top:0}.callout>:last-child{margin-bottom:0}
+    .callout.blue{background:var(--blue-soft);border-color:var(--blue-line)}
+    .callout.blue b{color:var(--blue-deep)}
+
+    .sharebar{height:34px;border-radius:10px;display:flex;overflow:hidden;margin:22px 0 10px;background:var(--soft)}
+    .sharebar span{display:block;height:100%}.sharebar .bedrock{width:8.244%;background:var(--blue-bright)}
+    .sharebar .agentcore{width:72.942%;background:var(--blue-deep)}
+    .sharebar .other{width:18.814%;background:var(--gold)}
+    .sharelegend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12.5px;color:var(--sub);margin-bottom:20px}
+    .sharelegend span{display:inline-flex;align-items:center;gap:7px}.dot{width:10px;height:10px;border-radius:50%}
+    .dot.bedrock{background:var(--blue-bright)}.dot.agentcore{background:var(--blue-deep)}.dot.other{background:var(--gold)}
+
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0;border:1px solid var(--line);border-radius:16px}
+    .wrap table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
+    .wrap thead{background-image:var(--blue-grad)}
+    .wrap th{background:transparent;color:#fff;font-weight:600;padding:13px 16px;text-align:left;
+      white-space:nowrap;letter-spacing:.02em;border:0}
+    .wrap td{padding:13px 16px;text-align:left;vertical-align:top;border:0;border-bottom:1px solid var(--line);line-height:1.75}
+    .wrap tbody tr:last-child td{border-bottom:0}.wrap tbody tr:hover{background:#fbfcfe}
+    .card thead{background-image:none;background:var(--soft)}
+    .card th{color:var(--blue-deep);border-bottom:1px solid var(--blue-line)}
+    .card tbody tr:first-child td{border-top:0}
+    .wrap td:first-child{font-weight:700;color:var(--blue)}
+    .numv{text-align:right!important;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .ok{color:#1a6b38;font-weight:700}.zero{color:var(--mut)}
+    .note{font-size:12.5px;color:var(--mut);margin:-8px 0 0;line-height:1.8}
+
+    .wrap code{background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;
+      font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue-deep)}
+    .wrap pre{background:#1c1c22;color:#eaeaf0}.wrap pre code{background:transparent;border:0;padding:0;color:#eaeaf0}
+    footer{margin:56px 0 0;padding:28px 0 40px;border-top:1px solid var(--line);
+      font-size:12.5px;color:var(--mut);line-height:1.9}footer p{margin:8px 0}
+
+    @media(max-width:620px){
+      body{font-size:15px}.hero{padding:calc(64px + env(safe-area-inset-top,0px)) 0 34px}.hero h1{font-size:23px}
+      h2{font-size:20px}section{padding-top:38px}.callout{padding:16px 18px}.toc{padding:18px 20px}
+      .metric{font-size:23px}.sharelegend{display:grid;gap:6px}.table-wrap{margin-left:0;margin-right:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-in">
+      <span class="kicker">パワポ作るマン ／ AWS利用料</span>
+      <h1>Grok移行後のBedrock利用料は約74円<br>全額がクレジットで相殺</h1>
+      <p class="sub">本番の標準切替後、8/20（木）〜9/1（火）の請求データを確認</p>
+      <div class="meta">確認日：9/2（水） ／ 対象：パワポ作るマン専用AWSアカウント<br>換算：1ドル＝155円の参考値</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <nav class="toc">
+      <h2>目次</h2>
+      <ol>
+        <li><a href="#s1"><span class="num">01</span>結論</a></li>
+        <li><a href="#s2"><span class="num">02</span>費用の内訳</a></li>
+        <li><a href="#s3"><span class="num">03</span>クレジットの照合</a></li>
+        <li><a href="#s4"><span class="num">04</span>日別の利用状況</a></li>
+        <li><a href="#s5"><span class="num">05</span>確認範囲</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <span class="eyebrow">01</span>
+      <h2>結論</h2>
+      <p class="lead">Grok 4.6の請求行はAmazon Bedrockに載っており、利用料と同額のCreditが記録されています。本番の標準切替後に、クレジット対象外のモデル料金は発生していません。</p>
+      <div class="grid">
+        <div class="card">
+          <h4>Grok 4.6</h4>
+          <div class="card-body"><div class="metric">$0.475<small>約74円 ／ Creditも$0.475</small></div></div>
+        </div>
+        <div class="card">
+          <h4>AWSアカウント全体</h4>
+          <div class="card-body"><div class="metric">$5.762<small>約893円 ／ ほぼ全額を相殺</small></div></div>
+        </div>
+        <div class="card">
+          <h4>実際の持ち出し</h4>
+          <div class="card-body"><div class="metric">$0.00<small>差額は約0.00004円</small></div></div>
+        </div>
+        <div class="card muted">
+          <h4>現在の月額ペース</h4>
+          <div class="card-body"><div class="metric">約2,061円<small>13日間の総額を30日換算 ／ 適用前</small></div></div>
+        </div>
+      </div>
+      <div class="callout blue">
+        <p><b>はい、Grok分は全部クレジットで処理されています。</b> Cost Explorer上で、入力・出力・キャッシュ読取の各料金に同額のCredit行があります。金額差は0ドルです。</p>
+      </div>
+    </section>
+
+    <section id="s2">
+      <span class="eyebrow">02</span>
+      <h2>費用の内訳</h2>
+      <p class="lead">Grokの推論料金より、エージェントを動かすBedrock AgentCoreの利用料が大半を占めています。</p>
+      <div class="sharebar" aria-label="費用構成。Bedrock 8.2%、AgentCore 72.9%、その他18.8%">
+        <span class="bedrock"></span><span class="agentcore"></span><span class="other"></span>
+      </div>
+      <div class="sharelegend">
+        <span><i class="dot bedrock"></i>Grok 4.6：8.2%</span>
+        <span><i class="dot agentcore"></i>Bedrock AgentCore：72.9%</span>
+        <span><i class="dot other"></i>その他：18.8%</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>区分</th><th class="numv">利用料</th><th class="numv">円換算</th><th class="numv">構成比</th></tr></thead>
+          <tbody>
+            <tr><td>Grok 4.6（Amazon Bedrock）</td><td class="numv">$0.474986</td><td class="numv">約74円</td><td class="numv">8.2%</td></tr>
+            <tr><td>Bedrock AgentCore</td><td class="numv">$4.202578</td><td class="numv">約651円</td><td class="numv">72.9%</td></tr>
+            <tr><td>その他のAWSサービス</td><td class="numv">$1.083947</td><td class="numv">約168円</td><td class="numv">18.8%</td></tr>
+            <tr><td>合計</td><td class="numv">$5.761511</td><td class="numv">約893円</td><td class="numv">100.0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">「その他」にはRoute 53、Secrets Manager、Cost Explorer、ECR、CloudWatch、S3などを含みます。</p>
+    </section>
+
+    <section id="s3">
+      <span class="eyebrow">03</span>
+      <h2>クレジットの照合</h2>
+      <p class="lead">利用料とCreditを同じ期間で集計しました。AWSアカウント全体の微小な差額は、サービス間の小数点以下の配賦による丸めです。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>確認対象</th><th class="numv">利用料</th><th class="numv">Credit</th><th class="numv">差額</th></tr></thead>
+          <tbody>
+            <tr><td>Grok 4.6</td><td class="numv">$0.4749860302</td><td class="numv">-$0.4749860302</td><td class="numv ok">$0</td></tr>
+            <tr><td>AWSアカウント全体</td><td class="numv">$5.7615106017</td><td class="numv">-$5.7615103507</td><td class="numv ok">$0.000000251</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <p><b>切替前日の8/19（水）だけは別です。</b> 検証時にClaude Sonnet 4.6のMarketplace料金が$2.140805（約332円）、税が$0.22（約34円）発生し、ここはクレジット対象外でした。Sonnetを停止してGrokを標準にした8/20（木）以降、この料金は出ていません。</p>
+      </div>
+      <p>Grokの請求明細には、<code>xai.grok-4.6</code> の入力トークン、出力トークン、キャッシュ読取トークンが並んでいます。3種類すべてに同額のCreditが付いているため、GrokがAWS Marketplace経由で別請求されている形ではありません。</p>
+    </section>
+
+    <section id="s4">
+      <span class="eyebrow">04</span>
+      <h2>日別の利用状況</h2>
+      <p class="lead">セッション数はアプリの利用開始回数で、すべてがスライド生成を実行した回数ではありません。Bedrock利用料は実際にモデルを呼んだ量で決まります。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>日付</th><th class="numv">セッション</th><th class="numv">利用者</th><th class="numv">Grok利用料</th><th class="numv">Credit</th></tr></thead>
+          <tbody>
+            <tr><td>8/20（木）</td><td class="numv">54</td><td class="numv">17</td><td class="numv">$0.004448</td><td class="numv">-$0.004448</td></tr>
+            <tr><td>8/21（金）</td><td class="numv">14</td><td class="numv">11</td><td class="numv">$0.001158</td><td class="numv">-$0.001158</td></tr>
+            <tr><td>8/22（土）</td><td class="numv">32</td><td class="numv">8</td><td class="numv">$0.001469</td><td class="numv">-$0.001469</td></tr>
+            <tr><td>8/23（日）</td><td class="numv">7</td><td class="numv">3</td><td class="numv">$0.000345</td><td class="numv">-$0.000345</td></tr>
+            <tr><td>8/24（月）</td><td class="numv">12</td><td class="numv">8</td><td class="numv">$0.000614</td><td class="numv">-$0.000614</td></tr>
+            <tr><td>8/25（火）</td><td class="numv">6</td><td class="numv">5</td><td class="numv">$0.000421</td><td class="numv">-$0.000421</td></tr>
+            <tr><td>8/26（水）</td><td class="numv">33</td><td class="numv">13</td><td class="numv">$0.002032</td><td class="numv">-$0.002032</td></tr>
+            <tr><td>8/27（木）</td><td class="numv">4</td><td class="numv">3</td><td class="numv">$0.000278</td><td class="numv">-$0.000278</td></tr>
+            <tr><td>8/28（金）</td><td class="numv">9</td><td class="numv">2</td><td class="numv">$0.000259</td><td class="numv">-$0.000259</td></tr>
+            <tr><td>8/29（土）</td><td class="numv">3</td><td class="numv">2</td><td class="numv">$0.000054</td><td class="numv">-$0.000054</td></tr>
+            <tr><td>8/30（日）</td><td class="numv">2</td><td class="numv">2</td><td class="numv">$0.000061</td><td class="numv">-$0.000061</td></tr>
+            <tr><td>8/31（月）</td><td class="numv">7</td><td class="numv">3</td><td class="numv">$0.179390</td><td class="numv">-$0.179390</td></tr>
+            <tr><td>9/1（火）</td><td class="numv">13</td><td class="numv">7</td><td class="numv">$0.284456</td><td class="numv">-$0.284456</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">期間合計：196セッション、識別できた利用者は日別延べ84人。Grok利用料$0.474986、Credit -$0.474986。</p>
+    </section>
+
+    <section id="s5">
+      <span class="eyebrow">05</span>
+      <h2>確認範囲</h2>
+      <p>Cost ExplorerのUnblendedCostを、Amazon Bedrockの利用種別と記録タイプで集計しました。対象期間は8/20（木）から9/2（水）の直前までで、9/1（火）分までを含みます。Cost Explorerには通常1日程度の遅れがあるため、9/2（水）当日分は対象外です。</p>
+      <p>アプリの利用状況は本番Runtimeのセッション識別ログ、登録利用者数はCognitoから取得しました。金額はAWS請求の正本であるドルを主表示し、円は既存の利用統計スクリプトと同じ1ドル155円で参考換算しています。</p>
+    </section>
+
+    <footer>
+      <p>確認元：AWS Cost Explorer、CloudWatch Logs Insights、Cognito</p>
+      <p>正本：パワポ作るマンのGrok 4.6移行後コスト調査 ／ 2026年9月2日（水）</p>
+    </footer>
+  </div>
+</body>
+</html>
