@@ -215,4 +215,28 @@ describe('applyToolUse', () => {
       'Web検索中... "生成AI 市場規模"',
     ]);
   });
+
+  // 2026-09-20、Kimi K3の検索ありで発生。修正中の行が立っている状態でoutput_slideが
+  // 届くと、直前の「Web検索中...」が完了にならないまま本文が流れていた。
+  it('修正中の行があっても、検索の行は完了へ変える', () => {
+    let messages = applyToolUse(
+      [
+        createMessage({
+          role: 'assistant',
+          content: '',
+          isStatus: true,
+          statusText: MESSAGES.SLIDE_FIXING,
+        }),
+      ],
+      'web_search',
+      '生成AI 市場規模',
+    );
+    messages = applyToolUse(messages, 'output_slide');
+
+    expect(messages.map(message => message.statusText)).toEqual([
+      MESSAGES.SLIDE_FIXING,
+      'Web検索完了 "生成AI 市場規模"',
+    ]);
+  });
 });
+

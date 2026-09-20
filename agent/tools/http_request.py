@@ -18,6 +18,8 @@ import re
 import requests as req
 from strands import tool
 
+from .tool_activity import track_tool_activity
+
 # エージェントへ渡す本文の上限。参考資料PDF（agent.py の MAX_EXTRACTED_CHARS）と揃える。
 MAX_CONTENT_CHARS = 50000
 
@@ -74,6 +76,7 @@ def _html_to_text(html: str) -> str:
 
 
 @tool
+@track_tool_activity
 def http_request(url: str, method: str = "GET") -> str:
     """ユーザーがメッセージに貼ったURLのWebページを取得します。
 

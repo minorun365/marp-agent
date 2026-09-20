@@ -75,7 +75,10 @@ export function applyToolUse(messages: Message[], toolName: string, query?: stri
     const hasActiveSlide = settledMessages.some(
       message => message.isStatus && isSlideInProgressStatus(message.statusText)
     );
-    if (hasActiveSlide) return settledMessages;
+    // 作成中・修正中の行が既に立っていても、検索やページ取得の行は完了へ変える。
+    // ここで素通りすると、直前の「Web検索中...」が回ったままスライドの本文だけが
+    // 流れる（2026-09-20、Kimi K3の検索ありで発生した症状と同じ形）。
+    if (hasActiveSlide) return completeActiveWebStatuses(settledMessages);
 
     return [
       ...completeActiveWebStatuses(settledMessages),

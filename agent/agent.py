@@ -5,6 +5,7 @@ import base64
 import json
 import os
 import re
+import time
 
 import pdfplumber
 from bedrock_agentcore import BedrockAgentCoreApp
@@ -24,6 +25,7 @@ from tools import (
 )
 from tools.web_search import get_last_search_result, reset_last_search_result
 from tools.http_request import reset_url_fetched
+from tools.tool_activity import is_tool_active, reset_tool_activity
 from exports import generate_pdf, generate_pptx, generate_editable_pptx
 from sharing import share_slide
 from session import get_or_create_agent
@@ -81,6 +83,7 @@ async def invoke(payload, context=None):
     reset_generated_tweet_url()
     reset_last_search_result()
     reset_url_fetched()
+    reset_tool_activity()
 
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")
@@ -250,9 +253,10 @@ async def invoke(payload, context=None):
     slide_compose_announced = False
     # 検索やテキストが一度でも届いたか。届く前の考え込みと区別する。
     activity_seen = False
-    # ツール（検索・ページ取得）が実行中か。ツールの実行中はモデルのストリームが
-    # 止まるので、この無音を「スライドを書いている」と読み違えないための目印。
-    tool_in_flight = False
+    # 最後にツール（検索・ページ取得）の開始を画面へ通知した時刻。実際に動いて
+    # いるかはツール側の記録（tool_activity）と突き合わせて判断する。
+    tool_started_at: float | None = None
+
 
     try:
         stream = agent.stream_async(user_message)
@@ -280,7 +284,7 @@ async def invoke(payload, context=None):
                     # 検索に5秒以上かかった瞬間に「スライドを作成中」を先出ししてしまい、
                     # 検索中の行が完了へ化けたうえ、検索が返ったあとの行が作成中の下へ
                     # 積まれて画面の順番が壊れる（2026-08-20に発生）。
-                    and not tool_in_flight
+                    and not is_tool_active(tool_started_at)
                 ):
                     slide_compose_announced = True
                     yield {"type": "tool_use", "data": "output_slide"}
@@ -289,9 +293,6 @@ async def invoke(payload, context=None):
                 continue
             silent_intervals = 0
             activity_seen = True
-            # ツールが返るとモデルのストリームが再開する。次のイベントが届いた時点で
-            # 実行中ではなくなっている。
-            tool_in_flight = False
             event = pending.result()
             if event is _STREAM_SENTINEL:
                 break
@@ -359,7 +360,7 @@ async def invoke(payload, context=None):
                                 "data": tool_name,
                                 "query": search_query,
                             }
-                    tool_in_flight = True
+                    tool_started_at = time.monotonic()
                     # また検索へ戻ったということは、まだ本文を書いていない。
                     # 作成中の先出しをやり直せるようにしておく（画面側もこの時点で
                     # 作成中の行を取り下げる）。
@@ -379,7 +380,7 @@ async def invoke(payload, context=None):
                         announced_fetch_urls.append(fetch_url)
                         yield {"type": "tool_use", "data": tool_name, "query": fetch_url}
                     # ページ取得も外部通信で数秒止まる。検索と同じ扱いにする。
-                    tool_in_flight = True
+                    tool_started_at = time.monotonic()
                     slide_compose_announced = False
                 elif tool_name == "output_slide":
                     slide_compose_announced = True

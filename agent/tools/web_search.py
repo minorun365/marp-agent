@@ -26,6 +26,7 @@ except ImportError:  # SDKの構成が変わっても検索自体は動かす
     KEY_LEVEL_ERRORS = ()
 
 from .http_request import get_url_fetched
+from .tool_activity import track_tool_activity
 
 
 def _load_tavily_api_keys() -> list[str]:
@@ -126,6 +127,7 @@ def reset_last_search_result() -> None:
 
 
 @tool
+@track_tool_activity
 def web_search(query: str) -> str:
     """Web検索を実行して最新情報を取得します。最新の統計・事例・製品情報など、スライド作成に必要な情報を調べる際に使用してください。
 
