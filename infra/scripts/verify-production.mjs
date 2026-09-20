@@ -98,6 +98,8 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
     // 落ちてもエラーにはならず、生成が3倍遅くなるだけなので気づけない。
     'GROK_REASONING_EFFORT',
     'BEDROCK_KIMI_MODEL_ID',
+    // 選択肢に出しているのでUIからは選べるが、落ちると起動時に落ちる。
+    'BEDROCK_KIMI3_MODEL_ID',
     'TAVILY_SECRET_ARN',
     // 試験用の「Grok + AgentCore Web Search」の接続先。落ちてもエラーにはならず、
     // 検索が黙ってTavilyへ戻るだけなので、画面からは試験できているように見えてしまう。

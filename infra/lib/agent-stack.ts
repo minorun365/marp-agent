@@ -67,6 +67,9 @@ export class AgentStack extends cdk.Stack {
         // 推論の深さ。lowでもmediumと品質が変わらず、所要時間が3分の1になる。
         GROK_REASONING_EFFORT: 'low',
         BEDROCK_KIMI_MODEL_ID: 'moonshotai.kimi-k2.5',
+        // Kimi K3は推論プロファイル経由でだけ呼べる。global.はus-east-1で即座に
+        // スロットリングされ、us.だけが通った（2026-09-19実測）。
+        BEDROCK_KIMI3_MODEL_ID: 'us.moonshotai.kimi-k3',
         TAVILY_SECRET_ARN: props.foundation.tavilySecret.secretArn,
         // 試験用のモデル種別を選んだときだけ、Tavilyの代わりにこのGatewayを引く。
         AGENTCORE_WEBSEARCH_GATEWAY_URL: props.foundation.webSearchGateway.attrGatewayUrl,

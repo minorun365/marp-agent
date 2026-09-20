@@ -65,6 +65,7 @@ describe('ChatInput', () => {
       expect(select).toBeInTheDocument();
       expect(select).toHaveValue('grok');
       expect(screen.getByRole('option', { name: '標準（Grok 4.6）' })).toBeEnabled();
+      expect(screen.getByRole('option', { name: '高品質（Kimi K3）' })).toBeEnabled();
       expect(screen.getByRole('option', { name: '高品質（Claude Sonnet 4.6） ※資金不足により停止中' })).toBeDisabled();
       expect(screen.queryByRole('option', { name: 'Kimi K2.5' })).not.toBeInTheDocument();
       expect(screen.queryByRole('option', { name: '最高品質（GPT-5.6 Sol）' })).not.toBeInTheDocument();

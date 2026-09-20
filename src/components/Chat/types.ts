@@ -1,5 +1,5 @@
 // バックエンドが認識できるモデル型。現在無効なモデルも型からは削除しない。
-export type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus' | 'sol' | 'grok';
+export type ModelType = 'sonnet' | 'sonnet5' | 'kimi' | 'glm' | 'opus' | 'sol' | 'grok' | 'kimi3';
 
 export interface ModelOption {
   value: ModelType;
@@ -11,6 +11,7 @@ export interface ModelOption {
 // UIに表示するモデル一覧。2件以上になるとChatInputのセレクターが自動表示される。
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'grok', label: '標準（Grok 4.6）', shortLabel: '標準' },
+  { value: 'kimi3', label: '高品質（Kimi K3）', shortLabel: '高品質' },
   {
     value: 'sonnet',
     label: '高品質（Claude Sonnet 4.6） ※資金不足により停止中',

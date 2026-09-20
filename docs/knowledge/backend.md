@@ -117,6 +117,7 @@ export interface ModelOption {
 
 export const MODEL_OPTIONS: ModelOption[] = [
   { value: 'grok', label: '標準（Grok 4.6）', shortLabel: '標準' },
+  { value: 'kimi3', label: '高品質（Kimi K3）', shortLabel: '高品質' },
   { value: 'sonnet', label: '高品質（Claude Sonnet 4.6） ※資金不足により停止中', shortLabel: '高品質', disabled: true },
   // { value: 'kimi', label: 'Kimi K2.5', shortLabel: 'Kimi' },
   // { value: 'glm', label: 'GLM 5', shortLabel: 'GLM 5' },

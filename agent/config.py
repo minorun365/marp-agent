@@ -15,6 +15,7 @@ MODEL_ENVIRONMENT_VARIABLES = {
     "sonnet": "BEDROCK_SONNET_MODEL_ID",
     "sonnet5": "BEDROCK_SONNET5_MODEL_ID",
     "kimi": "BEDROCK_KIMI_MODEL_ID",
+    "kimi3": "BEDROCK_KIMI3_MODEL_ID",
     "glm": "BEDROCK_GLM_MODEL_ID",
     "opus": "BEDROCK_OPUS_MODEL_ID",
     "sol": "BEDROCK_SOL_MODEL_ID",
@@ -24,6 +25,7 @@ MODEL_ENVIRONMENT_VARIABLES = {
 # UIのMODEL_OPTIONSでdisabledではないモデルだけを有効化する。
 ENABLED_MODEL_TYPES = {
     "grok",
+    "kimi3",
     # "kimi",
     # "sonnet",
     # "sonnet5",

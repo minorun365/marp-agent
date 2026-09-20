@@ -12,10 +12,11 @@ from config import (
 from tools.http_request import _html_to_text
 
 
-def test_only_grok_is_enabled():
-    """標準はGrok。Sonnet 4.6は停止中の表示だけUIへ残し、Kimiは設定だけ保持する。"""
-    assert ENABLED_MODEL_TYPES == {"grok"}
+def test_only_grok_and_kimi3_are_enabled():
+    """標準はGrok。Kimi K3を選択肢に足し、Sonnet 4.6は停止中の表示だけUIへ残す。"""
+    assert ENABLED_MODEL_TYPES == {"grok", "kimi3"}
     assert normalize_model_type("grok") == "grok"
+    assert normalize_model_type("kimi3") == "kimi3"
 
 
 @pytest.mark.parametrize(
@@ -67,6 +68,17 @@ def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
     assert model_config == {
         "provider": "bedrock",
         "model_id": "moonshotai.kimi-k2.5",
+        "cache_prompt": None,
+        "cache_tools": None,
+    }
+
+
+def test_kimi3_uses_us_inference_profile_without_prompt_cache(monkeypatch):
+    monkeypatch.setenv("BEDROCK_KIMI3_MODEL_ID", "us.moonshotai.kimi-k3")
+
+    assert get_model_config("kimi3") == {
+        "provider": "bedrock",
+        "model_id": "us.moonshotai.kimi-k3",
         "cache_prompt": None,
         "cache_tools": None,
     }
