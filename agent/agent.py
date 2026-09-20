@@ -92,6 +92,9 @@ async def invoke(payload, context=None):
     reset_last_search_result()
     reset_url_fetched()
     reset_tool_activity()
+    # 最後にクライアントへ何か送った時刻。モデルからイベントが来ていても、画面へ
+    # 送っていなければ利用者にはストリームが止まって見える（下のハートビート参照）。
+    last_emit_at = time.monotonic()
 
     user_message = payload.get("prompt", "")
     action = payload.get("action", "chat")
@@ -202,6 +205,7 @@ async def invoke(payload, context=None):
             if not extracted_text.strip():
                 print(f"[WARN] No text extracted from PDF: {file_name}")
                 yield {"type": "text", "data": "このPDFからテキストを抽出できませんでした（画像ベースのPDFの可能性があります）。テキスト情報なしでスライドを作成します。\n\n"}
+                last_emit_at = time.monotonic()
             else:
                 print(f"[INFO] PDF text extracted: {len(extracted_text)} chars from {file_name}")
                 user_message = f"""以下は参考資料「{file_name}」の内容です：
@@ -215,6 +219,7 @@ async def invoke(payload, context=None):
         except Exception as e:
             print(f"[ERROR] PDF processing failed: {e}")
             yield {"type": "text", "data": f"PDFの読み取りに失敗しました: {e}\nテキスト情報なしでスライドを作成します。\n\n"}
+            last_emit_at = time.monotonic()
 
     # セッションIDとモデルタイプとテーマに対応するAgentを取得
     agent = get_or_create_agent(session_id, model_type, theme)
@@ -296,8 +301,10 @@ async def invoke(payload, context=None):
                 ):
                     slide_compose_announced = True
                     yield {"type": "tool_use", "data": "output_slide"}
+                    last_emit_at = time.monotonic()
                 else:
                     yield {"type": "progress", "message": "処理中..."}
+                last_emit_at = time.monotonic()
                 continue
             silent_intervals = 0
             activity_seen = True
@@ -316,6 +323,7 @@ async def invoke(payload, context=None):
                     generated_markdown = get_generated_markdown()
                     if generated_markdown:
                         yield {"type": "markdown", "data": generated_markdown}
+                        last_emit_at = time.monotonic()
                         reset_generated_markdown()
                         slide_outputted = True
                         suppress_text = True
@@ -328,6 +336,7 @@ async def invoke(payload, context=None):
                             # 検査差し戻し時の独り言。表示すると作成中ステータスが完了へ化け、
                             # 再生成中なのに画面が止まって見えるため送らない。
                             yield {"type": "text", "data": chunk}
+                            last_emit_at = time.monotonic()
 
             elif "current_tool_use" in event:
                 tool_info = event["current_tool_use"]
@@ -387,14 +396,17 @@ async def invoke(payload, context=None):
                     if fetch_url and not is_stale:
                         announced_fetch_urls.append(fetch_url)
                         yield {"type": "tool_use", "data": tool_name, "query": fetch_url}
+                        last_emit_at = time.monotonic()
                     # ページ取得も外部通信で数秒止まる。検索と同じ扱いにする。
                     tool_started_at = time.monotonic()
                     slide_compose_announced = False
                 elif tool_name == "output_slide":
                     slide_compose_announced = True
                     yield {"type": "tool_use", "data": tool_name}
+                    last_emit_at = time.monotonic()
                 else:
                     yield {"type": "tool_use", "data": tool_name}
+                    last_emit_at = time.monotonic()
 
             elif "result" in event:
                 result = event["result"]
@@ -406,11 +418,13 @@ async def invoke(payload, context=None):
                                     kimi_text_buffer.append(content.text)
                             elif not slide_compose_announced:
                                 yield {"type": "text", "data": content.text}
+                                last_emit_at = time.monotonic()
 
                 # ツール完了直後にマークダウンを送信（スピナーを即座に停止）
                 generated_markdown = get_generated_markdown()
                 if generated_markdown:
                     yield {"type": "markdown", "data": generated_markdown}
+                    last_emit_at = time.monotonic()
                     reset_generated_markdown()
                     slide_outputted = True
                     suppress_text = True
@@ -428,6 +442,20 @@ async def invoke(payload, context=None):
             ):
                 slide_compose_announced = True
                 yield {"type": "tool_use", "data": "output_slide"}
+                last_emit_at = time.monotonic()
+
+            # ⚠️ ここが無いと、直した側が別の壊し方をする。「スライドを作成中」へ
+            # 切り替えるとモデルのテキストを画面へ送らなくなるが、Kimi K3はその後も
+            # 思考イベントを流し続けるのでkeep-aliveのasyncio.waitはタイムアウトしない。
+            # 結果、クライアントには何も届かない時間が伸び、画面側のアイドルタイムアウト
+            # （60秒）に当たって「モデルが高負荷のようです」で打ち切られる
+            # （2026-09-20、URLを貼った依頼で発生。修正前は思考の要約テキストが流れて
+            # いたため、この無音は起きていなかった）。
+            # モデルからイベントが来ているかどうかと、クライアントへ送っているかどうかは
+            # 別物なので、送出側でも間隔を測る。
+            if not slide_outputted and time.monotonic() - last_emit_at >= STREAM_KEEPALIVE_INTERVAL:
+                yield {"type": "progress", "message": "処理中..."}
+                last_emit_at = time.monotonic()
 
             pending = asyncio.ensure_future(_safe_anext(stream_iter))
 
@@ -475,11 +503,13 @@ async def invoke(payload, context=None):
                     retry_tool = retry_event["current_tool_use"].get("name", "unknown")
                     if retry_tool == "output_slide" and not retry_output_status_sent:
                         yield {"type": "tool_use", "data": "output_slide"}
+                        last_emit_at = time.monotonic()
                         retry_output_status_sent = True
 
                 generated_markdown = get_generated_markdown()
                 if generated_markdown and not slide_outputted:
                     yield {"type": "markdown", "data": generated_markdown}
+                    last_emit_at = time.monotonic()
                     reset_generated_markdown()
                     slide_outputted = True
                     suppress_text = True
@@ -494,9 +524,11 @@ async def invoke(payload, context=None):
     generated_markdown = get_generated_markdown()
     if generated_markdown:
         yield {"type": "markdown", "data": generated_markdown}
+        last_emit_at = time.monotonic()
 
     if model_type == "kimi" and not slide_outputted and not web_search_executed and kimi_text_buffer:
         yield {"type": "text", "data": "".join(kimi_text_buffer)}
+        last_emit_at = time.monotonic()
 
     # Web検索後にスライドが生成されなかった場合のフォールバック
     last_search_result = get_last_search_result()
@@ -514,6 +546,7 @@ async def invoke(payload, context=None):
         fallback_message = f"Web検索結果:\n\n{truncated_result}\n\n---\nスライドを作成しますか？"
         print(f"[INFO] Web search executed but no slide generated, returning search result as fallback (model_type={model_type})")
         yield {"type": "text", "data": fallback_message}
+        last_emit_at = time.monotonic()
 
     # ツイートURL出力
     generated_tweet_url = get_generated_tweet_url()
