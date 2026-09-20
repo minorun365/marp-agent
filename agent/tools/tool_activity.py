@@ -45,6 +45,13 @@ def get_last_finished_at() -> float | None:
     return _last_finished_at
 
 
+def seconds_since_last_finish() -> float | None:
+    """最後にツールが完了してからの経過秒。一度も完了していなければNone。"""
+    if _last_finished_at is None:
+        return None
+    return time.monotonic() - _last_finished_at
+
+
 def is_tool_active(started_at: float | None) -> bool:
     """開始を通知したツールが、まだ動いているとみなせるか。
 
@@ -65,6 +72,28 @@ def is_tool_active(started_at: float | None) -> bool:
     finished_at = get_last_finished_at()
     # 通知より後に完了が記録されていれば、ツールは終わっている。
     return finished_at is None or finished_at < started_at
+
+
+def is_waiting_for_compose(started_at: float | None, grace_seconds: float) -> bool:
+    """ツールが終わって、モデルが本文を書いている最中とみなせるか。
+
+    Kimi K3は検索のあと、スライドの草案を思考テキストとして流し続ける。画面へは
+    送らないイベントなので利用者からは何も起きていないように見えるが、届き続ける
+    ためkeep-aliveの無音検知には入らない（2026-09-20、本番ログで検索完了から57秒
+    ぶん537行の思考を実測）。イベントを受け取るたびにこれを見て切り替える。
+
+    猶予を置くのは、検索を続けて撃つモデルの合間に「作成中」がちらつくのを防ぐため。
+    K3は検索を2件ずつ並列で呼び、その2〜3秒後にもう1件足すことがある。
+
+    Args:
+        started_at: ツール開始を画面へ通知した時刻。未通知ならNone。
+        grace_seconds: 最後のツール完了から何秒経ったら本文執筆とみなすか。
+    """
+    if is_tool_active(started_at):
+        return False
+    idle_for = seconds_since_last_finish()
+    # 一度もツールを使っていない依頼は、ここでは判断しない（keep-aliveの無音検知が担当）。
+    return idle_for is not None and idle_for >= grace_seconds
 
 
 def track_tool_activity(func: F) -> F:

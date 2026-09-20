@@ -17,7 +17,9 @@ from tools.tool_activity import (
     get_last_finished_at,
     is_tool_active,
     is_tool_running,
+    is_waiting_for_compose,
     reset_tool_activity,
+    seconds_since_last_finish,
     track_tool_activity,
 )
 
@@ -145,3 +147,49 @@ def test_デコレータが関数の仕様を保つ():
     assert sample.__name__ == "sample"
     assert sample.__doc__ == "検索クエリを受け取る。"
     assert list(inspect.signature(sample).parameters) == ["query"]
+
+
+def test_ツールを一度も使っていなければ本文執筆と判断しない():
+    """検索なしの依頼はkeep-aliveの無音検知が担当する。ここで先走らない。"""
+    assert seconds_since_last_finish() is None
+    assert is_waiting_for_compose(None, 3.0) is False
+
+
+def test_ツールが動いている間は本文執筆と判断しない():
+    observed = {}
+
+    @track_tool_activity
+    def slow_tool():
+        observed["waiting"] = is_waiting_for_compose(started_at, 0.0)
+        return "ok"
+
+    started_at = time.monotonic()
+    slow_tool()
+    assert observed["waiting"] is False
+
+
+def test_完了直後は猶予のあいだ待つ():
+    """検索を続けて撃つモデルの合間に「作成中」がちらつくのを防ぐ。"""
+
+    @track_tool_activity
+    def quick_tool():
+        return "ok"
+
+    started_at = time.monotonic()
+    quick_tool()
+
+    assert is_waiting_for_compose(started_at, 3.0) is False
+
+
+def test_猶予を過ぎたら本文執筆とみなす():
+    """2026-09-20の不具合。ここがFalseのままだと「Web検索中...」が回り続ける。"""
+
+    @track_tool_activity
+    def quick_tool():
+        return "ok"
+
+    started_at = time.monotonic()
+    quick_tool()
+    time.sleep(0.02)
+
+    assert is_waiting_for_compose(started_at, 0.01) is True

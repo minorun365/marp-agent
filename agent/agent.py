@@ -25,7 +25,11 @@ from tools import (
 )
 from tools.web_search import get_last_search_result, reset_last_search_result
 from tools.http_request import reset_url_fetched
-from tools.tool_activity import is_tool_active, reset_tool_activity
+from tools.tool_activity import (
+    is_tool_active,
+    is_waiting_for_compose,
+    reset_tool_activity,
+)
 from exports import generate_pdf, generate_pptx, generate_editable_pptx
 from sharing import share_slide
 from session import get_or_create_agent
@@ -39,6 +43,10 @@ USER_URL_PATTERN = re.compile(r'https?://[^\s<>"\'）】」]+')
 MAX_PDF_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_EXTRACTED_CHARS = 50000  # 約25,000トークン
 STREAM_KEEPALIVE_INTERVAL = 5.0  # ストリーミング中のkeep-alive間隔（秒）
+# ツールが終わってから「スライドを作成中」へ切り替えるまでの猶予（秒）。
+# 短すぎると、検索を続けて撃つモデルの合間に作成中がちらつく（Kimi K3は検索を
+# 2件ずつ並列で呼び、2〜3秒後にもう1件足すことがある）。
+COMPOSE_ANNOUNCE_GRACE = 3.0
 
 _STREAM_SENTINEL = object()
 
@@ -406,6 +414,20 @@ async def invoke(payload, context=None):
                     reset_generated_markdown()
                     slide_outputted = True
                     suppress_text = True
+
+            # ⚠️ 無音検知（keep-alive側）だけでは足りない。Kimi K3は検索が終わったあと、
+            # スライドの草案を思考テキストとして延々と流す。このイベントは画面へ送らない
+            # ので利用者からは何も起きていないように見えるが、5秒以内に届き続けるため
+            # asyncio.waitはタイムアウトせず、無音検知に一度も入らない（2026-09-20に
+            # 本番ログで実測。検索完了から57秒ぶん、537行の思考が流れていた）。
+            # 画面は直前の「Web検索中...」が回ったままになるので、ここでも切り替える。
+            if (
+                not slide_outputted
+                and not slide_compose_announced
+                and is_waiting_for_compose(tool_started_at, COMPOSE_ANNOUNCE_GRACE)
+            ):
+                slide_compose_announced = True
+                yield {"type": "tool_use", "data": "output_slide"}
 
             pending = asyncio.ensure_future(_safe_anext(stream_iter))
 
