@@ -100,6 +100,9 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
     'BEDROCK_KIMI_MODEL_ID',
     // 選択肢に出しているのでUIからは選べるが、落ちると起動時に落ちる。
     'BEDROCK_KIMI3_MODEL_ID',
+    // 落ちてもエラーにはならず、K3の生成が2倍以上遅くなるだけなので気づけない
+    // （2026-09-21の実測で、指定なし76.5秒 → none 33.8秒）。
+    'KIMI3_REASONING_EFFORT',
     'TAVILY_SECRET_ARN',
     // 試験用の「Grok + AgentCore Web Search」の接続先。落ちてもエラーにはならず、
     // 検索が黙ってTavilyへ戻るだけなので、画面からは試験できているように見えてしまう。
