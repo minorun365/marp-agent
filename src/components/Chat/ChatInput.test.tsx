@@ -59,12 +59,13 @@ describe('ChatInput', () => {
   });
 
   describe('モデルセレクターの表示制御', () => {
-    it('Grokを標準にし、停止中のSonnetは選択不可で残す', () => {
+    it('Grokを高速として出し、停止中のSonnetは選択不可で残す', () => {
       render(<ChatInput {...defaultProps} />);
       const select = screen.getByTitle('使用するAIモデルを選択');
       expect(select).toBeInTheDocument();
       expect(select).toHaveValue('grok');
-      expect(screen.getByRole('option', { name: '標準（Grok 4.6）' })).toBeEnabled();
+      // 既定はK3（高品質）へ移したので、Grokは速さで選ぶ側として示す
+      expect(screen.getByRole('option', { name: '高速（Grok 4.6）' })).toBeEnabled();
       expect(screen.getByRole('option', { name: '高品質（Kimi K3）' })).toBeEnabled();
       expect(screen.getByRole('option', { name: '高品質（Claude Sonnet 4.6） ※資金不足により停止中' })).toBeDisabled();
       expect(screen.queryByRole('option', { name: 'Kimi K2.5' })).not.toBeInTheDocument();
@@ -73,7 +74,7 @@ describe('ChatInput', () => {
 
     it('閉じた状態では選択中モデルの特徴を表示する', () => {
       render(<ChatInput {...defaultProps} />);
-      expect(screen.getByText('標準')).toBeInTheDocument();
+      expect(screen.getByText('高速')).toBeInTheDocument();
     });
 
     it('会話中はモデルセレクターが無効になる', () => {

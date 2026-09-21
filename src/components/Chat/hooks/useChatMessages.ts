@@ -181,7 +181,9 @@ export function useChatMessages({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
-  const [modelType, setModelType] = useState<ModelType>('grok');
+  // 既定はK3。思考量をnoneにして生成時間が半分になり（2026-09-21実測）、
+  // Grokより情報量が多いので、標準の入口をこちらへ移した。
+  const [modelType, setModelType] = useState<ModelType>('kimi3');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const initializedRef = useRef(false);
 

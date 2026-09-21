@@ -10,7 +10,7 @@ export interface ModelOption {
 
 // UIに表示するモデル一覧。2件以上になるとChatInputのセレクターが自動表示される。
 export const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'grok', label: '標準（Grok 4.6）', shortLabel: '標準' },
+  { value: 'grok', label: '高速（Grok 4.6）', shortLabel: '高速' },
   { value: 'kimi3', label: '高品質（Kimi K3）', shortLabel: '高品質' },
   {
     value: 'sonnet',
