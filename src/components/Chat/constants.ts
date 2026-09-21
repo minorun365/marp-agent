@@ -69,8 +69,11 @@ export const toCompletedWebStatus = (statusText: string): string => {
   if (statusText.startsWith(MESSAGES.WEB_SEARCH_PREFIX)) {
     return MESSAGES.WEB_SEARCH_COMPLETED + statusText.slice(MESSAGES.WEB_SEARCH_PREFIX.length);
   }
+  // ページ取得はURLを残さない。読み込むURLは直前のユーザーの発言に出ているので、
+  // 完了行にも並べると同じURLが画面に2回出る（2026-09-21にみのるんから指摘）。
+  // 検索クエリと違って「何を読んだか」の情報が増えないため、文言だけにする。
   if (statusText.startsWith(MESSAGES.WEB_FETCH_PREFIX)) {
-    return MESSAGES.WEB_FETCH_COMPLETED + statusText.slice(MESSAGES.WEB_FETCH_PREFIX.length);
+    return MESSAGES.WEB_FETCH_COMPLETED;
   }
   return statusText;
 };

@@ -79,8 +79,9 @@ describe('applyToolUse', () => {
     const full = applyToolUse(partial, 'http_request', 'https://example.com/article');
     const generating = applyToolUse(full, 'output_slide');
 
+    // 完了行はURLを持たない。読み込むURLは直前のユーザーの発言に出ているため。
     expect(generating.map(message => message.statusText)).toEqual([
-      `${MESSAGES.WEB_FETCH_COMPLETED} https://example.com/article`,
+      MESSAGES.WEB_FETCH_COMPLETED,
       MESSAGES.SLIDE_GENERATING,
     ]);
   });
@@ -105,11 +106,12 @@ describe('applyToolUse', () => {
     const fetching = applyToolUse(searching, 'http_request', 'https://example.com');
     const generating = applyToolUse(fetching, 'output_slide');
 
-    // 完了しても何を調べたかを残す。全部「Web検索完了」に潰すと、
+    // 検索は完了しても何を調べたかを残す。全部「Web検索完了」に潰すと、
     // 検索を6回する依頼で同じ行が6本並び、同じ通知の繰り返しに見える。
+    // 一方ページ取得はURLを落とす（同じURLが画面に2回出るため）。
     expect(generating.map(message => message.statusText)).toEqual([
       `${MESSAGES.WEB_SEARCH_COMPLETED} "Claude Code"`,
-      `${MESSAGES.WEB_FETCH_COMPLETED} https://example.com`,
+      MESSAGES.WEB_FETCH_COMPLETED,
       MESSAGES.SLIDE_GENERATING,
     ]);
   });
