@@ -70,6 +70,10 @@ export class AgentStack extends cdk.Stack {
         // Kimi K3は推論プロファイル経由でだけ呼べる。global.はus-east-1で即座に
         // スロットリングされ、us.だけが通った（2026-09-19実測）。
         BEDROCK_KIMI3_MODEL_ID: 'us.moonshotai.kimi-k3',
+        // 思考量。指定しないと最大量で考え続け、生成時間の96%が本文を書く時間
+        // （その大半が画面に出ない思考）になる。noneにすると45.4秒→24.6秒で、
+        // 思考へ回っていたぶん本文が倍増した（2026-09-20実測）。
+        KIMI3_REASONING_EFFORT: 'none',
         TAVILY_SECRET_ARN: props.foundation.tavilySecret.secretArn,
         // 試験用のモデル種別を選んだときだけ、Tavilyの代わりにこのGatewayを引く。
         AGENTCORE_WEBSEARCH_GATEWAY_URL: props.foundation.webSearchGateway.attrGatewayUrl,

@@ -58,3 +58,38 @@ def test_sol_model_factory_is_ready_for_reenable(monkeypatch):
         bedrock_mantle_config={"region": "us-east-1"},
         params={"max_output_tokens": 32768},
     )
+
+
+def test_create_model_passes_reasoning_effort_to_bedrock(monkeypatch):
+    """Bedrock側は params ではなく additionalModelRequestFields で思考量を受け取る。
+
+    Strandsの BedrockModel は additional_request_fields をそのまま
+    additionalModelRequestFields として送る。
+    """
+    monkeypatch.setenv("BEDROCK_KIMI3_MODEL_ID", "us.moonshotai.kimi-k3")
+    monkeypatch.delenv("KIMI3_REASONING_EFFORT", raising=False)
+    bedrock_model = MagicMock()
+    monkeypatch.setattr(manager, "BedrockModel", bedrock_model)
+
+    manager._create_model("kimi3")
+
+    bedrock_model.assert_called_once_with(
+        model_id="us.moonshotai.kimi-k3",
+        additional_request_fields={"reasoning": {"effort": "none"}},
+    )
+
+
+def test_create_model_keeps_prompt_cache_for_claude_models(monkeypatch):
+    """思考量の分岐を足しても、プロンプトキャッシュの指定が落ちないこと。"""
+    monkeypatch.setattr(config, "ENABLED_MODEL_TYPES", {"grok", "sonnet5"})
+    monkeypatch.setenv("BEDROCK_SONNET5_MODEL_ID", "us.anthropic.claude-sonnet-5")
+    bedrock_model = MagicMock()
+    monkeypatch.setattr(manager, "BedrockModel", bedrock_model)
+
+    manager._create_model("sonnet5")
+
+    bedrock_model.assert_called_once_with(
+        model_id="us.anthropic.claude-sonnet-5",
+        cache_prompt="default",
+        cache_tools="default",
+    )

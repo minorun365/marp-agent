@@ -45,14 +45,19 @@ def _create_model(model_type: str = "grok") -> Model:
             params=params,
         )
 
-    if config["cache_prompt"] is None:
-        return BedrockModel(model_id=config["model_id"])
-    else:
-        return BedrockModel(
-            model_id=config["model_id"],
-            cache_prompt=config["cache_prompt"],
-            cache_tools=config["cache_tools"],
-        )
+    bedrock_params: dict = {"model_id": config["model_id"]}
+
+    # Bedrock側は params ではなく additionalModelRequestFields で思考量を受け取る。
+    if config.get("reasoning_effort"):
+        bedrock_params["additional_request_fields"] = {
+            "reasoning": {"effort": config["reasoning_effort"]}
+        }
+
+    if config["cache_prompt"] is not None:
+        bedrock_params["cache_prompt"] = config["cache_prompt"]
+        bedrock_params["cache_tools"] = config["cache_tools"]
+
+    return BedrockModel(**bedrock_params)
 
 
 def get_or_create_agent(

@@ -74,14 +74,30 @@ def test_get_model_config_uses_kimi_without_prompt_cache(monkeypatch):
 
 
 def test_kimi3_uses_us_inference_profile_without_prompt_cache(monkeypatch):
+    """K3は思考量を none で固定する（2026-09-20実測）。
+
+    指定しないと最大量で考え続け、14枚の依頼で45.4秒かかる。そのうち出力した
+    17,226字のうち13,650字が画面に出ない思考だった。noneにすると24.6秒へ減り、
+    思考へ回っていたぶんが本文へ回って3,576字→7,302字になる。
+    """
     monkeypatch.setenv("BEDROCK_KIMI3_MODEL_ID", "us.moonshotai.kimi-k3")
+    monkeypatch.delenv("KIMI3_REASONING_EFFORT", raising=False)
 
     assert get_model_config("kimi3") == {
         "provider": "bedrock",
         "model_id": "us.moonshotai.kimi-k3",
         "cache_prompt": None,
         "cache_tools": None,
+        "reasoning_effort": "none",
     }
+
+
+def test_kimi3_reasoning_effort_is_overridable(monkeypatch):
+    """水準は環境変数で変えられる。切り戻しにコード変更を要らなくするため。"""
+    monkeypatch.setenv("BEDROCK_KIMI3_MODEL_ID", "us.moonshotai.kimi-k3")
+    monkeypatch.setenv("KIMI3_REASONING_EFFORT", "low")
+
+    assert get_model_config("kimi3")["reasoning_effort"] == "low"
 
 
 def test_sol_config_is_ready_for_reenable(monkeypatch):

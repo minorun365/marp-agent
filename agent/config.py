@@ -66,6 +66,19 @@ def get_model_config(model_type: str = "grok") -> dict:
             "max_output_tokens": 32768,
         }
 
+    if normalized_model_type == "kimi3":
+        return {
+            "provider": "bedrock",
+            "model_id": _get_required_model_id("BEDROCK_KIMI3_MODEL_ID"),
+            # OSS系モデルはBedrockのプロンプトキャッシュを使用しない。
+            "cache_prompt": None,
+            "cache_tools": None,
+            # 思考量は none が既定。2026-09-20の実測で、指定なし（最大量で
+            # 考え続ける）と比べて所要時間が45.4秒→24.6秒になり、画面に出ない
+            # 思考13,650字が消えたぶん本文が3,576字→7,302字へ増えた。
+            "reasoning_effort": os.getenv("KIMI3_REASONING_EFFORT", "none"),
+        }
+
     uses_prompt_cache = normalized_model_type in {"sonnet", "sonnet5", "opus"}
     return {
         "provider": "bedrock",
