@@ -1613,3 +1613,81 @@ class TestKimi3FormatVariety:
         result = output_slide(markdown=md)
 
         assert "4項目" not in result
+
+
+class TestKimi3HeadingVariety:
+    """見出しの型が偏るのを止める検査。
+
+    2026-09-21、1枚の組み立てを直したところ、今度は見出しが `：` だらけになった
+    （本文11枚中9枚）。「やたらとコロンを信用するのをやめてほしい」と指摘された。
+    指示へ「3分の1まで」と書いても55%までしか下がらなかったので検査で担保する。
+    「証拠①②③」のような連番も、3枚まとめて同じページに見えるため止める。
+    """
+
+    def _build(self, headings):
+        return "---\nmarp: true\n---\n" + "\n---\n".join(
+            f"## {h}\n\n- 項目A\n- 項目B" for h in headings
+        )
+
+    def test_rejects_colon_heading_overuse(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+        headings = [
+            "背景：探せない", "要点を押さえる", "対応：検索を足す", "導入の流れ",
+            "効果：速くなる", "なぜ必要なのか", "権限：誰が使えるか", "料金の考え方",
+            "今後：計画を進める",
+        ]
+
+        result = output_slide(markdown=self._build(headings))
+
+        assert "9枚中5枚" in result
+        assert get_generated_markdown() is None
+
+    def test_allows_colon_up_to_one_third(self):
+        """3分の1までは通す（`：` 自体を禁止しない）"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+        headings = [
+            "背景：探せない", "要点を押さえる", "対応：検索を足す", "導入の流れ",
+            "効果が出る", "なぜ必要なのか", "権限の設計", "料金の考え方",
+            "今後：計画を進める",
+        ]
+
+        result = output_slide(markdown=self._build(headings))
+
+        assert "「：」を使ったスライド" not in result
+
+    def test_rejects_numbered_headings(self):
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+        headings = ["証拠①：速度", "証拠②：コスト", "証拠③：確信度", "まとめの話"]
+
+        result = output_slide(markdown=self._build(headings))
+
+        assert "連番" in result
+        assert get_generated_markdown() is None
+
+    def test_does_not_reject_repeated_heading_types(self):
+        """同じ型が続くことは差し戻さない。
+
+        型の判定は「既存LLMとの違い」のような名詞を言い切りへ寄せる程度の粗さで、
+        差し戻しの根拠にできるほど正確ではない。指摘されたのはコロンの多用だけ。
+        """
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+        headings = ["登録の流れ", "検索の仕組み", "権限の設計", "料金の考え方"]
+
+        result = output_slide(markdown=self._build(headings))
+
+        assert "続いている" not in result
+        assert get_generated_markdown() is not None
+
+    def test_classify_heading_type(self):
+        """型の判定そのものを固定する（検査が対象を読めているかの確認）"""
+        from tools.output_slide import _classify_heading_type
+
+        assert _classify_heading_type("証拠①：速度") == "連番"
+        assert _classify_heading_type("背景：探せない問題") == "コロン"
+        assert _classify_heading_type("なぜ自動化が進まないのか") == "問い"
+        assert _classify_heading_type("文字列をやめたことが速度を生んだ") == "言い切り"
+        assert _classify_heading_type("モデル名の由来") == "名詞句"

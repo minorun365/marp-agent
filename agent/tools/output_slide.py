@@ -426,6 +426,33 @@ def _normal_slide_heading(slide_content: str) -> str:
     return _strip_markdown_formatting(match.group(1)).strip() if match else ''
 
 
+# 見出しに `：` を付ける型は便利なので、モデルは何枚でも作ってしまう。
+# 2026-09-21、K3の本文11枚のうち9枚が `：` 付きになり「やたらとコロンを信用するのを
+# やめてほしい」と指摘された。指示へ上限を書いても55%までしか下がらなかったので、
+# 3分の1を超えたら差し戻す（見出しの書き換えは機械では意味を保てない）。
+MAX_COLON_HEADING_RATIO = 1 / 3
+# 同じ型が続くことは検査で縛らない。型の判定は「違い」のような名詞を言い切りへ
+# 寄せてしまう程度の粗さで、差し戻しの根拠にできるほど正確ではない。指示だけに残す
+# （2026-09-21、コロンを減らした反動で名詞句が5枚続いたが、みのるんの指摘は
+# 「コロンを信用しすぎるな」であって、型の連続そのものではなかった）。
+HEADING_NUMBERING_PATTERN = re.compile(r'[①②③④⑤⑥⑦⑧⑨]|[（(]\s*\d+\s*[)）]')
+
+
+def _classify_heading_type(heading: str) -> str:
+    """見出しの型を返す（連番・コロン・問い・言い切り・名詞句）。"""
+    if not heading:
+        return '名詞句'
+    if HEADING_NUMBERING_PATTERN.search(heading):
+        return '連番'
+    if '：' in heading or ':' in heading:
+        return 'コロン'
+    if heading.rstrip().endswith(('か', 'か？', '?')):
+        return '問い'
+    if re.search(r'(る|た|い|ない|だ|である)$', heading.strip()):
+        return '言い切り'
+    return '名詞句'
+
+
 def _is_narrative_heading(heading: str) -> bool:
     """項目名ではなく、複数節をつないだ説明文になっている見出しを検知する。"""
     if not heading:
@@ -777,6 +804,35 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                     'count': list_item_count,
                     'maximum': MAX_LIST_ITEMS_PER_SLIDE,
                 })
+
+    # 見出しの型が偏ると、形を使い分けても同じページの繰り返しに見える。
+    if _active_model_type == 'kimi3':
+        heading_types = []
+        numbered_slides = []
+        for index, slide in enumerate(slides, start=1):
+            if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
+                continue
+            heading = _normal_slide_heading(slide)
+            heading_type = _classify_heading_type(heading)
+            heading_types.append(heading_type)
+            if heading_type == '連番':
+                numbered_slides.append(index)
+
+        if numbered_slides:
+            violations.append({
+                'type': 'heading_numbering',
+                'slides': numbered_slides,
+            })
+
+        colon_count = heading_types.count('コロン')
+        maximum_colon = max(1, int(len(heading_types) * MAX_COLON_HEADING_RATIO))
+        if colon_count > maximum_colon:
+            violations.append({
+                'type': 'heading_colon_overuse',
+                'actual': colon_count,
+                'total': len(heading_types),
+                'maximum': maximum_colon,
+            })
 
     if _active_model_type == 'grok':
         body_formats = []
@@ -1449,6 +1505,18 @@ def output_slide(markdown: str, tool_context: ToolContext | None = None) -> str:
                 details.append(
                     f"  - スライド{v['slide_number']}: リストが{v['count']}項目。"
                     f"{v['maximum']}項目以内へ絞り、残りは表・通常の文章・別ページへ組み替える"
+                )
+            elif v['type'] == 'heading_colon_overuse':
+                details.append(
+                    f"  - 見出しに「：」を使ったスライドが{v['total']}枚中{v['actual']}枚。"
+                    f"{v['maximum']}枚以内へ減らす。「：」を外して"
+                    "言い切る文（〜が〜を変える）や名詞句へ書き換える"
+                )
+            elif v['type'] == 'heading_numbering':
+                slide_numbers = '・'.join(str(n) for n in v['slides'])
+                details.append(
+                    f"  - スライド{slide_numbers}: 見出しに連番（①②③など）が付いている。"
+                    "番号で並べず、それぞれが何を示すのかを見出しの言葉で書き分ける"
                 )
             elif v['type'] == 'narrative_heading':
                 details.append(
