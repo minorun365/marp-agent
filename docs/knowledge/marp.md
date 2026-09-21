@@ -268,3 +268,32 @@ leadクラスなどでCSS変数（`--color-foreground`等）を上書きする�
 
 #### テーマファイルの2箇所管理
 runtime用CSS（`agent/`）とフロントエンド用CSS（`src/themes/`）の2箇所にテーマファイルが存在する。`npm run copy-themes`で同期する運用のため、片方だけ編集すると不整合が起きる。
+
+### 見出し（`##`）が1行に収まる文字数（2026-09-21 実測）
+
+テーマごとに折り返し位置が違う。**最も狭い speee に合わせて全角21字（半角換算42）を上限**とし、
+`output_slide` の `MAX_HEADING_DISPLAY_WIDTH` で検査している。
+
+| テーマ | 1行に収まる上限 |
+|---|---|
+| speee | 全角21字（22字で折り返す） |
+| border | 全角27字 |
+| gradient | 全角29字 |
+| beam | 全角30字以上 |
+
+**テーマCSSの見出しサイズを変えたら測り直す。** CSSの `font-size` から計算せず、実際に
+レンダリングして高さが倍になる位置を見る（行間・字間・パディングが効くため計算では外す）。
+
+```bash
+# 全角8〜30字の見出しを1枚ずつ並べた検体を作り、HTMLへ書き出す
+marp probe.md --allow-local-files --theme agent/speee.css --html -o probe.html
+# file:// はブラウザツールで操作できないので、HTTPで配ってから測る
+python3 -m http.server 8899
+```
+
+ブラウザで次を実行すると、高さが倍になる位置＝折り返しの開始点が分かる。
+
+```js
+[...document.querySelectorAll('section h2')].map(h =>
+  h.textContent.trim().length + ':' + Math.round(h.getBoundingClientRect().height)).join(' ')
+```

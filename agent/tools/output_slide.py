@@ -436,6 +436,11 @@ MAX_COLON_HEADING_RATIO = 1 / 3
 # （2026-09-21、コロンを減らした反動で名詞句が5枚続いたが、みのるんの指摘は
 # 「コロンを信用しすぎるな」であって、型の連続そのものではなかった）。
 HEADING_NUMBERING_PATTERN = re.compile(r'[①②③④⑤⑥⑦⑧⑨]|[（(]\s*\d+\s*[)）]')
+# 見出しが1行に収まる上限（半角換算）。2026-09-21に全4テーマをブラウザで実測した値。
+#   speee 全角21字OK（最も狭い）／ border 27字 ／ gradient 29字 ／ beam 30字以上
+# 本文の行幅と同じく、最も狭い speee に合わせて全角21字＝半角42とする。
+# 見出しへ情報を入れさせた反動で長くなり、2026-09-21に本文10枚中4枚が2行になっていた。
+MAX_HEADING_DISPLAY_WIDTH = 42
 
 
 def _classify_heading_type(heading: str) -> str:
@@ -817,6 +822,16 @@ def _check_slide_structure(markdown: str) -> list[dict]:
             heading_types.append(heading_type)
             if heading_type == '連番':
                 numbered_slides.append(index)
+
+            heading_width = _get_display_width(heading)
+            if heading_width > MAX_HEADING_DISPLAY_WIDTH:
+                violations.append({
+                    'type': 'heading_line_overflow',
+                    'slide_number': index,
+                    'heading': heading,
+                    'width': heading_width,
+                    'maximum': MAX_HEADING_DISPLAY_WIDTH,
+                })
 
         if numbered_slides:
             violations.append({
@@ -1505,6 +1520,13 @@ def output_slide(markdown: str, tool_context: ToolContext | None = None) -> str:
                 details.append(
                     f"  - スライド{v['slide_number']}: リストが{v['count']}項目。"
                     f"{v['maximum']}項目以内へ絞り、残りは表・通常の文章・別ページへ組み替える"
+                )
+            elif v['type'] == 'heading_line_overflow':
+                over = (v['width'] - v['maximum'] + 1) // 2
+                details.append(
+                    f"  - スライド{v['slide_number']}: 見出し「{v['heading']}」が長く、画面で2行へ折り返す。"
+                    f"全角{over}字ぶん削って全角21字以内にする"
+                    "（「まとめ：」「結論：」のような前置きから削る）"
                 )
             elif v['type'] == 'heading_colon_overuse':
                 details.append(

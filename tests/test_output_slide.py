@@ -1691,3 +1691,57 @@ class TestKimi3HeadingVariety:
         assert _classify_heading_type("なぜ自動化が進まないのか") == "問い"
         assert _classify_heading_type("文字列をやめたことが速度を生んだ") == "言い切り"
         assert _classify_heading_type("モデル名の由来") == "名詞句"
+
+
+class TestKimi3HeadingLength:
+    """見出しが画面で2行に折り返すのを止める。
+
+    2026-09-21、見出しへ情報を入れさせた反動で長くなり、本文10枚のうち4枚が
+    2行になった。「タイトル行はなるべく折り返しが入らないように」と指摘された。
+    上限は同日に全4テーマをブラウザでレンダリングして実測した値にもとづく。
+      speee 全角21字OK（22字で折り返す・最も狭い）／ border 27字 ／
+      gradient 29字 ／ beam 30字以上
+    本文の行幅と同じく、最も狭い speee に合わせる。
+    """
+
+    def _build(self, heading):
+        return f"---\nmarp: true\n---\n## {heading}\n\n- 項目A\n- 項目B"
+
+    def test_allows_heading_at_the_measured_boundary(self):
+        """全角21字ちょうどは通す（speeeで1行に収まる実測値）"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+
+        result = output_slide(markdown=self._build("あ" * 21))
+
+        assert "折り返す" not in result
+        assert get_generated_markdown() is not None
+
+    def test_rejects_heading_over_the_boundary(self):
+        """全角22字から差し戻す（speeeで2行になる）"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+
+        result = output_slide(markdown=self._build("あ" * 22))
+
+        assert "2行へ折り返す" in result
+        assert get_generated_markdown() is None
+
+    def test_tells_how_many_characters_to_cut(self):
+        """何字削ればよいかを伝える（モデルが直せる形にする）"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+
+        result = output_slide(markdown=self._build("エージェント活用が進むと、組織は「野良増殖」に直面する"))
+
+        assert "全角6字ぶん削って" in result
+
+    def test_counts_halfwidth_as_half(self):
+        """半角英数字は2文字で全角1字ぶんと数える"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+
+        # 半角42文字＝全角21字ぶん。通るはず
+        result = output_slide(markdown=self._build("A" * 42))
+
+        assert "折り返す" not in result
