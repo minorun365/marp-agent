@@ -762,14 +762,13 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                 'claims': unsupported_claims,
             })
 
-    if _active_model_type == 'grok':
-        body_formats = []
-        prose_slide_numbers = []
+    # 箇条書きの項目数はGrokとK3の両方で見る。K3は指示だけでは守りきれず、
+    # 2026-09-21の実測で本文36枚のうち17枚が「見出し＋箇条書き4項目」だった。
+    # 4項目以上並ぶ内容は観点を列にして表へ組み替えられるので、差し戻して直させる。
+    if _active_model_type in {'grok', 'kimi3'}:
         for index, slide in enumerate(slides, start=1):
             if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
                 continue
-            slide_format = _classify_slide_format(slide)
-            body_formats.append(slide_format)
             list_item_count = _count_list_items(slide)
             if list_item_count > MAX_LIST_ITEMS_PER_SLIDE:
                 violations.append({
@@ -778,6 +777,15 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                     'count': list_item_count,
                     'maximum': MAX_LIST_ITEMS_PER_SLIDE,
                 })
+
+    if _active_model_type == 'grok':
+        body_formats = []
+        prose_slide_numbers = []
+        for index, slide in enumerate(slides, start=1):
+            if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
+                continue
+            slide_format = _classify_slide_format(slide)
+            body_formats.append(slide_format)
 
             heading = _normal_slide_heading(slide)
             if _is_narrative_heading(heading):
@@ -816,7 +824,7 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                 'maximum': maximum_prose_slides,
             })
 
-    if _active_model_type in {'kimi', 'glm', 'grok'}:
+    if _active_model_type in {'kimi', 'glm', 'grok', 'kimi3'}:
         for index, slide in enumerate(slides, start=1):
             if re.search(r'_class:\s*(top|lead|end|tinytext)', slide):
                 continue
@@ -828,7 +836,7 @@ def _check_slide_structure(markdown: str) -> list[dict]:
                     'count': bold_count,
                 })
 
-    if _active_model_type in {'kimi', 'glm'}:
+    if _active_model_type in {'kimi', 'glm', 'kimi3'}:
         previous_pattern = None
         consecutive_pattern_count = 0
         for index, slide in enumerate(slides, start=1):

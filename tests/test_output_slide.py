@@ -1539,3 +1539,49 @@ def test_grok_still_regenerates_for_overflow():
 
     assert "あふれ検出または構成違反" in result
     assert get_generated_markdown() is None
+
+
+class TestKimi3FormatVariety:
+    """K3の単調さ（見出し＋箇条書き4項目の連続）を止める検査が効いていること。
+
+    2026-09-21にK3の本番経路の出力36枚を数えたところ、箇条書きを使った24枚のうち
+    17枚がきっかり4項目で、箇条書きが最大8枚連続していた。原因は
+    MODEL_SPECIFIC_PROMPTS に kimi3 が無く、体裁の検査もkimi3を対象外に
+    していたこと（モデル別の指示がゼロの状態だった）。
+    """
+
+    def test_kimi3_has_model_specific_prompt(self):
+        """K3にモデル別の指示が渡っていること（空だと単調な出力に戻る）"""
+        from config import MODEL_SPECIFIC_PROMPTS, get_system_prompt
+
+        assert "kimi3" in MODEL_SPECIFIC_PROMPTS
+        prompt = get_system_prompt("border", "kimi3")
+        # 形を使い分けさせる指示が入っていること
+        assert "ページの形を使い分ける" in prompt
+        assert "箇条書きを4項目以上並べない" in prompt
+        assert "直前の2枚と同じ形なら、3枚目は別の形にする" in prompt
+        # 枚数を1枚多く出す癖への手当て
+        assert "`---` の数を数え" in prompt
+
+    def test_kimi3_rejects_four_item_list(self):
+        """4項目の箇条書きは差し戻して表などへ組み替えさせる"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+        slide = "## 主な特徴\n\n- 特徴A\n- 特徴B\n- 特徴C\n- 特徴D"
+        md = "---\nmarp: true\n---\n" + slide
+
+        result = output_slide(markdown=md)
+
+        assert "4項目" in result
+        assert get_generated_markdown() is None
+
+    def test_kimi3_allows_three_item_list(self):
+        """3項目までは通す（絞りすぎて情報量を落とさない）"""
+        reset_generated_markdown()
+        configure_slide_validation("資料を作って", "kimi3")
+        slide = "## 主な特徴\n\n- 特徴A\n- 特徴B\n- 特徴C"
+        md = "---\nmarp: true\n---\n" + slide
+
+        result = output_slide(markdown=md)
+
+        assert "4項目" not in result
