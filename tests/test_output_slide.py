@@ -1563,6 +1563,34 @@ class TestKimi3FormatVariety:
         # 枚数を1枚多く出す癖への手当て
         assert "`---` の数を数え" in prompt
 
+    def test_kimi3_prompt_varies_page_composition(self):
+        """1枚ごとの組み立てを変えさせる指示が入っていること。
+
+        2026-09-21、形（箇条書き／表）の分布だけを直しても「まだ単調」と
+        指摘された。Sonnet 4.6と同じ依頼で並べたところ、Sonnetは箇条書きが
+        87%（6枚連続）でも単調に見えず、違いは1枚の組み立てにあった。
+        決定的だったのは太字（Sonnet 6/8枚 対 K3 0/10枚）と、見出しの型
+        （Sonnetは「主題：具体」が6枚、K3は短い名詞句が6枚）。
+        当時のK3向け指示が、Grok向けの「見出しは4〜18文字の短い名詞句」
+        「太字は1枚2か所まで」をそのまま持ち込んでいて、Sonnetの持ち味を
+        禁止していた。
+        """
+        from config import get_system_prompt
+
+        prompt = get_system_prompt("border", "kimi3")
+
+        # 見出しの型を混ぜさせる（短い名詞句で固定しない）
+        assert "見出しの立て方を1枚ごとに変える" in prompt
+        assert "短い名詞句だけで資料を通さない" in prompt
+        assert "同じ見出しを分割して並べない" in prompt
+        # 太字で要点を立てさせる（使うなという指示にしない）
+        assert "要点は太字で立てる" in prompt
+        assert "太字の項目名：説明" in prompt
+        # 使いすぎの歯止めは残す
+        assert "1枚につき太字は2か所まで" in prompt
+        # Grok向けの制限を持ち込まない
+        assert "原則4〜18文字の短い名詞句にする" not in prompt
+
     def test_kimi3_rejects_four_item_list(self):
         """4項目の箇条書きは差し戻して表などへ組み替えさせる"""
         reset_generated_markdown()
