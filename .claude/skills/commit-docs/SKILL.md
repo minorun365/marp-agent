@@ -1,6 +1,6 @@
 ---
 name: commit-docs
-model: sonnet
+effort: low
 description: デプロイ不要な変更をコミット（[skip-cd]付きでAmplifyデプロイをスキップ）
 argument-hint: [コミットメッセージ（省略可）]
 ---

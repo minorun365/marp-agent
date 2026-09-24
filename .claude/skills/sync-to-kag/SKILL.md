@@ -1,6 +1,5 @@
 ---
 name: sync-to-kag
-model: sonnet
 description: 一般公開版（marp-agent）の変更を、KAG社内版（marp-agent-kag）へマージで取り込む。公開版を本番へデプロイしたら必ず実行する。「kagにも反映して」「kag環境にも適用して」「同期して」で起動。
 allowed-tools: Bash
 ---
