@@ -58,3 +58,6 @@ tests/screenshots/*
 
 # Playwright MCP一時ファイル
 .playwright-mcp/
+
+# 作業報告などの一時ファイル（社内向けの内容を含むので公開リポジトリへ出さない）
+tmp/
