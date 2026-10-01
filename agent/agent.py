@@ -23,7 +23,7 @@ from tools import (
     get_generated_tweet_url,
     reset_generated_tweet_url,
 )
-from tools.web_search import get_last_search_result, reset_last_search_result
+from tools.web_search import reset_last_search_result
 from tools.http_request import reset_url_fetched
 from tools.tool_activity import (
     is_tool_active,
@@ -248,12 +248,11 @@ async def invoke(payload, context=None):
     # PDFの抽出テキスト・URL資料モードのプロンプトが連結されており、そこに含まれる
     # 「1枚」「10枚」まで指定枚数として拾ってしまう。
     configure_slide_validation(payload.get("prompt", ""), model_type)
-    web_search_executed = False
     slide_outputted = False
     suppress_text = False
     stream_error = False
     kimi_text_buffer: list[str] = []
-    kimi_slide_workflow_started = False
+    slide_workflow_started = False
     web_search_event_count = 0
     # 画面へ通知済みの取得URL。Kimiはツールの引数を分割して流すため、
     # 同じ取得について複数回スナップショットが届く。
@@ -343,8 +342,8 @@ async def invoke(payload, context=None):
                 tool_name = tool_info.get("name", "unknown")
                 tool_input = tool_info.get("input", {})
 
-                if model_type == "kimi" and tool_name in {"web_search", "output_slide"}:
-                    kimi_slide_workflow_started = True
+                if action == "chat" and tool_name in {"web_search", "http_request", "output_slide"}:
+                    slide_workflow_started = True
                     kimi_text_buffer.clear()
 
                 # 文字列の場合はJSONパースを試みる
@@ -355,7 +354,6 @@ async def invoke(payload, context=None):
                         pass
 
                 if tool_name == "web_search":
-                    web_search_executed = True
                     mark_web_search_executed()
                     # ツールの引数は複数のスナップショットに分かれて届くため、同じ検索の
                     # 「途中まで」のクエリで何度も通知が飛ぶ。1回の検索が画面へ3行ほど
@@ -414,7 +412,7 @@ async def invoke(payload, context=None):
                     for content in getattr(result.message, 'content', []):
                         if hasattr(content, 'text') and content.text:
                             if model_type == "kimi":
-                                if not kimi_slide_workflow_started:
+                                if not slide_workflow_started:
                                     kimi_text_buffer.append(content.text)
                             elif not slide_compose_announced:
                                 yield {"type": "text", "data": content.text}
@@ -464,17 +462,22 @@ async def invoke(payload, context=None):
         print(f"[ERROR] Stream failed (model_type={model_type}): {e}")
         yield {"type": "error", "error": str(e)}
 
-    # Kimiが検索結果の要約だけで停止した場合は、同じ履歴を使って出力を1回だけ完遂させる。
-    if (
-        model_type == "kimi"
-        and web_search_executed
-        and not slide_outputted
-        and not stream_error
-    ):
-        print("[INFO] Kimi stopped after web search; retrying output_slide once")
+    # 最終イベントの後でツールが保存した完成データも、再試行の判定前に回収する。
+    generated_markdown = get_generated_markdown()
+    if generated_markdown and not slide_outputted:
+        yield {"type": "markdown", "data": generated_markdown}
+        last_emit_at = time.monotonic()
+        reset_generated_markdown()
+        slide_outputted = True
+        suppress_text = True
+
+    # 検査の差し戻しやURL取得の後にモデルが終了しても、同じ履歴で1回だけ再開する。
+    if slide_workflow_started and not slide_outputted and not stream_error:
+        print(f"[INFO] Slide workflow incomplete (model={model_type}); retrying output_slide once")
         retry_instruction = (
-            "直前のWeb検索結果と元のユーザー指示を使って、完成スライドを今すぐ作成してください。"
-            "検索・説明・確認質問は追加せず、指定枚数と出典ルールを守ったMarkdownを"
+            "元のユーザー指示と取得済みの記事・検索結果、直前のスライド検査の修正指示を使って、"
+            "完成スライドを今すぐ作成してください。検索・説明・確認質問は追加せず、"
+            "指定枚数と出典ルールを守り、指摘された違反を直したMarkdownを"
             "output_slideで出力してください。"
         )
         try:
@@ -489,6 +492,7 @@ async def invoke(payload, context=None):
                 )
                 if not retry_done:
                     yield {"type": "progress", "message": "スライドを仕上げています..."}
+                    last_emit_at = time.monotonic()
                     continue
 
                 retry_event = retry_pending.result()
@@ -514,39 +518,32 @@ async def invoke(payload, context=None):
                     slide_outputted = True
                     suppress_text = True
 
+                if not slide_outputted and time.monotonic() - last_emit_at >= STREAM_KEEPALIVE_INTERVAL:
+                    yield {"type": "progress", "message": "スライドを仕上げています..."}
+                    last_emit_at = time.monotonic()
+
                 retry_pending = asyncio.ensure_future(_safe_anext(retry_iter))
         except Exception as e:
             stream_error = True
-            print(f"[ERROR] Kimi output retry failed: {e}")
+            print(f"[ERROR] Slide output retry failed (model={model_type}): {e}")
             yield {"type": "error", "error": str(e)}
 
-    # マークダウン出力
+    # 再試行の最終イベント後に保存された完成データも送る。
     generated_markdown = get_generated_markdown()
-    if generated_markdown:
+    if generated_markdown and not slide_outputted:
         yield {"type": "markdown", "data": generated_markdown}
-        last_emit_at = time.monotonic()
+        reset_generated_markdown()
+        slide_outputted = True
 
-    if model_type == "kimi" and not slide_outputted and not web_search_executed and kimi_text_buffer:
+    if slide_workflow_started and not slide_outputted and not stream_error:
+        print(f"[ERROR] Slide workflow incomplete after retry (model={model_type})")
+        yield {
+            "type": "error",
+            "error": "スライド生成を完遂できませんでした。もう一度お試しください。",
+        }
+
+    if model_type == "kimi" and not slide_workflow_started and not slide_outputted and kimi_text_buffer:
         yield {"type": "text", "data": "".join(kimi_text_buffer)}
-        last_emit_at = time.monotonic()
-
-    # Web検索後にスライドが生成されなかった場合のフォールバック
-    last_search_result = get_last_search_result()
-    if web_search_executed and not slide_outputted and last_search_result:
-        if model_type == "kimi":
-            yield {
-                "type": "error",
-                "error": "検索は完了しましたが、スライド生成を完遂できませんでした。もう一度お試しください。",
-            }
-            yield {"type": "done"}
-            return
-        truncated_result = last_search_result[:500]
-        if len(last_search_result) > 500:
-            truncated_result += "..."
-        fallback_message = f"Web検索結果:\n\n{truncated_result}\n\n---\nスライドを作成しますか？"
-        print(f"[INFO] Web search executed but no slide generated, returning search result as fallback (model_type={model_type})")
-        yield {"type": "text", "data": fallback_message}
-        last_emit_at = time.monotonic()
 
     # ツイートURL出力
     generated_tweet_url = get_generated_tweet_url()

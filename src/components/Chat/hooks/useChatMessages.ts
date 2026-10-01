@@ -332,6 +332,11 @@ export function useChatMessages({
       setSelectedFile(null);
     }
 
+    // 成功判定はこの依頼で完成データを受け取ったかで決める。
+    let slideWorkflowStarted = false;
+    let markdownReceived = false;
+    let streamError: Error | undefined;
+
     try {
       const invoke = useMock ? invokeAgentMock : invokeAgent;
 
@@ -363,6 +368,7 @@ export function useChatMessages({
           });
         },
         onSlideProgress: (message) => {
+          slideWorkflowStarted = true;
           setStatus('');
           stopTipRotation();
           setMessages(prev => appendSlideProgress(prev, message));
@@ -373,6 +379,9 @@ export function useChatMessages({
           setStatus(newStatus);
         },
         onToolUse: (toolName, query) => {
+          if (['output_slide', 'web_search', 'http_request'].includes(toolName)) {
+            slideWorkflowStarted = true;
+          }
           setMessages(prev => applyToolUse(prev, toolName, query));
 
           if (toolName === 'output_slide') {
@@ -384,7 +393,9 @@ export function useChatMessages({
           }
         },
         onMarkdown: (markdown) => {
+          if (!markdown.trim()) return;
           onMarkdownGenerated(markdown);
+          markdownReceived = true;
           stopTipRotation();
           setMessages(prev =>
             prev.map(msg =>
@@ -395,20 +406,8 @@ export function useChatMessages({
           );
         },
         onError: (error) => {
-          // ストリーム中のエラーイベント（バックエンドが{type:"error"}を送信）
-          console.error('Agent error:', error);
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          const isModelNotAvailable = errorMessage.includes('model identifier is invalid') || errorMessage.includes('Model not found');
-          const displayMessage = isModelNotAvailable
-            ? MESSAGES.ERROR_MODEL_NOT_AVAILABLE
-            : MESSAGES.ERROR;
-
-          streamText(displayMessage, setMessages, {
-            filterPredicate: (msg) => !!msg.isStatus,
-          }).then(() => {
-            setIsLoading(false);
-            setStatus('');
-          });
+          // SSEのコールバック例外はパーサーが握りつぶすため、終了後にcatchへ渡す。
+          streamError = error instanceof Error ? error : new Error(String(error));
         },
         onComplete: () => {
           setMessages(prev =>
@@ -424,6 +423,11 @@ export function useChatMessages({
           );
         },
       }, sessionId, modelType, referenceFile);
+
+      if (streamError) throw streamError;
+      if (slideWorkflowStarted && !markdownReceived) {
+        throw new Error('Slide workflow ended without completed markdown');
+      }
 
       setMessages(prev =>
         prev.map(msg =>
@@ -467,14 +471,11 @@ export function useChatMessages({
           if (msg.isStreaming) {
             return { ...msg, isStreaming: false };
           }
-          if (msg.isStatus && isSlideInProgressStatus(msg.statusText)) {
-            return { ...msg, statusText: MESSAGES.SLIDE_COMPLETED, tipIndex: undefined };
-          }
           return msg;
         })
       );
     }
-  }, [input, isLoading, selectedFile, currentMarkdown, sessionId, modelType, theme, onMarkdownGenerated, startTipRotation, stopTipRotation, streamText]);
+  }, [input, isLoading, selectedFile, currentMarkdown, sessionId, modelType, theme, onMarkdownGenerated, startTipRotation, stopTipRotation]);
 
   return {
     messages,
