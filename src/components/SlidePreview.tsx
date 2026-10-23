@@ -8,18 +8,26 @@ import beamTheme from '../themes/beam.css?raw';
 import speeeTheme from '../themes/speee.css?raw';
 
 // テーマ定義
-export const THEMES = [
+export interface SlideTheme {
+  id: string;
+  name: string;
+  css: string;
+}
+
+export const THEMES: SlideTheme[] = [
   { id: 'speee', name: 'Speee', css: speeeTheme },
   { id: 'border', name: 'Border', css: borderTheme },
   { id: 'gradient', name: 'Gradient', css: gradientTheme },
   { id: 'beam', name: 'Beam', css: beamTheme },
 ] as const;
 
-export type ThemeId = typeof THEMES[number]['id'];
+// 組み込みのテーマに加え、運営者だけに出す非公開テーマ（extraThemes）も選べるので文字列で持つ
+export type ThemeId = string;
 
 interface SlidePreviewProps {
   markdown: string;
   selectedTheme: ThemeId;
+  extraThemes?: SlideTheme[];
   onThemeChange: (theme: ThemeId) => void;
   onDownloadPdf: (theme: string) => void;
   onDownloadPptx: (theme: string) => void;
@@ -29,7 +37,7 @@ interface SlidePreviewProps {
   onRequestEdit?: () => void;
 }
 
-export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloadPdf, onDownloadPptx, onDownloadEditablePptx, onShareSlide, isDownloading, onRequestEdit }: SlidePreviewProps) {
+export function SlidePreview({ markdown, selectedTheme, extraThemes, onThemeChange, onDownloadPdf, onDownloadPptx, onDownloadEditablePptx, onShareSlide, isDownloading, onRequestEdit }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -60,6 +68,8 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isDropdownOpen]);
+
+  const allThemes = useMemo(() => [...THEMES, ...(extraThemes ?? [])], [extraThemes]);
 
   // マークダウンにテーマ指定を注入
   const markdownWithTheme = useMemo(() => {
@@ -100,7 +110,7 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
     try {
       const marp = new Marp();
       // 全カスタムテーマを登録
-      THEMES.forEach(theme => {
+      allThemes.forEach(theme => {
         if (theme.css) {
           marp.themeSet.add(theme.css);
         }
@@ -129,7 +139,7 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
       console.error('Marp render error:', error);
       return { slides: [], css: '' };
     }
-  }, [markdownWithTheme]);
+  }, [markdownWithTheme, allThemes]);
 
   if (!markdown) {
     return (
@@ -154,7 +164,7 @@ export function SlidePreview({ markdown, selectedTheme, onThemeChange, onDownloa
             onChange={(e: ChangeEvent<HTMLSelectElement>) => onThemeChange(e.target.value as ThemeId)}
             className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer hover:text-gray-700 transition-colors appearance-none pr-4 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%3E%3Cpath%20d%3D%22M0%200l5%206%205-6z%22%20fill%3D%22%239ca3af%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[right_center] bg-no-repeat"
           >
-            {THEMES.map(theme => (
+            {allThemes.map(theme => (
               <option key={theme.id} value={theme.id}>{theme.name}</option>
             ))}
           </select>

@@ -4,7 +4,8 @@ import { Hub } from 'aws-amplify/utils';
 import { AuthScreen } from './components/Auth/AuthScreen';
 import { Chat } from './components/Chat';
 import { SlidePreview } from './components/SlidePreview';
-import type { ThemeId } from './components/SlidePreview';
+import type { SlideTheme, ThemeId } from './components/SlidePreview';
+import { fetchPrivateThemes } from './hooks/api/privateThemesClient';
 import { ShareConfirmModal } from './components/ShareConfirmModal';
 import { ShareResultModal } from './components/ShareResultModal';
 import { exportPdf, exportPdfMock, exportPptx, exportPptxMock, exportEditablePptx, exportEditablePptxMock, shareSlide, shareSlideMock } from './hooks/useAgentCore';
@@ -78,6 +79,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const [markdown, setMarkdown] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>('speee');
+  const [extraThemes, setExtraThemes] = useState<SlideTheme[]>([]);
   const [editPromptTrigger, setEditPromptTrigger] = useState(0);
   const [sharePromptTrigger, setSharePromptTrigger] = useState(0);
   const [hasShownSharePrompt, setHasShownSharePrompt] = useState(false);
@@ -90,6 +92,14 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   const [showShareConfirm, setShowShareConfirm] = useState(false);
   const [shareResult, setShareResult] = useState<ShareResult | null>(null);
   const [pendingShareTheme, setPendingShareTheme] = useState<string>('border');
+
+  // 運営者だけに出す非公開テーマ。owner でなければ空のまま（詳細は privateThemesClient.ts）
+  useEffect(() => {
+    if (useMock) return;
+    fetchPrivateThemes()
+      .then(setExtraThemes)
+      .catch((error) => console.warn('非公開テーマを取得できませんでした', error));
+  }, []);
 
   const handleMarkdownGenerated = (newMarkdown: string) => {
     setMarkdown(newMarkdown);
@@ -244,6 +254,7 @@ function MainApp({ signOut }: { signOut?: () => void }) {
           <SlidePreview
             markdown={markdown}
             selectedTheme={selectedTheme}
+            extraThemes={extraThemes}
             onThemeChange={setSelectedTheme}
             onDownloadPdf={(theme) => handleExport('pdf', theme)}
             onDownloadPptx={(theme) => handleExport('pptx', theme)}

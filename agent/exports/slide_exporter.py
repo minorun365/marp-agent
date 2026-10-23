@@ -48,8 +48,8 @@ def _run_marp_cli(markdown: str, output_format: str, theme: str = 'border', edit
     elif output_format == "png":
         cmd.extend(["--image", "png"])
 
-    # テーマ設定
-    theme_path = Path(__file__).parent.parent / f"{theme}.css"
+    # テーマ設定（owner の非公開テーマは、取り寄せた CSS の絶対パスで渡ってくる。private_themes.py）
+    theme_path = Path(theme) if theme.endswith(".css") else Path(__file__).parent.parent / f"{theme}.css"
     if theme_path.exists():
         cmd.extend(["--theme", str(theme_path)])
 

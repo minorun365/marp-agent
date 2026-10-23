@@ -4,6 +4,7 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as budgets from 'aws-cdk-lib/aws-budgets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 
@@ -20,9 +21,20 @@ export class FoundationStack extends cdk.Stack {
   readonly certificate: acm.Certificate;
   readonly webSearchGateway: agentcore.CfnGateway;
   readonly webSearchToolName: string;
+  readonly privateThemesBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string, props: FoundationStackProps) {
     super(scope, id, props);
+
+    // 運営者（owner グループ）だけに出す非公開テーマの置き場。中身はこのリポジトリに置かず、
+    // 別の場所から themes/manifest.json と themes/<id>.css を上げる（agent/private_themes.py）
+    this.privateThemesBucket = new s3.Bucket(this, 'PrivateThemesBucket', {
+      bucketName: `pawapo-private-themes-${this.account}-${this.region}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
 
     this.tavilySecret = new secretsmanager.Secret(this, 'TavilyApiKeys', {
       secretName: 'pawapo/tavily-api-keys',

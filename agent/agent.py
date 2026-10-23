@@ -12,6 +12,7 @@ from bedrock_agentcore import BedrockAgentCoreApp
 
 from config import URL_REFERENCE_MODE_PROMPT, normalize_model_type
 from identity import log_session_identity
+from private_themes import list_private_themes, resolve_export_theme
 from tools import (
     web_search,
     output_slide,
@@ -105,14 +106,28 @@ async def invoke(payload, context=None):
     reference_file = payload.get("reference_file")
 
     # 利用統計のため、このリクエストが誰のものかを1行だけログへ残す（詳細は identity.py）
-    log_session_identity(session_id, context)
+    user = log_session_identity(session_id, context) or {}
+    is_owner = bool(user.get("is_owner"))
+
+    # 運営者だけに出す非公開テーマの一覧（詳細は private_themes.py）
+    if action == "list_private_themes":
+        try:
+            themes = list_private_themes() if is_owner else []
+            yield {"type": "private_themes", "themes": themes}
+        except Exception as e:
+            print(f"[ERROR] private themes failed: {e}")
+            yield {"type": "error", "message": str(e)}
+        return
+
+    # 書き出しと共有だけは、owner の非公開テーマを CSS のパスへ解決して渡す
+    export_theme = resolve_export_theme(theme, is_owner) if action != "chat" else theme
 
     # PDF出力
     if action == "export_pdf" and current_markdown:
         try:
             print(f"[INFO] PDF export started (theme={theme})")
             loop = asyncio.get_event_loop()
-            task = loop.run_in_executor(None, generate_pdf, current_markdown, theme)
+            task = loop.run_in_executor(None, generate_pdf, current_markdown, export_theme)
             async for event in _wait_with_keepalive(task, "PDF"):
                 yield event
             pdf_bytes = task.result()
@@ -129,7 +144,7 @@ async def invoke(payload, context=None):
         try:
             print(f"[INFO] PPTX export started (theme={theme})")
             loop = asyncio.get_event_loop()
-            task = loop.run_in_executor(None, generate_pptx, current_markdown, theme)
+            task = loop.run_in_executor(None, generate_pptx, current_markdown, export_theme)
             async for event in _wait_with_keepalive(task, "PPTX"):
                 yield event
             pptx_bytes = task.result()
@@ -146,7 +161,7 @@ async def invoke(payload, context=None):
         try:
             print(f"[INFO] Editable PPTX export started (theme={theme})")
             loop = asyncio.get_event_loop()
-            task = loop.run_in_executor(None, generate_editable_pptx, current_markdown, theme)
+            task = loop.run_in_executor(None, generate_editable_pptx, current_markdown, export_theme)
             async for event in _wait_with_keepalive(task, "編集可能PPTX"):
                 yield event
             pptx_bytes = task.result()
@@ -163,7 +178,7 @@ async def invoke(payload, context=None):
         try:
             print(f"[INFO] Slide share started (theme={theme})")
             loop = asyncio.get_event_loop()
-            task = loop.run_in_executor(None, share_slide, current_markdown, theme)
+            task = loop.run_in_executor(None, share_slide, current_markdown, export_theme)
             async for event in _wait_with_keepalive(task, "共有"):
                 yield event
             result = task.result()

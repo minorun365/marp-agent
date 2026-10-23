@@ -80,6 +80,7 @@ export class AgentStack extends cdk.Stack {
         AGENTCORE_WEBSEARCH_TOOL_NAME: props.foundation.webSearchToolName,
         SHARED_SLIDES_BUCKET: sharedSlidesBucketName,
         SHARED_SLIDES_PUBLIC_DOMAIN: props.appDomain,
+        PRIVATE_THEMES_BUCKET: props.foundation.privateThemesBucket.bucketName,
       },
       tags: { Project: 'pawapo' },
     });

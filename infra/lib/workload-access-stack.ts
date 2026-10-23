@@ -34,6 +34,11 @@ export class WorkloadAccessStack extends cdk.Stack {
       actions: ['s3:PutObject'],
       resources: [`arn:${this.partition}:s3:::pawapo-shared-slides-${this.account}-${this.region}/*`],
     }));
+    // 非公開テーマは読むだけ（owner かどうかはエージェントが JWT で判定する）
+    this.runtimeRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['s3:GetObject'],
+      resources: [`arn:${this.partition}:s3:::pawapo-private-themes-${this.account}-${this.region}/themes/*`],
+    }));
     this.runtimeRole.addToPolicy(new iam.PolicyStatement({
       actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
       resources: [
