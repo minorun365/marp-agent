@@ -72,6 +72,7 @@ git -C ~/git/minorun365/marp-agent-kag merge upstream/main
 | KAG版固有の設定（ドメイン・モデル・テーマ・デプロイ手順） | **KAG版側を採る** |
 | 公開版で直したロジック・バグ修正 | **公開版側を採る** |
 | 両側で別々に書き足したドキュメント | **両方を残す**（並べて統合する） |
+| `src/components/Auth/legacyAccountNote.ts` の `SHOW_LEGACY_ACCOUNT_NOTE` | **KAG版側（false）を採る**。公開版の2026-08-14の移行に限った案内なので社内版には出さない |
 
 判断がつかないものが1つでもあれば、`git merge --abort` して**みのるんへ聞く**。
 中途半端に解決してpushしない。
