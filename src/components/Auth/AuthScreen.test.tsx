@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { signIn } from 'aws-amplify/auth';
 import { AuthScreen } from './AuthScreen';
+import { LEGACY_RESET_LEAD, LEGACY_SIGNIN_ERROR } from './legacyAccountNote';
+
+vi.mock('aws-amplify/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('aws-amplify/auth')>()),
+  signIn: vi.fn(),
+}));
 
 describe('AuthScreen', () => {
   beforeEach(() => {
@@ -36,5 +43,29 @@ describe('AuthScreen', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: '次回は、もっとかんたんに' })).toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'あとで' })).toBeInTheDocument();
+  });
+  it('パスワードログインに失敗したら、8月14日より前の登録者へ登録し直しを案内する', async () => {
+    const error = Object.assign(new Error('Incorrect username or password.'), { name: 'NotAuthorizedException' });
+    vi.mocked(signIn).mockRejectedValueOnce(error);
+    render(<AuthScreen onAuthenticated={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('メールアドレス'), { target: { value: 'old@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'メールで続ける' }));
+    fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'パスワードでログイン' }));
+
+    await waitFor(() => expect(screen.getByText(LEGACY_SIGNIN_ERROR)).toBeInTheDocument());
+
+    // 再設定へ進んだら前の画面のエラーは消し、同じ案内を2回並べない
+    fireEvent.click(screen.getByRole('button', { name: 'パスワードを忘れた方' }));
+    expect(screen.getByText(LEGACY_RESET_LEAD)).toBeInTheDocument();
+    expect(screen.queryByText(LEGACY_SIGNIN_ERROR)).not.toBeInTheDocument();
+  });
+
+  it('パスワード再設定の画面で、8月14日より前の登録者へ登録し直しを案内する', () => {
+    render(<AuthScreen demoMode onAuthenticated={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'メールで続ける' }));
+    fireEvent.click(screen.getByRole('button', { name: 'パスワードを忘れた方' }));
+
+    expect(screen.getByText(LEGACY_RESET_LEAD)).toBeInTheDocument();
   });
 });

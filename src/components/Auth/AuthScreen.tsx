@@ -10,6 +10,7 @@ import {
   signUp,
 } from 'aws-amplify/auth';
 import './AuthScreen.css';
+import { LEGACY_RESET_LEAD, LEGACY_SIGNIN_ERROR, SIGNIN_CHECK_MESSAGE } from './legacyAccountNote';
 
 type AuthState = 'initial' | 'email' | 'signup' | 'verify' | 'reset' | 'resetConfirm' | 'offer';
 
@@ -40,7 +41,7 @@ interface AuthScreenProps {
 function toMessage(error: unknown) {
   if (error instanceof Error) {
     if (error.name === 'NotAuthorizedException' || error.name === 'UserNotFoundException') {
-      return 'メールアドレスまたは認証情報を確認してください。';
+      return SIGNIN_CHECK_MESSAGE;
     }
     if (error.name === 'UsernameExistsException') {
       return 'このメールアドレスは登録済みです。ログインをお試しください。';
@@ -99,6 +100,12 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
         username: email,
         password,
         options: { authFlowType: 'USER_PASSWORD_AUTH' },
+      }).catch((caught: unknown) => {
+        if (caught instanceof Error
+          && (caught.name === 'NotAuthorizedException' || caught.name === 'UserNotFoundException')) {
+          throw new Error(LEGACY_SIGNIN_ERROR);
+        }
+        throw caught;
       });
       if (!result.isSignedIn) {
         throw new Error('ログインを完了できませんでした。パスワード再設定をお試しください。');
@@ -246,7 +253,7 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
                 </label>
                 <button className="auth-action auth-secondary" type="submit" disabled={busy}>パスワードでログイン</button>
               </form>
-              <button className="auth-text-button auth-center" type="button" onClick={() => setState('reset')}>パスワードを忘れた方</button>
+              <button className="auth-text-button auth-center" type="button" onClick={() => { setError(''); setState('reset'); }}>パスワードを忘れた方</button>
               <div className="auth-new-user">初めてご利用の方は <button className="auth-text-button" type="button" onClick={() => { setSignupFrom('email'); setState('signup'); }}>アカウントを作成</button></div>
             </>
           )}
@@ -284,7 +291,7 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
             <>
               <button className="auth-back" type="button" onClick={() => setState('email')}>← 戻る</button>
               <p className="auth-eyebrow">Password reset</p><h2>パスワードを再設定</h2>
-              <p className="auth-lead">確認コードをメールでお送りします。</p>
+              <p className="auth-lead">{LEGACY_RESET_LEAD}</p>
               <form onSubmit={requestReset}>
                 <label className="auth-field">メールアドレス<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
                 <button className="auth-action auth-primary" type="submit" disabled={busy}>確認コードを送る</button>
