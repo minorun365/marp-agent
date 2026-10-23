@@ -106,6 +106,7 @@ guarded('Runtimeに必須の環境変数がそろっている', () => {
     'AGENTCORE_WEBSEARCH_GATEWAY_URL',
     'AGENTCORE_WEBSEARCH_TOOL_NAME',
     'SHARED_SLIDES_BUCKET',
+    'PRIVATE_THEMES_BUCKET',
     'SHARED_SLIDES_PUBLIC_DOMAIN',
   ];
   const missing = requiredKeys.filter((key) => !env[key]);
@@ -185,6 +186,33 @@ guarded('利用者向けのクライアントにパスワードの経路が無�
   const open = flows.filter((f) => f === 'ALLOW_USER_PASSWORD_AUTH' || f === 'ALLOW_USER_SRP_AUTH');
   check('利用者向けのクライアントにパスワードの経路が無い', open.length === 0, open.length ? `残り=[${open.join(', ')}]` : '');
 });
+
+// ── 非公開テーマ ────────────────────────────────────────────────────
+// 運営者向けの非公開テーマ（agent/private_themes.py）は別の場所から S3 へ上げる。消えたり壊れたりしても
+// 画面の選択肢から黙って消えるだけでエラーにならないので、期待する ID がそろっているかをここで見る。
+// 期待する ID は .env.production.local の PAWAPO_PRIVATE_THEMES（カンマ区切り）。未設定なら検査しない。
+const expectedPrivateThemes = (process.env.PAWAPO_PRIVATE_THEMES || '').split(',').map((id) => id.trim()).filter(Boolean);
+if (expectedPrivateThemes.length > 0) {
+  guarded('非公開テーマがS3にそろっている', () => {
+    const account = aws(['sts', 'get-caller-identity']).Account;
+    const bucket = `pawapo-private-themes-${account}-${region}`;
+    const manifest = aws(['s3', 'cp', `s3://${bucket}/themes/manifest.json`, '-']) || [];
+    const listed = new Set(manifest.map((entry) => entry.id));
+    const missing = expectedPrivateThemes.filter((id) => {
+      if (!listed.has(id)) return true;
+      try {
+        return !(aws(['s3api', 'head-object', '--bucket', bucket, '--key', `themes/${id}.css`]).ContentLength > 0);
+      } catch {
+        return true;
+      }
+    });
+    check(
+      '非公開テーマがS3にそろっている',
+      missing.length === 0,
+      missing.length ? `不足=[${missing.join(', ')}]` : `${expectedPrivateThemes.length}件`,
+    );
+  });
+}
 
 // ── Web配信 ─────────────────────────────────────────────────────────
 guarded('本番ドメインがCloudFrontへ登録されている', () => {
