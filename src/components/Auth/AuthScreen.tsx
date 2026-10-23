@@ -1,20 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   associateWebAuthnCredential,
-  confirmResetPassword,
+  autoSignIn,
+  confirmSignIn,
   confirmSignUp,
   resendSignUpCode,
-  resetPassword,
   signIn,
   signInWithRedirect,
   signUp,
 } from 'aws-amplify/auth';
 import './AuthScreen.css';
-import { LEGACY_RESET_LEAD, LEGACY_SIGNIN_ERROR, SIGNIN_CHECK_MESSAGE } from './legacyAccountNote';
+import { LEGACY_OTP_NOTE, SIGNIN_CHECK_MESSAGE } from './legacyAccountNote';
 
-type AuthState = 'initial' | 'email' | 'signup' | 'verify' | 'reset' | 'resetConfirm' | 'offer';
+type AuthState = 'initial' | 'email' | 'otp' | 'signup' | 'verify' | 'offer';
 
-const authStates: readonly AuthState[] = ['initial', 'email', 'signup', 'verify', 'reset', 'resetConfirm', 'offer'];
+const authStates: readonly AuthState[] = ['initial', 'email', 'otp', 'signup', 'verify', 'offer'];
 const PASSKEY_OFFER_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 function demoInitialState(demoMode: boolean): AuthState {
@@ -43,6 +43,12 @@ function toMessage(error: unknown) {
     if (error.name === 'NotAuthorizedException' || error.name === 'UserNotFoundException') {
       return SIGNIN_CHECK_MESSAGE;
     }
+    if (error.name === 'CodeMismatchException') {
+      return 'コードが正しくありません。届いたメールのコードをもう一度確認してください。';
+    }
+    if (error.name === 'ExpiredCodeException') {
+      return 'コードの有効期限が切れました。コードを送り直してください。';
+    }
     if (error.name === 'UsernameExistsException') {
       return 'このメールアドレスは登録済みです。ログインをお試しください。';
     }
@@ -54,7 +60,6 @@ function toMessage(error: unknown) {
 export function AuthScreen({ demoMode = false, initialError = '', onAuthenticated }: AuthScreenProps) {
   const [state, setState] = useState<AuthState>(() => demoInitialState(demoMode));
   const [email, setEmail] = useState(demoMode ? 'you@example.com' : '');
-  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
@@ -89,33 +94,41 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
     setState('email');
   };
 
-  const passwordSignIn = (event: FormEvent) => {
+  // パスキーを登録していない人は、ログインのたびにパスキーを案内する（30日に1回まで）
+  const finishSignIn = () => {
+    const registered = localStorage.getItem(`pawapo-passkey-registered:${email}`) === 'true';
+    const dismissedAt = Number(localStorage.getItem(`pawapo-passkey-offer-dismissed-at:${email}`));
+    const coolingDown = Number.isFinite(dismissedAt)
+      && Date.now() - dismissedAt < PASSKEY_OFFER_COOLDOWN_MS;
+    if (registered || coolingDown) onAuthenticated();
+    else setState('offer');
+  };
+
+  const sendLoginCode = () => {
+    void run(async () => {
+      if (!demoMode) {
+        // 登録の無いアドレスでも Cognito は同じ応答を返す（preventUserExistenceErrors）。
+        // 届かない場合の案内はコード入力の画面に出す。
+        await signIn({
+          username: email,
+          options: { authFlowType: 'USER_AUTH', preferredChallenge: 'EMAIL_OTP' },
+        });
+      }
+      setCode('');
+      setState('otp');
+    });
+  };
+
+  const confirmLoginCode = (event: FormEvent) => {
     event.preventDefault();
     void run(async () => {
       if (demoMode) {
         setState('offer');
         return;
       }
-      const result = await signIn({
-        username: email,
-        password,
-        options: { authFlowType: 'USER_PASSWORD_AUTH' },
-      }).catch((caught: unknown) => {
-        if (caught instanceof Error
-          && (caught.name === 'NotAuthorizedException' || caught.name === 'UserNotFoundException')) {
-          throw new Error(LEGACY_SIGNIN_ERROR);
-        }
-        throw caught;
-      });
-      if (!result.isSignedIn) {
-        throw new Error('ログインを完了できませんでした。パスワード再設定をお試しください。');
-      }
-      const registered = localStorage.getItem(`pawapo-passkey-registered:${email}`) === 'true';
-      const dismissedAt = Number(localStorage.getItem(`pawapo-passkey-offer-dismissed-at:${email}`));
-      const coolingDown = Number.isFinite(dismissedAt)
-        && Date.now() - dismissedAt < PASSKEY_OFFER_COOLDOWN_MS;
-      if (registered || coolingDown) onAuthenticated();
-      else setState('offer');
+      const result = await confirmSignIn({ challengeResponse: code.trim() });
+      if (!result.isSignedIn) throw new Error('ログインを完了できませんでした。コードを送り直してください。');
+      finishSignIn();
     });
   };
 
@@ -133,7 +146,7 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
         },
       });
       if (!result.isSignedIn) {
-        throw new Error('パスキーでログインできませんでした。パスワードでログインしてください。');
+        throw new Error('パスキーでログインできませんでした。メールのコードでログインしてください。');
       }
       localStorage.setItem(`pawapo-passkey-registered:${email}`, 'true');
       onAuthenticated();
@@ -144,10 +157,10 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
     event.preventDefault();
     void run(async () => {
       if (!demoMode) {
+        // パスワードは作らない。確認コードの入力がそのまま初回ログインになる
         await signUp({
           username: email,
-          password,
-          options: { userAttributes: { email } },
+          options: { userAttributes: { email }, autoSignIn: { authFlowType: 'USER_AUTH' } },
         });
       }
       setCode('');
@@ -159,35 +172,14 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
     event.preventDefault();
     void run(async () => {
       if (!demoMode) {
-        await confirmSignUp({ username: email, confirmationCode: code });
-        const result = await signIn({
-          username: email,
-          password,
-          options: { authFlowType: 'USER_PASSWORD_AUTH' },
-        });
-        if (!result.isSignedIn) throw new Error('登録後のログインに失敗しました。');
+        const confirmed = await confirmSignUp({ username: email, confirmationCode: code.trim() });
+        if (confirmed.nextStep.signUpStep !== 'COMPLETE_AUTO_SIGN_IN') {
+          throw new Error('登録は完了しました。メールのコードでログインしてください。');
+        }
+        const result = await autoSignIn();
+        if (!result.isSignedIn) throw new Error('登録後のログインに失敗しました。メールのコードでログインしてください。');
       }
       setState('offer');
-    });
-  };
-
-  const requestReset = (event: FormEvent) => {
-    event.preventDefault();
-    void run(async () => {
-      if (!demoMode) await resetPassword({ username: email });
-      setCode('');
-      setPassword('');
-      setState('resetConfirm');
-    });
-  };
-
-  const finishReset = (event: FormEvent) => {
-    event.preventDefault();
-    void run(async () => {
-      if (!demoMode) {
-        await confirmResetPassword({ username: email, confirmationCode: code, newPassword: password });
-      }
-      setState('email');
     });
   };
 
@@ -243,18 +235,27 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
               <button className="auth-back" type="button" onClick={() => setState('initial')}>← 戻る</button>
               <p className="auth-eyebrow">Sign in</p>
               <h2>メールでログイン</h2>
-              <p className="auth-lead">パスキーを登録済みなら、顔認証や指紋認証を使えます。これまでのパスワードも引き続き使えます。</p>
+              <p className="auth-lead">パスキーを登録済みなら、顔認証や指紋認証で入れます。登録していない方は、メールに届くコードで入れます。</p>
               <div className="auth-email-summary"><span>{email}</span><button type="button" onClick={() => setState('initial')}>変更</button></div>
               <button className="auth-action auth-primary" type="button" disabled={busy} onClick={passkeySignIn}><PasskeyIcon />パスキーでログイン</button>
               <div className="auth-divider">または</div>
-              <form onSubmit={passwordSignIn}>
-                <label className="auth-field">パスワード
-                  <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="パスワード" required />
-                </label>
-                <button className="auth-action auth-secondary" type="submit" disabled={busy}>パスワードでログイン</button>
-              </form>
-              <button className="auth-text-button auth-center" type="button" onClick={() => { setError(''); setState('reset'); }}>パスワードを忘れた方</button>
+              <button className="auth-action auth-secondary" type="button" disabled={busy} onClick={sendLoginCode}>メールにコードを送る</button>
               <div className="auth-new-user">初めてご利用の方は <button className="auth-text-button" type="button" onClick={() => { setSignupFrom('email'); setState('signup'); }}>アカウントを作成</button></div>
+            </>
+          )}
+
+          {state === 'otp' && (
+            <>
+              <button className="auth-back" type="button" onClick={() => setState('email')}>← 戻る</button>
+              <p className="auth-eyebrow">Sign in</p>
+              <h2>コードを入力</h2>
+              <p className="auth-lead"><strong>{email}</strong> に届いたコードを入力してください。</p>
+              <form onSubmit={confirmLoginCode}>
+                <label className="auth-field">コード<input className="auth-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} maxLength={8} required /></label>
+                <button className="auth-action auth-primary" type="submit" disabled={busy}>ログイン</button>
+              </form>
+              <button className="auth-text-button auth-center" type="button" disabled={busy} onClick={sendLoginCode}>コードを送り直す</button>
+              <p className="auth-privacy">{LEGACY_OTP_NOTE} <button className="auth-text-button" type="button" onClick={() => { setSignupFrom('otp'); setState('signup'); }}>アカウントを作成</button></p>
             </>
           )}
 
@@ -263,13 +264,11 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
               <button className="auth-back" type="button" onClick={() => setState(signupFrom)}>← 戻る</button>
               <p className="auth-eyebrow">Create account</p>
               <h2>アカウントを作成</h2>
-              <p className="auth-lead">メールアドレスとパスワードで始められます。</p>
+              <p className="auth-lead">メールアドレスだけで始められます。パスワードは要りません。</p>
               <form onSubmit={createAccount}>
                 <label className="auth-field">メールアドレス<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-                <label className="auth-field">パスワード<input type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} placeholder="8文字以上" required /></label>
-                <button className="auth-action auth-primary" type="submit" disabled={busy}>アカウントを作成</button>
+                <button className="auth-action auth-primary" type="submit" disabled={busy}>確認コードを送る</button>
               </form>
-              <p className="auth-privacy">登録後、メールアドレス確認のために一度だけ確認コードをお送りします。</p>
             </>
           )}
 
@@ -287,31 +286,6 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
             </>
           )}
 
-          {state === 'reset' && (
-            <>
-              <button className="auth-back" type="button" onClick={() => setState('email')}>← 戻る</button>
-              <p className="auth-eyebrow">Password reset</p><h2>パスワードを再設定</h2>
-              <p className="auth-lead">{LEGACY_RESET_LEAD}</p>
-              <form onSubmit={requestReset}>
-                <label className="auth-field">メールアドレス<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-                <button className="auth-action auth-primary" type="submit" disabled={busy}>確認コードを送る</button>
-              </form>
-            </>
-          )}
-
-          {state === 'resetConfirm' && (
-            <>
-              <button className="auth-back" type="button" onClick={() => setState('reset')}>← 戻る</button>
-              <p className="auth-eyebrow">Password reset</p><h2>新しいパスワードを入力</h2>
-              <p className="auth-lead">{email} に届いた確認コードを入力してください。</p>
-              <form onSubmit={finishReset}>
-                <label className="auth-field">確認コード<input inputMode="numeric" value={code} onChange={(event) => setCode(event.target.value)} maxLength={6} required /></label>
-                <label className="auth-field">新しいパスワード<input type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /></label>
-                <button className="auth-action auth-primary" type="submit" disabled={busy}>パスワードを変更</button>
-              </form>
-            </>
-          )}
-
           {state === 'offer' && (
             <>
               <div className="auth-offer-icon"><PasskeyIcon /></div>
@@ -320,7 +294,7 @@ export function AuthScreen({ demoMode = false, initialError = '', onAuthenticate
               <p className="auth-lead">パスキーを登録すると、次回から端末の顔認証や指紋認証だけでログインできます。</p>
               <button className="auth-action auth-primary" type="button" disabled={busy} onClick={registerPasskey}>パスキーを登録</button>
               <button className="auth-action auth-secondary auth-spaced" type="button" disabled={busy} onClick={dismissPasskey}>あとで</button>
-              <p className="auth-privacy">登録しなくても、これまでのパスワードを引き続き使えます。</p>
+              <p className="auth-privacy">登録しなくても、メールに届くコードでログインできます。</p>
             </>
           )}
 
