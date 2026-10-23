@@ -29,6 +29,17 @@ export class AuthStack extends cdk.Stack {
     if (googleEnabled && !cognitoDomainPrefix) {
       throw new Error('Googleログインを有効にする場合は cognitoDomainPrefix が必要です');
     }
+    const customMessageFunction = new lambdaNodejs.NodejsFunction(this, 'CustomMessageFunction', {
+      functionName: 'pawapo-custom-message',
+      entry: path.join(currentDir, '../../infra/lambda/auth/custom-message/handler.ts'),
+      runtime: lambda.Runtime.NODEJS_24_X,
+      architecture: lambda.Architecture.ARM_64,
+      timeout: cdk.Duration.seconds(5),
+      role: props.authAccess.customMessageRole,
+      logGroup: props.authAccess.customMessageLogGroup,
+      bundling: { minify: true, sourceMap: true },
+    });
+
     let googleLinkFunction: lambdaNodejs.NodejsFunction | undefined;
     if (googleEnabled) {
       const functionName = 'pawapo-google-link';
@@ -59,10 +70,12 @@ export class AuthStack extends cdk.Stack {
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       signInPolicy: {
+        // ログインはメールのコード（Cognito 標準メール、1日50通）とパスキー。
+        // password は Cognito の仕様で外せない（PasswordAuthenticationCannotDisabled）ので、
+        // 利用者向けのクライアントからパスワードの経路を外して入口を閉じている（下の authFlows）
         allowedFirstAuthFactors: {
           password: true,
           passkey: true,
-          // パスワードの置き換え先。Cognito 標準メール（1日50通）で送る
           emailOtp: true,
         },
       },
@@ -78,6 +91,7 @@ export class AuthStack extends cdk.Stack {
       deletionProtection: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       lambdaTriggers: {
+        customMessage: customMessageFunction,
         ...(googleLinkFunction ? { preSignUp: googleLinkFunction } : {}),
       },
     });
@@ -129,9 +143,10 @@ export class AuthStack extends cdk.Stack {
       generateSecret: false,
       preventUserExistenceErrors: true,
       authFlows: {
+        // 利用者は選択型の USER_AUTH（メールのコード・パスキー）だけ。
+        // adminUserPassword は本番の検査用（AWS の認証情報が要る管理者用の経路）
         user: true,
-        userPassword: true,
-        userSrp: true,
+        adminUserPassword: true,
       },
       supportedIdentityProviders: googleEnabled
         ? [cognito.UserPoolClientIdentityProvider.COGNITO, cognito.UserPoolClientIdentityProvider.GOOGLE]

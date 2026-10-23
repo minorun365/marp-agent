@@ -57,10 +57,12 @@ if (!clientId) throw new Error('User Pool クライアントを特定できま�
 
 let accessToken;
 try {
+  // 利用者向けのパスワードの経路は閉じてある。検査は AWS の認証情報が要る管理者用の経路で入る
   const auth = aws([
-    'cognito-idp', 'initiate-auth',
+    'cognito-idp', 'admin-initiate-auth',
+    '--user-pool-id', userPoolId,
     '--client-id', clientId,
-    '--auth-flow', 'USER_PASSWORD_AUTH',
+    '--auth-flow', 'ADMIN_USER_PASSWORD_AUTH',
     '--auth-parameters', `USERNAME=${testEmail},PASSWORD=${testPassword}`,
   ]);
   accessToken = auth.AuthenticationResult?.AccessToken;

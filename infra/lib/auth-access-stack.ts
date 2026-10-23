@@ -6,6 +6,8 @@ import type { Construct } from 'constructs';
 export type AuthAccessStackProps = cdk.StackProps;
 
 export class AuthAccessStack extends cdk.Stack {
+  readonly customMessageRole: iam.Role;
+  readonly customMessageLogGroup: logs.LogGroup;
   readonly googleLinkRole: iam.Role;
   readonly googleLinkLogGroup: logs.LogGroup;
   readonly googleIdpManagerRole: iam.Role;
@@ -13,6 +15,10 @@ export class AuthAccessStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: AuthAccessStackProps) {
     super(scope, id, props);
+
+    // 確認コードとログインのコードのメールを日本語にする。AWSのAPIは呼ばないのでログの権限だけ
+    this.customMessageLogGroup = this.createLogGroup('CustomMessage', 'pawapo-custom-message');
+    this.customMessageRole = this.createLambdaRole('CustomMessage', 'pawapo-custom-message', this.customMessageLogGroup);
 
     this.googleLinkLogGroup = this.createLogGroup('GoogleLink', 'pawapo-google-link');
     this.googleLinkRole = this.createLambdaRole('GoogleLink', 'pawapo-google-link', this.googleLinkLogGroup);

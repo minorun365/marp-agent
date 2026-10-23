@@ -166,16 +166,24 @@ guarded('Googleログインが有効になっている', () => {
   );
 });
 
-guarded('パスワードとパスキーの両方でログインできる', () => {
+guarded('メールのコードとパスキーでログインできる', () => {
   const pool = aws(['cognito-idp', 'describe-user-pool', '--user-pool-id', userPoolId]);
   const factors = pool.UserPool?.Policies?.SignInPolicy?.AllowedFirstAuthFactors || [];
-  // 既存ユーザーはパスワードで移行するため、パスワードを外すと移行経路ごと壊れる。
-  const missing = ['PASSWORD', 'WEB_AUTHN'].filter((factor) => !factors.includes(factor));
+  const missing = ['EMAIL_OTP', 'WEB_AUTHN'].filter((factor) => !factors.includes(factor));
   check(
-    'パスワードとパスキーの両方でログインできる',
+    'メールのコードとパスキーでログインできる',
     missing.length === 0,
     `許可=[${factors.join(', ')}]`,
   );
+});
+
+guarded('利用者向けのクライアントにパスワードの経路が無い', () => {
+  const clients = aws(['cognito-idp', 'list-user-pool-clients', '--user-pool-id', userPoolId, '--max-results', '10']).UserPoolClients;
+  const flows = clients.flatMap((c) => aws([
+    'cognito-idp', 'describe-user-pool-client', '--user-pool-id', userPoolId, '--client-id', c.ClientId,
+  ]).UserPoolClient.ExplicitAuthFlows || []);
+  const open = flows.filter((f) => f === 'ALLOW_USER_PASSWORD_AUTH' || f === 'ALLOW_USER_SRP_AUTH');
+  check('利用者向けのクライアントにパスワードの経路が無い', open.length === 0, open.length ? `残り=[${open.join(', ')}]` : '');
 });
 
 // ── Web配信 ─────────────────────────────────────────────────────────
