@@ -16,12 +16,6 @@ const env = {
 const appDomain = app.node.getContext('appDomain') as string;
 const previewDomain = app.node.tryGetContext('previewDomain') as string | undefined;
 const cutoverWildcardDomain = app.node.tryGetContext('cutoverWildcardDomain') as string | undefined;
-// 旧環境からユーザーを引き継ぐときだけ指定する。新規に構築する場合は未設定でよい。
-const oldMigrationRoleArn = app.node.tryGetContext('oldMigrationRoleArn') as string | undefined;
-const oldGoogleCheckRoleArn = app.node.tryGetContext('oldGoogleCheckRoleArn') as string | undefined;
-// 移行元が2世代ある場合の2代目。落とすとその世代の利用者だけ移行できなくなる。
-const oldMigrationRoleArn2 = app.node.tryGetContext('oldMigrationRoleArn2') as string | undefined;
-const oldGoogleCheckRoleArn2 = app.node.tryGetContext('oldGoogleCheckRoleArn2') as string | undefined;
 
 const foundation = new FoundationStack(app, 'PawapoFoundation', {
   env,
@@ -33,10 +27,6 @@ const foundation = new FoundationStack(app, 'PawapoFoundation', {
 
 const authAccess = new AuthAccessStack(app, 'PawapoAuthAccess', {
   env,
-  legacyMigrationRoleArn: oldMigrationRoleArn,
-  legacyGoogleCheckRoleArn: oldGoogleCheckRoleArn,
-  legacyMigrationRoleArn2: oldMigrationRoleArn2,
-  legacyGoogleCheckRoleArn2: oldGoogleCheckRoleArn2,
   description: 'パワポ作るマンの認証Lambda実行ロールとログ',
 });
 
@@ -45,10 +35,6 @@ const auth = new AuthStack(app, 'PawapoAuth', {
   appDomain,
   previewDomain,
   authAccess,
-  legacyMigrationRoleArn: oldMigrationRoleArn,
-  legacyGoogleCheckRoleArn: oldGoogleCheckRoleArn,
-  legacyMigrationRoleArn2: oldMigrationRoleArn2,
-  legacyGoogleCheckRoleArn2: oldGoogleCheckRoleArn2,
   description: 'パワポ作るマンのCognito認証基盤',
 });
 

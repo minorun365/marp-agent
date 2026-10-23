@@ -12,8 +12,6 @@
  * 使い方:
  *   node --env-file-if-exists=.env --env-file-if-exists=.env.production.local \
  *     infra/scripts/usage-report.mjs [--days 14]
- *
- * KAG社内版も併せて見るときは、環境変数 PAWAPO_KAG_PROFILE と PAWAPO_KAG_RUNTIME_NAME を設定する。
  */
 
 import { execFileSync } from 'node:child_process';
@@ -30,8 +28,6 @@ const required = (name, hint) => {
 
 const profile = required('PAWAPO_TARGET_PROFILE', '.env.production.local');
 const userPoolId = required('PAWAPO_USER_POOL_ID', '.env.production.local');
-const kagProfile = process.env.PAWAPO_KAG_PROFILE;
-const kagRuntimeName = process.env.PAWAPO_KAG_RUNTIME_NAME;
 
 function aws(args, awsProfile = profile) {
   const output = execFileSync('aws', [...args, '--profile', awsProfile, '--region', region, '--output', 'json'], {
@@ -169,32 +165,6 @@ if (totalSessions > 0) {
   console.log(`  1セッションあたり     $${(totalCost / totalSessions).toFixed(3)}（約${Math.round((totalCost / totalSessions) * 155)}円）`);
 }
 console.log(`  ※ アカウントはこのアプリ専用なので、全額がアプリの費用（account ${identity.Account.slice(0, 4)}…）`);
-
-// ── KAG社内版（任意） ───────────────────────────────────────────────
-if (kagProfile && kagRuntimeName) {
-  try {
-    const kagLogGroup = findRuntimeLogGroup(kagRuntimeName, kagProfile);
-    if (kagLogGroup) {
-      const kagDaily = await runQuery(
-        kagLogGroup,
-        'parse @message /"session\\.id":\\s*"(?<sid>[^"]+)"/'
-        + ' | filter ispresent(sid)'
-        + ' | stats min(@timestamp) as first_seen by sid'
-        + ' | stats count(*) as sessions by datefloor(first_seen, 1d) as day'
-        + ' | sort day asc',
-        kagProfile,
-      );
-      const kagTotal = kagDaily.reduce((sum, d) => sum + Number(d.sessions), 0);
-      console.log('\n■ KAG社内版\n');
-      console.log(`  期間合計            ${kagTotal} セッション`);
-      if (kagDaily.length > 0) {
-        console.log(`  最終利用日          ${jstDay(kagDaily[kagDaily.length - 1].day)}`);
-      }
-    }
-  } catch (error) {
-    console.log(`\n■ KAG社内版\n\n  取得できませんでした: ${error.message.split('\n')[0]}`);
-  }
-}
 
 // ── Tavily ──────────────────────────────────────────────────────────
 const tavilyKeys = (process.env.TAVILY_API_KEYS || '').split(',').map((k) => k.trim()).filter(Boolean);

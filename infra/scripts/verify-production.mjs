@@ -29,9 +29,6 @@ const required = (name) => {
 
 const profile = required('PAWAPO_TARGET_PROFILE');
 const userPoolId = required('PAWAPO_USER_POOL_ID');
-// 2代目の移行元は任意。設定していれば、その世代も届いているかまで検査する。
-const legacyAccountId2 = process.env.PAWAPO_OLD2_ACCOUNT_ID;
-const legacyUserPoolId2 = process.env.PAWAPO_OLD2_USER_POOL_ID;
 
 const cdkJson = JSON.parse(readFileSync(new URL('../../cdk.json', import.meta.url), 'utf8'));
 const appDomain = cdkJson.context.appDomain;
@@ -156,55 +153,6 @@ guarded('エージェントのログが13か月保持になっている', () => 
   );
 });
 
-// ── ユーザー移行 ────────────────────────────────────────────────────
-guarded('移行元の世代がすべて設定されている', () => {
-  const config = aws(['lambda', 'get-function-configuration', '--function-name', 'pawapo-user-migration']);
-  const env = config.Environment?.Variables || {};
-  const generations = [
-    { label: '初代', keys: ['OLD_ACCOUNT_ROLE_ARN', 'OLD_USER_POOL_ID', 'OLD_USER_POOL_CLIENT_ID'] },
-  ];
-  // 2代目は設定ファイルで有効にしたときだけ必須にする（将来撤去したら自動的に検査対象から外れる）。
-  if (legacyAccountId2 && legacyUserPoolId2) {
-    generations.push({ label: '2代目', keys: ['OLD2_ACCOUNT_ROLE_ARN', 'OLD2_USER_POOL_ID', 'OLD2_USER_POOL_CLIENT_ID'] });
-  }
-  const missing = generations.flatMap((gen) =>
-    gen.keys.filter((key) => !env[key]).map((key) => `${gen.label}:${key}`),
-  );
-  check(
-    '移行元の世代がすべて設定されている',
-    missing.length === 0,
-    missing.length ? `不足=${missing.join(', ')}` : `${generations.length}世代ぶんそろっている`,
-  );
-
-  if (legacyUserPoolId2) {
-    check(
-      '2代目の移行元が想定のUser Poolを指している',
-      env.OLD2_USER_POOL_ID === legacyUserPoolId2,
-      `実際=${env.OLD2_USER_POOL_ID || '未設定'}`,
-    );
-  }
-});
-
-guarded('移行Lambdaが移行元の役割を引き受けられる', () => {
-  const policyNames = aws(['iam', 'list-role-policies', '--role-name', 'pawapo-user-migration']);
-  const statements = (policyNames.PolicyNames || []).flatMap((policyName) => {
-    const policy = aws(['iam', 'get-role-policy', '--role-name', 'pawapo-user-migration', '--policy-name', policyName]);
-    return policy.PolicyDocument.Statement || [];
-  });
-  const assumeTargets = statements
-    .filter((s) => [].concat(s.Action).includes('sts:AssumeRole'))
-    .flatMap((s) => [].concat(s.Resource));
-
-  const expected = ['715841358122'];
-  if (legacyAccountId2) expected.push(legacyAccountId2);
-  const missing = expected.filter((accountId) => !assumeTargets.some((arn) => arn.includes(accountId)));
-  check(
-    '移行Lambdaが移行元の役割を引き受けられる',
-    missing.length === 0,
-    missing.length ? `引き受け先が不足（${missing.length}件）` : `${assumeTargets.length}件の引き受け先あり`,
-  );
-});
-
 // ── 認証 ────────────────────────────────────────────────────────────
 guarded('Googleログインが有効になっている', () => {
   const idp = aws([
@@ -277,38 +225,6 @@ guarded('予算アラートが設定されている', () => {
 const reminders = [];
 
 // 旧共有サブドメインは、切替日から共有URLの有効期限（7日）を過ぎれば不要になる。
-const shareExpiry = new Date('2026-08-22T00:00:00+09:00');
-if (Date.now() >= shareExpiry.getTime()) {
-  guarded('旧共有サブドメインの停止', () => {
-    const zoneName = appDomain.split('.').slice(-2).join('.');
-    const zones = aws(['route53', 'list-hosted-zones-by-name', '--dns-name', zoneName]);
-    // 親ゾーンは別アカウントにあることもあるので、引けなければ黙って飛ばす。
-    const zone = (zones.HostedZones || []).find((z) => z.Name === `${zoneName}.`);
-    if (!zone) return;
-    const records = aws(['route53', 'list-resource-record-sets', '--hosted-zone-id', zone.Id.split('/').pop()]);
-    const legacyShare = (records.ResourceRecordSets || []).find((r) => r.Name === `slides.${appDomain}.`);
-    if (legacyShare) {
-      reminders.push('旧共有サブドメイン slides.* がまだ残っています。共有URLの有効期限は過ぎているので、切替runbookの「残っている後片付け」に従って撤去できます。');
-    }
-  });
-}
-
-// 2代目の移行元は、そこからの移行が止まったら撤去できる（日付ではなく実績で判断する）。
-if (legacyAccountId2) {
-  guarded('2代目の移行元の要否', () => {
-    if (!runtimeId) return;
-    const events = aws([
-      'logs', 'filter-log-events',
-      '--log-group-name', '/aws/lambda/pawapo-user-migration',
-      '--start-time', String(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      '--filter-pattern', '2代目',
-    ]);
-    if ((events.events || []).length === 0) {
-      reminders.push('直近30日で「2代目から移行」した利用者がいません。移行が一巡したなら、2代目の移行元を撤去できます（切替runbook参照）。');
-    }
-  });
-}
-
 // ── 結果 ────────────────────────────────────────────────────────────
 const failures = results.filter((r) => !r.ok);
 console.log('\n本番構成の検査\n');
