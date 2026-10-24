@@ -71,6 +71,7 @@ export class AuthStack extends cdk.Stack {
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       signInPolicy: {
         // ログインはメールのコード（Cognito 標準メール、1日50通）とパスキー。
+        // 公式ドキュメントはメールのコードに SES を要件として書いているが、標準メールで動くことを本番で確認済み（docs/authentication-options.md）。
         // password は Cognito の仕様で外せない（PasswordAuthenticationCannotDisabled）ので、
         // 利用者向けのクライアントからパスワードの経路を外して入口を閉じている（下の authFlows）
         allowedFirstAuthFactors: {

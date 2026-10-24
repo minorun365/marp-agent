@@ -1,6 +1,6 @@
 # 認証方式の設計
 
-最終確認日: 2026年10月23日
+最終確認日: 2026年10月24日
 
 パワポ作るマンのログインは **Google・パスキー・メールのワンタイムコード** の3つで、パスワードは使わない。Amazon Cognito User Pools を CDK で構築し、フロントエンドは `aws-amplify` の Auth クライアントでアプリ専用の画面を実装する。
 
@@ -25,7 +25,16 @@
 
 ## メール送信
 
-Cognito の標準メール送信を使う（AWS アカウントあたり1日50通が上限）。ログインのたびにメールが1通届くので、ログイン回数が上限に近づいたら SES の本番利用申請を検討する。文面はカスタムメッセージの Lambda トリガー（`infra/lambda/auth/custom-message`）で日本語にしている。新規登録の確認コード（`CustomMessage_SignUp`）とログインのコード（`CustomMessage_Authentication`）の両方がこのトリガーを通る。
+Cognito の標準メール送信（`EmailSendingAccount: COGNITO_DEFAULT`）を使う。AWS アカウントあたり1日50通が上限で、ログインのたびにメールが1通届く。
+
+公式ドキュメント（[メール設定](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-email.html)の表の注記）は、メールのワンタイムコードに「Essentials プラン以上と Amazon SES のメール設定」が必要だと書いている。本番はこの要件を満たしていないが、2026年10月24日に次の2点を確かめ、標準送信のままでも動いている。
+
+- 本番の User Pool は `COGNITO_DEFAULT` のまま、`AllowedFirstAuthFactors` に `EMAIL_OTP` が入っている。Cognito はこの組み合わせを拒否しない
+- CloudTrail に、2026年10月23日のメールのコードでのログイン（`RespondToAuthChallenge` の `EMAIL_OTP`）が3件あり、いずれもエラーなく完了している
+
+ドキュメントと実際の挙動が食い違っているので、AWS が要件どおりに締めればメールのコードだけが止まる。メールでログインできないという報告が来たら、まずここを疑う。そのときと、ログイン回数が1日50通に近づいたときは、SES の本番利用申請をして `DEVELOPER` の送信へ切り替える。
+
+文面はカスタムメッセージの Lambda トリガー（`infra/lambda/auth/custom-message`）で日本語にしている。新規登録の確認コード（`CustomMessage_SignUp`）とログインのコード（`CustomMessage_Authentication`）の両方がこのトリガーを通る。
 
 ## Google ユーザーとの統合
 
