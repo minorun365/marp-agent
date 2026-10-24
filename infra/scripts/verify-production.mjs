@@ -178,6 +178,16 @@ guarded('メールのコードとパスキーでログインできる', () => {
   );
 });
 
+guarded('利用者がパスワードを作り直せない', () => {
+  const pool = aws(['cognito-idp', 'describe-user-pool', '--user-pool-id', userPoolId]);
+  const mechanisms = (pool.UserPool?.AccountRecoverySetting?.RecoveryMechanisms || []).map((m) => m.Name);
+  check(
+    '利用者がパスワードを作り直せない',
+    mechanisms.length === 1 && mechanisms[0] === 'admin_only',
+    `回復手段=[${mechanisms.join(', ')}]`,
+  );
+});
+
 guarded('利用者向けのクライアントにパスワードの経路が無い', () => {
   const clients = aws(['cognito-idp', 'list-user-pool-clients', '--user-pool-id', userPoolId, '--max-results', '10']).UserPoolClients;
   const flows = clients.flatMap((c) => aws([

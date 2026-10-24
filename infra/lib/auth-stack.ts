@@ -68,12 +68,14 @@ export class AuthStack extends cdk.Stack {
       standardAttributes: {
         email: { required: true, mutable: true },
       },
-      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      // 利用者がパスワードを作り直す経路（ForgotPassword）を閉じる。画面にパスワードの入力欄は無い
+      accountRecovery: cognito.AccountRecovery.NONE,
       signInPolicy: {
         // ログインはメールのコード（Cognito 標準メール、1日50通）とパスキー。
         // 公式ドキュメントはメールのコードに SES を要件として書いているが、標準メールで動くことを本番で確認済み（docs/authentication-options.md）。
-        // password は Cognito の仕様で外せない（PasswordAuthenticationCannotDisabled）ので、
-        // 利用者向けのクライアントからパスワードの経路を外して入口を閉じている（下の authFlows）
+        // password は Cognito の仕様で外せない（PasswordAuthenticationCannotDisabled）。
+        // USER_AUTH の中ではクライアントの authFlows に関係なくパスワードを選べるので、
+        // 再設定の経路を閉じ（accountRecovery）、既存利用者のパスワードを誰も知らない値へ置き換えて塞いでいる
         allowedFirstAuthFactors: {
           password: true,
           passkey: true,

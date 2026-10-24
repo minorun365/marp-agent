@@ -6,7 +6,7 @@
 
 ## 結論
 
-- パスワードは使わない。画面にパスワードの入力欄は無く、利用者向けの App Client にもパスワードの経路（`USER_PASSWORD_AUTH`・`USER_SRP_AUTH`）を開けない。
+- パスワードは使わない。画面にパスワードの入力欄は無く、利用者向けの App Client にもパスワードの経路（`USER_PASSWORD_AUTH`・`USER_SRP_AUTH`）を開けない。ただし App Client の設定だけでは塞がらない（下の「パスワードの経路の塞ぎ方」）。
 - メールで使う人は、ログインのたびにメールで届くコードで入る。新規登録もメールアドレスだけで、確認コードの入力がそのまま初回ログインになる。
 - パスキーは、メールのコードでログインした人へ一度だけ案内する任意の手段。
 - Google ログインを併用する。Google 利用者へパスキー登録は勧めない。
@@ -36,6 +36,15 @@ Cognito の標準メール送信（`EmailSendingAccount: COGNITO_DEFAULT`）を�
 
 文面はカスタムメッセージの Lambda トリガー（`infra/lambda/auth/custom-message`）で日本語にしている。新規登録の確認コード（`CustomMessage_SignUp`）とログインのコード（`CustomMessage_Authentication`）の両方がこのトリガーを通る。
 
+## パスワードの経路の塞ぎ方
+
+選択型の `USER_AUTH` では、App Client の `ExplicitAuthFlows` に関係なく、User Pool の `AllowedFirstAuthFactors` にある方式を選べる。`PASSWORD` は外せないので、パスワードを持つ利用者は API を直接呼べばパスワードだけでログインできる（2026年10月24日、テスト用ユーザーで再現）。次の2つで塞いでいる。
+
+- アカウント回復を管理者のみ（`admin_only`）にして、利用者がパスワードを作り直す `ForgotPassword` を閉じる。構成の検査（`prod:verify`）がこの設定を見ている
+- 2026年10月24日、それまでにメールで登録した利用者110人のパスワードを、誰も知らないランダムな値へ置き換えた。以降の新規登録はパスワードを作らない
+
+本番の検査用ユーザーだけは、`ADMIN_USER_PASSWORD_AUTH` で使うためにパスワードを持っている。未確認（`UNCONFIRMED`）のまま残っている利用者は置き換えていない。
+
 ## Google ユーザーとの統合
 
 Cognito は、メールアドレスが同じでもメールの利用者と Google の利用者を自動で統合しない。preSignUp トリガー（`infra/lambda/auth/google-link`）で、確認済みメールアドレスが一致する既存のプロフィールへ `AdminLinkProviderForUser` でリンクする。
@@ -43,7 +52,8 @@ Cognito は、メールアドレスが同じでもメールの利用者と Googl
 ## 実装条件
 
 - Cognito User Pool は Essentials プラン以上にする（パスキーとメールのコードに必要）。
-- `AllowedFirstAuthFactors` は `PASSWORD`・`EMAIL_OTP`・`WEB_AUTHN`。`PASSWORD` は Cognito の仕様で外せない（CDK も `PasswordAuthenticationCannotDisabled` で止める）ので、App Client の認証フローで入口を閉じる。
+- `AllowedFirstAuthFactors` は `PASSWORD`・`EMAIL_OTP`・`WEB_AUTHN`。`PASSWORD` は Cognito の仕様で外せない（CDK も `PasswordAuthenticationCannotDisabled` で止める）。
+- アカウント回復は `admin_only`（CDK の `AccountRecovery.NONE`）。
 - App Client の認証フローは、利用者向けの選択型 `USER_AUTH` と、本番の検査用の `ADMIN_USER_PASSWORD_AUTH`（AWS の認証情報が要る）だけ。
 - パスキーの Relying Party ID は本番ドメイン `pawapo.minoruonda.com` に固定する。
 - AgentCore Runtime へ渡すのは Cognito のアクセストークンとする。
