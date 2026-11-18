@@ -4,7 +4,7 @@ This file provides guidance to coding agents (Claude Code / Codex) when working 
 
 ## プロジェクト概要
 
-「パワポ作るマン」- AIがMarp形式でスライドを自動生成するWebアプリ。CloudFront から画面を配信し、ブラウザが Amazon Bedrock AgentCore Runtime へ直接つながる。インフラは AWS CDK を CDKD でデプロイする。
+「パワポ作るマン」- AIがMarp形式でスライドを自動生成するWebアプリ。**2026-11-19 に提供を終了した**（本番は案内ページと共有スライドだけを配る。手で変えた内容と CDKD の状態とのずれは `docs/deploy.md`「提供終了」節）。CloudFront から画面を配信し、ブラウザが Amazon Bedrock AgentCore Runtime へ直接つながる。インフラは AWS CDK を CDKD でデプロイする。
 
 ## 開発コマンド
 

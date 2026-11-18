@@ -135,3 +135,18 @@ aws logs start-query --log-group-name 'aws/spans' \
 
 利用状況の確認は `npm run prod:usage`（旧 `check-app-stats/run.sh` は移行前専用なので使わない）。
 
+
+## 提供終了（2026-11-19）
+
+本番は CDKD を通さず、AWS を直接変えて閉じました。**CDKD の状態ファイルは閉じる前の構成のままなので、`infra:deploy` を打つとバックエンドが戻ります。** 再開しない限りデプロイしないでください。
+
+| 対象 | 変えたこと |
+|---|---|
+| CloudFront | 既定の振り分けを共有スライドのバケットへ向け、CloudFront Function `pawapo-closed-page` で `slides/` 以外の全パスを `_closed/index.html`（ロゴ・OGP画像・robots.txt は `_closed/` の同名ファイル）へ書き換える。`runtime-config.json` の振り分けと Lambda のオリジンは外した |
+| 案内ページ | `closed/` の中身を共有スライドのバケットの `_closed/` へ置いた（ロゴ・OGP画像・robots.txt は `public/` の写し） |
+| AgentCore Runtime | 削除した（コードはこのリポジトリと ECR に残る） |
+| Lambda | 画面配信と Cognito まわりの4本を、予約同時実行数0で止めた |
+| Cognito | ユーザーは残し、管理者だけがユーザーを作れる設定にした（新規登録の停止） |
+| Secrets Manager | Tavily の鍵を復元期間30日つきで削除予約した |
+
+共有スライド（`slides/`）・Cognito のユーザー・S3 の各バケット・ECR のイメージは残しています。
